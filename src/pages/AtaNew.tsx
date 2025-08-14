@@ -1,0 +1,77 @@
+import { Layout } from "@/components/layout/Layout"
+import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
+import { AtaForm } from "@/components/atas/AtaForm"
+import { useNavigate } from "react-router-dom"
+import { useAtasStore } from "@/store/atas.store"
+import { FIXTURE_USERS } from "@/data/fixtures"
+import { useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+
+const AtaNew = () => {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const { createAta, loadStatuses, statuses, loading } = useAtasStore()
+
+  useEffect(() => {
+    loadStatuses()
+  }, [loadStatuses])
+
+  const handleSubmit = async (data: any) => {
+    try {
+      const secretary = data.secretaryId ? FIXTURE_USERS.find(u => u.id === data.secretaryId) : undefined
+
+      const newAta = await createAta({
+        title: data.title,
+        description: data.description,
+        meetingDate: data.meetingDate,
+        secretary,
+        statusId: data.statusId,
+        ticket: data.ticket,
+        tags: data.tags,
+        attachments: [],
+        comments: []
+      })
+
+      toast({
+        title: "Ata criada com sucesso!",
+        description: `A ata "${newAta.title}" foi criada e está disponível na lista.`,
+      })
+
+      navigate('/atas')
+    } catch (error) {
+      console.error('Erro ao criar ata:', error)
+      toast({
+        title: "Erro ao criar ata",
+        description: "Ocorreu um erro ao criar a ata. Tente novamente.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleCancel = () => {
+    navigate('/atas')
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <BreadcrumbEureka 
+          items={[
+            { label: "Atas", href: "/atas" },
+            { label: "Nova Ata", isActive: true }
+          ]} 
+        />
+        
+        <div className="max-w-4xl mx-auto">
+          <AtaForm
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            loading={loading}
+          />
+        </div>
+      </div>
+    </Layout>
+  )
+}
+
+export default AtaNew
