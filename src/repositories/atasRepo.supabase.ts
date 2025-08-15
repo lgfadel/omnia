@@ -290,7 +290,7 @@ export const atasRepoSupabase = {
         url: att.url,
         size_kb: att.sizeKB,
         mime_type: att.mime,
-        created_by: user.user.id
+        uploaded_by: user.user.id
       }))
 
       const { data: insertedAttachments, error: attachError } = await supabase
