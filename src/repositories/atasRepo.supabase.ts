@@ -23,14 +23,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       roles: [],
       avatarUrl: null
     },
-    attachments: (comment.omnia_attachments || []).map((att: any) => ({
-      id: att.id,
-      name: att.name,
-      url: att.url,
-      sizeKB: att.size_kb,
-      mime: att.mime_type,
-      createdAt: att.created_at
-    }))
+    attachments: [] // Simplified - we'll load attachments separately if needed
   }))
   
   return {
@@ -83,8 +76,7 @@ export const atasRepoSupabase = {
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
-          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
         )
       `)
       .order('created_at', { ascending: false })
@@ -105,6 +97,8 @@ export const atasRepoSupabase = {
   },
 
   async getById(id: string): Promise<Ata | null> {
+    console.log('AtasRepo: Getting ata by id:', id)
+    
     // First get statuses for transformation
     const { data: statusesData } = await supabase
       .from('omnia_statuses')
@@ -121,19 +115,24 @@ export const atasRepoSupabase = {
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
-          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
         )
       `)
       .eq('code', id)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      if (error.code === 'PGRST116') return null
+      console.error('AtasRepo: Error getting ata:', error)
       throw error
     }
 
-    return data ? transformAtaFromDB(data, statuses) : null
+    if (!data) {
+      console.log('AtasRepo: No ata found with id:', id)
+      return null
+    }
+
+    console.log('AtasRepo: Found ata:', data)
+    return transformAtaFromDB(data, statuses)
   },
 
   async create(data: Omit<Ata, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Ata> {
@@ -210,16 +209,17 @@ export const atasRepoSupabase = {
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
-          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
         )
       `)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      if (error.code === 'PGRST116') return null
+      console.error('AtasRepo: Error updating ata:', error)
       throw error
     }
+
+    if (!updatedAta) return null
 
     // Get statuses for transformation
     const { data: statusesData } = await supabase
