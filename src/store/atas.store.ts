@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Ata, Status, Comment, Attachment } from '@/data/fixtures'
-import { atasRepoMock } from '@/repositories/atasRepo.mock'
+import { atasRepoSupabase } from '@/repositories/atasRepo.supabase'
 
 interface AtasStore {
   atas: Ata[]
@@ -28,7 +28,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   loadAtas: async (search?: string, statusFilter?: string[]) => {
     set({ loading: true, error: null })
     try {
-      const atas = await atasRepoMock.list(search, statusFilter)
+      const atas = await atasRepoSupabase.list(search, statusFilter)
       set({ atas, loading: false })
     } catch (error) {
       set({ error: 'Erro ao carregar atas', loading: false })
@@ -37,7 +37,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
 
   loadStatuses: async () => {
     try {
-      const statuses = await atasRepoMock.getStatuses()
+      const statuses = await atasRepoSupabase.getStatuses()
       set({ statuses })
     } catch (error) {
       set({ error: 'Erro ao carregar status' })
@@ -47,7 +47,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   getAtaById: async (id: string) => {
     set({ loading: true, error: null })
     try {
-      const ata = await atasRepoMock.getById(id)
+      const ata = await atasRepoSupabase.getById(id)
       set({ loading: false })
       return ata
     } catch (error) {
@@ -59,7 +59,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   createAta: async (data) => {
     set({ loading: true, error: null })
     try {
-      const newAta = await atasRepoMock.create(data)
+      const newAta = await atasRepoSupabase.create(data)
       const { atas } = get()
       set({ atas: [newAta, ...atas], loading: false })
       return newAta
@@ -72,7 +72,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   updateAta: async (id: string, data) => {
     set({ loading: true, error: null })
     try {
-      const updatedAta = await atasRepoMock.update(id, data)
+      const updatedAta = await atasRepoSupabase.update(id, data)
       if (updatedAta) {
         const { atas } = get()
         const updatedAtas = atas.map(ata => ata.id === id ? updatedAta : ata)
@@ -88,7 +88,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   deleteAta: async (id: string) => {
     set({ loading: true, error: null })
     try {
-      const success = await atasRepoMock.remove(id)
+      const success = await atasRepoSupabase.remove(id)
       if (success) {
         const { atas } = get()
         set({ atas: atas.filter(ata => ata.id !== id), loading: false })
@@ -102,7 +102,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
 
   addComment: async (ataId: string, comment) => {
     try {
-      const newComment = await atasRepoMock.addComment(ataId, comment)
+      const newComment = await atasRepoSupabase.addComment(ataId, comment)
       if (newComment) {
         const { atas } = get()
         const updatedAtas = atas.map(ata => {
@@ -127,7 +127,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
 
   addAttachment: async (ataId: string, attachment) => {
     try {
-      const newAttachment = await atasRepoMock.addAttachment(ataId, attachment)
+      const newAttachment = await atasRepoSupabase.addAttachment(ataId, attachment)
       if (newAttachment) {
         const { atas } = get()
         const updatedAtas = atas.map(ata => {
