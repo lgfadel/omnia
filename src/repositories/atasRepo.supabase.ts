@@ -81,7 +81,7 @@ export const atasRepoSupabase = {
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (
+        omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
           omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
@@ -119,7 +119,7 @@ export const atasRepoSupabase = {
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (
+        omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
           omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
@@ -208,7 +208,7 @@ export const atasRepoSupabase = {
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (
+        omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
           omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
