@@ -14,7 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { Ata, UserRef } from "@/data/fixtures";
 import { useAtasStore } from "@/store/atas.store";
+import { useTagsStore } from "@/store/tags.store";
 import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
+import { TagInput } from "./TagInput";
 const ataSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
@@ -42,21 +44,24 @@ export function AtaForm({
   const {
     statuses
   } = useAtasStore();
+  const { loadTags } = useTagsStore();
   const [users, setUsers] = useState<UserRef[]>([]);
   const [tags, setTags] = useState<string[]>(ata?.tags || []);
-  const [tagInput, setTagInput] = useState("");
 
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadData = async () => {
       try {
-        const userData = await atasRepoSupabase.getUsers();
+        const [userData] = await Promise.all([
+          atasRepoSupabase.getUsers(),
+          loadTags()
+        ]);
         setUsers(userData);
       } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
+        console.error('Erro ao carregar dados:', error);
       }
     };
-    loadUsers();
-  }, []);
+    loadData();
+  }, [loadTags]);
   const {
     register,
     handleSubmit,
@@ -77,21 +82,6 @@ export function AtaForm({
       tags: ""
     }
   });
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput("");
-    }
-  };
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
   const onFormSubmit = (data: AtaFormData) => {
     onSubmit({
       ...data,
@@ -168,21 +158,10 @@ export function AtaForm({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Tags</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {tags.map(tag => <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    {tag}
-                    <X className="w-3 h-3 cursor-pointer hover:text-destructive" onClick={() => handleRemoveTag(tag)} />
-                  </Badge>)}
-              </div>
-              <div className="flex gap-2">
-                <Input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleKeyPress} placeholder="Digite uma tag e pressione Enter" />
-                <Button type="button" variant="outline" onClick={handleAddTag}>
-                  Adicionar
-                </Button>
-              </div>
-            </div>
+            <TagInput 
+              tags={tags} 
+              onTagsChange={setTags} 
+            />
           </div>
 
           <Separator />

@@ -13,6 +13,7 @@ import AtaDetail from "./pages/AtaDetail";
 import AtaEdit from "./pages/AtaEdit";
 import ConfigStatus from "./pages/ConfigStatus";
 import ConfigUsuarios from "./pages/ConfigUsuarios";
+import { ConfigTags } from "./pages/ConfigTags";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,11 @@ function App() {
               <Route path="/config/usuarios" element={
                 <ProtectedRoute>
                   <ConfigUsuarios />
+                </ProtectedRoute>
+              } />
+              <Route path="/config/tags" element={
+                <ProtectedRoute>
+                  <ConfigTags />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

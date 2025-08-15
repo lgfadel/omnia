@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      omnia_ata_tags: {
+        Row: {
+          ata_id: string
+          created_at: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          ata_id: string
+          created_at?: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          ata_id?: string
+          created_at?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_ata_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omnia_atas: {
         Row: {
           code: string
@@ -196,6 +225,33 @@ export type Database = {
           is_default?: boolean | null
           name?: string
           order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      omnia_tags: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []

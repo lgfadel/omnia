@@ -4,7 +4,8 @@ import {
   Users, 
   FileText,
   Home,
-  BarChart3
+  BarChart3,
+  Tags
 } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import {
@@ -29,6 +30,7 @@ const navigationItems = [
 const configItems = [
   { title: "Status", url: "/config/status", icon: Settings },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
+  { title: "Tags", url: "/config/tags", icon: Tags },
   { title: "Documentos", url: "/config/documentos", icon: FileText },
 ]
 
