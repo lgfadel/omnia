@@ -4,7 +4,7 @@ import { AtaForm } from "@/components/atas/AtaForm"
 import { Button } from "@/components/ui/button"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
-import { FIXTURE_USERS } from "@/data/fixtures"
+
 import { useEffect, useState } from "react"
 import { Ata } from "@/data/fixtures"
 
@@ -36,7 +36,7 @@ const AtaEdit = () => {
     if (!id) return
     
     try {
-      const secretary = data.secretaryId ? FIXTURE_USERS.find(u => u.id === data.secretaryId) : undefined
+      const secretary = data.secretaryId ? { id: data.secretaryId, name: '', email: '', roles: [] } : undefined
 
       await updateAta(id, {
         title: data.title,

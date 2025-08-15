@@ -3,7 +3,7 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { AtaForm } from "@/components/atas/AtaForm"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
-import { FIXTURE_USERS } from "@/data/fixtures"
+
 import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,7 +18,7 @@ const AtaNew = () => {
 
   const handleSubmit = async (data: any) => {
     try {
-      const secretary = data.secretaryId ? FIXTURE_USERS.find(u => u.id === data.secretaryId) : undefined
+      const secretary = data.secretaryId ? { id: data.secretaryId, name: '', email: '', roles: [] } : undefined
 
       const newAta = await createAta({
         title: data.title,
