@@ -23,7 +23,14 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       roles: [],
       avatarUrl: null
     },
-    attachments: comment.omnia_attachments || []
+    attachments: (comment.omnia_attachments || []).map((att: any) => ({
+      id: att.id,
+      name: att.name,
+      url: att.url,
+      sizeKB: att.size_kb,
+      mime: att.mime_type,
+      createdAt: att.created_at
+    }))
   }))
   
   return {
@@ -273,6 +280,38 @@ export const atasRepoSupabase = {
 
     if (error) throw error
 
+    // Save attachments if any
+    let savedAttachments: Attachment[] = []
+    if (comment.attachments && comment.attachments.length > 0) {
+      const attachmentsToInsert = comment.attachments.map(att => ({
+        ata_id: ata.id,
+        comment_id: newComment.id,
+        name: att.name,
+        url: att.url,
+        size_kb: att.sizeKB,
+        mime_type: att.mime,
+        created_by: user.user.id
+      }))
+
+      const { data: insertedAttachments, error: attachError } = await supabase
+        .from('omnia_attachments')
+        .insert(attachmentsToInsert)
+        .select('*')
+
+      if (attachError) {
+        console.error('Error saving attachments:', attachError)
+      } else {
+        savedAttachments = insertedAttachments?.map(att => ({
+          id: att.id,
+          name: att.name,
+          url: att.url,
+          sizeKB: att.size_kb,
+          mime: att.mime_type,
+          createdAt: att.created_at
+        })) || []
+      }
+    }
+
     return {
       id: newComment.id,
       author: {
@@ -284,7 +323,7 @@ export const atasRepoSupabase = {
       },
       body: newComment.body,
       createdAt: newComment.created_at,
-      attachments: []
+      attachments: savedAttachments
     }
   },
 
