@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { UserRef } from "@/data/fixtures"
+import { UserRef, Role } from "@/data/fixtures"
 
 // Transform database record to UserRef
 function transformUserFromDB(dbUser: any): UserRef {
@@ -7,7 +7,7 @@ function transformUserFromDB(dbUser: any): UserRef {
     id: dbUser.id,
     name: dbUser.name,
     email: dbUser.email,
-    role: dbUser.role,
+    roles: (dbUser.roles || []) as Role[],
     avatarUrl: dbUser.avatar_url
   }
 }
@@ -57,7 +57,7 @@ export const secretariosRepoSupabase = {
       .insert({
         name: data.name,
         email: data.email,
-        role: data.role,
+        roles: data.roles,
         avatar_url: data.avatarUrl
       })
       .select()
@@ -77,7 +77,7 @@ export const secretariosRepoSupabase = {
     const updateData: any = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.email !== undefined) updateData.email = data.email
-    if (data.role !== undefined) updateData.role = data.role
+    if (data.roles !== undefined) updateData.roles = data.roles
     if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl
     
     const { data: updatedUser, error } = await supabase

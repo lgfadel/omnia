@@ -23,43 +23,27 @@ interface SecretarioListProps {
   isLoading?: boolean
 }
 
-const getRoleIcon = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return <Shield className="w-4 h-4" />
-    case "SECRETARIO":
-      return <User className="w-4 h-4" />
-    case "LEITOR":
-      return <Eye className="w-4 h-4" />
-    default:
-      return <User className="w-4 h-4" />
-  }
+const getRoleIcon = (roles: string[]) => {
+  if (roles.includes("ADMIN")) return <Shield className="w-4 h-4" />
+  if (roles.includes("SECRETARIO")) return <User className="w-4 h-4" />
+  return <Eye className="w-4 h-4" />
 }
 
-const getRoleLabel = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "Administrador"
-    case "SECRETARIO":
-      return "Secretário"
-    case "LEITOR":
-      return "Leitor"
-    default:
-      return role
-  }
+const getRoleLabels = (roles: string[]) => {
+  return roles.map(role => {
+    switch (role) {
+      case "ADMIN": return "Admin"
+      case "SECRETARIO": return "Secretário"
+      case "LEITOR": return "Leitor"
+      default: return role
+    }
+  }).join(", ")
 }
 
-const getRoleVariant = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "destructive"
-    case "SECRETARIO":
-      return "default"
-    case "LEITOR":
-      return "secondary"
-    default:
-      return "secondary"
-  }
+const getRoleVariant = (roles: string[]) => {
+  if (roles.includes("ADMIN")) return "destructive"
+  if (roles.includes("SECRETARIO")) return "default"
+  return "secondary"
 }
 
 export function SecretarioList({ secretarios, onEdit, onDelete, onCreate, isLoading }: SecretarioListProps) {
@@ -102,11 +86,11 @@ export function SecretarioList({ secretarios, onEdit, onDelete, onCreate, isLoad
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{secretario.name}</span>
                       <Badge 
-                        variant={getRoleVariant(secretario.role) as any}
+                        variant={getRoleVariant(secretario.roles) as any}
                         className="gap-1"
                       >
-                        {getRoleIcon(secretario.role)}
-                        {getRoleLabel(secretario.role)}
+                        {getRoleIcon(secretario.roles)}
+                        {getRoleLabels(secretario.roles)}
                       </Badge>
                     </div>
                     <span className="text-sm text-muted-foreground">{secretario.email}</span>

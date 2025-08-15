@@ -209,6 +209,7 @@ export type Database = {
           id: string
           name: string
           role: string | null
+          roles: string[] | null
           updated_at: string
         }
         Insert: {
@@ -219,6 +220,7 @@ export type Database = {
           id?: string
           name: string
           role?: string | null
+          roles?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -229,6 +231,7 @@ export type Database = {
           id?: string
           name?: string
           role?: string | null
+          roles?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -241,6 +244,10 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_current_user_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
       }
     }
     Enums: {

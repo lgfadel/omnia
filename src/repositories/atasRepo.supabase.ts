@@ -16,7 +16,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       id: dbAta.omnia_users.id,
       name: dbAta.omnia_users.name,
       email: dbAta.omnia_users.email,
-      role: dbAta.omnia_users.role as Role,
+      roles: (dbAta.omnia_users.roles || []) as Role[],
       avatarUrl: dbAta.omnia_users.avatar_url
     } : undefined,
     statusId: dbAta.status_id,
@@ -51,9 +51,9 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, role, avatar_url),
+        omnia_users (id, name, email, roles, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, roles, avatar_url))
       `)
       .order('created_at', { ascending: false })
 
@@ -85,9 +85,9 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, role, avatar_url),
+        omnia_users (id, name, email, roles, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, roles, avatar_url))
       `)
       .eq('code', id)
       .single()
@@ -136,7 +136,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users (id, name, email, role, avatar_url)
+        omnia_users (id, name, email, roles, avatar_url)
       `)
       .single()
 
@@ -170,9 +170,9 @@ export const atasRepoSupabase = {
       .eq('code', id)
       .select(`
         *,
-        omnia_users (id, name, email, role, avatar_url),
+        omnia_users (id, name, email, roles, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, roles, avatar_url))
       `)
       .single()
 
@@ -234,7 +234,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users (id, name, email, role, avatar_url)
+        omnia_users (id, name, email, roles, avatar_url)
       `)
       .single()
 
@@ -246,7 +246,7 @@ export const atasRepoSupabase = {
         id: newComment.omnia_users.id,
         name: newComment.omnia_users.name,
         email: newComment.omnia_users.email,
-        role: newComment.omnia_users.role as Role,
+        roles: (newComment.omnia_users.roles || []) as Role[],
         avatarUrl: newComment.omnia_users.avatar_url
       },
       body: newComment.body,
@@ -320,7 +320,7 @@ export const atasRepoSupabase = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role as Role,
+      roles: (user.roles || []) as Role[],
       avatarUrl: user.avatar_url
     })) || []
   }

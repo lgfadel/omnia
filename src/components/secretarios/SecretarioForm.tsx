@@ -6,14 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { UserRef } from "@/data/fixtures"
+import { UserRef, Role } from "@/data/fixtures"
 
 const secretarioSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   email: z.string().email("E-mail inválido"),
-  role: z.enum(["ADMIN", "SECRETARIO", "LEITOR"], {
-    required_error: "Cargo é obrigatório"
-  })
+  roles: z.array(z.enum(["ADMIN", "SECRETARIO", "LEITOR"])).min(1, "Selecione pelo menos um cargo")
 })
 
 type SecretarioFormData = z.infer<typeof secretarioSchema>
@@ -37,11 +35,11 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
     defaultValues: {
       name: secretario?.name || "",
       email: secretario?.email || "",
-      role: secretario?.role || "SECRETARIO"
+      roles: secretario?.roles || ["LEITOR"]
     }
   })
 
-  const watchedRole = watch("role")
+  const watchedRoles = watch("roles")
 
   const onFormSubmit = async (data: SecretarioFormData) => {
     await onSubmit(data)
@@ -84,23 +82,34 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Cargo</Label>
-            <Select 
-              value={watchedRole} 
-              onValueChange={(value) => setValue("role", value as "ADMIN" | "SECRETARIO" | "LEITOR")}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o cargo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADMIN">Administrador</SelectItem>
-                <SelectItem value="SECRETARIO">Secretário</SelectItem>
-                <SelectItem value="LEITOR">Leitor</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role.message}</p>
+            <Label htmlFor="roles">Cargos</Label>
+            <div className="space-y-2">
+              {["ADMIN", "SECRETARIO", "LEITOR"].map((role) => (
+                <div key={role} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={role}
+                    checked={watchedRoles.includes(role as Role)}
+                    onChange={(e) => {
+                      const currentRoles = watchedRoles;
+                      if (e.target.checked) {
+                        setValue("roles", [...currentRoles, role as Role]);
+                      } else {
+                        setValue("roles", currentRoles.filter(r => r !== role));
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor={role} className="text-sm font-normal cursor-pointer">
+                    {role === "ADMIN" ? "Administrador" : 
+                     role === "SECRETARIO" ? "Secretário" : "Leitor"}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {errors.roles && (
+              <p className="text-sm text-destructive">{errors.roles.message}</p>
             )}
           </div>
 

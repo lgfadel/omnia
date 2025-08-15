@@ -137,9 +137,11 @@ export function AtaForm({
                   <SelectValue placeholder="Selecione o secretário" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.filter(user => user.role === 'SECRETARIO' || user.role === 'ADMIN').map(user => (
+                  {users.filter(user => 
+                    user.roles.includes('SECRETARIO') || user.roles.includes('ADMIN')
+                  ).map(user => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'Secretário'})
+                      {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : 'Secretário'})
                     </SelectItem>
                   ))}
                 </SelectContent>

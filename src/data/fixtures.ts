@@ -12,7 +12,7 @@ export interface UserRef {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  roles: Role[];
   avatarUrl?: string;
 }
 
@@ -56,9 +56,9 @@ export const FIXTURE_STATUSES: Status[] = [
 ]
 
 export const FIXTURE_USERS: UserRef[] = [
-  { id: 'u1', name: 'Ana Souza', email: 'ana@exemplo.com', role: 'SECRETARIO' },
-  { id: 'u2', name: 'Carlos Lima', email: 'carlos@exemplo.com', role: 'SECRETARIO' },
-  { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', role: 'ADMIN' },
+  { id: 'u1', name: 'Ana Souza', email: 'ana@exemplo.com', roles: ['SECRETARIO'] },
+  { id: 'u2', name: 'Carlos Lima', email: 'carlos@exemplo.com', roles: ['SECRETARIO'] },
+  { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', roles: ['ADMIN', 'SECRETARIO'] },
 ]
 
 export const FIXTURE_ATAS: Ata[] = [
