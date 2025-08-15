@@ -12,8 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-import { Ata, UserRef, FIXTURE_USERS } from "@/data/fixtures";
+import { Ata, UserRef } from "@/data/fixtures";
 import { useAtasStore } from "@/store/atas.store";
+import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
 const ataSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
@@ -41,8 +42,21 @@ export function AtaForm({
   const {
     statuses
   } = useAtasStore();
+  const [users, setUsers] = useState<UserRef[]>([]);
   const [tags, setTags] = useState<string[]>(ata?.tags || []);
   const [tagInput, setTagInput] = useState("");
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const userData = await atasRepoSupabase.getUsers();
+        setUsers(userData);
+      } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+      }
+    };
+    loadUsers();
+  }, []);
   const {
     register,
     handleSubmit,
@@ -123,9 +137,11 @@ export function AtaForm({
                   <SelectValue placeholder="Selecione o secretário" />
                 </SelectTrigger>
                 <SelectContent>
-                  {FIXTURE_USERS.map(user => <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>)}
+                  {users.filter(user => user.role === 'SECRETARIO' || user.role === 'ADMIN').map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'Secretário'})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

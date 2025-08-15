@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
-import { UserRef } from '@/data/fixtures'
+import { UserRef, Role } from '@/data/fixtures'
 
 interface AuthContextType {
   user: User | null
@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.id,
           name: data.name,
           email: data.email,
+          role: data.role as Role,
           avatarUrl: data.avatar_url
         })
       }

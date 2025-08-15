@@ -1,8 +1,92 @@
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { Layout } from "@/components/layout/Layout"
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SecretarioForm } from "@/components/secretarios/SecretarioForm"
+import { SecretarioList } from "@/components/secretarios/SecretarioList"
+import { useSecretariosStore } from "@/store/secretarios.store"
+import { UserRef } from "@/data/fixtures"
 
 const ConfigUsuarios = () => {
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingSecretario, setEditingSecretario] = useState<UserRef | null>(null)
+  const { toast } = useToast()
+  
+  const {
+    secretarios,
+    loading,
+    error,
+    loadSecretarios,
+    createSecretario,
+    updateSecretario,
+    deleteSecretario,
+    clearError
+  } = useSecretariosStore()
+
+  useEffect(() => {
+    loadSecretarios()
+  }, [loadSecretarios])
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Erro",
+        description: error,
+        variant: "destructive"
+      })
+      clearError()
+    }
+  }, [error, toast, clearError])
+
+  const handleCreate = () => {
+    setEditingSecretario(null)
+    setIsFormOpen(true)
+  }
+
+  const handleEdit = (secretario: UserRef) => {
+    setEditingSecretario(secretario)
+    setIsFormOpen(true)
+  }
+
+  const handleSubmit = async (data: any) => {
+    try {
+      if (editingSecretario) {
+        await updateSecretario(editingSecretario.id, data)
+        toast({
+          title: "Sucesso",
+          description: "Usuário atualizado com sucesso!"
+        })
+      } else {
+        await createSecretario(data)
+        toast({
+          title: "Sucesso", 
+          description: "Usuário criado com sucesso!"
+        })
+      }
+      setIsFormOpen(false)
+      setEditingSecretario(null)
+    } catch (error) {
+      // Error is handled by the store and useEffect above
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSecretario(id)
+      toast({
+        title: "Sucesso",
+        description: "Usuário excluído com sucesso!"
+      })
+    } catch (error) {
+      // Error is handled by the store and useEffect above
+    }
+  }
+
+  const handleCancel = () => {
+    setIsFormOpen(false)
+    setEditingSecretario(null)
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -18,16 +102,28 @@ const ConfigUsuarios = () => {
           <p className="text-muted-foreground">Gerencie usuários e permissões do sistema</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Usuários do Sistema</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Funcionalidade de gerenciamento de usuários será implementada na Fase 2.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex gap-6">
+          <div className="flex-1">
+            <SecretarioList
+              secretarios={secretarios}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onCreate={handleCreate}
+              isLoading={loading}
+            />
+          </div>
+          
+          {isFormOpen && (
+            <div className="w-96">
+              <SecretarioForm
+                secretario={editingSecretario || undefined}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                isLoading={loading}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
   );

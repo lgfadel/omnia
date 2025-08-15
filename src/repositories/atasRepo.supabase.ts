@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { Ata, Comment, Attachment, Status, UserRef } from "@/data/fixtures"
+import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/fixtures"
 
 // Transform database record to Ata type
 const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
@@ -16,6 +16,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       id: dbAta.omnia_users.id,
       name: dbAta.omnia_users.name,
       email: dbAta.omnia_users.email,
+      role: dbAta.omnia_users.role as Role,
       avatarUrl: dbAta.omnia_users.avatar_url
     } : undefined,
     statusId: dbAta.status_id,
@@ -50,9 +51,9 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, avatar_url),
+        omnia_users (id, name, email, role, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
       `)
       .order('created_at', { ascending: false })
 
@@ -84,9 +85,9 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, avatar_url),
+        omnia_users (id, name, email, role, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
       `)
       .eq('code', id)
       .single()
@@ -135,7 +136,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users (id, name, email, avatar_url)
+        omnia_users (id, name, email, role, avatar_url)
       `)
       .single()
 
@@ -169,9 +170,9 @@ export const atasRepoSupabase = {
       .eq('code', id)
       .select(`
         *,
-        omnia_users (id, name, email, avatar_url),
+        omnia_users (id, name, email, role, avatar_url),
         omnia_attachments (id, name, url, size_kb, mime_type, created_at),
-        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, avatar_url))
+        omnia_comments (id, body, created_at, author_id, omnia_users (id, name, email, role, avatar_url))
       `)
       .single()
 
@@ -233,7 +234,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users (id, name, email, avatar_url)
+        omnia_users (id, name, email, role, avatar_url)
       `)
       .single()
 
@@ -245,6 +246,7 @@ export const atasRepoSupabase = {
         id: newComment.omnia_users.id,
         name: newComment.omnia_users.name,
         email: newComment.omnia_users.email,
+        role: newComment.omnia_users.role as Role,
         avatarUrl: newComment.omnia_users.avatar_url
       },
       body: newComment.body,
@@ -299,5 +301,27 @@ export const atasRepoSupabase = {
     if (error) throw error
 
     return data?.map(transformStatusFromDB) || []
+  },
+
+  async getUsers(): Promise<UserRef[]> {
+    console.log('AtasRepo: Fetching users...')
+    
+    const { data, error } = await supabase
+      .from('omnia_users')
+      .select('*')
+      .order('name', { ascending: true })
+    
+    if (error) {
+      console.error('AtasRepo: Error fetching users:', error)
+      throw new Error(`Erro ao buscar usuários: ${error.message}`)
+    }
+    
+    return data?.map((user: any) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role as Role,
+      avatarUrl: user.avatar_url
+    })) || []
   }
 }
