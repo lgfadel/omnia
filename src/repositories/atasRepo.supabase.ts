@@ -44,7 +44,15 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
     ticket: dbAta.ticket,
     tags: dbAta.tags || [],
     commentCount: dbAta.comment_count || 0,
-    attachments: dbAta.omnia_attachments || [],
+    // Transform attachments
+    attachments: (dbAta.omnia_attachments || []).map((att: any) => ({
+      id: att.id,
+      name: att.name,
+      url: att.url,
+      sizeKB: att.size_kb,
+      mime: att.mime_type,
+      createdAt: att.created_at || new Date().toISOString() // Ensure valid date
+    })),
     comments: transformedComments
   }
 }
