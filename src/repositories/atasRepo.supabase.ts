@@ -79,12 +79,12 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, roles, avatar_url),
-        omnia_attachments (id, name, url, size_kb, mime_type, created_at),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments (
           id, body, created_at, author_id,
-          author_user:omnia_users!author_id (id, name, email, roles, avatar_url),
-          omnia_attachments (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
+          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
         )
       `)
       .order('created_at', { ascending: false })
@@ -117,12 +117,12 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users (id, name, email, roles, avatar_url),
-        omnia_attachments (id, name, url, size_kb, mime_type, created_at),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments (
           id, body, created_at, author_id,
-          author_user:omnia_users!author_id (id, name, email, roles, avatar_url),
-          omnia_attachments (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
+          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
         )
       `)
       .eq('code', id)
@@ -172,7 +172,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users (id, name, email, roles, avatar_url)
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url)
       `)
       .single()
 
@@ -206,12 +206,12 @@ export const atasRepoSupabase = {
       .eq('code', id)
       .select(`
         *,
-        omnia_users (id, name, email, roles, avatar_url),
-        omnia_attachments (id, name, url, size_kb, mime_type, created_at),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
         omnia_comments (
           id, body, created_at, author_id,
-          author_user:omnia_users!author_id (id, name, email, roles, avatar_url),
-          omnia_attachments (id, name, url, size_kb, mime_type, created_at)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url),
+          omnia_attachments:omnia_attachments!omnia_attachments_comment_id_fkey (id, name, url, size_kb, mime_type, created_at)
         )
       `)
       .single()
@@ -293,7 +293,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        author_user:omnia_users!author_id (id, name, email, roles, avatar_url)
+        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
       `)
       .single()
 
