@@ -33,9 +33,14 @@ export function CommentsList({ comments }: CommentsListProps) {
     return sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`
   }
 
+  // Sort comments chronologically with newer first
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+
   return (
     <div className="space-y-4">
-      {comments.map((comment) => (
+      {sortedComments.map((comment) => (
         <Card key={comment.id}>
           <CardContent className="pt-4">
             <div className="flex gap-3">

@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout"
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { AtaForm } from "@/components/atas/AtaForm"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
@@ -55,7 +55,7 @@ const AtaNew = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka 
+        <BreadcrumbOmnia 
           items={[
             { label: "Atas", href: "/atas" },
             { label: "Nova Ata", isActive: true }

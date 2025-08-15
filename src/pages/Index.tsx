@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka";
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line } from "recharts";
@@ -63,7 +63,7 @@ const Index = () => {
   const totalDocumentos = 94;
   return <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka items={[{
+        <BreadcrumbOmnia items={[{
         label: "Dashboard",
         isActive: true
       }]} />

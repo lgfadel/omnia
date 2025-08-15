@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka";
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { StatusList } from "@/components/status/StatusList";
 import { StatusForm } from "@/components/status/StatusForm";
 import { useStatusStore } from "@/store/status.store";
@@ -102,7 +102,7 @@ const ConfigStatus = () => {
   };
   return <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka items={[{
+        <BreadcrumbOmnia items={[{
         label: "Configurações",
         href: "/config"
       }, {

@@ -7,7 +7,7 @@ All colors MUST be HSL.
 */
 
   :root {
-    /* EUREKA Design System - Core Colors */
+    /* OMNIA Design System - Core Colors */
     --background: 0 0% 98%;
     --foreground: 215 28% 17%;
 
@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
 
-    /* EUREKA Blue as Primary */
+    /* OMNIA Blue as Primary */
     --primary: 214 84% 56%;
     --primary-foreground: 0 0% 100%;
 
@@ -37,15 +37,15 @@ All colors MUST be HSL.
     --input: 220 13% 91%;
     --ring: 214 84% 56%;
 
-    /* EUREKA Yellow Status Colors */
+    /* OMNIA Yellow Status Colors */
     --warning: 43 96% 56%;
     --warning-foreground: 26 83% 14%;
     
-    /* EUREKA Success Green */
+    /* OMNIA Success Green */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     
-    /* EUREKA Status Colors */
+    /* OMNIA Status Colors */
     --status-not-started: 43 96% 56%;
     --status-not-started-foreground: 26 83% 14%;
     --status-in-progress: 214 84% 56%;

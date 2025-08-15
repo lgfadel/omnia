@@ -1,12 +1,12 @@
 import { Layout } from "@/components/layout/Layout"
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const ConfigUsuarios = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka 
+        <BreadcrumbOmnia 
           items={[
             { label: "Configurações", href: "/config" },
             { label: "Usuários", isActive: true }

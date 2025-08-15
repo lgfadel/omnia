@@ -4,8 +4,7 @@ import {
   Users, 
   FileText,
   Home,
-  BarChart3,
-  Plus
+  BarChart3
 } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import {
@@ -24,7 +23,6 @@ import {
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Atas", url: "/atas", icon: ClipboardList },
-  { title: "Nova Ata", url: "/atas/new", icon: Plus },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
 ]
 
@@ -52,7 +50,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <div>
-                <h2 className="font-semibold text-sidebar-foreground">EUREKA</h2>
+                <h2 className="font-semibold text-sidebar-foreground">OMNIA</h2>
                 <p className="text-xs text-sidebar-foreground/60">Atas & Assembleias</p>
               </div>
             )}

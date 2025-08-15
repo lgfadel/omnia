@@ -1,6 +1,6 @@
 import { Layout } from "@/components/layout/Layout"
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
-import { TabelaEureka } from "@/components/ui/tabela-eureka"
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
+import { TabelaOmnia } from "@/components/ui/tabela-omnia"
 import { CardAtaKanban } from "@/components/ui/card-ata-kanban"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -112,7 +112,7 @@ const Atas = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka 
+        <BreadcrumbOmnia 
           items={[
             { label: "Atas", isActive: true }
           ]} 
@@ -188,7 +188,7 @@ const Atas = () => {
             Carregando atas...
           </div>
         ) : viewMode === "table" ? (
-          <TabelaEureka
+          <TabelaOmnia
             columns={columns}
             data={sortedData}
             onView={handleView}

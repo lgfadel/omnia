@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout"
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { AtaForm } from "@/components/atas/AtaForm"
 import { Button } from "@/components/ui/button"
 import { useParams, useNavigate } from "react-router-dom"
@@ -83,7 +83,7 @@ const AtaEdit = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka 
+        <BreadcrumbOmnia 
           items={[
             { label: "Atas", href: "/atas" },
             { label: ata.title, href: `/atas/${id}` },

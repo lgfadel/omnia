@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout"
-import { BreadcrumbEureka } from "@/components/ui/breadcrumb-eureka"
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -108,7 +108,7 @@ const AtaDetail = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <BreadcrumbEureka 
+        <BreadcrumbOmnia 
           items={[
             { label: "Atas", href: "/atas" },
             { label: ata.title, isActive: true }
@@ -152,9 +152,6 @@ const AtaDetail = () => {
         <Tabs defaultValue="resumo" className="space-y-6">
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            <TabsTrigger value="comentarios">
-              Comentários ({ata.commentCount || 0})
-            </TabsTrigger>
             <TabsTrigger value="anexos">
               Anexos ({ata.attachments?.length || 0})
             </TabsTrigger>
@@ -162,6 +159,8 @@ const AtaDetail = () => {
           </TabsList>
 
           <TabsContent value="resumo">
+
+            {/* Two main boxes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -233,19 +232,23 @@ const AtaDetail = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
 
-          <TabsContent value="comentarios">
-            <div className="space-y-6">
-              <CommentInput 
-                onSubmit={handleAddComment} 
-                loading={commentLoading} 
-              />
-              
-              <Separator />
-              
-              <CommentsList comments={ata.comments || []} />
-            </div>
+            {/* Comments section - always visible */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Comentários ({ata.commentCount || 0})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <CommentInput 
+                  onSubmit={handleAddComment} 
+                  loading={commentLoading} 
+                />
+                
+                <Separator />
+                
+                <CommentsList comments={ata.comments || []} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="anexos">
