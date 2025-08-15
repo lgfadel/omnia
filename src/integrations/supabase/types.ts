@@ -35,6 +35,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_ata_tags_ata"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ata_tags_tag"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_tags"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_ata_tags_tag_id_fkey"
             columns: ["tag_id"]
             isOneToOne: false
@@ -91,6 +105,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_atas_secretary"
+            columns: ["secretary_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_atas_secretary_id_fkey"
             columns: ["secretary_id"]
             isOneToOne: false
@@ -142,6 +163,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_attachments_ata"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_attachments_comment"
             columns: ["comment_id"]
             isOneToOne: false
@@ -183,6 +211,20 @@ export type Database = {
           id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_comments_ata"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_comments_author"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omnia_comments_ata_id_fkey"
             columns: ["ata_id"]

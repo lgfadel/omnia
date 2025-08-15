@@ -243,6 +243,8 @@ export const atasRepoSupabase = {
   },
 
   async addComment(ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>): Promise<Comment | null> {
+    console.log('AtasRepo: addComment called with:', { ataId, comment })
+    
     // First get the ata to get its UUID
     const { data: ata } = await supabase
       .from('omnia_atas')
@@ -250,11 +252,17 @@ export const atasRepoSupabase = {
       .eq('code', ataId)
       .single()
 
-    if (!ata) return null
+    if (!ata) {
+      console.error('AtasRepo: ATA not found:', ataId)
+      return null
+    }
 
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()
-    if (!user.user) return null
+    if (!user.user) {
+      console.error('AtasRepo: No authenticated user')
+      return null
+    }
 
     const { data: omniaUser } = await supabase
       .from('omnia_users')
@@ -262,7 +270,18 @@ export const atasRepoSupabase = {
       .eq('auth_user_id', user.user.id)
       .single()
 
-    if (!omniaUser) return null
+    if (!omniaUser) {
+      console.error('AtasRepo: Omnia user not found')
+      return null
+    }
+
+    console.log('AtasRepo: Creating comment with data:', {
+      ata_id: ata.id,
+      author_id: omniaUser.id,
+      body: comment.body,
+      created_by: user.user.id,
+      attachments: comment.attachments
+    })
 
     const { data: newComment, error } = await supabase
       .from('omnia_comments')
@@ -278,11 +297,18 @@ export const atasRepoSupabase = {
       `)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('AtasRepo: Error creating comment:', error)
+      throw error
+    }
+
+    console.log('AtasRepo: Comment created successfully:', newComment)
 
     // Save attachments if any
     let savedAttachments: Attachment[] = []
     if (comment.attachments && comment.attachments.length > 0) {
+      console.log('AtasRepo: Saving attachments:', comment.attachments)
+      
       const attachmentsToInsert = comment.attachments.map(att => ({
         ata_id: ata.id,
         comment_id: newComment.id,
@@ -293,14 +319,17 @@ export const atasRepoSupabase = {
         uploaded_by: user.user.id
       }))
 
+      console.log('AtasRepo: Inserting attachments:', attachmentsToInsert)
+
       const { data: insertedAttachments, error: attachError } = await supabase
         .from('omnia_attachments')
         .insert(attachmentsToInsert)
         .select('*')
 
       if (attachError) {
-        console.error('Error saving attachments:', attachError)
+        console.error('AtasRepo: Error saving attachments:', attachError)
       } else {
+        console.log('AtasRepo: Attachments saved successfully:', insertedAttachments)
         savedAttachments = insertedAttachments?.map(att => ({
           id: att.id,
           name: att.name,
