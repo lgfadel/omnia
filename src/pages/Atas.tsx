@@ -5,21 +5,21 @@ import { CardAtaKanban } from "@/components/ui/card-ata-kanban"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { LayoutGrid, List, Search, Plus } from "lucide-react"
+import { LayoutGrid, List, Search, Plus, ChevronDown } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { FIXTURE_USERS } from "@/data/fixtures"
 
 const columns = [
-  { key: "title", label: "Título", sortable: true },
-  { key: "createdAt", label: "Data Criação", sortable: true, width: "32" },
-  { key: "meetingDate", label: "Data Assembleia", sortable: true, width: "32" },
-  { key: "secretary", label: "Secretário", width: "32" },
-  { key: "status", label: "Status", width: "32" },
+  { key: "title", label: "Título", sortable: true, width: "40" },
+  { key: "meetingDate", label: "Data Assembleia", sortable: true, width: "36" },
+  { key: "secretary", label: "Secretário", width: "36" },
+  { key: "status", label: "Status", width: "28" },
   { key: "ticket", label: "Ticket", width: "24" },
-  { key: "commentCount", label: "Comentários", width: "24" }
+  { key: "commentCount", label: "Comentários", width: "16" }
 ]
 
 const Atas = () => {
@@ -147,22 +147,36 @@ const Atas = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por status:</span>
-            <div className="flex gap-1 flex-wrap">
-              {statuses.map((status) => (
-                <Badge
-                  key={status.id}
-                  variant={statusFilter.includes(status.id) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  style={statusFilter.includes(status.id) ? { 
-                    backgroundColor: status.color, 
-                    color: '#000' 
-                  } : {}}
-                  onClick={() => handleStatusFilterChange(status.id)}
-                >
-                  {status.name}
-                </Badge>
-              ))}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="min-w-[150px] justify-between">
+                  {statusFilter.length === 0 
+                    ? "Todos os status" 
+                    : statusFilter.length === 1 
+                    ? statuses.find(s => s.id === statusFilter[0])?.name
+                    : `${statusFilter.length} selecionados`
+                  }
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                {statuses.map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status.id}
+                    checked={statusFilter.includes(status.id)}
+                    onCheckedChange={() => handleStatusFilterChange(status.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: status.color }}
+                      />
+                      {status.name}
+                    </div>
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           <div className="flex items-center gap-2">

@@ -9,9 +9,10 @@ import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
 import { MockUploader } from "@/components/atas/MockUploader"
-import { Edit, FileDown, Archive, Calendar, User, Clock } from "lucide-react"
+import { Edit, FileDown, Archive, Clock } from "lucide-react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
+import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState } from "react"
 import { Ata, FIXTURE_USERS } from "@/data/fixtures"
 
@@ -19,6 +20,7 @@ const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { getAtaById, addComment, addAttachment, statuses, loadStatuses } = useAtasStore()
+  const { tags, loadTags } = useTagsStore()
   
   const [ata, setAta] = useState<Ata | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,10 +29,11 @@ const AtaDetail = () => {
 
   useEffect(() => {
     loadStatuses()
+    loadTags()
     if (id) {
       loadAta()
     }
-  }, [id, loadStatuses])
+  }, [id, loadStatuses, loadTags])
 
   const loadAta = async () => {
     if (!id) return
@@ -73,19 +76,19 @@ const AtaDetail = () => {
 
   const handleExportPDF = () => {
     // Mock PDF export
-    alert("Funcionalidade de exportação PDF será implementada em fase posterior")
+    alert("Funcionalidade de exportação será implementada")
   }
 
   const handleArchive = () => {
-    // Mock archive functionality
-    alert("Funcionalidade de arquivamento será implementada em fase posterior")
+    // Mock archive
+    alert("Funcionalidade de arquivamento será implementada")
   }
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Carregando ata...</div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Carregando...</div>
         </div>
       </Layout>
     )
@@ -94,10 +97,8 @@ const AtaDetail = () => {
   if (!ata) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center py-12">
-          <h2 className="text-xl font-semibold mb-2">Ata não encontrada</h2>
-          <p className="text-muted-foreground mb-4">A ata solicitada não existe ou foi removida.</p>
-          <Button onClick={() => navigate('/atas')}>Voltar para lista</Button>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Ata não encontrada</div>
         </div>
       </Layout>
     )
@@ -110,30 +111,26 @@ const AtaDetail = () => {
       <div className="space-y-6">
         <BreadcrumbOmnia 
           items={[
+            { label: "Início", href: "/" },
             { label: "Atas", href: "/atas" },
-            { label: ata.title, isActive: true }
-          ]} 
+            { label: ata.title }
+          ]}
         />
-
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold">{ata.title}</h1>
-              {status && (
-                <Badge 
-                  variant="secondary"
-                  style={{ backgroundColor: status.color + '20', color: status.color }}
-                >
-                  {status.name}
-                </Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground">{ata.description}</p>
-            
+        
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">{ata.title}</h1>
+            {status && (
+              <Badge 
+                style={{ backgroundColor: status.color, color: 'white' }}
+                className="border-none"
+              >
+                {status.name}
+              </Badge>
+            )}
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <Button variant="outline" onClick={handleEdit}>
               <Edit className="w-4 h-4 mr-2" />
               Editar
@@ -159,79 +156,71 @@ const AtaDetail = () => {
           </TabsList>
 
           <TabsContent value="resumo">
-
-            {/* Two main boxes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Informações Gerais</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <label className="font-medium text-muted-foreground">Data de Criação</label>
-                      <p className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        {new Date(ata.createdAt).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    
-                    {ata.meetingDate && (
-                      <div>
-                        <label className="font-medium text-muted-foreground">Data da Assembleia</label>
-                        <p className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(ata.meetingDate).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {ata.ticket && (
-                      <div>
-                        <label className="font-medium text-muted-foreground">Ticket</label>
-                        <p>{ata.ticket}</p>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <label className="font-medium text-muted-foreground">Última Atualização</label>
-                      <p>{new Date(ata.updatedAt).toLocaleDateString('pt-BR')}</p>
-                    </div>
+            {/* Informações Gerais - full width */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Informações Gerais</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-6 text-sm">
+                  <div>
+                    <label className="font-medium text-muted-foreground">Data de Criação</label>
+                    <p className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      {new Date(ata.createdAt).toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
                   
-                  {ata.tags && ata.tags.length > 0 && (
-                    <div>
-                      <label className="font-medium text-muted-foreground">Tags</label>
-                      <div className="flex gap-1 mt-1">
-                        {ata.tags.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+                  {ata.meetingDate && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <label className="font-semibold text-blue-800">Data da Assembleia</label>
+                      <p className="flex items-center gap-2 text-blue-700 font-medium">
+                        {new Date(ata.meetingDate).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Responsabilidades</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {ata.secretary && (
+                  
+                  {ata.ticket && (
                     <div>
-                      <label className="font-medium text-muted-foreground">Secretário</label>
-                      <p className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
+                      <label className="font-medium text-muted-foreground">Ticket</label>
+                      <p>{ata.ticket}</p>
+                    </div>
+                  )}
+                  
+                  {ata.secretary && (
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <label className="font-semibold text-green-800">Secretário</label>
+                      <p className="flex items-center gap-2 text-green-700 font-medium">
                         {ata.secretary.name}
                       </p>
-                      <p className="text-sm text-muted-foreground">{ata.secretary.email}</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+                
+                {ata.tags && ata.tags.length > 0 && (
+                  <div>
+                    <label className="font-medium text-muted-foreground">Tags</label>
+                    <div className="flex gap-1 mt-1">
+                      {ata.tags.map((tagName) => {
+                        const tagData = tags.find(t => t.name === tagName)
+                        return (
+                          <Badge 
+                            key={tagName} 
+                            style={{ 
+                              backgroundColor: tagData?.color || '#6366f1', 
+                              color: 'white' 
+                            }}
+                            className="border-none"
+                          >
+                            {tagName}
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Comments section - always visible */}
             <Card>
