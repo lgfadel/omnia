@@ -120,7 +120,13 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
                     className="h-8 w-8"
                     onClick={(e) => {
                       e.stopPropagation()
-                      window.open(attachment.url, '_blank')
+                      const link = document.createElement('a')
+                      link.href = attachment.url
+                      link.download = attachment.name
+                      link.target = '_blank'
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
                     }}
                     title="Baixar arquivo"
                   >
