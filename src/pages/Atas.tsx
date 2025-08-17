@@ -91,8 +91,10 @@ const Atas = () => {
     
     return {
       ...ata,
-      secretary: ata.secretary?.name || "-",
-      responsible: ata.responsible?.name || "-",
+      secretary: ata.secretary || null,
+      responsible: ata.responsible || null,
+      secretaryName: ata.secretary?.name || "-",
+      responsibleName: ata.responsible?.name || "-",
       createdAt: new Date(ata.createdAt).toLocaleDateString('pt-BR'),
       meetingDate: ata.meetingDate ? new Date(ata.meetingDate).toLocaleDateString('pt-BR') : "-",
       commentCount: ata.commentCount || 0,

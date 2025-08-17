@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Eye, Trash2, ChevronUp, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -74,6 +75,21 @@ export function TabelaOmnia({
           </BadgeStatus>
         )
       }
+    }
+    
+    // Render avatar for secretary and responsible
+    if ((key === "secretary" || key === "responsible") && value && row) {
+      const user = value
+      const fallbackInitials = user.name ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'
+      
+      return (
+        <div className="flex items-center justify-center">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user.avatarUrl} alt={user.name} />
+            <AvatarFallback className="text-xs">{fallbackInitials}</AvatarFallback>
+          </Avatar>
+        </div>
+      )
     }
     
     if (typeof value === "string" || typeof value === "number") {
