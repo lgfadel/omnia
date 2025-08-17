@@ -401,6 +401,16 @@ export const atasRepoSupabase = {
     }
   },
 
+  async removeAttachment(attachmentId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('omnia_attachments')
+      .delete()
+      .eq('id', attachmentId)
+
+    if (error) throw error
+    return true
+  },
+
   async getStatuses(): Promise<Status[]> {
     const { data, error } = await supabase
       .from('omnia_statuses')

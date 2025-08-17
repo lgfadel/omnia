@@ -98,7 +98,6 @@ const ConfigUsuarios = () => {
         
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Configuração de Usuários</h1>
-          <p className="text-muted-foreground">Gerencie usuários e permissões do sistema</p>
         </div>
 
         <div className="flex gap-6">

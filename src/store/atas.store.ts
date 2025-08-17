@@ -18,6 +18,7 @@ interface AtasStore {
   deleteAta: (id: string) => Promise<boolean>
   addComment: (ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => Promise<Comment | null>
   addAttachment: (ataId: string, attachment: Omit<Attachment, 'id' | 'createdAt'>) => Promise<Attachment | null>
+  removeAttachment: (attachmentId: string) => Promise<boolean>
   clearError: () => void
 }
 
@@ -180,6 +181,34 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
       console.error('AtasStore: Error adding attachment:', error)
       set({ error: 'Erro ao adicionar anexo' })
       return null
+    }
+  },
+
+  removeAttachment: async (attachmentId: string) => {
+    console.log('AtasStore: Removing attachment:', attachmentId)
+    
+    try {
+      const success = await atasRepoSupabase.removeAttachment(attachmentId)
+      if (success) {
+        const { atas } = get()
+        const updatedAtas = atas.map(ata => {
+          if (ata.attachments && ata.attachments.some(att => att.id === attachmentId)) {
+            return {
+              ...ata,
+              attachments: ata.attachments.filter(att => att.id !== attachmentId),
+              updatedAt: new Date().toISOString()
+            }
+          }
+          return ata
+        })
+        set({ atas: updatedAtas })
+        console.log('AtasStore: Removed attachment successfully')
+      }
+      return success
+    } catch (error) {
+      console.error('AtasStore: Error removing attachment:', error)
+      set({ error: 'Erro ao remover anexo' })
+      return false
     }
   },
 

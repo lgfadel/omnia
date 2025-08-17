@@ -19,7 +19,7 @@ import { Ata, FIXTURE_USERS } from "@/data/fixtures"
 const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getAtaById, addComment, addAttachment, statuses, loadStatuses } = useAtasStore()
+  const { getAtaById, addComment, addAttachment, removeAttachment, statuses, loadStatuses } = useAtasStore()
   const { tags, loadTags } = useTagsStore()
   
   const [ata, setAta] = useState<Ata | null>(null)
@@ -264,9 +264,14 @@ const AtaDetail = () => {
                   <AttachmentsList 
                     attachments={ata.attachments || []}
                     canDelete={true}
-                    onDelete={(id) => {
-                      // Mock delete - would remove from attachments
-                      alert("Funcionalidade de remoção será implementada")
+                    onDelete={async (attachmentId) => {
+                      console.log('Delete clicked:', attachmentId)
+                      if (confirm('Tem certeza que deseja remover este anexo?')) {
+                        const success = await removeAttachment(attachmentId)
+                        if (success) {
+                          await loadAta()
+                        }
+                      }
                     }}
                   />
                 </CardContent>

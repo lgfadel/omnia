@@ -35,7 +35,6 @@ const configItems = [
   { title: "Status", url: "/config/status", icon: Settings },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
   { title: "Tags", url: "/config/tags", icon: Tags },
-  { title: "Documentos", url: "/config/documentos", icon: FileText },
 ]
 
 export function AppSidebar() {
