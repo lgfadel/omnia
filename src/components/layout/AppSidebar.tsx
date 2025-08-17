@@ -60,13 +60,13 @@ export function AppSidebar() {
           <div className="flex items-center justify-center">
             {!collapsed ? (
               <img 
-              src="/omnia-logo.svg" 
+              src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
               alt="Omnia Logo" 
               className="h-12 w-auto"
             />
             ) : (
               <img 
-            src="/omnia-logo.svg" 
+            src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
             alt="Omnia Logo" 
             className="h-8 w-8 object-contain"
           />
