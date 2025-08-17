@@ -212,6 +212,14 @@ The development server runs on `http://localhost:8080/`
 - Atualização do logo e identidade visual
 
 ### Funcionalidades
+- **Sistema de Status**: Correção crítica na exibição de status das atas
+  - Correção do mapeamento entre dados mockados e banco de dados real
+  - Sincronização correta entre status ID, nome e cores
+  - Exibição dinâmica de status baseada nos dados do Supabase
+- **Sistema de Comentários**: Melhorias na visualização de anexos
+  - Indicador visual (ícone de clipe) para comentários com anexos
+  - Contador de anexos ao lado do nome do autor
+  - Melhoria na query para buscar anexos corretamente
 - Correções no salvamento de anexos em comentários
 - Melhorias na lógica de salvamento de secretários
 - Correções na abertura de atas
@@ -224,6 +232,10 @@ The development server runs on `http://localhost:8080/`
 - Atualização de políticas RLS
 - Melhorias na tipagem TypeScript
 - Otimização da estrutura de componentes
+- **Correções de Integração**: Sincronização completa entre frontend e backend
+  - Mapeamento correto de IDs entre dados mockados e Supabase
+  - Queries otimizadas para busca de relacionamentos (comentários → anexos)
+  - Validação de dados em tempo real
 
 ### Table Enhancements
 - **Column Removal**: Removed "Data Criação" column from atas table for cleaner layout
