@@ -4,23 +4,25 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, X, FileText } from "lucide-react"
 import { Attachment } from "@/data/fixtures"
+import { useSupabaseUpload } from "@/hooks/useSupabaseUpload"
 
-interface MockUploaderProps {
-  onUpload: (attachment: Omit<Attachment, 'id' | 'createdAt'>) => void
+interface FileUploaderProps {
+  onUpload: (attachment: Attachment) => void
   loading?: boolean
   accept?: string
   maxSizeMB?: number
 }
 
-export function MockUploader({ 
+export function FileUploader({ 
   onUpload, 
   loading, 
   accept = "*/*", 
   maxSizeMB = 10 
-}: MockUploaderProps) {
+}: FileUploaderProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { uploadFiles, uploading } = useSupabaseUpload()
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return
@@ -56,27 +58,15 @@ export function MockUploader({
     setSelectedFiles(files => files.filter((_, i) => i !== index))
   }
 
-  const uploadFiles = async () => {
-    const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-
-    for (const file of selectedFiles) {
-      // Generate a data URL so downloads work without backend storage in this mock
-      const dataUrl = await readFileAsDataUrl(file)
-
-      const attachment: Omit<Attachment, 'id' | 'createdAt'> = {
-        name: file.name,
-        url: dataUrl,
-        sizeKB: Math.round(file.size / 1024),
-        mime: file.type || 'application/octet-stream'
-      }
-
+  const handleUploadFiles = async () => {
+    if (selectedFiles.length === 0) return
+    
+    const uploadedAttachments = await uploadFiles(selectedFiles)
+    
+    // Call onUpload for each successfully uploaded attachment
+    uploadedAttachments.forEach(attachment => {
       onUpload(attachment)
-    }
+    })
 
     setSelectedFiles([])
   }
@@ -147,11 +137,11 @@ export function MockUploader({
           ))}
           
           <Button 
-            onClick={uploadFiles} 
-            disabled={loading || selectedFiles.length === 0}
+            onClick={handleUploadFiles} 
+            disabled={loading || uploading || selectedFiles.length === 0}
             className="w-full"
           >
-            {loading ? "Enviando..." : `Enviar ${selectedFiles.length} arquivo(s)`}
+            {(loading || uploading) ? "Enviando..." : `Enviar ${selectedFiles.length} arquivo(s)`}
           </Button>
         </div>
       )}

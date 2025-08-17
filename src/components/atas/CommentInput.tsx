@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { FIXTURE_USERS, UserRef, Attachment } from "@/data/fixtures"
 import { Send, Paperclip, X } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSupabaseUpload } from "@/hooks/useSupabaseUpload"
 
 interface CommentInputProps {
   onSubmit: (body: string, attachments?: Attachment[]) => void
@@ -17,6 +18,8 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
   const { userProfile } = useAuth()
   const [body, setBody] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { uploadFile, uploading } = useSupabaseUpload()
 
   const handleSubmit = () => {
     if (body.trim() || attachments.length > 0) {
@@ -31,20 +34,20 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
     setAttachments([])
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     
-    files.forEach(file => {
-      const newAttachment: Attachment = {
-        id: `temp-${Date.now()}-${Math.random()}`,
-        name: file.name,
-        url: URL.createObjectURL(file),
-        sizeKB: Math.round(file.size / 1024),
-        mime: file.type,
-        createdAt: new Date().toISOString()
+    for (const file of files) {
+      const uploadedAttachment = await uploadFile(file)
+      if (uploadedAttachment) {
+        setAttachments(prev => [...prev, uploadedAttachment])
       }
-      setAttachments(prev => [...prev, newAttachment])
-    })
+    }
+    
+    // Clear the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const removeAttachment = (id: string) => {
@@ -107,18 +110,19 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
             
             <div className="relative">
               <Input
+                ref={fileInputRef}
                 type="file"
                 multiple
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 onChange={handleFileUpload}
-                disabled={loading}
+                disabled={loading || uploading}
               />
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 className="h-6 w-6 p-0"
-                disabled={loading}
+                disabled={loading || uploading}
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -136,11 +140,11 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={(!body.trim() && attachments.length === 0) || loading}
+              disabled={(!body.trim() && attachments.length === 0) || loading || uploading}
               size="sm"
             >
               <Send className="w-4 h-4 mr-2" />
-              {loading ? "Enviando..." : "Comentar"}
+              {(loading || uploading) ? "Enviando..." : "Comentar"}
             </Button>
           </div>
         </div>

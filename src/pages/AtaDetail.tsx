@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
-import { MockUploader } from "@/components/atas/MockUploader"
+import { FileUploader } from "@/components/atas/FileUploader"
 import { Edit, FileDown, Archive, Clock } from "lucide-react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
@@ -235,7 +235,7 @@ const AtaDetail = () => {
                 <CommentInput 
                   onSubmit={handleAddComment} 
                   loading={commentLoading} 
-                />
+              />
                 
                 <Separator />
                 
@@ -254,7 +254,7 @@ const AtaDetail = () => {
                   <CardTitle>Adicionar Anexos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <MockUploader 
+                  <FileUploader 
                     onUpload={handleAddAttachment}
                     loading={uploadLoading}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
