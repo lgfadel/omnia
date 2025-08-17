@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Comment } from "@/data/fixtures"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Download, FileText, Image, File } from "lucide-react"
+import { Download, FileText, Image, File, Paperclip } from "lucide-react"
 
 interface CommentsListProps {
   comments: Comment[]
@@ -52,6 +52,12 @@ export function CommentsList({ comments }: CommentsListProps) {
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-medium">{comment.author.name}</span>
+                  {comment.attachments && comment.attachments.length > 0 && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Paperclip className="w-3 h-3" />
+                      <span className="text-xs">{comment.attachments.length}</span>
+                    </div>
+                  )}
                   <span className="text-muted-foreground">•</span>
                   <span className="text-muted-foreground">
                     {formatDistanceToNow(new Date(comment.createdAt), { 
