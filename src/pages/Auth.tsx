@@ -75,14 +75,12 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <FileText className="w-8 h-8 text-primary" />
-            </div>
+            <img 
+              src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
+              alt="Omnia Logo" 
+              className="h-16 w-auto"
+            />
           </div>
-          <CardTitle className="text-2xl font-bold text-primary">Omnia Atas</CardTitle>
-          <CardDescription>
-            Sistema de controle de atas de assembleias
-          </CardDescription>
         </CardHeader>
         
         <CardContent>
