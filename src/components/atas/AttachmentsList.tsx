@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Attachment } from "@/data/fixtures"
-import { Download, FileText, Trash2, X } from "lucide-react"
+import { Download, FileText, Trash2, X, FileImage, FileSpreadsheet, Paperclip } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { useState } from "react"
@@ -24,11 +24,11 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
   }
 
   const getFileIcon = (mime?: string) => {
-    if (mime?.includes('pdf')) return '📄'
-    if (mime?.includes('image')) return '🖼️'
-    if (mime?.includes('document') || mime?.includes('docx')) return '📝'
-    if (mime?.includes('spreadsheet') || mime?.includes('xlsx')) return '📊'
-    return '📎'
+    if (mime?.includes('pdf')) return <FileText className="w-6 h-6 text-red-500" />
+    if (mime?.includes('image')) return <FileImage className="w-6 h-6 text-blue-500" />
+    if (mime?.includes('document') || mime?.includes('docx')) return <FileText className="w-6 h-6 text-blue-600" />
+    if (mime?.includes('spreadsheet') || mime?.includes('xlsx')) return <FileSpreadsheet className="w-6 h-6 text-green-600" />
+    return <Paperclip className="w-6 h-6 text-gray-500" />
   }
 
   const canPreview = (mime?: string) => {
@@ -141,7 +141,7 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
           <Card key={attachment.id}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
-                <div className="text-2xl">
+                <div className="flex items-center justify-center">
                   {getFileIcon(attachment.mime)}
                 </div>
                 

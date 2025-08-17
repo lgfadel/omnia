@@ -98,6 +98,34 @@ export const tagsRepoSupabase = {
     return true;
   },
 
+  // Search tags by name (for autocomplete)
+  async search(query: string): Promise<Tag[]> {
+    if (!query.trim()) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('omnia_tags')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+
+    if (error) {
+      console.error('Error searching tags:', error);
+      throw error;
+    }
+
+    return data.map(tag => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      createdAt: tag.created_at,
+      createdBy: tag.created_by,
+      updatedAt: tag.updated_at
+    }));
+  },
+
   // Get or create a tag by name (for dynamic creation)
   async getOrCreate(name: string, color: string = '#6366f1'): Promise<Tag> {
     // First try to find existing tag

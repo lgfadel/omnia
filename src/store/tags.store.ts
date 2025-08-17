@@ -8,6 +8,7 @@ interface TagsStore {
 
   // Actions
   loadTags: () => Promise<void>;
+  searchTags: (query: string) => Promise<Tag[]>;
   createTag: (data: Pick<Tag, 'name' | 'color'>) => Promise<Tag>;
   updateTag: (id: string, data: Partial<Pick<Tag, 'name' | 'color'>>) => Promise<void>;
   deleteTag: (id: string) => Promise<void>;
@@ -31,6 +32,17 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
     } catch (error) {
       console.error('TagsStore: Error loading tags:', error);
       set({ error: 'Erro ao carregar tags', loading: false });
+    }
+  },
+
+  searchTags: async (query: string) => {
+    try {
+      const tags = await tagsRepoSupabase.search(query);
+      console.log('TagsStore: Search results:', tags);
+      return tags;
+    } catch (error) {
+      console.error('TagsStore: Error searching tags:', error);
+      return [];
     }
   },
 

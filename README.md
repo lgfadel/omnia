@@ -16,6 +16,9 @@ Omnia é um sistema moderno de gestão de atas de reunião, desenvolvido com Rea
 - **Drag & Drop**: @dnd-kit
 - **Data Fetching**: TanStack Query
 - **Styling**: Tailwind CSS + CVA (Class Variance Authority)
+- **Development**: Hot Module Replacement (HMR) + ESLint
+- **Color Management**: Sistema de cores HSL customizado + Seletor de cores avançado
+- **File Handling**: Upload/Download de arquivos com preview e validação
 
 ## 📁 Arquitetura do Projeto
 
@@ -120,6 +123,15 @@ The development server runs on `http://localhost:8080/`
 - Drag & drop para reordenação
 - Carousels e componentes interativos
 - Layout com painéis redimensionáveis
+- **Sistema de Cores Avançado**: Seletor de cores com 30 opções predefinidas
+  - Preview em tempo real da cor selecionada
+  - Input customizado para cores hexadecimais
+  - Validação automática de formato de cor
+  - Paleta expandida com variações modernas (Teal, Rose, Violet, etc.)
+- **Melhorias de Usabilidade**: Interface otimizada para produtividade
+  - Botões de ação com confirmação para operações críticas
+  - Indicadores visuais para elementos com anexos
+  - Feedback imediato em operações de CRUD
 
 ### Key Pages
 - `/` - Dashboard with overview and quick actions
@@ -216,10 +228,19 @@ The development server runs on `http://localhost:8080/`
   - Correção do mapeamento entre dados mockados e banco de dados real
   - Sincronização correta entre status ID, nome e cores
   - Exibição dinâmica de status baseada nos dados do Supabase
+  - **Expansão de Cores**: Ampliação significativa das opções de cores para status
+    - Expandido de 10 para 30 cores predefinidas no formulário de cadastro
+    - Novas variações incluindo Teal, Rose, Violet, Sky, Emerald, Amber e Purple
+    - Correção na captura de cores selecionadas no formulário
+    - Manutenção de funcionalidades existentes (preview em tempo real, input customizado)
 - **Sistema de Comentários**: Melhorias na visualização de anexos
   - Indicador visual (ícone de clipe) para comentários com anexos
   - Contador de anexos ao lado do nome do autor
   - Melhoria na query para buscar anexos corretamente
+  - **Funcionalidade de Exclusão**: Implementação de exclusão de comentários e anexos
+    - Botões de exclusão com confirmação para comentários
+    - Exclusão automática de anexos associados aos comentários
+    - Interface intuitiva com ícones de lixeira
 - Correções no salvamento de anexos em comentários
 - Melhorias na lógica de salvamento de secretários
 - Correções na abertura de atas
@@ -236,6 +257,14 @@ The development server runs on `http://localhost:8080/`
   - Mapeamento correto de IDs entre dados mockados e Supabase
   - Queries otimizadas para busca de relacionamentos (comentários → anexos)
   - Validação de dados em tempo real
+- **Melhorias em Formulários**: Correções críticas na captura de dados
+  - Resolução de conflitos entre `register()` e `onChange` em inputs de cor
+  - Implementação de campos ocultos para garantir submissão correta de dados
+  - Otimização do React Hook Form com Zod para validação robusta
+- **Configuração de Desenvolvimento**: Padronização do ambiente
+  - Servidor de desenvolvimento configurado na porta 8080 (vite.config.ts)
+  - Hot Module Replacement (HMR) otimizado para desenvolvimento ágil
+  - Configuração de host universal (::) para acesso em diferentes dispositivos
 
 ### Table Enhancements
 - **Column Removal**: Removed "Data Criação" column from atas table for cleaner layout

@@ -105,7 +105,6 @@ export function StatusForm({ status, onSubmit, onCancel, isLoading }: StatusForm
                 onChange={(e) => handleColorChange(e.target.value)}
                 className="w-20 h-10 p-1 border rounded cursor-pointer"
                 disabled={isLoading}
-                {...register("color")}
               />
               
               {/* Color Presets */}
@@ -131,6 +130,9 @@ export function StatusForm({ status, onSubmit, onCancel, isLoading }: StatusForm
               <p className="text-sm text-destructive">{errors.color.message}</p>
             )}
           </div>
+
+          {/* Hidden input to ensure color is submitted */}
+          <input type="hidden" {...register("color")} />
 
           <div className="flex gap-2 pt-4">
             <Button type="submit" disabled={isLoading} className="flex-1">

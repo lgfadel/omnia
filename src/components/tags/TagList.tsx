@@ -100,6 +100,7 @@ export function TagList({
                       size="sm"
                       variant="outline"
                       onClick={() => setDeletingTag(tag)}
+                      className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

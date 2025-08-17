@@ -165,7 +165,6 @@ const AtaDetail = () => {
             <TabsTrigger value="anexos">
               Anexos ({ata.attachments?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="resumo">
@@ -176,13 +175,12 @@ const AtaDetail = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-6 text-sm">
-                  <div>
-                    <label className="font-medium text-muted-foreground">Data de Criação</label>
-                    <p className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      {new Date(ata.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
+                  {ata.ticket && (
+                    <div>
+                      <label className="font-medium text-muted-foreground">Ticket</label>
+                      <p>{ata.ticket}</p>
+                    </div>
+                  )}
                   
                   {ata.meetingDate && (
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
@@ -190,13 +188,6 @@ const AtaDetail = () => {
                       <p className="flex items-center gap-2 text-blue-700 font-medium">
                         {new Date(ata.meetingDate).toLocaleDateString('pt-BR')}
                       </p>
-                    </div>
-                  )}
-                  
-                  {ata.ticket && (
-                    <div>
-                      <label className="font-medium text-muted-foreground">Ticket</label>
-                      <p>{ata.ticket}</p>
                     </div>
                   )}
                   
@@ -289,46 +280,7 @@ const AtaDetail = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="historico">
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico de Atividades</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex gap-3 pb-4 border-b">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-medium">Ata criada</span> por Sistema
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(ata.createdAt).toLocaleString('pt-BR')}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {ata.updatedAt !== ata.createdAt && (
-                    <div className="flex gap-3 pb-4 border-b">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                      <div>
-                        <p className="text-sm">
-                          <span className="font-medium">Ata atualizada</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(ata.updatedAt).toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <p className="text-sm text-muted-foreground">
-                    Histórico detalhado será implementado em fase posterior com logs de auditoria.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
         </Tabs>
       </div>
 
