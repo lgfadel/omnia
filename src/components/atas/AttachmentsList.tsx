@@ -6,6 +6,7 @@ import { Download, FileText, Trash2, X } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { useState } from "react"
+import { toast } from "@/components/ui/use-toast"
 
 interface AttachmentsListProps {
   attachments: Attachment[]
@@ -46,8 +47,17 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
 
   const downloadAttachment = async (attachment: Attachment) => {
     try {
-      // Data URL or blob URL can be downloaded directly
-      if (attachment.url.startsWith('data:') || attachment.url.startsWith('blob:')) {
+      // Handle blob/data URLs
+      if (attachment.url.startsWith('blob:')) {
+        // If blob URL is from another origin, it is not retrievable — inform the user
+        if (!attachment.url.includes(window.location.origin)) {
+          toast({
+            title: 'Arquivo indisponível',
+            description: 'Este anexo foi enviado em outro ambiente. Reenvie o arquivo para baixá-lo.',
+            variant: 'destructive',
+          })
+          return
+        }
         const a = document.createElement('a')
         a.href = attachment.url
         a.download = attachment.name
@@ -57,7 +67,17 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
         return
       }
 
-      // Fetch the file to ensure download even if cross-origin headers don't force it
+      if (attachment.url.startsWith('data:')) {
+        const a = document.createElement('a')
+        a.href = attachment.url
+        a.download = attachment.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        return
+      }
+
+      // Fetch and force download for regular URLs
       const response = await fetch(attachment.url)
       const blob = await response.blob()
       const objectUrl = URL.createObjectURL(blob)
@@ -70,8 +90,11 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
       a.remove()
       URL.revokeObjectURL(objectUrl)
     } catch (err) {
-      // Fallback: open in a new tab if download fails
-      window.open(attachment.url, '_blank')
+      toast({
+        title: 'Falha ao baixar',
+        description: 'Não foi possível baixar o arquivo. Tente reenviar o anexo.',
+        variant: 'destructive',
+      })
     }
   }
 
