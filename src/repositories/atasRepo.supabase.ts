@@ -33,7 +33,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       author: comment.author_user ? {
         id: comment.author_user.id,
         name: comment.author_user.name,
-        email: comment.author_user.email,
+        email: '', // Email not accessible in general queries  
         roles: (comment.author_user.roles || []) as Role[],
         avatarUrl: comment.author_user.avatar_url
       } : {
@@ -57,14 +57,14 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
     secretary: dbAta.omnia_users ? {
       id: dbAta.omnia_users.id,
       name: dbAta.omnia_users.name,
-      email: dbAta.omnia_users.email,
+      email: '', // Email not accessible in general queries
       roles: (dbAta.omnia_users.roles || []) as Role[],
       avatarUrl: dbAta.omnia_users.avatar_url
     } : undefined,
     responsible: dbAta.responsible_user ? {
       id: dbAta.responsible_user.id,
       name: dbAta.responsible_user.name,
-      email: dbAta.responsible_user.email,
+      email: '', // Email not accessible in general queries  
       roles: (dbAta.responsible_user.roles || []) as Role[],
       avatarUrl: dbAta.responsible_user.avatar_url
     } : undefined,
@@ -108,12 +108,12 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url)
         )
       `)
       .order('created_at', { ascending: false })
@@ -148,12 +148,12 @@ export const atasRepoSupabase = {
       .from('omnia_atas')
       .select(`
         *,
-        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url)
         )
       `)
       .eq('code', id)
@@ -210,8 +210,8 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url)
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url)
       `)
       .single()
 
@@ -246,12 +246,12 @@ export const atasRepoSupabase = {
       .eq('code', id)
       .select(`
         *,
-        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url)
         )
       `)
       .maybeSingle()
@@ -335,7 +335,7 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url)
       `)
       .single()
 
@@ -388,7 +388,7 @@ export const atasRepoSupabase = {
       author: {
         id: newComment.author_user.id,
         name: newComment.author_user.name,
-        email: newComment.author_user.email,
+        email: '', // Email not accessible in general queries
         roles: (newComment.author_user.roles || []) as Role[],
         avatarUrl: newComment.author_user.avatar_url
       },
@@ -442,7 +442,7 @@ export const atasRepoSupabase = {
       .eq('id', commentId)
       .select(`
         *,
-        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url)
       `)
       .single()
 
@@ -461,7 +461,7 @@ export const atasRepoSupabase = {
       author: {
         id: updatedComment.author_user.id,
         name: updatedComment.author_user.name,
-        email: updatedComment.author_user.email,
+        email: '', // Email not accessible in general queries
         roles: (updatedComment.author_user.roles || []) as Role[],
         avatarUrl: updatedComment.author_user.avatar_url
       },
@@ -511,9 +511,10 @@ export const atasRepoSupabase = {
   async getUsers(): Promise<UserRef[]> {
     console.log('AtasRepo: Fetching users...')
     
+    // Use safe column selection (no email for general access)
     const { data, error } = await supabase
       .from('omnia_users')
-      .select('*')
+      .select('id, name, roles, avatar_url')
       .order('name', { ascending: true })
     
     if (error) {
@@ -524,7 +525,7 @@ export const atasRepoSupabase = {
     return data?.map((user: any) => ({
       id: user.id,
       name: user.name,
-      email: user.email,
+      email: '', // Not accessible in general queries
       roles: (user.roles || []) as Role[],
       avatarUrl: user.avatar_url
     })) || []

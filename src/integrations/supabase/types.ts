@@ -115,8 +115,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_atas_secretary"
+            columns: ["secretary_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_atas_responsible_id_fkey"
             columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_atas_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_atas_secretary_id_fkey"
+            columns: ["secretary_id"]
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
@@ -125,7 +146,7 @@ export type Database = {
             foreignKeyName: "omnia_atas_secretary_id_fkey"
             columns: ["secretary_id"]
             isOneToOne: false
-            referencedRelation: "omnia_users"
+            referencedRelation: "omnia_users_safe"
             referencedColumns: ["id"]
           },
           {
@@ -236,6 +257,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_comments_author"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_comments_ata_id_fkey"
             columns: ["ata_id"]
             isOneToOne: false
@@ -247,6 +275,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -343,7 +378,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      omnia_users_safe: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+          roles: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          roles?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          roles?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_current_user_role: {
@@ -353,6 +414,17 @@ export type Database = {
       get_current_user_roles: {
         Args: Record<PropertyKey, never>
         Returns: string[]
+      }
+      get_users_safe_info: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string
+          created_at: string
+          id: string
+          name: string
+          roles: string[]
+          updated_at: string
+        }[]
       }
       is_admin_user: {
         Args: { user_id: string }
