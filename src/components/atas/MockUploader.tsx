@@ -57,20 +57,27 @@ export function MockUploader({
   }
 
   const uploadFiles = async () => {
+    const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
     for (const file of selectedFiles) {
-      // Mock upload - generate fake URL
-      const fakeUrl = `https://files.local/mock/${crypto.randomUUID()}.${file.name.split('.').pop()}`
-      
+      // Generate a data URL so downloads work without backend storage in this mock
+      const dataUrl = await readFileAsDataUrl(file)
+
       const attachment: Omit<Attachment, 'id' | 'createdAt'> = {
         name: file.name,
-        url: fakeUrl,
+        url: dataUrl,
         sizeKB: Math.round(file.size / 1024),
         mime: file.type || 'application/octet-stream'
       }
-      
+
       onUpload(attachment)
     }
-    
+
     setSelectedFiles([])
   }
 
