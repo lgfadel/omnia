@@ -5,12 +5,14 @@ import {
   FileText,
   Home,
   BarChart3,
-  Tags
+  Tags,
+  LogOut
 } from "lucide-react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useNavigate } from "react-router-dom"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -20,6 +22,8 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/contexts/AuthContext"
+import { Button } from "@/components/ui/button"
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -37,6 +41,13 @@ const configItems = [
 export function AppSidebar() {
   const { state } = useSidebar()
   const collapsed = state === "collapsed"
+  const navigate = useNavigate()
+  const { user, userProfile, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/auth')
+  }
 
   return (
     <Sidebar
@@ -46,15 +57,19 @@ export function AppSidebar() {
       <SidebarContent>
         {/* Logo Area */}
         <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <ClipboardList className="w-4 h-4 text-primary-foreground" />
-            </div>
-            {!collapsed && (
-              <div>
-                <h2 className="font-semibold text-sidebar-foreground">OMNIA</h2>
-                <p className="text-xs text-sidebar-foreground/60">Atas & Assembleias</p>
-              </div>
+          <div className="flex items-center justify-center">
+            {!collapsed ? (
+              <img 
+              src="/omnia-logo.svg" 
+              alt="Omnia Logo" 
+              className="h-12 w-auto"
+            />
+            ) : (
+              <img 
+            src="/omnia-logo.svg" 
+            alt="Omnia Logo" 
+            className="h-8 w-8 object-contain"
+          />
             )}
           </div>
         </div>
@@ -112,6 +127,38 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
+      {/* User Section */}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center gap-2 p-2">
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {userProfile?.name || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-sidebar-foreground/60 truncate">
+                    {user?.email}
+                  </p>
+                </div>
+              )}
+            </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={handleSignOut}
+              >
+                <LogOut className="w-4 h-4" />
+                {!collapsed && <span>Sair</span>}
+              </Button>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

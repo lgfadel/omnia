@@ -306,7 +306,6 @@ export type Database = {
           email: string
           id: string
           name: string
-          role: string | null
           roles: string[] | null
           updated_at: string
         }
@@ -317,7 +316,6 @@ export type Database = {
           email: string
           id?: string
           name: string
-          role?: string | null
           roles?: string[] | null
           updated_at?: string
         }
@@ -328,7 +326,6 @@ export type Database = {
           email?: string
           id?: string
           name?: string
-          role?: string | null
           roles?: string[] | null
           updated_at?: string
         }

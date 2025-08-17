@@ -104,13 +104,13 @@ export function TabelaOmnia({
         </TableHeader>
         <TableBody>
           {data.map((row) => (
-            <TableRow key={row.id} className="hover:bg-muted/50">
+            <TableRow key={row.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onView && onView(row.id)}>
               {columns.map((column) => (
                 <TableCell key={`${row.id}-${column.key}`} className="text-sm">
                   {renderCellValue(row[column.key], column.key)}
                 </TableCell>
               ))}
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1">
                   {onView && (
                     <Button

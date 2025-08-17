@@ -3,7 +3,20 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, onKeyDown, ...props }, ref) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Ensure Ctrl+A works properly for text selection
+      if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+        e.currentTarget.select()
+        e.preventDefault()
+      }
+      
+      // Call the original onKeyDown if provided
+      if (onKeyDown) {
+        onKeyDown(e)
+      }
+    }
+
     return (
       <input
         type={type}
@@ -12,6 +25,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        onKeyDown={handleKeyDown}
         {...props}
       />
     )
