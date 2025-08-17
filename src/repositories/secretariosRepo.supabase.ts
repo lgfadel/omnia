@@ -52,23 +52,44 @@ export const secretariosRepoSupabase = {
   async create(data: Omit<UserRef, 'id'>): Promise<UserRef> {
     console.log('SecretariosRepo: Creating user:', data)
     
-    const { data: newUser, error } = await supabase
+    // Step 1: Create user in auth.users using Admin API
+    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!' // Generate temporary password
+    
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: data.email,
+      password: tempPassword,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        name: data.name
+      }
+    })
+    
+    if (authError) {
+      console.error('SecretariosRepo: Error creating auth user:', authError)
+      throw new Error(`Erro ao criar usuário: ${authError.message}`)
+    }
+    
+    // Step 2: Wait a moment for trigger to create omnia_users record
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Step 3: Update the roles in omnia_users (trigger creates with default USUARIO role)
+    const { data: updatedUser, error: updateError } = await supabase
       .from('omnia_users')
-      .insert({
-        name: data.name,
-        email: data.email,
+      .update({
+        name: data.name, // Ensure name is set correctly
         roles: data.roles,
         avatar_url: data.avatarUrl
       })
+      .eq('auth_user_id', authUser.user.id)
       .select()
       .single()
     
-    if (error) {
-      console.error('SecretariosRepo: Error creating user:', error)
-      throw new Error(`Erro ao criar usuário: ${error.message}`)
+    if (updateError) {
+      console.error('SecretariosRepo: Error updating user roles:', updateError)
+      throw new Error(`Erro ao configurar papéis do usuário: ${updateError.message}`)
     }
     
-    return transformUserFromDB(newUser)
+    return transformUserFromDB(updatedUser)
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
