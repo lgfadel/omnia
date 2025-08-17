@@ -425,7 +425,7 @@ export const atasRepoSupabase = {
   async updateComment(commentId: string, body: string): Promise<Comment | null> {
     const { data: updatedComment, error } = await supabase
       .from('omnia_comments')
-      .update({ body, updated_at: new Date().toISOString() })
+      .update({ body })
       .eq('id', commentId)
       .select(`
         *,
