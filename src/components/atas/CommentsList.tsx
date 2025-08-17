@@ -1,10 +1,12 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Comment } from "@/data/fixtures"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical } from "lucide-react"
+import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit, Check, X } from "lucide-react"
+import { useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,10 +29,13 @@ import { useAuth } from "@/contexts/AuthContext"
 interface CommentsListProps {
   comments: Comment[]
   onDeleteComment?: (commentId: string) => void
+  onUpdateComment?: (commentId: string, body: string) => void
 }
 
-export function CommentsList({ comments, onDeleteComment }: CommentsListProps) {
+export function CommentsList({ comments, onDeleteComment, onUpdateComment }: CommentsListProps) {
   const { userProfile } = useAuth()
+  const [editingComment, setEditingComment] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
   if (comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -57,6 +62,36 @@ export function CommentsList({ comments, onDeleteComment }: CommentsListProps) {
   const canDeleteComment = (comment: Comment) => {
     if (!userProfile) return false
     return comment.author.id === userProfile.id || userProfile.roles?.includes('ADMIN')
+  }
+
+  // Check if user can edit comment (own comment within 10 minutes)
+  const canEditComment = (comment: Comment) => {
+    if (!userProfile || !onUpdateComment) return false
+    if (comment.author.id !== userProfile.id) return false
+    
+    const commentDate = new Date(comment.createdAt)
+    const now = new Date()
+    const diffMinutes = (now.getTime() - commentDate.getTime()) / (1000 * 60)
+    
+    return diffMinutes <= 10
+  }
+
+  const handleEditStart = (comment: Comment) => {
+    setEditingComment(comment.id)
+    setEditValue(comment.body || "")
+  }
+
+  const handleEditCancel = () => {
+    setEditingComment(null)
+    setEditValue("")
+  }
+
+  const handleEditSave = (commentId: string) => {
+    if (onUpdateComment && editValue.trim()) {
+      onUpdateComment(commentId, editValue.trim())
+      setEditingComment(null)
+      setEditValue("")
+    }
   }
 
   // Sort comments chronologically with newer first
@@ -94,7 +129,7 @@ export function CommentsList({ comments, onDeleteComment }: CommentsListProps) {
                     </span>
                   </div>
                   
-                  {canDeleteComment(comment) && onDeleteComment && (
+                   {(canDeleteComment(comment) || canEditComment(comment)) && (
                     <AlertDialog>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -103,12 +138,20 @@ export function CommentsList({ comments, onDeleteComment }: CommentsListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive">
-                              <Trash2 className="w-3 h-3 mr-2" />
-                              Deletar comentário
+                          {canEditComment(comment) && (
+                            <DropdownMenuItem onClick={() => handleEditStart(comment)}>
+                              <Edit className="w-3 h-3 mr-2" />
+                              Editar comentário
                             </DropdownMenuItem>
-                          </AlertDialogTrigger>
+                          )}
+                          {canDeleteComment(comment) && onDeleteComment && (
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                <Trash2 className="w-3 h-3 mr-2" />
+                                Deletar comentário
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       
@@ -139,7 +182,44 @@ export function CommentsList({ comments, onDeleteComment }: CommentsListProps) {
                 </div>
                 
                 {comment.body && (
-                  <p className="text-sm leading-relaxed">{comment.body}</p>
+                  <>
+                    {editingComment === comment.id ? (
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1"
+                          placeholder="Editar comentário..."
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleEditSave(comment.id)
+                            } else if (e.key === 'Escape') {
+                              handleEditCancel()
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => handleEditSave(comment.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={handleEditCancel}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed">{comment.body}</p>
+                    )}
+                  </>
                 )}
                 
                 {comment.attachments && comment.attachments.length > 0 && (

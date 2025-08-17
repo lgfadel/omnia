@@ -17,6 +17,7 @@ interface AtasStore {
   updateAta: (id: string, data: Partial<Omit<Ata, 'id' | 'createdAt'>>) => Promise<Ata | null>
   deleteAta: (id: string) => Promise<boolean>
   addComment: (ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => Promise<Comment | null>
+  updateComment: (ataId: string, commentId: string, body: string) => Promise<Comment | null>
   removeComment: (ataId: string, commentId: string) => Promise<boolean>
   addAttachment: (ataId: string, attachment: Omit<Attachment, 'id' | 'createdAt'>) => Promise<Attachment | null>
   removeAttachment: (attachmentId: string) => Promise<boolean>
@@ -153,6 +154,36 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
     } catch (error) {
       console.error('AtasStore: Error adding comment:', error)
       set({ error: 'Erro ao adicionar comentário' })
+      return null
+    }
+  },
+
+  updateComment: async (ataId: string, commentId: string, body: string) => {
+    console.log('AtasStore: Updating comment:', commentId, 'in ata:', ataId)
+    
+    try {
+      const updatedComment = await atasRepoSupabase.updateComment(commentId, body)
+      if (updatedComment) {
+        const { atas } = get()
+        const updatedAtas = atas.map(ata => {
+          if (ata.id === ataId) {
+            return {
+              ...ata,
+              comments: (ata.comments || []).map(comment => 
+                comment.id === commentId ? updatedComment : comment
+              ),
+              updatedAt: new Date().toISOString()
+            }
+          }
+          return ata
+        })
+        set({ atas: updatedAtas })
+        console.log('AtasStore: Updated comment successfully')
+      }
+      return updatedComment
+    } catch (error) {
+      console.error('AtasStore: Error updating comment:', error)
+      set({ error: 'Erro ao atualizar comentário' })
       return null
     }
   },

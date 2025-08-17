@@ -422,6 +422,48 @@ export const atasRepoSupabase = {
     }
   },
 
+  async updateComment(commentId: string, body: string): Promise<Comment | null> {
+    const { data: updatedComment, error } = await supabase
+      .from('omnia_comments')
+      .update({ body, updated_at: new Date().toISOString() })
+      .eq('id', commentId)
+      .select(`
+        *,
+        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
+      `)
+      .single()
+
+    if (error) throw error
+    if (!updatedComment) return null
+
+    // Get attachments separately to avoid complex join issues
+    const { data: attachments } = await supabase
+      .from('omnia_attachments')
+      .select('*')
+      .eq('comment_id', commentId)
+
+    return {
+      id: updatedComment.id,
+      body: updatedComment.body,
+      author: {
+        id: updatedComment.author_user.id,
+        name: updatedComment.author_user.name,
+        email: updatedComment.author_user.email,
+        roles: (updatedComment.author_user.roles || []) as Role[],
+        avatarUrl: updatedComment.author_user.avatar_url
+      },
+      attachments: attachments?.map((att: any) => ({
+        id: att.id,
+        name: att.name,
+        url: att.url,
+        sizeKB: att.size_kb,
+        mime: att.mime_type,
+        createdAt: att.created_at
+      })) || [],
+      createdAt: updatedComment.created_at
+    }
+  },
+
   async removeComment(commentId: string): Promise<boolean> {
     const { error } = await supabase
       .from('omnia_comments')
