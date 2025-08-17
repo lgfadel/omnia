@@ -52,44 +52,35 @@ export const secretariosRepoSupabase = {
   async create(data: Omit<UserRef, 'id'>): Promise<UserRef> {
     console.log('SecretariosRepo: Creating user:', data)
     
-    // Step 1: Create user in auth.users using Admin API
-    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!' // Generate temporary password
-    
-    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email: data.email,
-      password: tempPassword,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        name: data.name
+    // Call edge function to create user with auth
+    const { data: result, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        name: data.name,
+        email: data.email,
+        roles: data.roles,
+        avatarUrl: data.avatarUrl
       }
     })
     
-    if (authError) {
-      console.error('SecretariosRepo: Error creating auth user:', authError)
-      throw new Error(`Erro ao criar usuário: ${authError.message}`)
+    if (error) {
+      console.error('SecretariosRepo: Error calling create-user function:', error)
+      throw new Error(`Erro ao criar usuário: ${error.message}`)
     }
     
-    // Step 2: Wait a moment for trigger to create omnia_users record
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Step 3: Update the roles in omnia_users (trigger creates with default USUARIO role)
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('omnia_users')
-      .update({
-        name: data.name, // Ensure name is set correctly
-        roles: data.roles,
-        avatar_url: data.avatarUrl
-      })
-      .eq('auth_user_id', authUser.user.id)
-      .select()
-      .single()
-    
-    if (updateError) {
-      console.error('SecretariosRepo: Error updating user roles:', updateError)
-      throw new Error(`Erro ao configurar papéis do usuário: ${updateError.message}`)
+    if (!result.success) {
+      console.error('SecretariosRepo: Function returned error:', result.error)
+      throw new Error(result.error)
     }
     
-    return transformUserFromDB(updatedUser)
+    console.log('SecretariosRepo: User created successfully with temp password:', result.tempPassword)
+    
+    return {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      roles: result.user.roles,
+      avatarUrl: result.user.avatarUrl
+    }
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
