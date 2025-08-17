@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
@@ -26,6 +27,7 @@ const AtaDetail = () => {
   const [loading, setLoading] = useState(true)
   const [commentLoading, setCommentLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
+  const [attachmentToDelete, setAttachmentToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     loadStatuses()
@@ -264,14 +266,8 @@ const AtaDetail = () => {
                   <AttachmentsList 
                     attachments={ata.attachments || []}
                     canDelete={true}
-                    onDelete={async (attachmentId) => {
-                      console.log('Delete clicked:', attachmentId)
-                      if (confirm('Tem certeza que deseja remover este anexo?')) {
-                        const success = await removeAttachment(attachmentId)
-                        if (success) {
-                          await loadAta()
-                        }
-                      }
+                    onDelete={(attachmentId) => {
+                      setAttachmentToDelete(attachmentId)
                     }}
                   />
                 </CardContent>
@@ -321,6 +317,33 @@ const AtaDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={!!attachmentToDelete} onOpenChange={() => setAttachmentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover anexo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este anexo? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                if (attachmentToDelete) {
+                  const success = await removeAttachment(attachmentToDelete)
+                  if (success) {
+                    await loadAta()
+                  }
+                  setAttachmentToDelete(null)
+                }
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   )
 }
