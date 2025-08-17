@@ -422,6 +422,16 @@ export const atasRepoSupabase = {
     }
   },
 
+  async removeComment(commentId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('omnia_comments')
+      .delete()
+      .eq('id', commentId)
+
+    if (error) throw error
+    return true
+  },
+
   async removeAttachment(attachmentId: string): Promise<boolean> {
     const { error } = await supabase
       .from('omnia_attachments')

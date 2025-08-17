@@ -17,6 +17,7 @@ interface AtasStore {
   updateAta: (id: string, data: Partial<Omit<Ata, 'id' | 'createdAt'>>) => Promise<Ata | null>
   deleteAta: (id: string) => Promise<boolean>
   addComment: (ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => Promise<Comment | null>
+  removeComment: (ataId: string, commentId: string) => Promise<boolean>
   addAttachment: (ataId: string, attachment: Omit<Attachment, 'id' | 'createdAt'>) => Promise<Attachment | null>
   removeAttachment: (attachmentId: string) => Promise<boolean>
   clearError: () => void
@@ -153,6 +154,35 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
       console.error('AtasStore: Error adding comment:', error)
       set({ error: 'Erro ao adicionar comentário' })
       return null
+    }
+  },
+
+  removeComment: async (ataId: string, commentId: string) => {
+    console.log('AtasStore: Removing comment:', commentId, 'from ata:', ataId)
+    
+    try {
+      const success = await atasRepoSupabase.removeComment(commentId)
+      if (success) {
+        const { atas } = get()
+        const updatedAtas = atas.map(ata => {
+          if (ata.id === ataId) {
+            return {
+              ...ata,
+              comments: (ata.comments || []).filter(comment => comment.id !== commentId),
+              commentCount: Math.max(0, (ata.commentCount || 0) - 1),
+              updatedAt: new Date().toISOString()
+            }
+          }
+          return ata
+        })
+        set({ atas: updatedAtas })
+        console.log('AtasStore: Removed comment successfully')
+      }
+      return success
+    } catch (error) {
+      console.error('AtasStore: Error removing comment:', error)
+      set({ error: 'Erro ao remover comentário' })
+      return false
     }
   },
 

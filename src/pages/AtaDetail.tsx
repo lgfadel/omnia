@@ -20,7 +20,7 @@ import { Ata, FIXTURE_USERS } from "@/data/fixtures"
 const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getAtaById, addComment, addAttachment, removeAttachment, statuses, loadStatuses } = useAtasStore()
+  const { getAtaById, addComment, addAttachment, removeAttachment, removeComment, statuses, loadStatuses } = useAtasStore()
   const { tags, loadTags } = useTagsStore()
   
   const [ata, setAta] = useState<Ata | null>(null)
@@ -70,6 +70,17 @@ const AtaDetail = () => {
     // Reload ata to get updated attachments
     await loadAta()
     setUploadLoading(false)
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id) return
+    
+    setCommentLoading(true)
+    await removeComment(id, commentId)
+    
+    // Reload ata to get updated comments
+    await loadAta()
+    setCommentLoading(false)
   }
 
   const handleEdit = () => {
@@ -237,7 +248,10 @@ const AtaDetail = () => {
                 
                 <Separator />
                 
-                <CommentsList comments={ata.comments || []} />
+                <CommentsList 
+                  comments={ata.comments || []} 
+                  onDeleteComment={handleDeleteComment}
+                />
               </CardContent>
             </Card>
           </TabsContent>
