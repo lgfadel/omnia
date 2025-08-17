@@ -44,6 +44,37 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
     }
   }
 
+  const downloadAttachment = async (attachment: Attachment) => {
+    try {
+      // Data URL or blob URL can be downloaded directly
+      if (attachment.url.startsWith('data:') || attachment.url.startsWith('blob:')) {
+        const a = document.createElement('a')
+        a.href = attachment.url
+        a.download = attachment.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        return
+      }
+
+      // Fetch the file to ensure download even if cross-origin headers don't force it
+      const response = await fetch(attachment.url)
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = attachment.name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      // Fallback: open in a new tab if download fails
+      window.open(attachment.url, '_blank')
+    }
+  }
+
   const renderPreviewContent = (attachment: Attachment) => {
     if (attachment.mime?.includes('image')) {
       return (
@@ -118,15 +149,9 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation()
-                      const link = document.createElement('a')
-                      link.href = attachment.url
-                      link.download = attachment.name
-                      link.target = '_blank'
-                      document.body.appendChild(link)
-                      link.click()
-                      document.body.removeChild(link)
+                      await downloadAttachment(attachment)
                     }}
                     title="Baixar arquivo"
                   >
