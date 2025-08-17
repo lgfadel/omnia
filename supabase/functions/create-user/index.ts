@@ -68,17 +68,18 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { name, email, roles, avatarUrl } = await req.json()
+    const { name, email, roles, avatarUrl, password } = await req.json()
 
     console.log('Creating user:', { name, email, roles })
 
-    // Generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
+    // Use provided password or generate temporary one
+    const userPassword = password && password.trim() ? password : Math.random().toString(36).slice(-12) + 'A1!'
+    const isTemporaryPassword = !password || !password.trim()
 
     // Create user in auth.users using admin client
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password: userPassword,
       email_confirm: true,
       user_metadata: {
         name
@@ -130,7 +131,7 @@ serve(async (req) => {
           roles: updatedUser.roles,
           avatarUrl: updatedUser.avatar_url
         },
-        tempPassword
+        ...(isTemporaryPassword ? { tempPassword: userPassword } : {})
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

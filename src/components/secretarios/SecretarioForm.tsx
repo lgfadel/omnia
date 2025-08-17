@@ -11,6 +11,7 @@ import { UserRef, Role } from "@/data/fixtures"
 const secretarioSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   email: z.string().email("E-mail inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
   roles: z.array(z.enum(["ADMIN", "SECRETARIO", "USUARIO"])).min(1, "Selecione pelo menos um cargo")
 })
 
@@ -35,6 +36,7 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
     defaultValues: {
       name: secretario?.name || "",
       email: secretario?.email || "",
+      password: "",
       roles: secretario?.roles || ["USUARIO"]
     }
   })
@@ -80,6 +82,25 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
               <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
           </div>
+
+          {!secretario && (
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                {...register("password")}
+                placeholder="Deixe em branco para gerar automaticamente"
+                disabled={isLoading}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Se não informada, será gerada uma senha temporária
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="roles">Cargos</Label>

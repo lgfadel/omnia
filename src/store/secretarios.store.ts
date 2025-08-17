@@ -9,7 +9,7 @@ interface SecretariosStore {
   
   // Actions
   loadSecretarios: () => Promise<void>
-  createSecretario: (data: Omit<UserRef, 'id'>) => Promise<UserRef>
+  createSecretario: (data: Omit<UserRef, 'id'> & { password?: string }) => Promise<{ user: UserRef; tempPassword?: string }>
   updateSecretario: (id: string, data: Partial<Omit<UserRef, 'id'>>) => Promise<UserRef | null>
   deleteSecretario: (id: string) => Promise<boolean>
   clearError: () => void
@@ -39,11 +39,17 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
     set({ loading: true, error: null })
     
     try {
-      const newSecretario = await secretariosRepoSupabase.create(data)
+      const result = await secretariosRepoSupabase.create(data)
       const { secretarios } = get()
+      
+      // Extract tempPassword from result if it exists
+      const { tempPassword, ...newSecretario } = result
+      
       set({ secretarios: [...secretarios, newSecretario], loading: false })
       console.log('SecretariosStore: Created secretario successfully')
-      return newSecretario
+      
+      // Return both the user and tempPassword if it exists
+      return tempPassword ? { user: newSecretario, tempPassword } : { user: newSecretario }
     } catch (error) {
       console.error('SecretariosStore: Error creating secretario:', error)
       set({ error: 'Erro ao criar usuário', loading: false })

@@ -49,7 +49,7 @@ export const secretariosRepoSupabase = {
     return data ? transformUserFromDB(data) : null
   },
 
-  async create(data: Omit<UserRef, 'id'>): Promise<UserRef> {
+  async create(data: Omit<UserRef, 'id'> & { password?: string }): Promise<UserRef & { tempPassword?: string }> {
     console.log('SecretariosRepo: Creating user:', data)
     
     // Call edge function to create user with auth
@@ -58,7 +58,8 @@ export const secretariosRepoSupabase = {
         name: data.name,
         email: data.email,
         roles: data.roles,
-        avatarUrl: data.avatarUrl
+        avatarUrl: data.avatarUrl,
+        password: data.password
       }
     })
     
@@ -74,13 +75,16 @@ export const secretariosRepoSupabase = {
     
     console.log('SecretariosRepo: User created successfully with temp password:', result.tempPassword)
     
-    return {
+    const userResult: UserRef = {
       id: result.user.id,
       name: result.user.name,
       email: result.user.email,
       roles: result.user.roles,
       avatarUrl: result.user.avatarUrl
     }
+    
+    // Add tempPassword to the result if it exists
+    return result.tempPassword ? { ...userResult, tempPassword: result.tempPassword } : userResult
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {

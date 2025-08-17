@@ -4,12 +4,14 @@ import { Layout } from "@/components/layout/Layout"
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { SecretarioForm } from "@/components/secretarios/SecretarioForm"
 import { SecretarioList } from "@/components/secretarios/SecretarioList"
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSecretariosStore } from "@/store/secretarios.store"
 import { UserRef } from "@/data/fixtures"
 
 const ConfigUsuarios = () => {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingSecretario, setEditingSecretario] = useState<UserRef | null>(null)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
   const { toast } = useToast()
   
   const {
@@ -57,10 +59,16 @@ const ConfigUsuarios = () => {
           description: "Usuário atualizado com sucesso!"
         })
       } else {
-        await createSecretario(data)
+        const result = await createSecretario(data)
+        
+        // Show temp password if generated
+        if (result.tempPassword) {
+          setTempPassword(result.tempPassword)
+        }
+        
         toast({
           title: "Sucesso", 
-          description: "Usuário criado com sucesso!"
+          description: `Usuário criado com sucesso! ${data.password ? '' : 'Uma senha temporária foi gerada.'}`
         })
       }
       setIsFormOpen(false)
@@ -123,6 +131,26 @@ const ConfigUsuarios = () => {
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!tempPassword} onOpenChange={() => setTempPassword(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Senha Temporária Gerada</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>Uma senha temporária foi gerada para o usuário:</p>
+              <div className="bg-muted p-3 rounded font-mono text-sm">
+                {tempPassword}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Anote esta senha e compartilhe com o usuário. Ele deverá alterá-la no primeiro acesso.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogAction onClick={() => setTempPassword(null)}>
+            Entendi
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
