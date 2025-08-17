@@ -71,15 +71,14 @@ const ConfigUsuarios = () => {
   }
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteSecretario(id)
+    const success = await deleteSecretario(id)
+    if (success) {
       toast({
         title: "Sucesso",
         description: "Usuário excluído com sucesso!"
       })
-    } catch (error) {
-      // Error is handled by the store and useEffect above
     }
+    // Em caso de falha, o useEffect exibirá a mensagem de erro detalhada do store
   }
 
   const handleCancel = () => {

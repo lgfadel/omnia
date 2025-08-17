@@ -85,7 +85,8 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
       return success
     } catch (error) {
       console.error('SecretariosStore: Error deleting secretario:', error)
-      set({ error: 'Erro ao excluir usuário', loading: false })
+      const message = error instanceof Error ? error.message : 'Erro ao excluir usuário'
+      set({ error: message, loading: false })
       return false
     }
   },
