@@ -6,7 +6,8 @@ import {
   Home,
   BarChart3,
   Tags,
-  LogOut
+  LogOut,
+  KeyRound
 } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import {
@@ -143,6 +144,21 @@ export function AppSidebar() {
                 </div>
               )}
             </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink 
+                to="/change-password"
+                className={({ isActive }) =>
+                  isActive 
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
+                    : "hover:bg-sidebar-accent/50"
+                }
+              >
+                <KeyRound className="w-4 h-4" />
+                {!collapsed && <span>Alterar Senha</span>}
+              </NavLink>
+            </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>

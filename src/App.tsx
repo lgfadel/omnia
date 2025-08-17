@@ -14,6 +14,7 @@ import AtaEdit from "./pages/AtaEdit";
 import ConfigStatus from "./pages/ConfigStatus";
 import ConfigUsuarios from "./pages/ConfigUsuarios";
 import { ConfigTags } from "./pages/ConfigTags";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,11 @@ function App() {
               <Route path="/config/tags" element={
                 <ProtectedRoute>
                   <ConfigTags />
+                </ProtectedRoute>
+              } />
+              <Route path="/change-password" element={
+                <ProtectedRoute>
+                  <ChangePassword />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
