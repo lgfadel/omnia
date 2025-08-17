@@ -34,7 +34,7 @@ const getRoleLabels = (roles: string[]) => {
     switch (role) {
       case "ADMIN": return "Admin"
       case "SECRETARIO": return "Secretário"
-      case "LEITOR": return "Leitor"
+      case "USUARIO": return "Usuário"
       default: return role
     }
   }).join(", ")

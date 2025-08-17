@@ -11,7 +11,7 @@ import { UserRef, Role } from "@/data/fixtures"
 const secretarioSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   email: z.string().email("E-mail inválido"),
-  roles: z.array(z.enum(["ADMIN", "SECRETARIO", "LEITOR"])).min(1, "Selecione pelo menos um cargo")
+  roles: z.array(z.enum(["ADMIN", "SECRETARIO", "USUARIO"])).min(1, "Selecione pelo menos um cargo")
 })
 
 type SecretarioFormData = z.infer<typeof secretarioSchema>
@@ -35,7 +35,7 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
     defaultValues: {
       name: secretario?.name || "",
       email: secretario?.email || "",
-      roles: secretario?.roles || ["LEITOR"]
+      roles: secretario?.roles || ["USUARIO"]
     }
   })
 
@@ -84,7 +84,7 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
           <div className="space-y-2">
             <Label htmlFor="roles">Cargos</Label>
             <div className="space-y-2">
-              {["ADMIN", "SECRETARIO", "LEITOR"].map((role) => (
+              {["ADMIN", "SECRETARIO", "USUARIO"].map((role) => (
                 <div key={role} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -103,7 +103,7 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
                   />
                   <Label htmlFor={role} className="text-sm font-normal cursor-pointer">
                     {role === "ADMIN" ? "Administrador" : 
-                     role === "SECRETARIO" ? "Secretário" : "Leitor"}
+                     role === "SECRETARIO" ? "Secretário" : "Usuário"}
                   </Label>
                 </div>
               ))}

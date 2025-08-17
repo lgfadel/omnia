@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'SECRETARIO' | 'LEITOR'
+export type Role = 'ADMIN' | 'SECRETARIO' | 'USUARIO'
 
 export interface Status {
   id: string;
