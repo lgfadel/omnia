@@ -98,6 +98,22 @@ export const secretariosRepoSupabase = {
   async remove(id: string): Promise<boolean> {
     console.log('SecretariosRepo: Deleting user:', id)
     
+    // Verificar se o usuário tem atas vinculadas
+    const { data: atasCount, error: countError } = await supabase
+      .from('omnia_atas')
+      .select('id')
+      .eq('secretary_id', id)
+      .limit(1)
+    
+    if (countError) {
+      console.error('SecretariosRepo: Error checking user atas:', countError)
+      throw new Error(`Erro ao verificar atas do usuário: ${countError.message}`)
+    }
+    
+    if (atasCount && atasCount.length > 0) {
+      throw new Error('Não é possível excluir este usuário pois existem atas vinculadas a ele. Remova ou transfira as atas primeiro.')
+    }
+    
     const { error } = await supabase
       .from('omnia_users')
       .delete()
