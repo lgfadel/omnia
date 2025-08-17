@@ -5,26 +5,47 @@ import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/fixtures
 const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
   const status = statuses.find(s => s.id === dbAta.status_id)
   
-  // Transform comments with proper author handling
-  const transformedComments = (dbAta.omnia_comments || []).map((comment: any) => ({
-    id: comment.id,
-    body: comment.body,
-    createdAt: comment.created_at,
-    author: comment.author_user ? {
-      id: comment.author_user.id,
-      name: comment.author_user.name,
-      email: comment.author_user.email,
-      roles: (comment.author_user.roles || []) as Role[],
-      avatarUrl: comment.author_user.avatar_url
-    } : {
-      id: comment.author_id,
-      name: 'Usuário não encontrado',
-      email: '',
-      roles: [],
-      avatarUrl: null
-    },
-    attachments: [] // Simplified - we'll load attachments separately if needed
-  }))
+  // Group attachments by comment_id for quick lookup
+  const attachmentsByCommentId: Record<string, any[]> = {}
+  ;(dbAta.omnia_attachments || []).forEach((att: any) => {
+    if (att.comment_id) {
+      if (!attachmentsByCommentId[att.comment_id]) attachmentsByCommentId[att.comment_id] = []
+      attachmentsByCommentId[att.comment_id].push(att)
+    }
+  })
+
+  // Transform comments with proper author handling and mapped attachments
+  const transformedComments = (dbAta.omnia_comments || []).map((comment: any) => {
+    const rawAttachments = attachmentsByCommentId[comment.id] || []
+    const mappedAttachments: Attachment[] = rawAttachments.map((att: any) => ({
+      id: att.id,
+      name: att.name,
+      url: att.url,
+      sizeKB: att.size_kb,
+      mime: att.mime_type,
+      createdAt: att.created_at || new Date().toISOString()
+    }))
+
+    return {
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.created_at,
+      author: comment.author_user ? {
+        id: comment.author_user.id,
+        name: comment.author_user.name,
+        email: comment.author_user.email,
+        roles: (comment.author_user.roles || []) as Role[],
+        avatarUrl: comment.author_user.avatar_url
+      } : {
+        id: comment.author_id,
+        name: 'Usuário não encontrado',
+        email: '',
+        roles: [],
+        avatarUrl: null
+      },
+      attachments: mappedAttachments
+    }
+  })
   
   return {
     id: dbAta.code,
@@ -81,7 +102,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
@@ -120,7 +141,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
@@ -214,7 +235,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
-        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at),
+        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
           author_user:omnia_users!omnia_comments_author_id_fkey (id, name, email, roles, avatar_url)
