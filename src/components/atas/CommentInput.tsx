@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { FIXTURE_USERS, UserRef, Attachment } from "@/data/fixtures"
 import { Send, Paperclip, X } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface CommentInputProps {
   onSubmit: (body: string, attachments?: Attachment[]) => void
@@ -12,18 +13,22 @@ interface CommentInputProps {
 }
 
 // Mock current user - in real app this would come from auth context
-const CURRENT_USER: UserRef = FIXTURE_USERS[0]
-
 export function CommentInput({ onSubmit, loading }: CommentInputProps) {
+  const { userProfile } = useAuth()
   const [body, setBody] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
 
   const handleSubmit = () => {
     if (body.trim() || attachments.length > 0) {
-      onSubmit(body.trim(), attachments)
+      onSubmit(body, attachments)
       setBody("")
       setAttachments([])
     }
+  }
+
+  const handleCancel = () => {
+    setBody("")
+    setAttachments([])
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +62,7 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
     <div className="flex gap-3">
       <Avatar className="w-8 h-8">
         <AvatarFallback className="text-xs">
-          {CURRENT_USER.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          {userProfile?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
         </AvatarFallback>
       </Avatar>
       
@@ -120,14 +125,24 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
             </div>
           </div>
           
-          <Button
-            onClick={handleSubmit}
-            disabled={(!body.trim() && attachments.length === 0) || loading}
-            size="sm"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            {loading ? "Enviando..." : "Comentar"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCancel}
+              disabled={loading || (!body.trim() && attachments.length === 0)}
+              size="sm"
+              variant="outline"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={(!body.trim() && attachments.length === 0) || loading}
+              size="sm"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {loading ? "Enviando..." : "Comentar"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
