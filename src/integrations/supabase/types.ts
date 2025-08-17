@@ -66,6 +66,7 @@ export type Database = {
           description: string | null
           id: string
           meeting_date: string | null
+          responsible_id: string | null
           secretary_id: string | null
           status_id: string
           tags: string[] | null
@@ -81,6 +82,7 @@ export type Database = {
           description?: string | null
           id?: string
           meeting_date?: string | null
+          responsible_id?: string | null
           secretary_id?: string | null
           status_id: string
           tags?: string[] | null
@@ -96,6 +98,7 @@ export type Database = {
           description?: string | null
           id?: string
           meeting_date?: string | null
+          responsible_id?: string | null
           secretary_id?: string | null
           status_id?: string
           tags?: string[] | null
@@ -107,6 +110,13 @@ export type Database = {
           {
             foreignKeyName: "fk_atas_secretary"
             columns: ["secretary_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_atas_responsible_id_fkey"
+            columns: ["responsible_id"]
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]

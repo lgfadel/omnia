@@ -210,6 +210,15 @@ const AtaDetail = () => {
                       </p>
                     </div>
                   )}
+                  
+                  {ata.responsible && (
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                      <label className="font-semibold text-purple-800">Responsável</label>
+                      <p className="flex items-center gap-2 text-purple-700 font-medium">
+                        {ata.responsible.name}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 
                 {ata.tags && ata.tags.length > 0 && (

@@ -22,6 +22,7 @@ const ataSchema = z.object({
   description: z.string().optional(),
   meetingDate: z.string().optional(),
   secretaryId: z.string().optional(),
+  responsibleId: z.string().optional(),
   statusId: z.string().min(1, "Status é obrigatório"),
   ticket: z.string().optional(),
   tags: z.string().optional()
@@ -77,6 +78,7 @@ export function AtaForm({
       description: ata?.description || "",
       meetingDate: ata?.meetingDate || "",
       secretaryId: ata?.secretary?.id || "",
+      responsibleId: ata?.responsible?.id || "",
       statusId: ata?.statusId || statuses.find(s => s.isDefault)?.id || "",
       ticket: ata?.ticket || "",
       tags: ""
@@ -118,24 +120,42 @@ export function AtaForm({
 
           {/* Responsabilidades */}
           <div className="space-y-4">
+            <h3 className="text-lg font-medium">Responsabilidades</h3>
             
-            
-            <div className="space-y-2">
-              <Label>Secretário</Label>
-              <Select onValueChange={value => setValue("secretaryId", value)} defaultValue={watch("secretaryId")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o secretário" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.filter(user => 
-                    user.roles.includes('SECRETARIO') || user.roles.includes('ADMIN')
-                  ).map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : 'Secretário'})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Secretário</Label>
+                <Select onValueChange={value => setValue("secretaryId", value)} defaultValue={watch("secretaryId")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o secretário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.filter(user => 
+                      user.roles.includes('SECRETARIO') || user.roles.includes('ADMIN')
+                    ).map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : 'Secretário'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                <Select onValueChange={value => setValue("responsibleId", value)} defaultValue={watch("responsibleId")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : user.roles.includes('SECRETARIO') ? 'Secretário' : 'Usuário'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

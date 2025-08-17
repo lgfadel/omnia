@@ -41,6 +41,7 @@ export interface Ata {
   createdAt: string;
   updatedAt: string;
   secretary?: UserRef;
+  responsible?: UserRef;
   statusId: string;
   ticket?: string;
   tags?: string[];
@@ -70,6 +71,7 @@ export const FIXTURE_ATAS: Ata[] = [
     createdAt: '2025-03-01T00:00:00.000Z',
     updatedAt: '2025-03-01T00:00:00.000Z',
     secretary: FIXTURE_USERS[2],
+    responsible: FIXTURE_USERS[0],
     statusId: 's1',
     ticket: 'TCK-12345',
     tags: ['malote'],
@@ -95,6 +97,7 @@ export const FIXTURE_ATAS: Ata[] = [
     createdAt: '2025-03-15T00:00:00.000Z',
     updatedAt: '2025-03-20T00:00:00.000Z',
     secretary: FIXTURE_USERS[0],
+    responsible: FIXTURE_USERS[1],
     statusId: 's2',
     ticket: 'TCK-22311',
     tags: ['whatsapp'],
@@ -109,6 +112,7 @@ export const FIXTURE_ATAS: Ata[] = [
     createdAt: '2025-04-01T00:00:00.000Z',
     updatedAt: '2025-04-03T00:00:00.000Z',
     secretary: FIXTURE_USERS[1],
+    responsible: FIXTURE_USERS[2],
     statusId: 's3',
     ticket: 'TCK-99881',
     tags: [],

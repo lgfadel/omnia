@@ -19,12 +19,14 @@ const AtaNew = () => {
   const handleSubmit = async (data: any) => {
     try {
       const secretary = data.secretaryId ? { id: data.secretaryId, name: '', email: '', roles: [] } : undefined
+      const responsible = data.responsibleId ? { id: data.responsibleId, name: '', email: '', roles: [] } : undefined
 
       const newAta = await createAta({
         title: data.title,
         description: data.description,
         meetingDate: data.meetingDate,
         secretary,
+        responsible,
         statusId: data.statusId,
         ticket: data.ticket,
         tags: data.tags,

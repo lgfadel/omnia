@@ -61,6 +61,13 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       roles: (dbAta.omnia_users.roles || []) as Role[],
       avatarUrl: dbAta.omnia_users.avatar_url
     } : undefined,
+    responsible: dbAta.responsible_user ? {
+      id: dbAta.responsible_user.id,
+      name: dbAta.responsible_user.name,
+      email: dbAta.responsible_user.email,
+      roles: (dbAta.responsible_user.roles || []) as Role[],
+      avatarUrl: dbAta.responsible_user.avatar_url
+    } : undefined,
     statusId: dbAta.status_id,
     ticket: dbAta.ticket,
     tags: dbAta.tags || [],
@@ -102,6 +109,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
@@ -141,6 +149,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,
@@ -193,6 +202,7 @@ export const atasRepoSupabase = {
         description: data.description,
         meeting_date: data.meetingDate,
         secretary_id: data.secretary?.id,
+        responsible_id: data.responsible?.id,
         status_id: data.statusId,
         ticket: data.ticket,
         tags: data.tags || [],
@@ -200,7 +210,8 @@ export const atasRepoSupabase = {
       })
       .select(`
         *,
-        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url)
+        omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url)
       `)
       .single()
 
@@ -224,6 +235,7 @@ export const atasRepoSupabase = {
     if (data.description !== undefined) updateData.description = data.description
     if (data.meetingDate !== undefined) updateData.meeting_date = data.meetingDate
     if (data.secretary !== undefined) updateData.secretary_id = data.secretary?.id
+    if (data.responsible !== undefined) updateData.responsible_id = data.responsible?.id
     if (data.statusId !== undefined) updateData.status_id = data.statusId
     if (data.ticket !== undefined) updateData.ticket = data.ticket
     if (data.tags !== undefined) updateData.tags = data.tags
@@ -235,6 +247,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, email, roles, avatar_url),
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, email, roles, avatar_url),
         omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
         omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
           id, body, created_at, author_id,

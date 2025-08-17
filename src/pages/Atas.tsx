@@ -14,11 +14,12 @@ import { useAtasStore } from "@/store/atas.store"
 import { FIXTURE_USERS } from "@/data/fixtures"
 
 const columns = [
-  { key: "title", label: "Título", sortable: true, width: "40" },
-  { key: "meetingDate", label: "Data Assembleia", sortable: true, width: "36" },
-  { key: "secretary", label: "Secretário", width: "36" },
-  { key: "status", label: "Status", width: "28" },
-  { key: "ticket", label: "Ticket", width: "24" },
+  { key: "title", label: "Título", sortable: true, width: "32" },
+  { key: "meetingDate", label: "Data Assembleia", sortable: true, width: "24" },
+  { key: "secretary", label: "Secretário", width: "24" },
+  { key: "responsible", label: "Responsável", width: "24" },
+  { key: "status", label: "Status", width: "20" },
+  { key: "ticket", label: "Ticket", width: "20" },
   { key: "commentCount", label: "Comentários", width: "16" }
 ]
 
@@ -91,6 +92,7 @@ const Atas = () => {
     return {
       ...ata,
       secretary: ata.secretary?.name || "-",
+      responsible: ata.responsible?.name || "-",
       createdAt: new Date(ata.createdAt).toLocaleDateString('pt-BR'),
       meetingDate: ata.meetingDate ? new Date(ata.meetingDate).toLocaleDateString('pt-BR') : "-",
       commentCount: ata.commentCount || 0,
