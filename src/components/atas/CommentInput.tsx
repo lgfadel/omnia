@@ -7,6 +7,7 @@ import { FIXTURE_USERS, UserRef, Attachment } from "@/data/fixtures"
 import { Send, Paperclip, X } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSupabaseUpload } from "@/hooks/useSupabaseUpload"
+import { generateUserColor, getUserInitials } from "@/lib/userColors"
 
 interface CommentInputProps {
   onSubmit: (body: string, attachments?: Attachment[]) => void
@@ -64,8 +65,13 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
   return (
     <div className="flex gap-3">
       <Avatar className="w-8 h-8">
-        <AvatarFallback className="text-xs">
-          {userProfile?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
+        <AvatarFallback 
+          className="text-xs text-white font-medium"
+          style={{ 
+            backgroundColor: userProfile?.color || generateUserColor(userProfile?.id, userProfile?.name) 
+          }}
+        >
+          {userProfile?.name ? getUserInitials(userProfile.name) : 'U'}
         </AvatarFallback>
       </Avatar>
       

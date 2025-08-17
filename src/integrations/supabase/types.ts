@@ -14,49 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      omnia_ata_tags: {
-        Row: {
-          ata_id: string
-          created_at: string
-          id: string
-          tag_id: string
-        }
-        Insert: {
-          ata_id: string
-          created_at?: string
-          id?: string
-          tag_id: string
-        }
-        Update: {
-          ata_id?: string
-          created_at?: string
-          id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_ata_tags_ata"
-            columns: ["ata_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_atas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ata_tags_tag"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_tags"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "omnia_ata_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       omnia_atas: {
         Row: {
           code: string
@@ -312,6 +269,7 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           avatar_url: string | null
+          color: string | null
           created_at: string
           email: string
           id: string
@@ -322,6 +280,7 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           avatar_url?: string | null
+          color?: string | null
           created_at?: string
           email: string
           id?: string
@@ -332,6 +291,7 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           avatar_url?: string | null
+          color?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -346,6 +306,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_user_color: {
+        Args: { user_id: string }
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string

@@ -8,7 +8,8 @@ function transformUserFromDB(dbUser: any): UserRef {
     name: dbUser.name,
     email: dbUser.email || '', // Default to empty string if email not accessible
     roles: (dbUser.roles || []) as Role[],
-    avatarUrl: dbUser.avatar_url
+    avatarUrl: dbUser.avatar_url,
+    color: dbUser.color
   }
 }
 
@@ -27,8 +28,8 @@ export const secretariosRepoSupabase = {
     
     // Use different select patterns based on user role
     const selectColumns = isAdmin 
-      ? 'id, name, email, roles, avatar_url, created_at, updated_at'
-      : 'id, name, roles, avatar_url, created_at, updated_at'
+      ? 'id, name, email, roles, avatar_url, color, created_at, updated_at'
+      : 'id, name, roles, avatar_url, color, created_at, updated_at'
     
     const { data, error } = await supabase
       .from('omnia_users')
@@ -59,8 +60,8 @@ export const secretariosRepoSupabase = {
     
     // Use different select patterns based on access level
     const selectColumns = (isAdmin || isOwnRecord)
-      ? 'id, name, email, roles, avatar_url, created_at, updated_at' 
-      : 'id, name, roles, avatar_url, created_at, updated_at'
+      ? 'id, name, email, roles, avatar_url, color, created_at, updated_at' 
+      : 'id, name, roles, avatar_url, color, created_at, updated_at'
     
     const { data, error } = await supabase
       .from('omnia_users')
@@ -110,7 +111,8 @@ export const secretariosRepoSupabase = {
       name: result.user.name,
       email: result.user.email,
       roles: result.user.roles,
-      avatarUrl: result.user.avatarUrl
+      avatarUrl: result.user.avatarUrl,
+      color: result.user.color
     }
     
     // Add tempPassword to the result if it exists
@@ -125,12 +127,13 @@ export const secretariosRepoSupabase = {
     if (data.email !== undefined) updateData.email = data.email
     if (data.roles !== undefined) updateData.roles = data.roles
     if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl
+    if (data.color !== undefined) updateData.color = data.color
     
     const { data: updatedUser, error } = await supabase
       .from('omnia_users')
       .update(updateData)
       .eq('id', id)
-      .select('id, name, email, roles, avatar_url, created_at, updated_at')
+      .select('id, name, email, roles, avatar_url, color, created_at, updated_at')
       .single()
     
     if (error) {

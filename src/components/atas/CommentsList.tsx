@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit, Check, X } from "lucide-react"
 import { useState } from "react"
+import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,8 +107,13 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
           <CardContent className="pt-4">
             <div className="flex gap-3">
               <Avatar className="w-8 h-8">
-                <AvatarFallback className="text-xs">
-                  {comment.author.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                <AvatarFallback 
+                  className="text-xs text-white font-medium"
+                  style={{ 
+                    backgroundColor: comment.author.color || generateUserColor(comment.author.id, comment.author.name) 
+                  }}
+                >
+                  {getUserInitials(comment.author.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-2">

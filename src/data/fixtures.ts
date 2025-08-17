@@ -9,11 +9,12 @@ export interface Status {
 }
 
 export interface UserRef {
-  id: string;
-  name: string;
-  email: string;
-  roles: Role[];
-  avatarUrl?: string;
+  id: string
+  name: string
+  email: string
+  roles: Role[]
+  avatarUrl?: string
+  color?: string
 }
 
 export interface Attachment {
