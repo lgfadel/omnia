@@ -70,21 +70,22 @@ const Atas = () => {
 
   // Transform data for table display
   const tableData = atas.map(ata => {
-    // Map statusId to actual status for badge
+    // Find the actual status from the loaded statuses
+    const currentStatus = statuses.find(s => s.id === ata.statusId)
+    
+    // Map status name to badge variant (simplified mapping for now)
     let mappedStatus: "nao-iniciado" | "em-andamento" | "concluido" = "nao-iniciado"
     
-    switch(ata.statusId) {
-      case 's1':
-        mappedStatus = "nao-iniciado"
-        break
-      case 's2':
+    if (currentStatus) {
+      // Map based on status name to badge variant
+      const statusName = currentStatus.name.toLowerCase()
+      if (statusName.includes('andamento') || statusName.includes('progresso')) {
         mappedStatus = "em-andamento"
-        break
-      case 's3':
+      } else if (statusName.includes('concluído') || statusName.includes('finalizado')) {
         mappedStatus = "concluido"
-        break
-      default:
+      } else {
         mappedStatus = "nao-iniciado"
+      }
     }
     
     return {
@@ -93,7 +94,9 @@ const Atas = () => {
       createdAt: new Date(ata.createdAt).toLocaleDateString('pt-BR'),
       meetingDate: ata.meetingDate ? new Date(ata.meetingDate).toLocaleDateString('pt-BR') : "-",
       commentCount: ata.commentCount || 0,
-      status: mappedStatus
+      status: mappedStatus,
+      statusName: currentStatus?.name || "Status não encontrado",
+      statusColor: currentStatus?.color || "#6B7280"
     }
   })
 
@@ -214,21 +217,21 @@ const Atas = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {atas.map((ata) => {
-              // Map statusId to actual status for kanban cards
+              // Find the actual status from the loaded statuses
+              const currentStatus = statuses.find(s => s.id === ata.statusId)
+              
+              // Map status name to badge variant (same logic as table)
               let mappedStatus: "nao-iniciado" | "em-andamento" | "concluido" = "nao-iniciado"
               
-              switch(ata.statusId) {
-                case 's1':
-                  mappedStatus = "nao-iniciado"
-                  break
-                case 's2':
+              if (currentStatus) {
+                const statusName = currentStatus.name.toLowerCase()
+                if (statusName.includes('andamento') || statusName.includes('progresso')) {
                   mappedStatus = "em-andamento"
-                  break
-                case 's3':
+                } else if (statusName.includes('concluído') || statusName.includes('finalizado')) {
                   mappedStatus = "concluido"
-                  break
-                default:
+                } else {
                   mappedStatus = "nao-iniciado"
+                }
               }
               
               return (

@@ -7,6 +7,7 @@ import {
   TableRow 
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Eye, Trash2, ChevronUp, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -45,18 +46,34 @@ export function TabelaOmnia({
   onSort,
   className 
 }: TabelaOmniaProps) {
-  const renderCellValue = (value: any, key: string) => {
-    if (key === "status" && value) {
-      const statusLabels = {
-        "nao-iniciado": "NÃO INICIADO",
-        "em-andamento": "EM ANDAMENTO", 
-        "concluido": "CONCLUÍDO"
+  const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
+    if (key === "status" && row) {
+      // Use statusName and statusColor if available, otherwise fallback to mapped status
+      if (row.statusName && row.statusColor) {
+        return (
+          <Badge 
+            variant="secondary" 
+            className="text-white font-medium"
+            style={{ backgroundColor: row.statusColor }}
+          >
+            {row.statusName.toUpperCase()}
+          </Badge>
+        )
       }
-      return (
-        <BadgeStatus status={value}>
-          {statusLabels[value as keyof typeof statusLabels]}
-        </BadgeStatus>
-      )
+      
+      // Fallback to mapped status logic
+      if (value) {
+        const statusLabels = {
+          "nao-iniciado": "NÃO INICIADO",
+          "em-andamento": "EM ANDAMENTO", 
+          "concluido": "CONCLUÍDO"
+        }
+        return (
+          <BadgeStatus status={value}>
+            {statusLabels[value as keyof typeof statusLabels]}
+          </BadgeStatus>
+        )
+      }
     }
     
     if (typeof value === "string" || typeof value === "number") {
@@ -107,7 +124,7 @@ export function TabelaOmnia({
             <TableRow key={row.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onView && onView(row.id)}>
               {columns.map((column) => (
                 <TableCell key={`${row.id}-${column.key}`} className="text-sm">
-                  {renderCellValue(row[column.key], column.key)}
+                  {renderCellValue(row[column.key], column.key, row)}
                 </TableCell>
               ))}
               <TableCell onClick={(e) => e.stopPropagation()}>
