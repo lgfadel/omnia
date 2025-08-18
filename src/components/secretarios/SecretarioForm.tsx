@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UserRef, Role } from "@/data/fixtures"
+import { USER_COLOR_PALETTE } from "@/lib/userColors"
 
 const secretarioSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
-  roles: z.array(z.enum(["ADMIN", "SECRETARIO", "USUARIO"])).min(1, "Selecione pelo menos um cargo")
+  roles: z.array(z.enum(["ADMIN", "SECRETARIO", "USUARIO"])).min(1, "Selecione pelo menos um cargo"),
+  color: z.string().optional()
 })
 
 type SecretarioFormData = z.infer<typeof secretarioSchema>
@@ -37,11 +39,13 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
       name: secretario?.name || "",
       email: secretario?.email || "",
       password: "",
-      roles: secretario?.roles || ["USUARIO"]
+      roles: secretario?.roles || ["USUARIO"],
+      color: secretario?.color || USER_COLOR_PALETTE[0]
     }
   })
 
   const watchedRoles = watch("roles")
+  const watchedColor = watch("color")
 
   const onFormSubmit = async (data: SecretarioFormData) => {
     await onSubmit(data)
@@ -132,6 +136,30 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
             {errors.roles && (
               <p className="text-sm text-destructive">{errors.roles.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="color">Cor do Avatar</Label>
+            <div className="grid grid-cols-8 gap-2 p-2 border rounded-md">
+              {USER_COLOR_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setValue("color", color)}
+                  disabled={isLoading}
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                    watchedColor === color 
+                      ? "border-primary scale-110" 
+                      : "border-muted-foreground/20 hover:border-muted-foreground/40"
+                  }`}
+                  style={{ backgroundColor: color }}
+                  title={`Selecionar cor ${color}`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Selecione uma cor para o avatar do usuário
+            </p>
           </div>
 
           <div className="flex gap-2 pt-4">

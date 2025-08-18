@@ -90,6 +90,7 @@ export const secretariosRepoSupabase = {
         email: data.email,
         roles: data.roles,
         avatarUrl: data.avatarUrl,
+        color: data.color,
         password: data.password
       }
     })

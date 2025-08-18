@@ -68,7 +68,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { name, email, roles, avatarUrl, password } = await req.json()
+    const { name, email, roles, avatarUrl, color, password } = await req.json()
 
     console.log('Creating user:', { name, email, roles })
 
@@ -105,7 +105,8 @@ serve(async (req) => {
       .update({
         name,
         roles,
-        avatar_url: avatarUrl
+        avatar_url: avatarUrl,
+        color
       })
       .eq('auth_user_id', authUser.user.id)
       .select()
@@ -129,7 +130,8 @@ serve(async (req) => {
           name: updatedUser.name,
           email: updatedUser.email,
           roles: updatedUser.roles,
-          avatarUrl: updatedUser.avatar_url
+          avatarUrl: updatedUser.avatar_url,
+          color: updatedUser.color
         },
         ...(isTemporaryPassword ? { tempPassword: userPassword } : {})
       }),
