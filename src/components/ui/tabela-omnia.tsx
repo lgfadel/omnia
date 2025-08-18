@@ -84,6 +84,8 @@ export function TabelaOmnia({
       const userColor = user.color || generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
       
+      console.log(`Avatar for ${user.name}: color=${user.color}, userColor=${userColor}`)
+      
       return (
         <div className="flex items-center justify-center">
           <Avatar className="h-8 w-8">
