@@ -145,15 +145,16 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
                 <button
                   key={color}
                   type="button"
-                  onClick={() => setValue("color", color)}
+                  onClick={() => setValue("color", color, { shouldValidate: true, shouldDirty: true })}
                   disabled={isLoading}
                   className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    watchedColor === color 
-                      ? "border-primary scale-110" 
+                    (watchedColor && watchedColor.trim() === color)
+                      ? "border-primary scale-110"
                       : "border-muted-foreground/20 hover:border-muted-foreground/40"
                   }`}
                   style={{ backgroundColor: color }}
                   title={`Selecionar cor ${color}`}
+                  aria-label={`Selecionar cor ${color}`}
                 />
               ))}
             </div>

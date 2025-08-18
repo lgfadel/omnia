@@ -81,7 +81,7 @@ export function TabelaOmnia({
     // Render avatar for secretary and responsible
     if ((key === "secretary" || key === "responsible") && value && row) {
       const user = value
-      const userColor = user.color || generateUserColor(user.id, user.name)
+      const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
       
       return (
