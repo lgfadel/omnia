@@ -12,6 +12,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { FIXTURE_USERS } from "@/data/fixtures"
+import { useSecretariosStore } from "@/store/secretarios.store"
 
 const columns = [
   { key: "title", label: "Título", sortable: true, width: "32" },
@@ -26,6 +27,7 @@ const columns = [
 const Atas = () => {
   const navigate = useNavigate()
   const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta } = useAtasStore()
+  const { secretarios, loadSecretarios } = useSecretariosStore()
   
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
   const [search, setSearch] = useState("")
@@ -41,6 +43,12 @@ const Atas = () => {
   useEffect(() => {
     loadAtas(search, statusFilter)
   }, [search, statusFilter, loadAtas])
+
+  useEffect(() => {
+    if (secretarios.length === 0) {
+      loadSecretarios()
+    }
+  }, [secretarios.length, loadSecretarios])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -89,10 +97,13 @@ const Atas = () => {
       }
     }
     
+    const secOverride = ata.secretary ? secretarios.find(s => s.id === ata.secretary?.id) : undefined
+    const resOverride = ata.responsible ? secretarios.find(s => s.id === ata.responsible?.id) : undefined
+    
     return {
       ...ata,
-      secretary: ata.secretary || null,
-      responsible: ata.responsible || null,
+      secretary: ata.secretary ? { ...ata.secretary, color: secOverride?.color ?? ata.secretary.color } : null,
+      responsible: ata.responsible ? { ...ata.responsible, color: resOverride?.color ?? ata.responsible.color } : null,
       secretaryName: ata.secretary?.name || "-",
       responsibleName: ata.responsible?.name || "-",
       createdAt: new Date(ata.createdAt).toLocaleDateString('pt-BR'),
