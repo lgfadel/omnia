@@ -37,7 +37,7 @@ import { useRoles } from "@/hooks/useRoles"
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Atas", url: "/atas", icon: ClipboardList },
-  { title: "Tickets", url: "/tickets", icon: Ticket },
+  { title: "Tickets", url: "/tarefas", icon: Ticket },
   { title: "Relatórios", url: "/relatorios", icon: FileText },
 ]
 

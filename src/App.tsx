@@ -77,22 +77,22 @@ function App() {
                   <ConfigTags />
                 </RoleProtectedRoute>
               } />
-              <Route path="/tickets" element={
+              <Route path="/tarefas" element={
                 <ProtectedRoute>
                   <Tickets />
                 </ProtectedRoute>
               } />
-              <Route path="/tickets/new" element={
+              <Route path="/tarefas/new" element={
                 <ProtectedRoute>
                   <TicketNew />
                 </ProtectedRoute>
               } />
-              <Route path="/tickets/:id" element={
+              <Route path="/tarefas/:id" element={
                 <ProtectedRoute>
                   <TicketDetail />
                 </ProtectedRoute>
               } />
-              <Route path="/tickets/:id/edit" element={
+              <Route path="/tarefas/:id/edit" element={
                 <ProtectedRoute>
                   <TicketEdit />
                 </ProtectedRoute>
