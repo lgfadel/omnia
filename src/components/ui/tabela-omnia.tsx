@@ -123,11 +123,15 @@ export function TabelaOmnia({
                 className={cn(
                   "font-medium text-muted-foreground text-xs uppercase tracking-wide",
                   column.width && `w-${column.width}`,
-                  column.sortable && "cursor-pointer hover:text-foreground"
+                  column.sortable && "cursor-pointer hover:text-foreground",
+                  (column.key === "secretary" || column.key === "responsible") && "text-center"
                 )}
                 onClick={() => column.sortable && handleSort(column.key)}
               >
-                <div className="flex items-center gap-1">
+                <div className={cn(
+                  "flex items-center gap-1",
+                  (column.key === "secretary" || column.key === "responsible") && "justify-center"
+                )}>
                   {column.label}
                   {column.sortable && sortField === column.key && (
                     sortDirection === "asc" ? (
@@ -146,7 +150,13 @@ export function TabelaOmnia({
           {data.map((row) => (
             <TableRow key={row.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onView && onView(row.id)}>
               {columns.map((column) => (
-                <TableCell key={`${row.id}-${column.key}`} className="text-sm">
+                <TableCell 
+                  key={`${row.id}-${column.key}`} 
+                  className={cn(
+                    "text-sm",
+                    (column.key === "secretary" || column.key === "responsible") && "text-center"
+                  )}
+                >
                   {renderCellValue(row[column.key], column.key, row)}
                 </TableCell>
               ))}
