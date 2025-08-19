@@ -15,7 +15,7 @@ import { FIXTURE_USERS } from "@/data/fixtures"
 import { useSecretariosStore } from "@/store/secretarios.store"
 
 const columns = [
-  { key: "title", label: "Título", sortable: true, width: "32" },
+  { key: "title", label: "Título", sortable: true, width: "48" },
   { key: "meetingDate", label: "Data Assembleia", sortable: true, width: "24" },
   { key: "secretary", label: "Secretário", width: "24" },
   { key: "responsible", label: "Responsável", width: "24" },
