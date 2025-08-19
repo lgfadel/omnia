@@ -60,25 +60,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className={collapsed ? "w-14" : "w-64"}
+      className={`sidebar-responsive ${collapsed ? "w-14 collapsed" : "w-64"} transition-all duration-200 ease-in-out`}
       collapsible="icon"
     >
       <SidebarContent>
         {/* Logo Area */}
         <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center h-12">
             {!collapsed ? (
               <img 
-              src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
-              alt="Omnia Logo" 
-              className="h-12 w-auto"
-            />
+                src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
+                alt="Omnia Logo" 
+                className="h-10 w-auto object-contain"
+              />
             ) : (
               <img 
-            src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
-            alt="Omnia Logo" 
-            className="h-8 w-8 object-contain"
-          />
+                src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
+                alt="Omnia Logo" 
+                className="h-6 w-6 object-contain"
+              />
             )}
           </div>
         </div>
@@ -91,18 +91,20 @@ export function AppSidebar() {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end
-                      className={({ isActive }) =>
-                        isActive 
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                          : "hover:bg-sidebar-accent/50"
-                      }
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
+                     <NavLink 
+                       to={item.url} 
+                       end
+                       className={({ isActive }) =>
+                         `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                           isActive 
+                             ? "nav-item-active" 
+                             : ""
+                         }`
+                       }
+                     >
+                       <item.icon className="w-4 h-4 shrink-0" />
+                       {!collapsed && <span className="truncate">{item.title}</span>}
+                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -116,38 +118,40 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    onClick={() => setConfigExpanded(!configExpanded)}
-                    className="hover:bg-sidebar-accent/50"
-                  >
-                    <Settings className="w-4 h-4" />
-                    {!collapsed && (
-                      <>
-                        <span>Configurações</span>
-                        {configExpanded ? (
-                          <ChevronDown className="w-4 h-4 ml-auto" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 ml-auto" />
-                        )}
-                      </>
-                    )}
-                  </SidebarMenuButton>
+                   <SidebarMenuButton 
+                     onClick={() => setConfigExpanded(!configExpanded)}
+                     className="icon-text-align nav-item-hover p-2 rounded-md transition-colors"
+                   >
+                     <Settings className="w-4 h-4 shrink-0" />
+                     {!collapsed && (
+                       <>
+                         <span className="truncate">Configurações</span>
+                         {configExpanded ? (
+                           <ChevronDown className="w-4 h-4 ml-auto shrink-0" />
+                         ) : (
+                           <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+                         )}
+                       </>
+                     )}
+                   </SidebarMenuButton>
                   {configExpanded && !collapsed && (
                     <SidebarMenuSub>
                       {configItems.map((item) => (
                         <SidebarMenuSubItem key={item.title}>
                           <SidebarMenuSubButton asChild>
-                            <NavLink 
-                              to={item.url}
-                              className={({ isActive }) =>
-                                isActive 
-                                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                                  : "hover:bg-sidebar-accent/50"
-                              }
-                            >
-                              <item.icon className="w-4 h-4" />
-                              <span>{item.title}</span>
-                            </NavLink>
+                             <NavLink 
+                               to={item.url}
+                               className={({ isActive }) =>
+                                 `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                                   isActive 
+                                     ? "nav-item-active" 
+                                     : ""
+                                 }`
+                               }
+                             >
+                               <item.icon className="w-4 h-4 shrink-0" />
+                               <span className="truncate">{item.title}</span>
+                             </NavLink>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}
@@ -164,44 +168,46 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 p-2">
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
-                    {userProfile?.name || 'Usuário'}
-                  </p>
-                  <p className="text-xs text-sidebar-foreground/60 truncate">
-                    {user?.email}
-                  </p>
-                </div>
-              )}
-            </div>
+             <div className="flex items-center gap-3 p-3">
+               {!collapsed && (
+                 <div className="flex-1 min-w-0">
+                   <p className="text-sm font-medium text-sidebar-foreground truncate">
+                     {userProfile?.name || 'Usuário'}
+                   </p>
+                   <p className="text-xs text-sidebar-foreground/60 truncate">
+                     {user?.email}
+                   </p>
+                 </div>
+               )}
+             </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <NavLink 
-                to="/change-password"
-                className={({ isActive }) =>
-                  isActive 
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                    : "hover:bg-sidebar-accent/50"
-                }
-              >
-                <KeyRound className="w-4 h-4" />
-                {!collapsed && <span>Alterar Senha</span>}
-              </NavLink>
+               <NavLink 
+                 to="/change-password"
+                 className={({ isActive }) =>
+                   `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                     isActive 
+                       ? "nav-item-active" 
+                       : ""
+                   }`
+                 }
+               >
+                 <KeyRound className="w-4 h-4 shrink-0" />
+                 {!collapsed && <span className="truncate">Alterar Senha</span>}
+               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                onClick={handleSignOut}
-              >
-                <LogOut className="w-4 h-4" />
-                {!collapsed && <span>Sair</span>}
-              </Button>
+               <Button
+                 variant="ghost"
+                 className="icon-text-align nav-item-hover w-full justify-start p-2 text-sidebar-foreground rounded-md transition-colors"
+                 onClick={handleSignOut}
+               >
+                 <LogOut className="w-4 h-4 shrink-0" />
+                 {!collapsed && <span className="truncate">Sair</span>}
+               </Button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

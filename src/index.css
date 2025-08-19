@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import das melhorias de alinhamento responsivo */
+@import './styles/layout-responsive.css';
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
