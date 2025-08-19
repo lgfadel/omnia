@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export interface TicketStatus {
+export interface TarefaStatus {
   id: string;
   name: string;
   color: string;
@@ -10,20 +10,20 @@ export interface TicketStatus {
   updatedAt?: Date;
 }
 
-function transformTicketStatusFromDB(dbTicketStatus: any): TicketStatus {
+function transformTarefaStatusFromDB(dbTarefaStatus: any): TarefaStatus {
   return {
-    id: dbTicketStatus.id,
-    name: dbTicketStatus.name,
-    color: dbTicketStatus.color,
-    order: dbTicketStatus.order_position,
-    isDefault: dbTicketStatus.is_default,
-    createdAt: dbTicketStatus.created_at ? new Date(dbTicketStatus.created_at) : undefined,
-    updatedAt: dbTicketStatus.updated_at ? new Date(dbTicketStatus.updated_at) : undefined,
+    id: dbTarefaStatus.id,
+    name: dbTarefaStatus.name,
+    color: dbTarefaStatus.color,
+    order: dbTarefaStatus.order_position,
+    isDefault: dbTarefaStatus.is_default,
+    createdAt: dbTarefaStatus.created_at ? new Date(dbTarefaStatus.created_at) : undefined,
+    updatedAt: dbTarefaStatus.updated_at ? new Date(dbTarefaStatus.updated_at) : undefined,
   };
 }
 
-export const ticketStatusRepoSupabase = {
-  async list(): Promise<TicketStatus[]> {
+export const tarefaStatusRepoSupabase = {
+  async list(): Promise<TarefaStatus[]> {
     const { data, error } = await supabase
       .from('omnia_ticket_statuses')
       .select('*')
@@ -34,10 +34,10 @@ export const ticketStatusRepoSupabase = {
       throw error;
     }
 
-    return data?.map(transformTicketStatusFromDB) || [];
+    return data?.map(transformTarefaStatusFromDB) || [];
   },
 
-  async create(data: Omit<TicketStatus, 'id'>): Promise<TicketStatus> {
+  async create(data: Omit<TarefaStatus, 'id'>): Promise<TarefaStatus> {
     // Get the next order position
     const { data: lastStatus } = await supabase
       .from('omnia_ticket_statuses')
@@ -63,10 +63,10 @@ export const ticketStatusRepoSupabase = {
       throw error;
     }
 
-    return transformTicketStatusFromDB(newStatus);
+    return transformTarefaStatusFromDB(newStatus);
   },
 
-  async update(id: string, data: Partial<Omit<TicketStatus, 'id'>>): Promise<TicketStatus | null> {
+  async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
     const updateData: any = {};
     
     if (data.name !== undefined) updateData.name = data.name;
@@ -86,7 +86,7 @@ export const ticketStatusRepoSupabase = {
       throw error;
     }
 
-    return updatedStatus ? transformTicketStatusFromDB(updatedStatus) : null;
+    return updatedStatus ? transformTarefaStatusFromDB(updatedStatus) : null;
   },
 
   async remove(id: string): Promise<boolean> {
@@ -114,7 +114,7 @@ export const ticketStatusRepoSupabase = {
     return true;
   },
 
-  async reorder(statuses: TicketStatus[]): Promise<void> {
+  async reorder(statuses: TarefaStatus[]): Promise<void> {
     const updates = statuses.map((status, index) => ({
       id: status.id,
       order_position: index + 1,

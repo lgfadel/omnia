@@ -1,20 +1,20 @@
 import { create } from 'zustand';
-import { ticketStatusRepoSupabase, type TicketStatus } from '@/repositories/ticketStatusRepo.supabase';
+import { tarefaStatusRepoSupabase, type TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 
-interface TicketStatusStore {
-  statuses: TicketStatus[];
+interface TarefaStatusStore {
+  statuses: TarefaStatus[];
   loading: boolean;
   error: string | null;
   
   loadStatuses: () => Promise<void>;
-  createStatus: (data: Omit<TicketStatus, 'id'>) => Promise<TicketStatus>;
-  updateStatus: (id: string, data: Partial<Omit<TicketStatus, 'id'>>) => Promise<TicketStatus | null>;
+  createStatus: (data: Omit<TarefaStatus, 'id'>) => Promise<TarefaStatus>;
+  updateStatus: (id: string, data: Partial<Omit<TarefaStatus, 'id'>>) => Promise<TarefaStatus | null>;
   deleteStatus: (id: string) => Promise<boolean>;
-  reorderStatuses: (statuses: TicketStatus[]) => Promise<void>;
+  reorderStatuses: (statuses: TarefaStatus[]) => Promise<void>;
   clearError: () => void;
 }
 
-export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
+export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
   statuses: [],
   loading: false,
   error: null,
@@ -22,10 +22,10 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
   loadStatuses: async () => {
     set({ loading: true, error: null });
     try {
-      const statuses = await ticketStatusRepoSupabase.list();
+      const statuses = await tarefaStatusRepoSupabase.list();
       set({ statuses, loading: false });
     } catch (error) {
-      console.error('Erro ao carregar status de tickets:', error);
+      console.error('Erro ao carregar status de tarefas:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -33,10 +33,10 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
     }
   },
 
-  createStatus: async (data: Omit<TicketStatus, 'id'>) => {
+  createStatus: async (data: Omit<TarefaStatus, 'id'>) => {
     set({ loading: true, error: null });
     try {
-      const newStatus = await ticketStatusRepoSupabase.create(data);
+      const newStatus = await tarefaStatusRepoSupabase.create(data);
       const currentStatuses = get().statuses;
       set({ 
         statuses: [...currentStatuses, newStatus],
@@ -44,7 +44,7 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
       });
       return newStatus;
     } catch (error) {
-      console.error('Erro ao criar status de ticket:', error);
+      console.error('Erro ao criar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -53,10 +53,10 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
     }
   },
 
-  updateStatus: async (id: string, data: Partial<Omit<TicketStatus, 'id'>>) => {
+  updateStatus: async (id: string, data: Partial<Omit<TarefaStatus, 'id'>>) => {
     set({ loading: true, error: null });
     try {
-      const updatedStatus = await ticketStatusRepoSupabase.update(id, data);
+      const updatedStatus = await tarefaStatusRepoSupabase.update(id, data);
       if (updatedStatus) {
         const currentStatuses = get().statuses;
         const updatedStatuses = currentStatuses.map(status => 
@@ -69,7 +69,7 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
       }
       return updatedStatus;
     } catch (error) {
-      console.error('Erro ao atualizar status de ticket:', error);
+      console.error('Erro ao atualizar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -91,7 +91,7 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      await ticketStatusRepoSupabase.remove(id);
+      await tarefaStatusRepoSupabase.remove(id);
       const updatedStatuses = currentStatuses.filter(status => status.id !== id);
       set({ 
         statuses: updatedStatuses,
@@ -99,7 +99,7 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('Erro ao deletar status de ticket:', error);
+      console.error('Erro ao deletar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -108,16 +108,16 @@ export const useTicketStatusStore = create<TicketStatusStore>((set, get) => ({
     }
   },
 
-  reorderStatuses: async (statuses: TicketStatus[]) => {
+  reorderStatuses: async (statuses: TarefaStatus[]) => {
     set({ loading: true, error: null });
     try {
-      await ticketStatusRepoSupabase.reorder(statuses);
+      await tarefaStatusRepoSupabase.reorder(statuses);
       set({ 
         statuses: [...statuses],
         loading: false 
       });
     } catch (error) {
-      console.error('Erro ao reordenar status de tickets:', error);
+      console.error('Erro ao reordenar status de tarefas:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
