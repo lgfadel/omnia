@@ -9,6 +9,7 @@ import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit,
 import { useState } from "react"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { toast } from "@/components/ui/use-toast"
+import { ImagePreviewModal } from "@/components/ui/image-preview-modal"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
   const { userProfile } = useAuth()
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editBody, setEditBody] = useState("")
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
 
   const downloadAttachment = async (attachment: any) => {
     try {
@@ -291,7 +293,20 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
                         <div key={attachment.id} className="flex items-center gap-2 bg-muted rounded-md px-2 py-1">
                           {getFileIcon(attachment.mime)}
                           <div className="flex flex-col">
-                            <span className="text-xs font-medium truncate max-w-32">{attachment.name}</span>
+                            {attachment.mime?.startsWith('image/') ? (
+                              <button
+                                className="text-xs font-medium truncate max-w-32 text-left text-primary hover:text-primary/80 hover:underline cursor-pointer transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPreviewImage({ url: attachment.url, name: attachment.name })
+                                }}
+                                title="Clique para visualizar a imagem"
+                              >
+                                {attachment.name}
+                              </button>
+                            ) : (
+                              <span className="text-xs font-medium truncate max-w-32">{attachment.name}</span>
+                            )}
                             {attachment.sizeKB && (
                               <span className="text-xs text-muted-foreground">{formatFileSize(attachment.sizeKB)}</span>
                             )}
@@ -318,6 +333,15 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
           </CardContent>
         </Card>
       ))}
+      
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        imageUrl={previewImage?.url || ""}
+        imageName={previewImage?.name || ""}
+        onDownload={previewImage ? () => downloadAttachment({ url: previewImage.url, name: previewImage.name }) : undefined}
+      />
     </div>
   )
 }

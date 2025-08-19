@@ -209,7 +209,7 @@ The development server runs on `http://localhost:8080/` (configured in vite.conf
 
 ## 📈 Melhorias Recentes
 
-### Últimas Atualizações (Agosto 2025)
+### Últimas Atualizações (Janeiro 2025)
 - **Refatoração da Tabela Principal**: Reordenação de colunas e melhorias no estilo de badges
   - Troca de posições entre colunas "Responsável" e "Secretário" para melhor fluxo de dados
   - Conversão da exibição de secretários de avatares para badges coloridos
@@ -219,6 +219,12 @@ The development server runs on `http://localhost:8080/` (configured in vite.conf
   - Adição de seções colapsáveis para organização de dados
   - Funcionalidade de alteração de status inline com dropdown
   - Controles de ordenação fixos por status e data de assembleia
+- **Upload via Clipboard**: Nova funcionalidade para anexar imagens diretamente nos comentários
+  - Funcionalidade de colar imagens usando Ctrl+V nos comentários
+  - Detecção automática de imagens no clipboard
+  - Nomenclatura inteligente para imagens coladas (clipboard-image-TIMESTAMP.png)
+  - Indicadores visuais específicos para identificar imagens do clipboard
+  - Toast notifications com feedback durante o processo de upload
 - **Correções de Segurança**: Resolução de políticas RLS para acesso universal
   - Correção das políticas de segurança para permitir acesso a todos os usuários autenticados
   - Melhorias na estrutura de permissões para diferentes roles
