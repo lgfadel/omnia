@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, ChevronDown } from "lucide-react"
+import { Search, Plus, ChevronDown, User } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { FIXTURE_USERS } from "@/data/fixtures"
 import { useSecretariosStore } from "@/store/secretarios.store"
+import { useAuth } from "@/contexts/AuthContext"
+import { generateUserColor, getUserInitials } from "@/lib/userColors"
 
 const columns = [
   { key: "title", label: "Título", sortable: true, width: "48" },
@@ -27,11 +29,13 @@ const Atas = () => {
   const navigate = useNavigate()
   const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta } = useAtasStore()
   const { secretarios, loadSecretarios } = useSecretariosStore()
+  const { userProfile } = useAuth()
   
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sortField, setSortField] = useState<string>("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [showOnlyMyAtas, setShowOnlyMyAtas] = useState(false)
 
   useEffect(() => {
     loadStatuses()
@@ -76,7 +80,11 @@ const Atas = () => {
   }
 
   // Transform data for table display
-  const tableData = atas.map(ata => {
+  const filteredAtas = showOnlyMyAtas && userProfile 
+    ? atas.filter(ata => ata.responsible?.id === userProfile.id)
+    : atas
+    
+  const tableData = filteredAtas.map(ata => {
     // Find the actual status from the loaded statuses
     const currentStatus = statuses.find(s => s.id === ata.statusId)
     
@@ -194,7 +202,23 @@ const Atas = () => {
             </DropdownMenu>
           </div>
           
-
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowOnlyMyAtas(!showOnlyMyAtas)}
+            className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+              showOnlyMyAtas 
+                ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                : 'shadow-sm hover:shadow-md'
+            }`}
+            style={{
+              backgroundColor: showOnlyMyAtas ? '#FBBF24' : '#F3F4F6',
+              borderColor: showOnlyMyAtas ? '#FBBF24' : '#D1D5DB',
+              color: showOnlyMyAtas ? 'white' : '#6B7280'
+            }}
+          >
+            {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
+          </Button>
         </div>
 
         {loading ? (
