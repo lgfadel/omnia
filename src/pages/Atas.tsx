@@ -14,6 +14,7 @@ import { FIXTURE_USERS } from "@/data/fixtures"
 import { useSecretariosStore } from "@/store/secretarios.store"
 import { useAuth } from "@/contexts/AuthContext"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
+import { supabase } from "@/integrations/supabase/client"
 
 const columns = [
   { key: "title", label: "Título", sortable: true, width: "48" },
@@ -51,6 +52,56 @@ const Atas = () => {
       loadSecretarios()
     }
   }, [secretarios.length, loadSecretarios])
+
+  // Realtime listener para atualizações de atas
+  useEffect(() => {
+    const channel = supabase
+      .channel('atas-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'omnia_atas'
+        },
+        (payload) => {
+          console.log('Nova ata criada:', payload)
+          // Recarregar a lista de atas quando uma nova for criada
+          loadAtas(search, statusFilter)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'omnia_atas'
+        },
+        (payload) => {
+          console.log('Ata atualizada:', payload)
+          // Recarregar a lista quando uma ata for atualizada
+          loadAtas(search, statusFilter)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'omnia_atas'
+        },
+        (payload) => {
+          console.log('Ata excluída:', payload)
+          // Recarregar a lista quando uma ata for excluída
+          loadAtas(search, statusFilter)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [search, statusFilter, loadAtas])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
