@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Eye, Trash2, ChevronUp, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -32,6 +33,8 @@ interface TabelaOmniaProps {
   data: TabelaOmniaRow[]
   onView?: (id: string | number) => void
   onDelete?: (id: string | number) => void
+  onStatusChange?: (id: string | number, statusId: string) => void
+  availableStatuses?: Array<{ id: string; name: string; color: string }>
   sortField?: string
   sortDirection?: "asc" | "desc"
   onSort?: (field: string) => void
@@ -43,6 +46,8 @@ export function TabelaOmnia({
   data, 
   onView, 
   onDelete, 
+  onStatusChange,
+  availableStatuses = [],
   sortField, 
   sortDirection,
   onSort,
@@ -52,6 +57,49 @@ export function TabelaOmnia({
     if (key === "status" && row) {
       // Use statusName and statusColor if available, otherwise fallback to mapped status
       if (row.statusName && row.statusColor) {
+        // If onStatusChange is provided, make it a dropdown button
+        if (onStatusChange && availableStatuses.length > 0) {
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto p-0 hover:bg-transparent"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge 
+                    variant="secondary" 
+                    className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
+                    style={{ backgroundColor: row.statusColor }}
+                  >
+                    {row.statusName.toUpperCase()}
+                    <ChevronDown className="w-3 h-3" />
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {availableStatuses.map((status) => (
+                  <DropdownMenuItem
+                    key={status.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStatusChange(row.id, status.id)
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: status.color }}
+                    />
+                    {status.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        }
+        
+        // Static badge if no onStatusChange
         return (
           <Badge 
             variant="secondary" 

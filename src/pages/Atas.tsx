@@ -28,7 +28,7 @@ const columns = [
 
 const Atas = () => {
   const navigate = useNavigate()
-  const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta } = useAtasStore()
+  const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta, updateAta } = useAtasStore()
   const { secretarios, loadSecretarios } = useSecretariosStore()
   const { userProfile } = useAuth()
   
@@ -119,6 +119,16 @@ const Atas = () => {
   const handleDelete = async (id: string | number) => {
     if (confirm("Tem certeza que deseja excluir esta ata?")) {
       await deleteAta(String(id))
+    }
+  }
+
+  const handleStatusChange = async (id: string | number, statusId: string) => {
+    try {
+      await updateAta(id.toString(), { statusId })
+      // Reload atas to reflect the change
+      loadAtas(search, statusFilter)
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error)
     }
   }
 
@@ -291,6 +301,8 @@ const Atas = () => {
             data={sortedData}
             onView={handleView}
             onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
+            availableStatuses={statuses}
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={handleSort}
