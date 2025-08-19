@@ -1,13 +1,12 @@
 import { Layout } from "@/components/layout/Layout"
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { TabelaOmnia } from "@/components/ui/tabela-omnia"
-import { CardAtaKanban } from "@/components/ui/card-ata-kanban"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { LayoutGrid, List, Search, Plus, ChevronDown } from "lucide-react"
+import { Search, Plus, ChevronDown } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
@@ -29,7 +28,6 @@ const Atas = () => {
   const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta } = useAtasStore()
   const { secretarios, loadSecretarios } = useSecretariosStore()
   
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sortField, setSortField] = useState<string>("")
@@ -196,29 +194,14 @@ const Atas = () => {
             </DropdownMenu>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-            >
-              <List className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "kanban" ? "default" : "outline"} 
-              size="sm"
-              onClick={() => setViewMode("kanban")}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </Button>
-          </div>
+
         </div>
 
         {loading ? (
           <div className="text-center py-8 text-muted-foreground">
             Carregando atas...
           </div>
-        ) : viewMode === "table" ? (
+        ) : (
           <TabelaOmnia
             columns={columns}
             data={sortedData}
@@ -228,45 +211,6 @@ const Atas = () => {
             sortDirection={sortDirection}
             onSort={handleSort}
           />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {atas.map((ata) => {
-              // Find the actual status from the loaded statuses
-              const currentStatus = statuses.find(s => s.id === ata.statusId)
-              
-              // Map status name to badge variant (same logic as table)
-              let mappedStatus: "nao-iniciado" | "em-andamento" | "concluido" = "nao-iniciado"
-              
-              if (currentStatus) {
-                const statusName = currentStatus.name.toLowerCase()
-                if (statusName.includes('andamento') || statusName.includes('progresso')) {
-                  mappedStatus = "em-andamento"
-                } else if (statusName.includes('concluído') || statusName.includes('finalizado')) {
-                  mappedStatus = "concluido"
-                } else {
-                  mappedStatus = "nao-iniciado"
-                }
-              }
-              
-              return (
-                <CardAtaKanban
-                  key={ata.id}
-                  data={{
-                    id: ata.id,
-                    titulo: ata.title,
-                    descricao: ata.description || "",
-                    dataAssembleia: ata.meetingDate || "",
-                    totalParticipantes: 0, // Mock data doesn't have this
-                    totalDocumentos: ata.attachments?.length || 0,
-                    status: mappedStatus,
-                    prioridade: "media" as const
-                  }}
-                  onView={handleView}
-                  onDelete={handleDelete}
-                />
-              )
-            })}
-          </div>
         )}
       </div>
     </Layout>
