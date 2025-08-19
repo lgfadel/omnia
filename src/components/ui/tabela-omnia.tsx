@@ -91,7 +91,7 @@ export function TabelaOmnia({
                 >
                   <Badge 
                     variant="secondary" 
-                    className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
+                    className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 rounded-md"
                     style={{ backgroundColor: row.statusColor }}
                   >
                     {row.statusName.toUpperCase()}
@@ -125,7 +125,7 @@ export function TabelaOmnia({
         return (
           <Badge 
             variant="secondary" 
-            className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit"
+            className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit rounded-md"
             style={{ backgroundColor: row.statusColor }}
           >
             {row.statusName.toUpperCase()}
@@ -148,8 +148,25 @@ export function TabelaOmnia({
       }
     }
     
-    // Render avatar for secretary and responsible
-    if ((key === "secretary" || key === "responsible") && value && row) {
+    // Render secretary as badge, responsible as avatar
+    if (key === "secretary" && value && row) {
+      const user = value
+      const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
+      
+      return (
+        <div className="flex items-center justify-center">
+          <Badge 
+            variant="secondary" 
+            className="text-white font-medium whitespace-nowrap text-xs px-3 py-2 rounded-md h-8 flex items-center"
+            style={{ backgroundColor: userColor }}
+          >
+            {user.name}
+          </Badge>
+        </div>
+      )
+    }
+    
+    if (key === "responsible" && value && row) {
       const user = value
       const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)

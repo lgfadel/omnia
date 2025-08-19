@@ -19,8 +19,8 @@ import { supabase } from "@/integrations/supabase/client"
 const columns = [
   { key: "title", label: "Título", width: "48" },
   { key: "meetingDate", label: "Data Assembleia", width: "24" },
-  { key: "secretary", label: "Secretário", width: "24" },
   { key: "responsible", label: "Responsável", width: "24" },
+  { key: "secretary", label: "Secretário", width: "24" },
   { key: "status", label: "Status", width: "20" },
   { key: "ticket", label: "Ticket", width: "20" },
   { key: "commentCount", label: "Comentários", width: "16" }
