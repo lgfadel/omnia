@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-The development server runs on `http://localhost:8080/`
+The development server runs on `http://localhost:8080/` (configured in vite.config.ts)
 
 ### Available Scripts
 - `npm run dev` - Start development server
@@ -209,6 +209,24 @@ The development server runs on `http://localhost:8080/`
 
 ## 📈 Melhorias Recentes
 
+### Últimas Atualizações (Agosto 2025)
+- **Refatoração da Tabela Principal**: Reordenação de colunas e melhorias no estilo de badges
+  - Troca de posições entre colunas "Responsável" e "Secretário" para melhor fluxo de dados
+  - Conversão da exibição de secretários de avatares para badges coloridos
+  - Padronização de todos os badges com cantos arredondados (rounded-md)
+  - Equalização de alturas entre elementos badge e avatar
+- **Funcionalidades de Tabela Avançadas**: Implementação de visualização agrupada e controles de status
+  - Adição de seções colapsáveis para organização de dados
+  - Funcionalidade de alteração de status inline com dropdown
+  - Controles de ordenação fixos por status e data de assembleia
+- **Correções de Segurança**: Resolução de políticas RLS para acesso universal
+  - Correção das políticas de segurança para permitir acesso a todos os usuários autenticados
+  - Melhorias na estrutura de permissões para diferentes roles
+- **Melhorias de Layout**: Correções de alinhamento e visual
+  - Remoção de bordas desnecessárias na sidebar
+  - Correções de alinhamento na TopBar
+  - Melhorias gerais na consistência visual
+
 ### Autenticação e Usuários
 - Implementação de recuperação de senha
 - Migração para sistema de roles múltiplos
@@ -222,6 +240,13 @@ The development server runs on `http://localhost:8080/`
 - Correções no preview/download de anexos
 - Melhorias na responsividade
 - Atualização do logo e identidade visual
+- **Padronização Visual**: Implementação de design system consistente
+  - Badges retangulares com cantos arredondados (rounded-md) em toda aplicação
+  - Equalização de alturas entre diferentes elementos de interface
+  - Consistência de cores e espaçamentos seguindo padrões do Tailwind CSS
+- **Melhorias na Sidebar**: Correções de alinhamento e bordas
+  - Remoção de bordas desnecessárias para visual mais limpo
+  - Melhor integração com o layout geral da aplicação
 
 ### Funcionalidades
 - **Sistema de Status**: Correção crítica na exibição de status das atas
@@ -233,6 +258,14 @@ The development server runs on `http://localhost:8080/`
     - Novas variações incluindo Teal, Rose, Violet, Sky, Emerald, Amber e Purple
     - Correção na captura de cores selecionadas no formulário
     - Manutenção de funcionalidades existentes (preview em tempo real, input customizado)
+- **Melhorias na Tabela de Atas**: Aprimoramentos significativos na interface principal
+  - Reordenação de colunas para melhor agrupamento lógico
+  - Conversão da coluna "Secretário" de avatar para badge colorido
+  - Padronização visual com badges retangulares (rounded-md)
+  - Equalização de alturas entre elementos badge e avatar
+  - Funcionalidade de alteração de status inline com dropdown
+  - Visualização agrupada com seções colapsáveis
+  - Controles de ordenação fixos por status e data
 - **Sistema de Comentários**: Melhorias na visualização de anexos
   - Indicador visual (ícone de clipe) para comentários com anexos
   - Contador de anexos ao lado do nome do autor
@@ -265,15 +298,28 @@ The development server runs on `http://localhost:8080/`
   - Servidor de desenvolvimento configurado na porta 8080 (vite.config.ts)
   - Hot Module Replacement (HMR) otimizado para desenvolvimento ágil
   - Configuração de host universal (::) para acesso em diferentes dispositivos
+- **Correções de Segurança e Permissões**: Aprimoramentos nas políticas RLS
+  - Correção das políticas RLS para `omnia_atas` permitindo acesso a todos os usuários autenticados
+  - Resolução de problemas de permissão para usuários não-admin
+  - Implementação de políticas mais granulares para diferentes roles (ADMIN, SECRETARIO, USUARIO)
+  - Melhorias na estrutura de autenticação e autorização
 
 ### Table Enhancements
 - **Column Removal**: Removed "Data Criação" column from atas table for cleaner layout
+- **Column Reordering**: Reorganized columns for better logical grouping and user experience:
+  - Swapped positions of "Responsável" and "Secretário" columns
+  - Improved visual hierarchy and data flow
 - **Column Width Optimization**: Adjusted column widths for better text fitting:
   - Título: 40% width
   - Data Assembleia: 36% width
   - Secretário: 36% width
   - Status: 28% width
   - Comentários: 16% width
+- **Badge Styling Improvements**: Enhanced visual consistency across table elements:
+  - Secretary column now displays as colored badges instead of avatars
+  - Status badges updated with rounded corners (rounded-md) for modern appearance
+  - Consistent height alignment between badge and avatar elements
+  - Improved visual uniformity across all badge components
 
 ### Filter Improvements
 - **Multi-Select Status Filter**: Converted badge-based status filter to dropdown with checkboxes
@@ -281,6 +327,10 @@ The development server runs on `http://localhost:8080/`
   - Shows single status name when one selected
   - Shows "X selecionados" for multiple selections
   - Visual status indicators with colored circles
+- **Status Change Functionality**: Added inline status modification capabilities
+  - Dropdown menu for quick status changes directly from the table
+  - Real-time status updates with immediate visual feedback
+  - Integrated with existing status management system
 
 ### Tag System Enhancements
 - **Dynamic Tag Colors**: Implemented dynamic color system for tags throughout the application
