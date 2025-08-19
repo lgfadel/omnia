@@ -168,14 +168,13 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
             <div>
               <Label htmlFor="assignedTo">Responsável</Label>
               <Select
-                value={watch('assignedTo')}
-                onValueChange={(value) => setValue('assignedTo', value)}
+                value={watch('assignedTo') || undefined}
+                onValueChange={(value) => setValue('assignedTo', value || undefined)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum responsável</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
