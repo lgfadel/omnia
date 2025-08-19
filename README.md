@@ -1,48 +1,194 @@
 # Omnia - Sistema de Gestão de Atas
 
-Omnia é um sistema moderno de gestão de atas de reunião, desenvolvido com React, TypeScript e Supabase. O sistema oferece uma interface intuitiva para criação, edição e acompanhamento de atas, com sistema de comentários, anexos e controle de status.
+Sistema moderno para gestão de atas de reunião com interface intuitiva e funcionalidades avançadas. O Omnia é uma aplicação web completa que oferece controle granular de permissões, gestão de anexos, sistema de comentários em tempo real e interface responsiva.
 
 **Project URL**: https://lovable.dev/projects/4c2091c0-2d80-4db8-8375-50b304a9ba25
 
-## 🚀 Tecnologias Principais
+## 📋 Índice
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: shadcn/ui + Tailwind CSS + Radix UI
-- **Backend**: Supabase (PostgreSQL + Auth + Storage + RLS)
-- **State Management**: Zustand
+- [🏗️ Arquitetura Geral](#️-arquitetura-geral)
+- [🚀 Stack Tecnológico](#-stack-tecnológico)
+- [📁 Arquitetura do Projeto](#-arquitetura-do-projeto)
+- [🔧 Setup and Development](#setup-and-development)
+- [✨ Funcionalidades Principais](#-funcionalidades-principais)
+- [🗄️ Esquema do Banco de Dados](#️-esquema-do-banco-de-dados)
+- [🏗️ Arquitetura de Componentes](#️-arquitetura-de-componentes)
+- [📈 Melhorias Recentes](#-melhorias-recentes)
+- [📋 Padrões de Desenvolvimento](#-padrões-de-desenvolvimento)
+- [🔒 Segurança e Permissões](#-segurança-e-permissões)
+- [⚡ Performance e Otimização](#-performance-e-otimização)
+- [🧪 Testing e Quality Assurance](#-testing-e-quality-assurance)
+- [🚀 Deployment e DevOps](#-deployment-e-devops)
+- [🤝 Contributing](#-contributing)
+- [📚 Recursos Adicionais](#-recursos-adicionais)
+
+## 🏗️ Arquitetura Geral
+
+### Visão Geral da Arquitetura
+O Omnia segue uma arquitetura moderna de aplicação web com separação clara de responsabilidades:
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Frontend      │    │    Supabase      │    │   Storage       │
+│   (React/TS)    │◄──►│   (PostgreSQL)   │◄──►│   (Files)       │
+│                 │    │                  │    │                 │
+│ • Components    │    │ • Database       │    │ • Attachments   │
+│ • Stores        │    │ • Auth           │    │ • Images        │
+│ • Repositories  │    │ • Real-time      │    │ • Documents     │
+│ • Pages         │    │ • RLS Policies   │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+### Padrões Arquiteturais
+
+#### 1. **Repository Pattern**
+- Abstração da camada de dados com interfaces bem definidas
+- Implementação específica para Supabase em `src/repositories/`
+- Facilita testes e mudanças de backend
+
+#### 2. **Store Pattern (Zustand)**
+- Gerenciamento de estado reativo e performático
+- Stores especializados por domínio (`atas.store.ts`, `status.store.ts`)
+- Estado global acessível em toda a aplicação
+
+#### 3. **Component Composition**
+- Componentes reutilizáveis baseados em shadcn/ui
+- Separação entre componentes de UI e de negócio
+- Props drilling minimizado com context e stores
+
+#### 4. **Custom Hooks Pattern**
+- Lógica reutilizável encapsulada (`use-mobile`, `use-toast`)
+- Separação de concerns entre UI e lógica de negócio
+
+#### 5. **Query Pattern**
+- Cache e sincronização de dados otimizada
+- Invalidação automática de cache
+- Loading states e error handling centralizados
+
+## 🚀 Stack Tecnológico
+
+### Frontend Core
+- **React 18** - Framework frontend com Concurrent Features
+- **TypeScript 5.x** - Tipagem estática avançada com strict mode
+- **Vite 5.x** - Build tool com HMR otimizado
+- **Tailwind CSS 3.x** - Framework CSS utility-first com JIT
+
+### Backend & Database
+- **Supabase** - Backend-as-a-Service completo
+  - PostgreSQL 15+ com extensões avançadas
+  - Row Level Security (RLS) para controle granular
+  - Real-time subscriptions via WebSockets
+  - Authentication JWT com múltiplos providers
+  - Storage para arquivos com CDN global
+
+### State Management & Data
+- **Zustand 4.x** - State management com immer integration
+- **React Hook Form 7.x** - Formulários performáticos com validação
+- **Zod 3.x** - Schema validation TypeScript-first
+- **TanStack Query** - Server state management e cache
+
+### UI & Design System
+- **shadcn/ui** - Componentes baseados em Radix UI
+- **Radix UI** - Primitivos acessíveis e unstyled
+- **Lucide React** - Ícones SVG otimizados
+- **next-themes** - Sistema de temas dark/light
+- **Sonner** - Toast notifications elegantes
+
+### Development & Build
+- **ESLint** - Linting com regras customizadas
+- **Prettier** - Code formatting automático
+- **PostCSS** - Processamento CSS avançado
+- **Autoprefixer** - Vendor prefixes automáticos
+
+### Tecnologias Complementares
 - **Routing**: React Router DOM
-- **Forms**: React Hook Form + Zod
-- **Icons**: Lucide React
 - **Drag & Drop**: @dnd-kit
-- **Data Fetching**: TanStack Query
-- **Styling**: Tailwind CSS + CVA (Class Variance Authority)
-- **Development**: Hot Module Replacement (HMR) + ESLint
+- **Styling**: CVA (Class Variance Authority)
 - **Color Management**: Sistema de cores HSL customizado + Seletor de cores avançado
 - **File Handling**: Upload/Download de arquivos com preview e validação
 
 ## 📁 Arquitetura do Projeto
 
+### Organização de Diretórios
+
 ```
 src/
 ├── components/          # Componentes reutilizáveis
+│   ├── ui/             # Componentes base (shadcn/ui)
+│   │   ├── button.tsx  # Botões com variantes
+│   │   ├── input.tsx   # Inputs com validação
+│   │   ├── select.tsx  # Selects customizados
+│   │   └── ...         # Outros primitivos UI
 │   ├── atas/           # Componentes específicos de atas
+│   │   ├── AtaForm.tsx # Formulário de criação/edição
+│   │   ├── AtaDetail.tsx # Visualização detalhada
+│   │   ├── CommentsList.tsx # Lista de comentários
+│   │   └── AttachmentsList.tsx # Gestão de anexos
 │   ├── auth/           # Componentes de autenticação
 │   ├── layout/         # Componentes de layout (TopBar, Sidebar)
 │   ├── secretarios/    # Componentes de gestão de usuários
 │   ├── status/         # Componentes de gestão de status
-│   ├── tags/           # Componentes de gestão de tags
-│   └── ui/             # Componentes UI genéricos (shadcn/ui)
+│   └── tags/           # Componentes de gestão de tags
 ├── contexts/           # Contextos React
 ├── data/              # Dados estáticos e fixtures
+│   └── fixtures.ts    # Dados de teste
 ├── hooks/             # Hooks customizados
+│   ├── use-mobile.ts  # Hook para detecção mobile
+│   ├── use-toast.ts   # Hook para notificações
+│   └── use-auth.ts    # Hook de autenticação
 ├── integrations/      # Integrações com serviços externos
 │   └── supabase/      # Cliente e tipos do Supabase
 ├── lib/               # Funções utilitárias
-├── pages/             # Componentes de página
-├── repositories/      # Camada de acesso a dados
-├── store/             # Stores do Zustand
+│   ├── supabase.ts    # Cliente Supabase
+│   ├── utils.ts       # Funções utilitárias
+│   └── validations.ts # Schemas Zod
+├── pages/             # Componentes de página (React Router)
+│   ├── Atas.tsx       # Lista principal de atas
+│   ├── AtaDetail.tsx  # Detalhes de uma ata
+│   ├── Login.tsx      # Autenticação
+│   └── config/        # Páginas de configuração
+├── repositories/      # Camada de acesso a dados (Repository Pattern)
+│   ├── atasRepo.supabase.ts # Operações de atas
+│   ├── authRepo.supabase.ts # Operações de auth
+│   └── baseRepo.ts    # Repositório base
+├── store/             # Stores do Zustand por domínio
+│   ├── atas.store.ts  # Estado das atas
+│   ├── auth.store.ts  # Estado de autenticação
+│   ├── status.store.ts # Estado dos status
+│   └── tags.store.ts  # Estado das tags
+├── types/              # Definições de tipos TypeScript
+│   ├── database.ts    # Tipos do Supabase
+│   ├── ata.ts         # Tipos de atas
+│   └── user.ts        # Tipos de usuário
 └── main.tsx           # Ponto de entrada da aplicação
+
+supabase/
+├── migrations/         # Migrações versionadas do banco
+│   ├── 20250815014608_*.sql # Criação inicial das tabelas
+│   ├── 20250819180741_*.sql # Políticas RLS
+│   └── 20250819215021_*.sql # Separação de comentários/anexos
+├── functions/          # Edge functions serverless
+│   └── delete-user/    # Função de exclusão de usuário
+└── config.toml         # Configuração do projeto Supabase
 ```
+
+### Convenções de Nomenclatura
+
+#### Arquivos e Diretórios
+- **Componentes**: PascalCase (`AtaForm.tsx`, `CommentsList.tsx`)
+- **Hooks**: camelCase com prefixo `use-` (`use-mobile.ts`)
+- **Stores**: camelCase com sufixo `.store.ts` (`atas.store.ts`)
+- **Repositories**: camelCase com sufixo `.repo.ts` ou `.supabase.ts`
+- **Types**: camelCase (`database.ts`, `ata.ts`)
+- **Utilitários**: camelCase (`utils.ts`, `validations.ts`)
+
+#### Código TypeScript
+- **Interfaces**: PascalCase com prefixo `I` opcional (`Ata`, `IUser`)
+- **Types**: PascalCase (`AtaFormData`, `UserRole`)
+- **Enums**: PascalCase (`Status`, `Priority`)
+- **Constantes**: UPPER_SNAKE_CASE (`DEFAULT_STATUS`, `MAX_FILE_SIZE`)
+- **Funções**: camelCase (`createAta`, `validateForm`)
+- **Variáveis**: camelCase (`currentUser`, `isLoading`)
 
 ## Setup and Development
 
@@ -352,46 +498,451 @@ The development server runs on `http://localhost:8080/` (configured in vite.conf
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Consistent Spacing**: Standardized padding, margins, and component sizing
 
-## Development Guidelines
+## 📋 Padrões de Desenvolvimento
 
-### Code Organization
-- Use TypeScript for all new code
-- Follow React functional component patterns
-- Implement proper error boundaries
-- Use Zustand for state management
-- Leverage React Query for server state
+### Arquitetura de Código
 
-### Styling Conventions
-- Use Tailwind CSS classes
-- Follow OMNIA design system colors
-- Implement responsive design patterns
-- Use shadcn/ui components as base
+#### 1. **Component Architecture**
+```typescript
+// Estrutura padrão de componente
+export interface ComponentProps {
+  // Props tipadas com TypeScript
+}
 
-### Data Flow
-1. **Pages** consume data from Zustand stores
-2. **Stores** use repository pattern for data access
-3. **Repositories** handle Supabase integration
-4. **Components** receive props and emit events
+export const Component: React.FC<ComponentProps> = ({ ...props }) => {
+  // 1. Hooks (useState, useEffect, custom hooks)
+  // 2. Computed values
+  // 3. Event handlers
+  // 4. Render
+  return (
+    <div className="responsive-classes">
+      {/* JSX com acessibilidade */}
+    </div>
+  )
+}
+```
 
-## Deployment
+#### 2. **Store Pattern (Zustand)**
+```typescript
+// Store tipado com actions e state
+interface StoreState {
+  data: DataType[]
+  loading: boolean
+  error: string | null
+}
 
+interface StoreActions {
+  fetchData: () => Promise<void>
+  createItem: (item: CreateItemData) => Promise<void>
+  updateItem: (id: string, data: UpdateItemData) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
+}
+
+export const useStore = create<StoreState & StoreActions>((set, get) => ({
+  // State inicial
+  data: [],
+  loading: false,
+  error: null,
+  
+  // Actions com error handling
+  fetchData: async () => {
+    set({ loading: true, error: null })
+    try {
+      const data = await repository.getAll()
+      set({ data, loading: false })
+    } catch (error) {
+      set({ error: error.message, loading: false })
+    }
+  }
+}))
+```
+
+#### 3. **Repository Pattern**
+```typescript
+// Interface do repositório
+export interface Repository<T> {
+  getAll(): Promise<T[]>
+  getById(id: string): Promise<T | null>
+  create(data: CreateData): Promise<T>
+  update(id: string, data: UpdateData): Promise<T>
+  delete(id: string): Promise<void>
+}
+
+// Implementação Supabase
+export class SupabaseRepository implements Repository<DataType> {
+  constructor(private supabase: SupabaseClient) {}
+  
+  async getAll(): Promise<DataType[]> {
+    const { data, error } = await this.supabase
+      .from('table_name')
+      .select('*')
+    
+    if (error) throw new Error(error.message)
+    return data || []
+  }
+}
+```
+
+### Guidelines de Código
+
+#### TypeScript
+- **Strict Mode**: Sempre ativado (`"strict": true`)
+- **Tipagem Explícita**: Evitar `any`, usar tipos específicos
+- **Interfaces vs Types**: Preferir `interface` para objetos, `type` para unions
+- **Generics**: Usar para componentes e funções reutilizáveis
+- **Utility Types**: Aproveitar `Partial`, `Pick`, `Omit`, etc.
+
+```typescript
+// ✅ Bom
+interface User {
+  id: string
+  name: string
+  email: string
+  roles: UserRole[]
+}
+
+type CreateUserData = Omit<User, 'id'>
+type UpdateUserData = Partial<CreateUserData>
+
+// ❌ Evitar
+const user: any = { /* ... */ }
+```
+
+#### React Patterns
+- **Functional Components**: Sempre usar function components
+- **Custom Hooks**: Extrair lógica reutilizável
+- **Error Boundaries**: Implementar para componentes críticos
+- **Memoization**: Usar `useMemo` e `useCallback` quando necessário
+- **Props Drilling**: Evitar com Context API ou Zustand
+
+```typescript
+// ✅ Custom Hook
+export const useAtas = () => {
+  const store = useAtasStore()
+  
+  useEffect(() => {
+    store.fetchAtas()
+  }, [])
+  
+  return {
+    atas: store.atas,
+    loading: store.loading,
+    createAta: store.createAta,
+    updateAta: store.updateAta
+  }
+}
+
+// ✅ Component usando o hook
+export const AtasList: React.FC = () => {
+  const { atas, loading, createAta } = useAtas()
+  
+  if (loading) return <LoadingSpinner />
+  
+  return (
+    <div className="space-y-4">
+      {atas.map(ata => (
+        <AtaCard key={ata.id} ata={ata} />
+      ))}
+    </div>
+  )
+}
+```
+
+#### Styling & UI
+- **Tailwind CSS**: Utility-first approach
+- **Design System**: Usar tokens do OMNIA design system
+- **Responsive Design**: Mobile-first com breakpoints
+- **Acessibilidade**: ARIA labels, keyboard navigation
+- **Dark Mode**: Suporte com `next-themes`
+
+```typescript
+// ✅ Componente com styling consistente
+export const Button: React.FC<ButtonProps> = ({ 
+  variant = 'default',
+  size = 'md',
+  children,
+  ...props 
+}) => {
+  return (
+    <button
+      className={cn(
+        // Base styles
+        'inline-flex items-center justify-center rounded-md font-medium transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'disabled:pointer-events-none disabled:opacity-50',
+        // Variants
+        {
+          'bg-primary text-primary-foreground hover:bg-primary/90': variant === 'default',
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90': variant === 'destructive',
+        },
+        // Sizes
+        {
+          'h-9 px-3 text-sm': size === 'sm',
+          'h-10 px-4 py-2': size === 'md',
+          'h-11 px-8': size === 'lg',
+        }
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+```
+
+### Fluxo de Dados
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Pages     │───►│   Stores    │───►│ Repositories│───►│  Supabase   │
+│             │    │  (Zustand)  │    │  (Pattern)  │    │ (Database)  │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+       ▲                   ▲                   ▲                   │
+       │                   │                   │                   │
+       │            ┌─────────────┐    ┌─────────────┐              │
+       └────────────│ Components  │    │   Hooks     │              │
+                    │    (UI)     │    │ (Custom)    │              │
+                    └─────────────┘    └─────────────┘              │
+                           ▲                   ▲                   │
+                           │                   │                   │
+                           └───────────────────┘                   │
+                                       │                           │
+                                       ▼                           │
+                               ┌─────────────┐                     │
+                               │ Real-time   │◄────────────────────┘
+                               │ Updates     │
+                               └─────────────┘
+```
+
+1. **Pages** consomem dados dos Zustand stores
+2. **Stores** usam repository pattern para acesso aos dados
+3. **Repositories** fazem interface com Supabase
+4. **Components** recebem props e emitem eventos
+5. **Hooks** encapsulam lógica reutilizável
+6. **Real-time** updates via Supabase subscriptions
+
+### Validação e Formulários
+
+```typescript
+// Schema Zod para validação
+export const ataSchema = z.object({
+  title: z.string().min(1, 'Título é obrigatório'),
+  description: z.string().optional(),
+  meetingDate: z.string().optional(),
+  secretaryId: z.string().optional(),
+  responsibleId: z.string().optional(),
+  statusId: z.string().min(1, 'Status é obrigatório'),
+  ticket: z.string().optional(),
+  tags: z.array(z.string()).default([])
+})
+
+export type AtaFormData = z.infer<typeof ataSchema>
+
+// Componente de formulário
+export const AtaForm: React.FC<AtaFormProps> = ({ ata, onSubmit }) => {
+  const form = useForm<AtaFormData>({
+    resolver: zodResolver(ataSchema),
+    defaultValues: ata || {
+      title: '',
+      description: '',
+      tags: []
+    }
+  })
+  
+  const handleSubmit = (data: AtaFormData) => {
+    onSubmit(data)
+  }
+  
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Título</FormLabel>
+              <FormControl>
+                <Input placeholder="Digite o título da ata" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Outros campos */}
+      </form>
+    </Form>
+  )
+}
+```
+
+## 🔒 Segurança e Permissões
+
+### Row Level Security (RLS)
+O Omnia implementa controle de acesso granular através de políticas RLS do PostgreSQL:
+
+```sql
+-- Exemplo de política RLS para omnia_atas
+CREATE POLICY "Users can view all atas" ON public.omnia_atas
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Admins and secretarios can create atas" ON public.omnia_atas
+  FOR INSERT WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.omnia_users 
+      WHERE 'ADMIN' = ANY(roles) OR 'SECRETARIO' = ANY(roles)
+    )
+  );
+```
+
+### Sistema de Roles
+- **ADMIN**: Acesso total ao sistema
+- **SECRETARIO**: Pode criar e editar atas, gerenciar comentários
+- **USUARIO**: Visualização e comentários limitados
+
+### Validação de Dados
+- **Frontend**: Validação com Zod schemas
+- **Backend**: Constraints de banco de dados
+- **Sanitização**: Prevenção de XSS e SQL injection
+- **Upload de Arquivos**: Validação de tipo e tamanho
+
+## ⚡ Performance e Otimização
+
+### Frontend Optimizations
+- **Code Splitting**: Lazy loading de rotas
+- **Bundle Optimization**: Tree shaking com Vite
+- **Image Optimization**: Lazy loading e formatos modernos
+- **Memoization**: React.memo, useMemo, useCallback
+- **Virtual Scrolling**: Para listas grandes
+
+### Database Optimizations
+- **Indexes**: Otimização de queries frequentes
+- **Pagination**: Limit/offset para grandes datasets
+- **Real-time**: Subscriptions otimizadas
+- **Connection Pooling**: Gerenciamento eficiente de conexões
+
+### Caching Strategy
+```typescript
+// Exemplo de cache com TanStack Query
+export const useAtas = () => {
+  return useQuery({
+    queryKey: ['atas'],
+    queryFn: () => atasRepository.getAll(),
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    cacheTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnWindowFocus: false
+  })
+}
+```
+
+## 🧪 Testing e Quality Assurance
+
+### Testing Strategy
+- **Unit Tests**: Componentes e funções utilitárias
+- **Integration Tests**: Fluxos de dados entre camadas
+- **E2E Tests**: Jornadas críticas do usuário
+- **Manual Testing**: Validação de UX e acessibilidade
+
+### Code Quality
+- **ESLint**: Linting com regras customizadas
+- **Prettier**: Formatação automática
+- **TypeScript**: Type checking rigoroso
+- **Husky**: Git hooks para qualidade
+
+### Performance Monitoring
+- **Lighthouse**: Métricas de performance
+- **Bundle Analyzer**: Análise de tamanho do bundle
+- **Real User Monitoring**: Métricas de usuários reais
+
+## 🚀 Deployment e DevOps
+
+### Ambientes
+- **Development**: Local com hot reload
+- **Staging**: Preview de features
+- **Production**: Ambiente live
+
+### CI/CD Pipeline
+1. **Code Push**: Trigger automático
+2. **Quality Checks**: Linting, type checking
+3. **Build**: Otimização e bundling
+4. **Deploy**: Publicação automática
+5. **Health Check**: Validação pós-deploy
+
+### Deployment via Lovable
 Simply open [Lovable](https://lovable.dev/projects/4c2091c0-2d80-4db8-8375-50b304a9ba25) and click on Share -> Publish.
 
-### Custom Domain
+#### Custom Domain
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 Read more: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
-## Contributing
+### Environment Variables
+```bash
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+
+# Optional: Custom configurations
+VITE_APP_NAME=Omnia
+VITE_MAX_FILE_SIZE=10485760  # 10MB
+```
+
+## 🤝 Contributing
 
 ### Development Workflow
-1. Create feature branch from main
-2. Implement changes following guidelines
-3. Test thoroughly in development environment
-4. Update this README with architectural changes
-5. Submit pull request with detailed description
+1. **Fork & Clone**: Criar fork do repositório
+2. **Feature Branch**: `git checkout -b feature/nova-funcionalidade`
+3. **Development**: Implementar seguindo guidelines
+4. **Testing**: Validar funcionalidade e regressões
+5. **Documentation**: Atualizar README e comentários
+6. **Pull Request**: Submeter com descrição detalhada
 
-### Testing
-- Manual testing in development server
-- Cross-browser compatibility verification
-- Mobile responsiveness testing
-- Database operation validation
+### Commit Convention
+```bash
+# Formato: tipo(escopo): descrição
+feat(atas): adicionar filtro por data
+fix(auth): corrigir logout automático
+docs(readme): atualizar guia de instalação
+style(ui): ajustar espaçamento dos botões
+refactor(store): simplificar lógica de estado
+test(components): adicionar testes unitários
+```
+
+### Code Review Checklist
+- [ ] Código segue padrões estabelecidos
+- [ ] Tipagem TypeScript adequada
+- [ ] Componentes acessíveis (ARIA)
+- [ ] Performance otimizada
+- [ ] Testes adequados
+- [ ] Documentação atualizada
+- [ ] Sem vazamentos de memória
+- [ ] Responsividade mobile
+
+### Testing Guidelines
+- **Manual Testing**: Testar em desenvolvimento
+- **Cross-browser**: Chrome, Firefox, Safari, Edge
+- **Mobile Testing**: iOS Safari, Chrome Mobile
+- **Accessibility**: Screen readers, keyboard navigation
+- **Performance**: Lighthouse scores > 90
+
+## 📚 Recursos Adicionais
+
+### Documentação Técnica
+- [Documentação das Atas](./atas.md) - Guia completo do sistema de atas
+- [Supabase Docs](https://supabase.com/docs) - Documentação oficial
+- [React Docs](https://react.dev) - Documentação do React
+- [Tailwind CSS](https://tailwindcss.com/docs) - Guia de classes CSS
+
+### Ferramentas de Desenvolvimento
+- **VS Code Extensions**:
+  - TypeScript Importer
+  - Tailwind CSS IntelliSense
+  - ES7+ React/Redux/React-Native snippets
+  - Prettier - Code formatter
+  - ESLint
+
+### Troubleshooting
+- **Build Errors**: Verificar versões de dependências
+- **Type Errors**: Regenerar tipos do Supabase
+- **Performance Issues**: Analisar bundle size
+- **Auth Issues**: Verificar configuração RLS
+- **Real-time Issues**: Verificar subscriptions Supabase

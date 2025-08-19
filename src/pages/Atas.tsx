@@ -290,13 +290,21 @@ const Atas = () => {
               </div>
               
               <Button
-                variant={showOnlyMyAtas ? "default" : "outline"}
+                variant="default"
                 size="sm"
                 onClick={() => setShowOnlyMyAtas(!showOnlyMyAtas)}
-                className="h-10 px-4 gap-2"
+                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+                  showOnlyMyAtas 
+                    ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                    : 'shadow-sm hover:shadow-md'
+                }`}
+                style={{
+                  backgroundColor: showOnlyMyAtas ? '#FBBF24' : '#F3F4F6',
+                  borderColor: showOnlyMyAtas ? '#FBBF24' : '#D1D5DB',
+                  color: showOnlyMyAtas ? 'white' : '#6B7280'
+                }}
               >
-                <User className="w-4 h-4" />
-                Minhas Atas
+                {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
               </Button>
             </div>
           </div>
