@@ -148,32 +148,29 @@ export const secretariosRepoSupabase = {
   async remove(id: string): Promise<boolean> {
     console.log('SecretariosRepo: Deleting user:', id)
     
-    // Verificar se o usuário tem atas vinculadas
-    const { data: atasCount, error: countError } = await supabase
-      .from('omnia_atas')
-      .select('id')
-      .eq('secretary_id', id)
-      .limit(1)
-    
-    if (countError) {
-      console.error('SecretariosRepo: Error checking user atas:', countError)
-      throw new Error(`Erro ao verificar atas do usuário: ${countError.message}`)
-    }
-    
-    if (atasCount && atasCount.length > 0) {
-      throw new Error('Não é possível excluir este usuário pois existem atas vinculadas a ele. Remova ou transfira as atas primeiro.')
-    }
-    
-    const { error } = await supabase
-      .from('omnia_users')
-      .delete()
-      .eq('id', id)
-    
-    if (error) {
+    try {
+      // Use the delete-user edge function to handle both omnia_users and auth.users deletion
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: id }
+      })
+      
+      if (error) {
+        console.error('SecretariosRepo: Error calling delete-user function:', error)
+        throw new Error(`Erro ao excluir usuário: ${error.message}`)
+      }
+      
+      if (!data?.success) {
+        const errorMessage = data?.error || 'Erro desconhecido ao excluir usuário'
+        console.error('SecretariosRepo: Delete user function returned error:', errorMessage)
+        throw new Error(errorMessage)
+      }
+      
+      console.log('SecretariosRepo: User deleted successfully:', data.deletedUser)
+      return true
+      
+    } catch (error: any) {
       console.error('SecretariosRepo: Error deleting user:', error)
-      throw new Error(`Erro ao excluir usuário: ${error.message}`)
+      throw new Error(error.message || 'Erro ao excluir usuário')
     }
-    
-    return true
   }
 }
