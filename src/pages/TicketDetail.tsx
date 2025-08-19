@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PriorityBadge } from '@/components/ui/priority-badge';
-import { CommentsList } from '@/components/atas/CommentsList';
-import { CommentInput } from '@/components/atas/CommentInput';
-import { AttachmentsList } from '@/components/atas/AttachmentsList';
+import { TicketCommentsList } from '@/components/tickets/TicketCommentsList';
+import { TicketCommentInput } from '@/components/tickets/TicketCommentInput';
+import { TicketAttachmentsList } from '@/components/tickets/TicketAttachmentsList';
+import { TicketFileUploader } from '@/components/tickets/TicketFileUploader';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
@@ -21,6 +22,7 @@ export default function TicketDetail() {
   const navigate = useNavigate();
   const [ticket, setTicket] = useState<Tarefa | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   const { getTarefaById, deleteTarefa } = useTarefasStore();
   const { statuses, loadStatuses } = useTarefaStatusStore();
@@ -70,6 +72,10 @@ export default function TicketDetail() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   const getStatusById = (statusId: string) => {
@@ -154,31 +160,32 @@ export default function TicketDetail() {
               </CardContent>
             </Card>
 
-            {ticket.attachments && ticket.attachments.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Anexos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AttachmentsList
-                    attachments={ticket.attachments}
-                    canDelete={false}
-                  />
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Anexos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <TicketFileUploader 
+                  ticketId={ticket.id} 
+                  onFileUploaded={handleRefresh}
+                />
+                <TicketAttachmentsList ticketId={ticket.id} />
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Comentários ({ticket.commentCount})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <CommentInput 
-                  onSubmit={async () => {
-                    // TODO: Implementar criação de comentários para tickets
-                  }}
+                <TicketCommentInput 
+                  ticketId={ticket.id}
+                  onCommentAdded={handleRefresh}
                 />
-                <CommentsList comments={ticket.comments || []} />
+                <TicketCommentsList 
+                  ticketId={ticket.id}
+                  onCommentsChange={handleRefresh}
+                />
               </CardContent>
             </Card>
           </div>

@@ -103,7 +103,6 @@ export type Database = {
           mime_type: string | null
           name: string
           size_kb: number | null
-          ticket_id: string | null
           uploaded_by: string | null
           url: string
         }
@@ -115,7 +114,6 @@ export type Database = {
           mime_type?: string | null
           name: string
           size_kb?: number | null
-          ticket_id?: string | null
           uploaded_by?: string | null
           url: string
         }
@@ -127,7 +125,6 @@ export type Database = {
           mime_type?: string | null
           name?: string
           size_kb?: number | null
-          ticket_id?: string | null
           uploaded_by?: string | null
           url?: string
         }
@@ -163,7 +160,6 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
-          ticket_id: string | null
         }
         Insert: {
           ata_id: string
@@ -172,7 +168,6 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          ticket_id?: string | null
         }
         Update: {
           ata_id?: string
@@ -181,7 +176,6 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          ticket_id?: string | null
         }
         Relationships: [
           {
@@ -268,6 +262,66 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      omnia_ticket_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string | null
+          name: string
+          size_kb: number | null
+          ticket_id: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          size_kb?: number | null
+          ticket_id: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          size_kb?: number | null
+          ticket_id?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
+      omnia_ticket_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ticket_id?: string
         }
         Relationships: []
       }
