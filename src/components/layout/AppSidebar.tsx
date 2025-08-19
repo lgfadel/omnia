@@ -31,6 +31,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import { useRoles } from "@/hooks/useRoles"
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -49,6 +50,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed"
   const navigate = useNavigate()
   const { user, userProfile, signOut } = useAuth()
+  const { canAccessConfig } = useRoles()
   const [configExpanded, setConfigExpanded] = useState(false)
 
   const handleSignOut = async () => {
@@ -108,52 +110,54 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Configuration */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  onClick={() => setConfigExpanded(!configExpanded)}
-                  className="hover:bg-sidebar-accent/50"
-                >
-                  <Settings className="w-4 h-4" />
-                  {!collapsed && (
-                    <>
-                      <span>Configurações</span>
-                      {configExpanded ? (
-                        <ChevronDown className="w-4 h-4 ml-auto" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 ml-auto" />
-                      )}
-                    </>
+        {/* Configuration - Only for ADMIN */}
+        {canAccessConfig() && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    onClick={() => setConfigExpanded(!configExpanded)}
+                    className="hover:bg-sidebar-accent/50"
+                  >
+                    <Settings className="w-4 h-4" />
+                    {!collapsed && (
+                      <>
+                        <span>Configurações</span>
+                        {configExpanded ? (
+                          <ChevronDown className="w-4 h-4 ml-auto" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 ml-auto" />
+                        )}
+                      </>
+                    )}
+                  </SidebarMenuButton>
+                  {configExpanded && !collapsed && (
+                    <SidebarMenuSub>
+                      {configItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton asChild>
+                            <NavLink 
+                              to={item.url}
+                              className={({ isActive }) =>
+                                isActive 
+                                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
+                                  : "hover:bg-sidebar-accent/50"
+                              }
+                            >
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </NavLink>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
                   )}
-                </SidebarMenuButton>
-                {configExpanded && !collapsed && (
-                  <SidebarMenuSub>
-                    {configItems.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
-                        <SidebarMenuSubButton asChild>
-                          <NavLink 
-                            to={item.url}
-                            className={({ isActive }) =>
-                              isActive 
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                                : "hover:bg-sidebar-accent/50"
-                            }
-                          >
-                            <item.icon className="w-4 h-4" />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                )}
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       
       {/* User Section */}

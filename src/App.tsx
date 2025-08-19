@@ -5,8 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AccessDenied from "./pages/AccessDenied";
 import Atas from "./pages/Atas";
 import AtaNew from "./pages/AtaNew";
 import AtaDetail from "./pages/AtaDetail";
@@ -29,6 +31,7 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Index />
@@ -55,19 +58,19 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/config/status" element={
-                <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigStatus />
-                </ProtectedRoute>
+                </RoleProtectedRoute>
               } />
               <Route path="/config/usuarios" element={
-                <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigUsuarios />
-                </ProtectedRoute>
+                </RoleProtectedRoute>
               } />
               <Route path="/config/tags" element={
-                <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigTags />
-                </ProtectedRoute>
+                </RoleProtectedRoute>
               } />
               <Route path="/change-password" element={
                 <ProtectedRoute>
