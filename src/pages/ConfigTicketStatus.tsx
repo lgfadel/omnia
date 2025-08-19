@@ -1,12 +1,12 @@
 import { Layout } from '@/components/layout/Layout';
 import { TicketStatusList } from '@/components/tickets/TicketStatusList';
 import { TicketStatusForm } from '@/components/tickets/TicketStatusForm';
-import { useTicketStatusStore } from '@/store/ticketStatus.store';
-import { TicketStatus } from '@/repositories/ticketStatusRepo.supabase';
+import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { useState } from 'react';
 
 export default function ConfigTicketStatus() {
-  const [editingStatus, setEditingStatus] = useState<TicketStatus | undefined>(undefined);
+  const [editingStatus, setEditingStatus] = useState<TarefaStatus | undefined>(undefined);
   const { 
     statuses, 
     loading, 
@@ -16,7 +16,7 @@ export default function ConfigTicketStatus() {
     updateStatus, 
     deleteStatus, 
     reorderStatuses 
-  } = useTicketStatusStore();
+  } = useTarefaStatusStore();
 
   const handleCreateStatus = async (data: { name: string; color: string }) => {
     await createStatus({
@@ -26,7 +26,7 @@ export default function ConfigTicketStatus() {
     });
   };
 
-  const handleUpdateStatus = async (id: string, statusData: Partial<Omit<TicketStatus, 'id'>>) => {
+  const handleUpdateStatus = async (id: string, statusData: Partial<Omit<TarefaStatus, 'id'>>) => {
     return await updateStatus(id, statusData);
   };
 
@@ -34,11 +34,11 @@ export default function ConfigTicketStatus() {
     return await deleteStatus(id);
   };
 
-  const handleReorderStatuses = async (newStatuses: TicketStatus[]) => {
+  const handleReorderStatuses = async (newStatuses: TarefaStatus[]) => {
     await reorderStatuses(newStatuses);
   };
 
-  const handleEditStatus = (status: TicketStatus) => {
+  const handleEditStatus = (status: TarefaStatus) => {
     setEditingStatus(status);
   };
 

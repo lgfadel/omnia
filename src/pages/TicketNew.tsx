@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { TicketForm } from '@/components/tickets/TicketForm';
-import { useTicketsStore } from '@/store/tickets.store';
+import { useTarefasStore } from '@/store/tarefas.store';
 import { useSecretariosStore } from '@/store/secretarios.store';
-import { Ticket } from '@/repositories/ticketsRepo.supabase';
+import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { UserRef } from '@/data/fixtures';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
@@ -13,17 +13,17 @@ import { Button } from '@/components/ui/button';
 export default function TicketNew() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const { createTicket } = useTicketsStore();
+  const { createTarefa } = useTarefasStore();
   const { secretarios, loadSecretarios } = useSecretariosStore();
 
   useEffect(() => {
     loadSecretarios();
   }, [loadSecretarios]);
 
-  const handleSubmit = async (ticketData: Partial<Ticket>) => {
+  const handleSubmit = async (ticketData: Partial<Tarefa>) => {
     setLoading(true);
     try {
-      const newTicket = await createTicket({
+      const newTicket = await createTarefa({
         title: ticketData.title!,
         description: ticketData.description,
         priority: ticketData.priority!,

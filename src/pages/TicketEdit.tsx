@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { TicketForm } from '@/components/tickets/TicketForm';
-import { useTicketsStore } from '@/store/tickets.store';
+import { useTarefasStore } from '@/store/tarefas.store';
 import { useSecretariosStore } from '@/store/secretarios.store';
-import { Ticket } from '@/repositories/ticketsRepo.supabase';
+import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { UserRef } from '@/data/fixtures';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
@@ -13,11 +13,11 @@ import { Button } from '@/components/ui/button';
 export default function TicketEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [ticket, setTicket] = useState<Tarefa | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  const { getTicketById, updateTicket } = useTicketsStore();
+  const { getTarefaById, updateTarefa } = useTarefasStore();
   const { secretarios, loadSecretarios } = useSecretariosStore();
 
   useEffect(() => {
@@ -30,8 +30,8 @@ export default function TicketEdit() {
       
       setInitialLoading(true);
       try {
-        const ticketData = await getTicketById(id);
-        setTicket(ticketData);
+        const ticket = await getTarefaById(id);
+        setTicket(ticket);
       } catch (error) {
         console.error('Erro ao carregar ticket:', error);
         toast({
@@ -46,14 +46,14 @@ export default function TicketEdit() {
     };
 
     loadTicket();
-  }, [id, getTicketById, navigate]);
+  }, [id, getTarefaById, navigate]);
 
-  const handleSubmit = async (ticketData: Partial<Ticket>) => {
+  const handleSubmit = async (ticketData: Partial<Tarefa>) => {
     if (!ticket) return;
     
     setLoading(true);
     try {
-      const updatedTicket = await updateTicket(ticket.id, {
+      const updatedTicket = await updateTarefa(ticket.id, {
         title: ticketData.title,
         description: ticketData.description,
         priority: ticketData.priority,

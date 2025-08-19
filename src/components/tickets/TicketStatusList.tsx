@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { TicketStatus } from "@/repositories/ticketStatusRepo.supabase"
+import { TarefaStatus } from "@/repositories/tarefaStatusRepo.supabase"
 import {
   DndContext,
   closestCenter,
@@ -34,17 +34,17 @@ import {
 } from '@dnd-kit/utilities'
 
 interface TicketStatusListProps {
-  statuses: TicketStatus[]
-  onEdit: (status: TicketStatus) => void
+  statuses: TarefaStatus[]
+  onEdit: (status: TarefaStatus) => void
   onDelete: (id: string) => void
   onCreate: () => void
-  onReorder: (statuses: TicketStatus[]) => void
+  onReorder: (statuses: TarefaStatus[]) => void
   isLoading?: boolean
 }
 
 interface SortableTicketStatusItemProps {
-  status: TicketStatus
-  onEdit: (status: TicketStatus) => void
+  status: TarefaStatus
+  onEdit: (status: TarefaStatus) => void
   onDelete: (id: string) => void
   isLoading?: boolean
 }

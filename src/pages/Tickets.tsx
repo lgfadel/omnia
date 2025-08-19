@@ -7,33 +7,33 @@ import { Input } from '@/components/ui/input';
 import { TabelaEureka } from '@/components/ui/tabela-eureka';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Badge } from '@/components/ui/badge';
-import { useTicketsStore } from '@/store/tickets.store';
-import { useTicketStatusStore } from '@/store/ticketStatus.store';
-import { Ticket } from '@/repositories/ticketsRepo.supabase';
+import { useTarefasStore } from '@/store/tarefas.store';
+import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Tickets() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const { 
-    tickets, 
+    tarefas, 
     loading, 
     error, 
-    loadTickets, 
-    searchTickets,
+    loadTarefas, 
+    searchTarefas,
     clearError 
-  } = useTicketsStore();
+  } = useTarefasStore();
   const { 
     statuses, 
     loadStatuses 
-  } = useTicketStatusStore();
+  } = useTarefaStatusStore();
 
   useEffect(() => {
-    loadTickets();
+    loadTarefas();
     loadStatuses();
-  }, [loadTickets, loadStatuses]);
+  }, [loadTarefas, loadStatuses]);
 
   // Set up real-time listener
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         () => {
-          loadTickets();
+    loadTarefas();
         }
       )
       .subscribe();
@@ -55,15 +55,20 @@ export default function Tickets() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadTickets]);
+  }, [loadTarefas]);
 
   useEffect(() => {
-    if (searchQuery.trim()) {
-      searchTickets(searchQuery);
-    } else {
-      setFilteredTickets(tickets);
-    }
-  }, [searchQuery, tickets, searchTickets]);
+    const handleSearch = async () => {
+      if (searchQuery.trim()) {
+        const results = await searchTarefas(searchQuery);
+        setFilteredTickets(results);
+      } else {
+        setFilteredTickets(tarefas);
+      }
+    };
+    
+    handleSearch();
+  }, [searchQuery, tarefas, searchTarefas]);
 
   const getStatusById = (statusId: string) => {
     return statuses.find(s => s.id === statusId);
@@ -134,7 +139,7 @@ export default function Tickets() {
             <p className="text-destructive mb-4">{error}</p>
             <Button onClick={() => {
               clearError();
-              loadTickets();
+              loadTarefas();
             }}>
               Tentar Novamente
             </Button>

@@ -1,13 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TicketPriority } from "@/repositories/ticketsRepo.supabase";
+import { TarefaPrioridade } from "@/repositories/tarefasRepo.supabase";
 
 interface PriorityBadgeProps {
-  priority: TicketPriority;
+  priority: TarefaPrioridade;
   className?: string;
 }
 
-const priorityConfig: Record<TicketPriority, { label: string; color: string }> = {
+const priorityConfig: Record<TarefaPrioridade, { label: string; color: string }> = {
   ALTA: {
     label: "Alta",
     color: "hsl(var(--destructive))"

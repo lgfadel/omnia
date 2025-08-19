@@ -12,10 +12,10 @@ import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
 import { TicketStatusSelect } from './TicketStatusSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ticket, TicketPriority } from '@/repositories/ticketsRepo.supabase';
-import { TicketStatus } from '@/repositories/ticketStatusRepo.supabase';
+import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
+import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { UserRef, Attachment } from '@/data/fixtures';
-import { useTicketStatusStore } from '@/store/ticketStatus.store';
+import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { useAuth } from '@/contexts/AuthContext';
 
 const ticketSchema = z.object({
@@ -31,16 +31,16 @@ const ticketSchema = z.object({
 type TicketFormData = z.infer<typeof ticketSchema>;
 
 interface TicketFormProps {
-  ticket?: Ticket;
+  ticket?: Tarefa;
   users: UserRef[];
-  onSubmit: (data: Partial<Ticket>) => Promise<void>;
+  onSubmit: (data: Partial<Tarefa>) => Promise<void>;
   loading?: boolean;
 }
 
 export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps) {
   const [tags, setTags] = useState<string[]>(ticket?.tags || []);
   const [attachments, setAttachments] = useState<Attachment[]>(ticket?.attachments || []);
-  const { statuses, loadStatuses } = useTicketStatusStore();
+  const { statuses, loadStatuses } = useTarefaStatusStore();
   const { userProfile } = useAuth();
 
   const {
@@ -75,10 +75,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
   }, [statuses, ticket, setValue]);
 
   const handleFormSubmit = async (data: TicketFormData) => {
-    const ticketData: Partial<Ticket> = {
+    const ticketData: Partial<Tarefa> = {
       title: data.title,
       description: data.description || undefined,
-      priority: data.priority as TicketPriority,
+      priority: data.priority as TarefaPrioridade,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       ticket: data.ticket || undefined,
       statusId: data.statusId,
@@ -132,7 +132,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
               <Label htmlFor="priority">Prioridade</Label>
               <Select
                 value={watch('priority')}
-                onValueChange={(value) => setValue('priority', value as TicketPriority)}
+                onValueChange={(value) => setValue('priority', value as TarefaPrioridade)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a prioridade" />

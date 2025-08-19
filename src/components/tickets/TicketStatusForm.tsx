@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TicketStatus } from "@/repositories/ticketStatusRepo.supabase"
+import { TarefaStatus } from "@/repositories/tarefaStatusRepo.supabase"
 
 const ticketStatusSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(50, "Nome deve ter no máximo 50 caracteres"),
@@ -17,7 +17,7 @@ const ticketStatusSchema = z.object({
 type TicketStatusFormData = z.infer<typeof ticketStatusSchema>
 
 interface TicketStatusFormProps {
-  status?: TicketStatus
+  status?: TarefaStatus
   onSubmit: (data: TicketStatusFormData) => Promise<void>
   onCancel: () => void
   isLoading?: boolean

@@ -8,9 +8,9 @@ import { PriorityBadge } from '@/components/ui/priority-badge';
 import { CommentsList } from '@/components/atas/CommentsList';
 import { CommentInput } from '@/components/atas/CommentInput';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
-import { useTicketsStore } from '@/store/tickets.store';
-import { useTicketStatusStore } from '@/store/ticketStatus.store';
-import { Ticket } from '@/repositories/ticketsRepo.supabase';
+import { useTarefasStore } from '@/store/tarefas.store';
+import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { ArrowLeft, Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -19,11 +19,11 @@ import { ptBR } from 'date-fns/locale';
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [ticket, setTicket] = useState<Tarefa | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const { getTicketById, deleteTicket } = useTicketsStore();
-  const { statuses, loadStatuses } = useTicketStatusStore();
+  const { getTarefaById, deleteTarefa } = useTarefasStore();
+  const { statuses, loadStatuses } = useTarefaStatusStore();
 
   useEffect(() => {
     loadStatuses();
@@ -35,7 +35,7 @@ export default function TicketDetail() {
       
       setLoading(true);
       try {
-        const ticketData = await getTicketById(id);
+        const ticketData = await getTarefaById(id);
         setTicket(ticketData);
       } catch (error) {
         console.error('Erro ao carregar ticket:', error);
@@ -50,13 +50,13 @@ export default function TicketDetail() {
     };
 
     loadTicket();
-  }, [id, getTicketById]);
+  }, [id, getTarefaById]);
 
   const handleDelete = async () => {
     if (!ticket || !confirm('Tem certeza que deseja deletar este ticket?')) return;
 
     try {
-      await deleteTicket(ticket.id);
+      await deleteTarefa(ticket.id);
       toast({
         title: 'Ticket deletado',
         description: 'O ticket foi deletado com sucesso.',

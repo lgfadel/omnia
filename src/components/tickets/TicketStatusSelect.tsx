@@ -16,10 +16,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { TicketStatus } from "@/repositories/ticketStatusRepo.supabase";
+import { TarefaStatus } from "@/repositories/tarefaStatusRepo.supabase";
 
 interface TicketStatusSelectProps {
-  statuses: TicketStatus[];
+  statuses: TarefaStatus[];
   value?: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
