@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
 import { FileUploader } from "@/components/atas/FileUploader"
-import { Edit, FileDown, Archive, Clock } from "lucide-react"
+import { Edit, FileDown, Archive, Clock, ChevronDown } from "lucide-react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
@@ -20,7 +21,7 @@ import { Ata, FIXTURE_USERS } from "@/data/fixtures"
 const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getAtaById, addComment, updateComment, addAttachment, removeAttachment, removeComment, statuses, loadStatuses } = useAtasStore()
+  const { getAtaById, addComment, updateComment, addAttachment, removeAttachment, removeComment, updateAta, statuses, loadStatuses } = useAtasStore()
   const { tags, loadTags } = useTagsStore()
   
   const [ata, setAta] = useState<Ata | null>(null)
@@ -108,6 +109,18 @@ const AtaDetail = () => {
     alert("Funcionalidade de arquivamento será implementada")
   }
 
+  const handleStatusChange = async (statusId: string) => {
+    if (!id || !ata) return
+    
+    try {
+      await updateAta(id, { statusId })
+      // Reload ata to get updated status
+      await loadAta()
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error)
+    }
+  }
+
   if (loading) {
     return (
       <Layout>
@@ -145,12 +158,37 @@ const AtaDetail = () => {
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">{ata.title}</h1>
             {status && (
-              <Badge 
-                style={{ backgroundColor: status.color, color: 'white' }}
-                className="border-none"
-              >
-                {status.name}
-              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-auto p-0 hover:bg-transparent"
+                  >
+                    <Badge 
+                      style={{ backgroundColor: status.color, color: 'white' }}
+                      className="border-none cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
+                    >
+                      {status.name}
+                      <ChevronDown className="w-3 h-3" />
+                    </Badge>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {statuses.map((statusOption) => (
+                    <DropdownMenuItem
+                      key={statusOption.id}
+                      onClick={() => handleStatusChange(statusOption.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: statusOption.color }}
+                      />
+                      {statusOption.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           

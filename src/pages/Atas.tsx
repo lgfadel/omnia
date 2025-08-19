@@ -33,8 +33,8 @@ const Atas = () => {
   
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [sortField, setSortField] = useState<string>("")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [sortField, setSortField] = useState<string>("meetingDate")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [showOnlyMyAtas, setShowOnlyMyAtas] = useState(false)
 
   useEffect(() => {
@@ -125,8 +125,17 @@ const Atas = () => {
   const sortedData = [...tableData].sort((a, b) => {
     if (!sortField) return 0
     
-    const aValue = a[sortField as keyof typeof a]
-    const bValue = b[sortField as keyof typeof b]
+    let aValue = a[sortField as keyof typeof a]
+    let bValue = b[sortField as keyof typeof b]
+    
+    // Special handling for date fields
+    if (sortField === 'meetingDate') {
+      // Convert back to Date objects for proper comparison
+      const aDate = a.meetingDate === '-' ? new Date(0) : new Date(atas.find(ata => ata.id === a.id)?.meetingDate + 'T00:00:00' || 0)
+      const bDate = b.meetingDate === '-' ? new Date(0) : new Date(atas.find(ata => ata.id === b.id)?.meetingDate + 'T00:00:00' || 0)
+      aValue = aDate.getTime()
+      bValue = bDate.getTime()
+    }
     
     if (aValue < bValue) return sortDirection === "asc" ? -1 : 1
     if (aValue > bValue) return sortDirection === "asc" ? 1 : -1
