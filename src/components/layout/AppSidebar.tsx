@@ -65,7 +65,7 @@ export function AppSidebar() {
     >
       <SidebarContent>
         {/* Logo Area */}
-        <div className="p-4 border-b border-sidebar-border">
+        <div className="p-4">
           <div className="flex items-center justify-center h-12">
             {!collapsed ? (
               <img 
