@@ -134,7 +134,7 @@ export function AtaForm({
                       user.roles.includes('SECRETARIO') || user.roles.includes('ADMIN')
                     ).map(user => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : 'Secretário'})
+                        {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -150,7 +150,7 @@ export function AtaForm({
                   <SelectContent>
                     {users.map(user => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.roles.includes('ADMIN') ? 'Admin' : user.roles.includes('SECRETARIO') ? 'Secretário' : 'Usuário'})
+                        {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
