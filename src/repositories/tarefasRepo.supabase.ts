@@ -97,6 +97,13 @@ export const tarefasRepoSupabase = {
   async create(tarefa: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Tarefa> {
     const { data: currentUser } = await supabase.auth.getUser();
     
+    // Get the omnia_users id based on auth_user_id
+    const { data: userProfile } = await supabase
+      .from('omnia_users')
+      .select('id')
+      .eq('auth_user_id', currentUser?.user?.id)
+      .single();
+    
     const { data, error } = await supabase
       .from('omnia_tickets')
       .insert({
@@ -107,7 +114,7 @@ export const tarefasRepoSupabase = {
         ticket: tarefa.ticket,
         status_id: tarefa.statusId,
         assigned_to: tarefa.assignedTo?.id,
-        created_by: currentUser?.user?.id,
+        created_by: userProfile?.id,
         tags: tarefa.tags,
       })
       .select(`
