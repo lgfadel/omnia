@@ -107,7 +107,7 @@ const Atas = () => {
       secretaryName: ata.secretary?.name || "-",
       responsibleName: ata.responsible?.name || "-",
       createdAt: new Date(ata.createdAt).toLocaleDateString('pt-BR'),
-      meetingDate: ata.meetingDate ? new Date(ata.meetingDate).toLocaleDateString('pt-BR') : "-",
+      meetingDate: ata.meetingDate ? new Date(ata.meetingDate + 'T00:00:00').toLocaleDateString('pt-BR') : "-",
       commentCount: ata.commentCount || 0,
       status: mappedStatus,
       statusName: currentStatus?.name || "Status não encontrado",
