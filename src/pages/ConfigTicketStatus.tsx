@@ -1,10 +1,12 @@
 import { Layout } from '@/components/layout/Layout';
-import { StatusList } from '@/components/status/StatusList';
-import { StatusForm } from '@/components/status/StatusForm';
+import { TicketStatusList } from '@/components/tickets/TicketStatusList';
+import { TicketStatusForm } from '@/components/tickets/TicketStatusForm';
 import { useTicketStatusStore } from '@/store/ticketStatus.store';
 import { TicketStatus } from '@/repositories/ticketStatusRepo.supabase';
+import { useState } from 'react';
 
 export default function ConfigTicketStatus() {
+  const [editingStatus, setEditingStatus] = useState<TicketStatus | undefined>(undefined);
   const { 
     statuses, 
     loading, 
@@ -36,6 +38,21 @@ export default function ConfigTicketStatus() {
     await reorderStatuses(newStatuses);
   };
 
+  const handleEditStatus = (status: TicketStatus) => {
+    setEditingStatus(status);
+  };
+
+  const handleEditSubmit = async (data: { name: string; color: string }) => {
+    if (editingStatus) {
+      await updateStatus(editingStatus.id, data);
+      setEditingStatus(undefined);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingStatus(undefined);
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-8 space-y-8">
@@ -50,20 +67,22 @@ export default function ConfigTicketStatus() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <StatusForm 
-              onSubmit={handleCreateStatus}
-              onCancel={() => {}}
+            <TicketStatusForm 
+              status={editingStatus}
+              onSubmit={editingStatus ? handleEditSubmit : handleCreateStatus}
+              onCancel={handleEditCancel}
               isLoading={loading}
             />
           </div>
           
           <div>
-            <StatusList
+            <TicketStatusList
               statuses={statuses}
-              isLoading={loading}
-              onUpdate={handleUpdateStatus}
+              onEdit={handleEditStatus}
               onDelete={handleDeleteStatus}
+              onCreate={() => setEditingStatus(undefined)}
               onReorder={handleReorderStatuses}
+              isLoading={loading}
             />
           </div>
         </div>
