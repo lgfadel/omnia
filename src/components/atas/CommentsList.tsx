@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale"
 import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit, Check, X } from "lucide-react"
 import { useState } from "react"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
+import { toast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,60 @@ interface CommentsListProps {
 export function CommentsList({ comments, onDeleteComment, onUpdateComment }: CommentsListProps) {
   const { userProfile } = useAuth()
   const [editingComment, setEditingComment] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState("")
+  const [editBody, setEditBody] = useState("")
+
+  const downloadAttachment = async (attachment: any) => {
+    try {
+      // Handle blob/data URLs
+      if (attachment.url.startsWith('blob:')) {
+        // If blob URL is from another origin, it is not retrievable — inform the user
+        if (!attachment.url.includes(window.location.origin)) {
+          toast({
+            title: 'Arquivo indisponível',
+            description: 'Este anexo foi enviado em outro ambiente. Reenvie o arquivo para baixá-lo.',
+            variant: 'destructive',
+          })
+          return
+        }
+        const a = document.createElement('a')
+        a.href = attachment.url
+        a.download = attachment.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        return
+      }
+
+      if (attachment.url.startsWith('data:')) {
+        const a = document.createElement('a')
+        a.href = attachment.url
+        a.download = attachment.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        return
+      }
+
+      // Fetch and force download for regular URLs
+      const response = await fetch(attachment.url)
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = attachment.name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      toast({
+        title: 'Falha ao baixar',
+        description: 'Não foi possível baixar o arquivo. Tente reenviar o anexo.',
+        variant: 'destructive',
+      })
+    }
+  }
   if (comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -79,19 +133,19 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
 
   const handleEditStart = (comment: Comment) => {
     setEditingComment(comment.id)
-    setEditValue(comment.body || "")
+    setEditBody(comment.body || "")
   }
 
   const handleEditCancel = () => {
     setEditingComment(null)
-    setEditValue("")
+    setEditBody("")
   }
 
   const handleEditSave = (commentId: string) => {
-    if (onUpdateComment && editValue.trim()) {
-      onUpdateComment(commentId, editValue.trim())
+    if (onUpdateComment && editBody.trim()) {
+      onUpdateComment(commentId, editBody.trim())
       setEditingComment(null)
-      setEditValue("")
+      setEditBody("")
     }
   }
 
@@ -194,8 +248,8 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
                     {editingComment === comment.id ? (
                       <div className="flex gap-2 items-center">
                         <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
+                          value={editBody}
+                          onChange={(e) => setEditBody(e.target.value)}
                           className="flex-1"
                           placeholder="Editar comentário..."
                           onKeyDown={(e) => {
@@ -246,7 +300,11 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
                             size="sm"
                             variant="ghost"
                             className="h-6 w-6 p-0"
-                            onClick={() => window.open(attachment.url, '_blank')}
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              await downloadAttachment(attachment)
+                            }}
+                            title="Baixar arquivo"
                           >
                             <Download className="w-3 h-3" />
                           </Button>
