@@ -197,7 +197,7 @@ const AtaDetail = () => {
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                       <label className="font-semibold text-blue-800">Data da Assembleia</label>
                       <p className="flex items-center gap-2 text-blue-700 font-medium">
-                        {new Date(ata.meetingDate).toLocaleDateString('pt-BR')}
+                        {new Date(ata.meetingDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   )}
