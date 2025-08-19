@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight } from "lucide-react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 
@@ -28,9 +29,17 @@ export interface TabelaOmniaRow {
   status?: "nao-iniciado" | "em-andamento" | "concluido"
 }
 
+export interface TabelaOmniaGroupedItem {
+  type: 'separator' | 'data'
+  statusName: string
+  statusColor?: string
+  count?: number
+  data?: TabelaOmniaRow
+}
+
 interface TabelaOmniaProps {
   columns: TabelaOmniaColumn[]
-  data: TabelaOmniaRow[]
+  data: TabelaOmniaRow[] | TabelaOmniaGroupedItem[]
   onView?: (id: string | number) => void
   onDelete?: (id: string | number) => void
   onStatusChange?: (id: string | number, statusId: string) => void
@@ -39,6 +48,7 @@ interface TabelaOmniaProps {
   sortDirection?: "asc" | "desc"
   onSort?: (field: string) => void
   className?: string
+  grouped?: boolean
 }
 
 export function TabelaOmnia({ 
@@ -51,8 +61,20 @@ export function TabelaOmnia({
   sortField, 
   sortDirection,
   onSort,
-  className 
+  className,
+  grouped = false
 }: TabelaOmniaProps) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  const toggleGroup = (statusName: string) => {
+    const newCollapsed = new Set(collapsedGroups)
+    if (newCollapsed.has(statusName)) {
+      newCollapsed.delete(statusName)
+    } else {
+      newCollapsed.add(statusName)
+    }
+    setCollapsedGroups(newCollapsed)
+  }
   const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
     if (key === "status" && row) {
       // Use statusName and statusColor if available, otherwise fallback to mapped status
@@ -161,15 +183,15 @@ export function TabelaOmnia({
   }
 
   return (
-    <div className={cn("border border-border rounded-lg bg-card", className)}>
+    <div className={className}>
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
+          <TableRow className="border-b">
             {columns.map((column) => (
               <TableHead 
                 key={column.key} 
                 className={cn(
-                  "font-medium text-muted-foreground text-xs uppercase tracking-wide",
+                  "font-medium text-muted-foreground text-xs uppercase tracking-wide py-4 px-6",
                   column.width && `w-${column.width}`,
                   column.sortable && "cursor-pointer hover:text-foreground",
                   (column.key === "secretary" || column.key === "responsible") && "text-center"
@@ -191,49 +213,136 @@ export function TabelaOmnia({
                 </div>
               </TableHead>
             ))}
-            <TableHead className="w-20">AÇÕES</TableHead>
+            <TableHead className="w-20 font-medium text-muted-foreground py-4 px-6">AÇÕES</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row) => (
-            <TableRow key={row.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onView && onView(row.id)}>
-              {columns.map((column) => (
-                <TableCell 
-                  key={`${row.id}-${column.key}`} 
-                  className={cn(
-                    "text-sm",
-                    (column.key === "secretary" || column.key === "responsible") && "text-center"
-                  )}
-                >
-                  {renderCellValue(row[column.key], column.key, row)}
+          {grouped ? (
+            (data as TabelaOmniaGroupedItem[]).map((item, index) => {
+              if (item.type === 'separator') {
+                return (
+                  <TableRow 
+                    key={`separator-${index}`} 
+                    className="border-none bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => toggleGroup(item.statusName)}
+                  >
+                    <TableCell 
+                      colSpan={columns.length + 1} 
+                      className="py-3 px-6"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          {collapsedGroups.has(item.statusName) ? (
+                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                          )}
+                          <div 
+                            className="w-2 h-2 rounded-full" 
+                            style={{ backgroundColor: item.statusColor }}
+                          />
+                          <span className="font-medium text-sm text-gray-700">
+                            {item.statusName.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {item.count}
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+              
+              const row = item.data!
+              const currentStatusName = item.statusName || ''
+              const isCollapsed = collapsedGroups.has(currentStatusName)
+              
+              if (isCollapsed) {
+                return null
+              }
+              
+              return (
+                <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+                  {columns.map((column) => (
+                    <TableCell 
+                      key={`${row.id}-${column.key}`} 
+                      className={cn(
+                        "text-sm py-4 px-6",
+                        (column.key === "secretary" || column.key === "responsible") && "text-center"
+                      )}
+                    >
+                      {renderCellValue(row[column.key], column.key, row)}
+                    </TableCell>
+                  ))}
+                  <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-6">
+                    <div className="flex items-center gap-1">
+                      {onView && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                          onClick={() => onView(row.id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-gray-100"
+                          onClick={() => onDelete(row.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })
+          ) : (
+            (data as TabelaOmniaRow[]).map((row) => (
+              <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+                {columns.map((column) => (
+                  <TableCell 
+                    key={`${row.id}-${column.key}`} 
+                    className={cn(
+                      "text-sm py-4 px-6",
+                      (column.key === "secretary" || column.key === "responsible") && "text-center"
+                    )}
+                  >
+                    {renderCellValue(row[column.key], column.key, row)}
+                  </TableCell>
+                ))}
+                <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-6">
+                  <div className="flex items-center gap-1">
+                    {onView && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                        onClick={() => onView(row.id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-gray-100"
+                        onClick={() => onDelete(row.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
-              ))}
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-1">
-                  {onView && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      onClick={() => onView(row.id)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDelete(row.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
