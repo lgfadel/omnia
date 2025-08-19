@@ -18,6 +18,11 @@ import ConfigUsuarios from "./pages/ConfigUsuarios";
 import { ConfigTags } from "./pages/ConfigTags";
 import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
+import Tickets from "./pages/Tickets";
+import TicketNew from "./pages/TicketNew";
+import TicketDetail from "./pages/TicketDetail";
+import TicketEdit from "./pages/TicketEdit";
+import ConfigTicketStatus from "./pages/ConfigTicketStatus";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +75,31 @@ function App() {
               <Route path="/config/tags" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigTags />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/tickets" element={
+                <ProtectedRoute>
+                  <Tickets />
+                </ProtectedRoute>
+              } />
+              <Route path="/tickets/new" element={
+                <ProtectedRoute>
+                  <TicketNew />
+                </ProtectedRoute>
+              } />
+              <Route path="/tickets/:id" element={
+                <ProtectedRoute>
+                  <TicketDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="/tickets/:id/edit" element={
+                <ProtectedRoute>
+                  <TicketEdit />
+                </ProtectedRoute>
+              } />
+              <Route path="/config/ticket-status" element={
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                  <ConfigTicketStatus />
                 </RoleProtectedRoute>
               } />
               <Route path="/change-password" element={

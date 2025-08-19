@@ -103,6 +103,7 @@ export type Database = {
           mime_type: string | null
           name: string
           size_kb: number | null
+          ticket_id: string | null
           uploaded_by: string | null
           url: string
         }
@@ -114,6 +115,7 @@ export type Database = {
           mime_type?: string | null
           name: string
           size_kb?: number | null
+          ticket_id?: string | null
           uploaded_by?: string | null
           url: string
         }
@@ -125,6 +127,7 @@ export type Database = {
           mime_type?: string | null
           name?: string
           size_kb?: number | null
+          ticket_id?: string | null
           uploaded_by?: string | null
           url?: string
         }
@@ -160,6 +163,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          ticket_id: string | null
         }
         Insert: {
           ata_id: string
@@ -168,6 +172,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          ticket_id?: string | null
         }
         Update: {
           ata_id?: string
@@ -176,6 +181,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          ticket_id?: string | null
         }
         Relationships: [
           {
@@ -265,6 +271,84 @@ export type Database = {
         }
         Relationships: []
       }
+      omnia_ticket_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          order_position: number
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          order_position: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      omnia_tickets: {
+        Row: {
+          assigned_to: string | null
+          comment_count: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          status_id: string
+          tags: string[] | null
+          ticket: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          comment_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          status_id: string
+          tags?: string[] | null
+          ticket?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          comment_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          status_id?: string
+          tags?: string[] | null
+          ticket?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omnia_users: {
         Row: {
           auth_user_id: string | null
@@ -324,7 +408,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      ticket_priority: "ALTA" | "NORMAL" | "BAIXA"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -451,6 +535,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ticket_priority: ["ALTA", "NORMAL", "BAIXA"],
+    },
   },
 } as const

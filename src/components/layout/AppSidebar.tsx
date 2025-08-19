@@ -9,7 +9,8 @@ import {
   LogOut,
   KeyRound,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Ticket
 } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import {
@@ -36,11 +37,13 @@ import { useRoles } from "@/hooks/useRoles"
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Atas", url: "/atas", icon: ClipboardList },
+  { title: "Tickets", url: "/tickets", icon: Ticket },
   { title: "Relatórios", url: "/relatorios", icon: FileText },
 ]
 
 const configItems = [
   { title: "Status", url: "/config/status", icon: BarChart3 },
+  { title: "Status Tickets", url: "/config/ticket-status", icon: BarChart3 },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
   { title: "Tags", url: "/config/tags", icon: Tags },
 ]
