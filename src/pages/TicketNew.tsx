@@ -1,19 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/layout/Layout';
-import { TicketForm } from '@/components/tickets/TicketForm';
-import { useTarefasStore } from '@/store/tarefas.store';
-import { useSecretariosStore } from '@/store/secretarios.store';
-import { Tarefa } from '@/repositories/tarefasRepo.supabase';
-import { UserRef } from '@/data/fixtures';
-import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Layout } from "@/components/layout/Layout";
+import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
+import { TicketForm } from "@/components/tickets/TicketForm";
+import { useNavigate } from "react-router-dom";
+import { useTarefasStore } from "@/store/tarefas.store";
+import { useSecretariosStore } from "@/store/secretarios.store";
+import { Tarefa } from "@/repositories/tarefasRepo.supabase";
+import { UserRef } from "@/data/fixtures";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export default function TicketNew() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const { createTarefa } = useTarefasStore();
+  const { toast } = useToast();
+  const { createTarefa, loading } = useTarefasStore();
   const { secretarios, loadSecretarios } = useSecretariosStore();
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function TicketNew() {
   }, [loadSecretarios]);
 
   const handleSubmit = async (ticketData: Partial<Tarefa>) => {
-    setLoading(true);
     try {
       const newTicket = await createTarefa({
         title: ticketData.title!,
@@ -32,25 +30,27 @@ export default function TicketNew() {
         statusId: ticketData.statusId!,
         assignedTo: ticketData.assignedTo,
         tags: ticketData.tags || [],
-        attachments: ticketData.attachments || [],
+        attachments: ticketData.attachments || []
       });
 
       toast({
-        title: 'Ticket criado com sucesso!',
-        description: `O ticket "${newTicket.title}" foi criado.`,
+        title: "Tarefa criada com sucesso!",
+        description: `A tarefa "${newTicket.title}" foi criada e está disponível na lista.`,
       });
 
-      navigate(`/tickets/${newTicket.id}`);
+      navigate('/tarefas');
     } catch (error) {
-      console.error('Erro ao criar ticket:', error);
+      console.error('Erro ao criar tarefa:', error);
       toast({
-        title: 'Erro ao criar ticket',
-        description: 'Ocorreu um erro ao criar o ticket. Tente novamente.',
-        variant: 'destructive',
+        title: "Erro ao criar tarefa",
+        description: "Ocorreu um erro ao criar a tarefa. Tente novamente.",
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    navigate('/tarefas');
   };
 
   const users: UserRef[] = secretarios.map(secretario => ({
@@ -64,28 +64,21 @@ export default function TicketNew() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/tickets')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-primary">Novo Ticket</h1>
-            <p className="text-muted-foreground">
-              Crie um novo ticket para registrar uma solicitação ou problema
-            </p>
-          </div>
-        </div>
-
-        <TicketForm
-          users={users}
-          onSubmit={handleSubmit}
-          loading={loading}
+      <div className="space-y-6">
+        <BreadcrumbOmnia 
+          items={[
+            { label: "Tarefas", href: "/tarefas" },
+            { label: "Nova Tarefa", isActive: true }
+          ]} 
         />
+        
+        <div className="max-w-4xl mx-auto">
+          <TicketForm
+            users={users}
+            onSubmit={handleSubmit}
+            loading={loading}
+          />
+        </div>
       </div>
     </Layout>
   );
