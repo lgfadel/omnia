@@ -33,7 +33,7 @@ export function BadgeStatus({ status, children, className }: BadgeStatusProps) {
     return (
       <Badge 
         variant="secondary" 
-        className={cn("bg-muted text-muted-foreground", className)}
+        className={cn("bg-muted text-muted-foreground whitespace-nowrap text-[10px] px-2 py-1 min-w-fit", className)}
       >
         {children}
       </Badge>
@@ -43,7 +43,7 @@ export function BadgeStatus({ status, children, className }: BadgeStatusProps) {
   return (
     <Badge 
       variant="secondary" 
-      className={cn(config.className, className)}
+      className={cn(config.className, "whitespace-nowrap text-[10px] px-2 py-1 min-w-fit", className)}
     >
       {children}
     </Badge>

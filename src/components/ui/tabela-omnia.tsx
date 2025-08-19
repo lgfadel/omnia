@@ -55,7 +55,7 @@ export function TabelaOmnia({
         return (
           <Badge 
             variant="secondary" 
-            className="text-white font-medium"
+            className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit"
             style={{ backgroundColor: row.statusColor }}
           >
             {row.statusName.toUpperCase()}
