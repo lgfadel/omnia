@@ -1,11 +1,34 @@
 import { useState, useEffect } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Trash2, MoreVertical, Edit, Check, X, Download, FileText, Image, File, Paperclip } from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
+import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase, type TicketComment } from '@/repositories/ticketCommentsRepo.supabase';
+import { ticketAttachmentsRepoSupabase, type TicketAttachment } from '@/repositories/ticketAttachmentsRepo.supabase';
+import { secretariosRepoSupabase } from '@/repositories/secretariosRepo.supabase';
+import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 interface TicketCommentsListProps {
@@ -13,16 +36,71 @@ interface TicketCommentsListProps {
   onCommentsChange?: () => void;
 }
 
+interface CommentWithAttachments extends TicketComment {
+  attachments?: TicketAttachment[];
+  author?: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+    color?: string;
+  };
+}
+
 export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketCommentsListProps) => {
   const { userProfile } = useAuth();
-  const [comments, setComments] = useState<TicketComment[]>([]);
+  const [comments, setComments] = useState<CommentWithAttachments[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const loadComments = async () => {
     try {
       setLoading(true);
       const commentsData = await ticketCommentsRepoSupabase.list(ticketId);
-      setComments(commentsData);
+      
+      // Load users and attachments for each comment
+      const [users, allAttachments] = await Promise.all([
+        secretariosRepoSupabase.list(),
+        ticketAttachmentsRepoSupabase.list(ticketId)
+      ]);
+
+      const commentsWithAttachments = commentsData.map((comment) => {
+        try {
+          const commentAttachments = allAttachments.filter(att => (att as any).comment_id === comment.id);
+          const author = users.find(user => user.id === comment.author_id);
+          
+          return {
+            ...comment,
+            attachments: commentAttachments,
+            author: author ? {
+              id: author.id,
+              name: author.name,
+              email: author.email,
+              avatarUrl: author.avatarUrl,
+              color: author.color
+            } : {
+              id: comment.author_id,
+              name: 'Usuário não encontrado',
+              email: '',
+            }
+          };
+        } catch (error) {
+          console.error('Erro ao carregar anexos do comentário:', error);
+          return {
+            ...comment,
+            attachments: [],
+            author: {
+              id: comment.author_id,
+              name: 'Usuário não encontrado',
+              email: '',
+            }
+          };
+        }
+      });
+      
+      setComments(commentsWithAttachments);
     } catch (error) {
       console.error('Erro ao carregar comentários:', error);
       toast.error('Erro ao carregar comentários');
@@ -39,6 +117,14 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
 
   const handleDeleteComment = async (commentId: string) => {
     try {
+      // Delete comment attachments first
+      const comment = comments.find(c => c.id === commentId);
+      if (comment?.attachments) {
+        for (const attachment of comment.attachments) {
+          await ticketAttachmentsRepoSupabase.remove(attachment.id);
+        }
+      }
+      
       await ticketCommentsRepoSupabase.remove(commentId);
       await loadComments();
       onCommentsChange?.();
@@ -46,6 +132,84 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
     } catch (error) {
       console.error('Erro ao excluir comentário:', error);
       toast.error('Erro ao excluir comentário');
+    }
+  };
+
+  const handleUpdateComment = async (commentId: string, body: string) => {
+    try {
+      await ticketCommentsRepoSupabase.update(commentId, { body });
+      await loadComments();
+      onCommentsChange?.();
+      toast.success('Comentário atualizado com sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar comentário:', error);
+      toast.error('Erro ao atualizar comentário');
+    }
+  };
+
+  const downloadAttachment = async (attachment: TicketAttachment) => {
+    try {
+      const response = await fetch(attachment.url);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      toast.error('Não foi possível baixar o arquivo');
+    }
+  };
+
+  const getFileIcon = (mime?: string) => {
+    if (!mime) return <File className="w-4 h-4" />;
+    
+    if (mime.startsWith('image/')) return <Image className="w-4 h-4" />;
+    if (mime.includes('pdf') || mime.includes('document') || mime.includes('text')) return <FileText className="w-4 h-4" />;
+    
+    return <File className="w-4 h-4" />;
+  };
+
+  const formatFileSize = (sizeKB?: number) => {
+    if (!sizeKB) return '';
+    return sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+  };
+
+  const canDeleteComment = (comment: CommentWithAttachments) => {
+    if (!userProfile) return false;
+    return comment.created_by === userProfile.id || userProfile.roles?.includes('ADMIN');
+  };
+
+  const canEditComment = (comment: CommentWithAttachments) => {
+    if (!userProfile) return false;
+    if (comment.created_by !== userProfile.id) return false;
+    
+    const commentDate = new Date(comment.created_at);
+    const now = new Date();
+    const diffMinutes = (now.getTime() - commentDate.getTime()) / (1000 * 60);
+    
+    return diffMinutes <= 10;
+  };
+
+  const handleEditStart = (comment: CommentWithAttachments) => {
+    setEditingComment(comment.id);
+    setEditBody(comment.body || '');
+  };
+
+  const handleEditCancel = () => {
+    setEditingComment(null);
+    setEditBody('');
+  };
+
+  const handleEditSave = (commentId: string) => {
+    if (editBody.trim()) {
+      handleUpdateComment(commentId, editBody.trim());
+      setEditingComment(null);
+      setEditBody('');
     }
   };
 
@@ -57,34 +221,174 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
     return <div className="text-muted-foreground">Nenhum comentário encontrado.</div>;
   }
 
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
   return (
     <div className="space-y-4">
-      {comments.map((comment) => (
+      {sortedComments.map((comment) => (
         <Card key={comment.id}>
           <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-2">
-                  {format(new Date(comment.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", {
-                    locale: ptBR,
-                  })}
-                </p>
-                <p className="whitespace-pre-wrap">{comment.body}</p>
-              </div>
-              {(userProfile?.id === comment.created_by || userProfile?.roles?.includes('ADMIN')) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteComment(comment.id)}
-                  className="text-destructive hover:text-destructive"
+            <div className="flex gap-3">
+              <Avatar className="w-8 h-8 flex-shrink-0">
+                <AvatarFallback 
+                  style={{ backgroundColor: generateUserColor(comment.author?.name || comment.created_by) }}
+                  className="text-white text-sm font-medium"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+                  {getUserInitials(comment.author?.name || comment.created_by)}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">
+                      {comment.author?.name || comment.created_by}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(comment.created_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </span>
+                    {comment.attachments && comment.attachments.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Paperclip className="w-3 h-3" />
+                        <span>{comment.attachments.length}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {(canDeleteComment(comment) || canEditComment(comment)) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <MoreVertical className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canEditComment(comment) && (
+                          <DropdownMenuItem onClick={() => handleEditStart(comment)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                        )}
+                        {canDeleteComment(comment) && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir este comentário?
+                                  {comment.attachments && comment.attachments.length > 0 && (
+                                    <span className="block mt-2 text-sm">
+                                      Isso também removerá {comment.attachments.length} anexo(s) associado(s).
+                                    </span>
+                                  )}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteComment(comment.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+                
+                {editingComment === comment.id ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      className="min-h-[60px]"
+                      placeholder="Editar comentário..."
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleEditSave(comment.id)}
+                        disabled={!editBody.trim()}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Salvar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleEditCancel}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm whitespace-pre-wrap break-words">
+                    {comment.body}
+                  </div>
+                )}
+                
+                {comment.attachments && comment.attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {comment.attachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm"
+                      >
+                        {getFileIcon(attachment.mime_type)}
+                        <span className="flex-1 truncate">{attachment.name}</span>
+                        {attachment.size_kb && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatFileSize(attachment.size_kb)}
+                          </span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => downloadAttachment(attachment)}
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                        {attachment.mime_type?.startsWith('image/') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setPreviewImage(attachment.url)}
+                          >
+                            <Image className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       ))}
+      
+      <ImagePreviewModal
+         isOpen={!!previewImage}
+         imageUrl={previewImage || ''}
+         imageName="Anexo"
+         onClose={() => setPreviewImage(null)}
+       />
     </div>
   );
 };

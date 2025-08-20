@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
+import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { useTagsStore } from '@/store/tags.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
-import { ArrowLeft, Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
+import { Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -66,7 +67,7 @@ export default function TicketDetail() {
         title: 'Ticket deletado',
         description: 'O ticket foi deletado com sucesso.',
       });
-      navigate('/tickets');
+      navigate('/tarefas');
     } catch (error) {
       console.error('Erro ao deletar ticket:', error);
       toast({
@@ -101,7 +102,7 @@ export default function TicketDetail() {
         <div className="container mx-auto py-8">
           <div className="text-center space-y-4">
             <p className="text-muted-foreground">Ticket não encontrado</p>
-            <Button onClick={() => navigate('/tickets')}>
+            <Button onClick={() => navigate('/tarefas')}>
               Voltar para Tickets
             </Button>
           </div>
@@ -115,16 +116,17 @@ export default function TicketDetail() {
   return (
     <Layout>
       <div className="container mx-auto py-8 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/tickets')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-primary">{ticket.title}</h1>
+        <BreadcrumbOmnia 
+          items={[
+            { label: "Início", href: "/" },
+            { label: "Tarefas", href: "/tarefas" },
+            { label: ticket.title }
+          ]}
+        />
+        
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
             <p className="text-muted-foreground">
               Criado em {format(ticket.createdAt, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
