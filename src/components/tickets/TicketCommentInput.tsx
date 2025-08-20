@@ -173,7 +173,7 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded }: TicketCommentIn
 
   if (!userProfile) return null;
 
-  const userColor = generateUserColor(userProfile.id);
+  const userColor = userProfile.color || generateUserColor(userProfile.id);
   const userInitials = getUserInitials(userProfile.name || userProfile.email);
   const hasContent = body.trim() || attachments.length > 0;
 

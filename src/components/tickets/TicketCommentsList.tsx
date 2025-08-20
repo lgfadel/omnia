@@ -149,6 +149,33 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
 
   const downloadAttachment = async (attachment: TicketAttachment) => {
     try {
+      // Handle blob/data URLs
+      if (attachment.url.startsWith('blob:')) {
+        // If blob URL is from another origin, it is not retrievable — inform the user
+        if (!attachment.url.includes(window.location.origin)) {
+          toast.error('Arquivo indisponível - Este anexo foi enviado em outro ambiente. Reenvie o arquivo para baixá-lo.');
+          return;
+        }
+        const a = document.createElement('a');
+        a.href = attachment.url;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+
+      if (attachment.url.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = attachment.url;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+
+      // Fetch and force download for regular URLs
       const response = await fetch(attachment.url);
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -161,7 +188,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
       a.remove();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      toast.error('Não foi possível baixar o arquivo');
+      toast.error('Falha ao baixar - Não foi possível baixar o arquivo. Tente reenviar o anexo.');
     }
   };
 
@@ -233,7 +260,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
             <div className="flex gap-3">
               <Avatar className="w-8 h-8 flex-shrink-0">
                 <AvatarFallback 
-                  style={{ backgroundColor: generateUserColor(comment.author?.name || comment.created_by) }}
+                  style={{ backgroundColor: comment.author?.color || generateUserColor(comment.author?.id || comment.created_by) }}
                   className="text-white text-sm font-medium"
                 >
                   {getUserInitials(comment.author?.name || comment.created_by)}
@@ -342,39 +369,45 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
                 )}
                 
                 {comment.attachments && comment.attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {comment.attachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm"
-                      >
-                        {getFileIcon(attachment.mime_type)}
-                        <span className="flex-1 truncate">{attachment.name}</span>
-                        {attachment.size_kb && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatFileSize(attachment.size_kb)}
-                          </span>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => downloadAttachment(attachment)}
-                        >
-                          <Download className="w-3 h-3" />
-                        </Button>
-                        {attachment.mime_type?.startsWith('image/') && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {comment.attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center gap-2 bg-muted rounded-md px-2 py-1">
+                          {getFileIcon(attachment.mime_type)}
+                          <div className="flex flex-col">
+                            {attachment.mime_type?.startsWith('image/') ? (
+                              <button
+                                className="text-xs font-medium truncate max-w-32 text-left text-primary hover:text-primary/80 hover:underline cursor-pointer transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewImage(attachment.url);
+                                }}
+                                title="Clique para visualizar a imagem"
+                              >
+                                {attachment.name}
+                              </button>
+                            ) : (
+                              <span className="text-xs font-medium truncate max-w-32">{attachment.name}</span>
+                            )}
+                            {attachment.size_kb && (
+                              <span className="text-xs text-muted-foreground">{formatFileSize(attachment.size_kb)}</span>
+                            )}
+                          </div>
                           <Button
-                            variant="ghost"
                             size="sm"
+                            variant="ghost"
                             className="h-6 w-6 p-0"
-                            onClick={() => setPreviewImage(attachment.url)}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await downloadAttachment(attachment);
+                            }}
+                            title="Baixar arquivo"
                           >
-                            <Image className="w-3 h-3" />
+                            <Download className="w-3 h-3" />
                           </Button>
-                        )}
-                      </div>
-                    ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -388,6 +421,16 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
          imageUrl={previewImage || ''}
          imageName="Anexo"
          onClose={() => setPreviewImage(null)}
+         onDownload={async () => {
+           if (previewImage) {
+             const attachment = comments
+               .flatMap(c => c.attachments || [])
+               .find(a => a.url === previewImage);
+             if (attachment) {
+               await downloadAttachment(attachment);
+             }
+           }
+         }}
        />
     </div>
   );

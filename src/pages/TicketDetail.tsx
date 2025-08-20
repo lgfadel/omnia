@@ -5,6 +5,7 @@ import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { TicketCommentsList } from '@/components/tickets/TicketCommentsList';
 import { TicketCommentInput } from '@/components/tickets/TicketCommentInput';
@@ -150,52 +151,47 @@ export default function TicketDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Descrição</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ticket.description ? (
-                  <p className="whitespace-pre-wrap">{ticket.description}</p>
-                ) : (
-                  <p className="text-muted-foreground italic">Nenhuma descrição fornecida</p>
-                )}
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="resumo" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="resumo">Resumo</TabsTrigger>
+            <TabsTrigger value="anexos">Anexos ({ticket.attachments?.length || 0})</TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Anexos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <TicketFileUploader 
-                  ticketId={ticket.id} 
-                  onFileUploaded={handleRefresh}
-                />
-                <TicketAttachmentsList ticketId={ticket.id} />
-              </CardContent>
-            </Card>
+          <TabsContent value="resumo">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Descrição</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {ticket.description ? (
+                      <p className="whitespace-pre-wrap">{ticket.description}</p>
+                    ) : (
+                      <p className="text-muted-foreground italic">Nenhuma descrição fornecida</p>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Comentários ({ticket.commentCount})</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <TicketCommentInput 
-                  ticketId={ticket.id}
-                  onCommentAdded={handleRefresh}
-                />
-                <TicketCommentsList 
-                  ticketId={ticket.id}
-                  onCommentsChange={handleRefresh}
-                />
-              </CardContent>
-            </Card>
-          </div>
+                {/* Seção de comentários */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comentários ({ticket.commentCount})</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <TicketCommentInput 
+                      ticketId={ticket.id}
+                      onCommentAdded={handleRefresh}
+                    />
+                    <TicketCommentsList 
+                      ticketId={ticket.id}
+                      onCommentsChange={handleRefresh}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="space-y-6">
+              <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Detalhes</CardTitle>
@@ -288,6 +284,33 @@ export default function TicketDetail() {
             </Card>
           </div>
         </div>
+      </TabsContent>
+
+          <TabsContent value="anexos">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Adicionar Anexos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TicketFileUploader 
+                    ticketId={ticket.id} 
+                    onFileUploaded={handleRefresh}
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Anexos da Tarefa</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TicketAttachmentsList ticketId={ticket.id} />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
