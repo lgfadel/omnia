@@ -133,7 +133,7 @@ export default function TicketDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Link to={`/tickets/${ticket.id}/edit`}>
+            <Link to={`/tarefas/${ticket.id}/edit`}>
               <Button variant="outline" size="sm">
                 <Edit className="h-4 w-4 mr-2" />
                 Editar
