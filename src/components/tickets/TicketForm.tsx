@@ -44,6 +44,8 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
   const { statuses, loadStatuses } = useTarefaStatusStore();
   const { userProfile } = useAuth();
 
+
+
   const {
     register,
     handleSubmit,

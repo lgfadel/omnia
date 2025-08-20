@@ -15,6 +15,7 @@ import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
+import { PriorityBadge } from "@/components/ui/priority-badge"
 
 export interface TabelaOmniaColumn {
   key: string
@@ -76,6 +77,97 @@ export function TabelaOmnia({
     setCollapsedGroups(newCollapsed)
   }
   const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
+    // Handle priority column
+    if (key === "priority" && value) {
+      return <PriorityBadge priority={value} />
+    }
+    
+    // Handle dueDate column with styling
+    if (key === "dueDate" && row?.dueDate) {
+      const date = new Date(row.dueDate)
+      const now = new Date()
+      const isOverdue = date < now
+      
+      return (
+        <span className={isOverdue ? 'text-destructive font-medium' : ''}>
+          {value}
+        </span>
+      )
+    }
+    
+    // Handle comment count column
+    if (key === "commentCount") {
+      return (
+        <div className="text-center">
+          <Badge variant="outline" className="text-xs">
+            {value || 0}
+          </Badge>
+        </div>
+      )
+    }
+    
+    // Handle statusId column (render using statusName and statusColor)
+    if (key === "statusId" && row) {
+      // Use statusName and statusColor if available
+      if (row.statusName && row.statusColor) {
+        // If onStatusChange is provided, make it a dropdown button
+        if (onStatusChange && availableStatuses.length > 0) {
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto p-0 hover:bg-transparent"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge 
+                    variant="secondary" 
+                    className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 rounded-md"
+                    style={{ backgroundColor: row.statusColor }}
+                  >
+                    {row.statusName.toUpperCase()}
+                    <ChevronDown className="w-3 h-3" />
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {availableStatuses.map((status) => (
+                  <DropdownMenuItem
+                    key={status.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStatusChange(row.id, status.id)
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: status.color }}
+                    />
+                    {status.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        }
+        
+        // Static badge if no onStatusChange
+        return (
+          <Badge 
+            variant="secondary" 
+            className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit rounded-md"
+            style={{ backgroundColor: row.statusColor }}
+          >
+            {row.statusName.toUpperCase()}
+          </Badge>
+        )
+      }
+      
+      // Fallback to value if no statusName/statusColor
+      return value || "-"
+    }
+    
     if (key === "status" && row) {
       // Use statusName and statusColor if available, otherwise fallback to mapped status
       if (row.statusName && row.statusColor) {
@@ -201,15 +293,15 @@ export function TabelaOmnia({
 
   return (
     <div className={className}>
-      <Table>
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow className="border-b">
             {columns.map((column) => (
               <TableHead 
                 key={column.key} 
                 className={cn(
-                  "font-medium text-muted-foreground text-xs uppercase tracking-wide py-4 px-6",
-                  column.width && `w-${column.width}`,
+                  "text-muted-foreground text-xs uppercase tracking-wide py-4 px-6",
+                  column.width,
                   column.sortable && "cursor-pointer hover:text-foreground",
                   (column.key === "secretary" || column.key === "responsible") && "text-center"
                 )}
@@ -230,7 +322,7 @@ export function TabelaOmnia({
                 </div>
               </TableHead>
             ))}
-            <TableHead className="w-20 font-medium text-muted-foreground py-4 px-6">AÇÕES</TableHead>
+            <TableHead className="w-[10%] text-muted-foreground text-xs uppercase tracking-wide py-4 px-6">AÇÕES</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

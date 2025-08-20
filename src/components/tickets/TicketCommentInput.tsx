@@ -41,6 +41,15 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded }: TicketCommentIn
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle Ctrl+Enter or Cmd+Enter for submit
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+    // Let all other keyboard events pass through naturally
+  };
+
   return (
     <Card>
       <CardContent className="p-4">
@@ -48,7 +57,8 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded }: TicketCommentIn
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Adicione um comentário..."
+            onKeyDown={handleKeyDown}
+            placeholder="Adicione um comentário... (Ctrl+Enter para enviar)"
             rows={3}
             disabled={isSubmitting}
           />

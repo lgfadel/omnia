@@ -11,6 +11,7 @@ import { TicketAttachmentsList } from '@/components/tickets/TicketAttachmentsLis
 import { TicketFileUploader } from '@/components/tickets/TicketFileUploader';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { useTagsStore } from '@/store/tags.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { ArrowLeft, Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -26,9 +27,11 @@ export default function TicketDetail() {
   
   const { getTarefaById, deleteTarefa } = useTarefasStore();
   const { statuses, loadStatuses } = useTarefaStatusStore();
+  const { tags, loadTags } = useTagsStore();
 
   useEffect(() => {
     loadStatuses();
+    loadTags();
   }, [loadStatuses]);
 
   useEffect(() => {
@@ -252,20 +255,7 @@ export default function TicketDetail() {
                   </div>
                 )}
 
-                {ticket.createdBy && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Criado por</div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                        style={{ backgroundColor: ticket.createdBy.color }}
-                      >
-                        {ticket.createdBy.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-sm">{ticket.createdBy.name}</span>
-                    </div>
-                  </div>
-                )}
+
 
                 {ticket.tags && ticket.tags.length > 0 && (
                   <div className="space-y-2">
@@ -274,11 +264,21 @@ export default function TicketDetail() {
                       Tags
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {ticket.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
+                      {ticket.tags.map((tagName) => {
+                        const tagData = tags.find(t => t.name === tagName)
+                        return (
+                          <Badge 
+                            key={tagName} 
+                            style={{ 
+                              backgroundColor: tagData?.color || '#6366f1', 
+                              color: 'white' 
+                            }}
+                            className="border-none text-xs"
+                          >
+                            {tagName}
+                          </Badge>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

@@ -16,20 +16,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { generateUserColor, getUserInitials } from '@/lib/userColors';
 
 const columns = [
-  { key: "title", label: "Título", width: "48" },
-  { key: "priority", label: "Prioridade", width: "20" },
-  { key: "dueDate", label: "Vencimento", width: "24" },
-  { key: "assignedTo", label: "Responsável", width: "24" },
-  { key: "statusId", label: "Status", width: "20" },
-  { key: "commentCount", label: "Comentários", width: "16" }
+  { key: "title", label: "Título", width: "w-[30%]" },
+  { key: "priority", label: "Prioridade", width: "w-[12%]" },
+  { key: "dueDate", label: "Vencimento", width: "w-[15%]" },
+  { key: "responsible", label: "Responsável", width: "w-[18%]" },
+  { key: "statusId", label: "Status", width: "w-[15%]" },
+  { key: "commentCount", label: "Comentários", width: "w-[10%]" }
 ];
 
 export default function Tickets() {
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const { 
     tarefas, 
@@ -110,9 +114,32 @@ export default function Tickets() {
     };
   }, [loadTarefas]);
 
+  // Filter tasks based on search, status, and "my tasks" filter
   useEffect(() => {
-    setFilteredTickets(tarefas);
-  }, [tarefas]);
+    let filtered = tarefas;
+
+    // Apply "my tasks" filter
+    if (showOnlyMyTasks && userProfile) {
+      filtered = filtered.filter(task => task.assignedTo?.id === userProfile.id);
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(task => 
+        task.title.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.ticket?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter(task => statusFilter.includes(task.statusId));
+    }
+
+    setFilteredTickets(filtered);
+  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile]);
 
   const handleView = (id: string | number) => {
     navigate(`/tarefas/${id}`);
@@ -143,13 +170,18 @@ export default function Tickets() {
 
   const formatDueDate = (date?: Date) => {
     if (!date) return '-';
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  const formatDueDateWithStyle = (date?: Date) => {
+    if (!date) return '-';
     
     const now = new Date();
     const isOverdue = date < now;
     
     return (
       <span className={isOverdue ? 'text-destructive font-medium' : ''}>
-        {formatDistanceToNow(date, { addSuffix: true, locale: ptBR })}
+        {date.toLocaleDateString('pt-BR')}
       </span>
     );
   };
@@ -177,6 +209,7 @@ export default function Tickets() {
       priority: tarefa.priority,
       dueDate: tarefa.dueDate ? formatDueDate(tarefa.dueDate) : '-',
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
+      responsible: tarefa.assignedTo, // Keep the full object for avatar rendering
       createdAt: new Date(tarefa.createdAt).toLocaleDateString('pt-BR'),
       commentCount: tarefa.commentCount || 0,
       status: mappedStatus,
@@ -256,7 +289,7 @@ export default function Tickets() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Tarefas</h1>
-            <p className="text-muted-foreground">Gerencie tarefas e solicitações</p>
+    
           </div>
           
           <Button 
@@ -315,6 +348,24 @@ export default function Tickets() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
+                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+                  showOnlyMyTasks 
+                    ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                    : 'shadow-sm hover:shadow-md'
+                }`}
+                style={{
+                  backgroundColor: showOnlyMyTasks ? '#FBBF24' : '#F3F4F6',
+                  borderColor: showOnlyMyTasks ? '#FBBF24' : '#D1D5DB',
+                  color: showOnlyMyTasks ? 'white' : '#6B7280'
+                }}
+              >
+                {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
+              </Button>
             </div>
           </div>
         </div>
