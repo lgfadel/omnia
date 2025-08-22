@@ -27,7 +27,7 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
     title: dbTarefa.title,
     description: dbTarefa.description,
     priority: dbTarefa.priority as TarefaPrioridade,
-    dueDate: dbTarefa.due_date ? new Date(dbTarefa.due_date) : undefined,
+    dueDate: dbTarefa.due_date ? new Date(dbTarefa.due_date + 'T00:00:00') : undefined,
     ticket: dbTarefa.ticket,
     statusId: dbTarefa.status_id,
     assignedTo: dbTarefa.assigned_to_user ? {
