@@ -3,7 +3,7 @@ import { TicketStatusList } from '@/components/tickets/TicketStatusList';
 import { TicketStatusForm } from '@/components/tickets/TicketStatusForm';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ConfigTicketStatus() {
   const [editingStatus, setEditingStatus] = useState<TarefaStatus | undefined>(undefined);
@@ -17,6 +17,10 @@ export default function ConfigTicketStatus() {
     deleteStatus, 
     reorderStatuses 
   } = useTarefaStatusStore();
+
+  useEffect(() => {
+    loadStatuses();
+  }, [loadStatuses]);
 
   const handleCreateStatus = async (data: { name: string; color: string }) => {
     await createStatus({

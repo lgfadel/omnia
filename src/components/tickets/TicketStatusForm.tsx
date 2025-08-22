@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -43,6 +43,7 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
     register,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<TicketStatusFormData>({
     resolver: zodResolver(ticketStatusSchema),
@@ -51,6 +52,23 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
       color: status?.color || colorPresets[0],
     },
   })
+
+  // Update form when status prop changes
+  useEffect(() => {
+    if (status) {
+      setSelectedColor(status.color)
+      reset({
+        name: status.name,
+        color: status.color,
+      })
+    } else {
+      setSelectedColor(colorPresets[0])
+      reset({
+        name: "",
+        color: colorPresets[0],
+      })
+    }
+  }, [status, reset])
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color)

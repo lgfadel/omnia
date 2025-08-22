@@ -34,6 +34,7 @@ export default function Tickets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(true);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const { 
     tarefas, 
@@ -138,8 +139,18 @@ export default function Tickets() {
       filtered = filtered.filter(task => statusFilter.includes(task.statusId));
     }
 
+    // Apply completed tasks filter
+    if (!showCompletedTasks) {
+      filtered = filtered.filter(task => {
+        const currentStatus = statuses.find(s => s.id === task.statusId);
+        if (!currentStatus) return true;
+        const statusName = currentStatus.name.toLowerCase();
+        return !(statusName.includes('concluído') || statusName.includes('finalizado'));
+      });
+    }
+
     setFilteredTickets(filtered);
-  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile]);
+  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, statuses]);
 
   const handleView = (id: string | number) => {
     navigate(`/tarefas/${id}`);
@@ -218,7 +229,7 @@ export default function Tickets() {
     };
   });
 
-  // Sort data by status order_position (ascending), then by creation date (descending)
+  // Sort data by status order_position (ascending), then by priority (high to low), then by due date (ascending)
   const sortedData = [...tableData].sort((a, b) => {
     const aStatus = statuses.find(s => s.id === a.statusId);
     const bStatus = statuses.find(s => s.id === b.statusId);
@@ -226,14 +237,36 @@ export default function Tickets() {
     const aOrder = aStatus?.order || 999;
     const bOrder = bStatus?.order || 999;
     
+    // First sort by status order
     if (aOrder !== bOrder) {
       return aOrder - bOrder;
     }
     
-    const aDate = new Date(a.createdAt);
-    const bDate = new Date(b.createdAt);
+    // Then sort by priority (alta=1, media=2, baixa=3)
+    const priorityOrder = { 'alta': 1, 'media': 2, 'baixa': 3 };
+    const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 4;
+    const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 4;
     
-    return bDate.getTime() - aDate.getTime();
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+    
+    // Finally sort by due date (earliest first, null dates last)
+     const aOriginalTask = filteredTickets.find(t => t.id === a.id);
+     const bOriginalTask = filteredTickets.find(t => t.id === b.id);
+     const aDate = aOriginalTask?.dueDate ? new Date(aOriginalTask.dueDate) : null;
+     const bDate = bOriginalTask?.dueDate ? new Date(bOriginalTask.dueDate) : null;
+    
+    if (aDate && bDate) {
+      return aDate.getTime() - bDate.getTime();
+    }
+    if (aDate && !bDate) return -1;
+    if (!aDate && bDate) return 1;
+    
+    // If both have no due date, sort by creation date (newest first)
+    const aCreated = new Date(a.createdAt);
+    const bCreated = new Date(b.createdAt);
+    return bCreated.getTime() - aCreated.getTime();
   });
 
   // Group data by status for separators
@@ -365,6 +398,19 @@ export default function Tickets() {
                 }}
               >
                 {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  showCompletedTasks 
+                    ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' 
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {showCompletedTasks ? 'Ocultar Concluídas' : 'Mostrar Concluídas'}
               </Button>
             </div>
           </div>
