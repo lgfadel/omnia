@@ -11,6 +11,7 @@ import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Badge } from '@/components/ui/badge';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { useSecretariosStore } from '@/store/secretarios.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -50,11 +51,16 @@ export default function Tickets() {
     statuses, 
     loadStatuses 
   } = useTarefaStatusStore();
+  const { 
+    secretarios, 
+    loadSecretarios 
+  } = useSecretariosStore();
 
   useEffect(() => {
     loadTarefas();
     loadStatuses();
-  }, [loadTarefas, loadStatuses]);
+    loadSecretarios();
+  }, [loadTarefas, loadStatuses, loadSecretarios]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -168,6 +174,18 @@ export default function Tickets() {
       loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+    }
+  };
+
+  const handleResponsibleChange = async (id: string | number, userId: string) => {
+    try {
+      const selectedUser = secretarios.find(user => user.id === userId);
+      if (selectedUser) {
+        await updateTarefa(id.toString(), { assignedTo: selectedUser });
+        loadTarefas();
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar responsável:', error);
     }
   };
 
@@ -429,7 +447,9 @@ export default function Tickets() {
               onView={handleView}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              onResponsibleChange={handleResponsibleChange}
               availableStatuses={statuses}
+              availableUsers={secretarios}
               grouped={true}
             />
           )}

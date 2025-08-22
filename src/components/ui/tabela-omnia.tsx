@@ -44,7 +44,9 @@ interface TabelaOmniaProps {
   onView?: (id: string | number) => void
   onDelete?: (id: string | number) => void
   onStatusChange?: (id: string | number, statusId: string) => void
+  onResponsibleChange?: (id: string | number, userId: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
+  availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
   sortField?: string
   sortDirection?: "asc" | "desc"
   onSort?: (field: string) => void
@@ -58,7 +60,9 @@ export function TabelaOmnia({
   onView, 
   onDelete, 
   onStatusChange,
+  onResponsibleChange,
   availableStatuses = [],
+  availableUsers = [],
   sortField, 
   sortDirection,
   onSort,
@@ -258,22 +262,129 @@ export function TabelaOmnia({
       )
     }
     
-    if (key === "responsible" && value && row) {
+    if (key === "responsible" && row) {
+      if (!value) {
+        // No responsible assigned - show clickable placeholder
+        return (
+          <div className="flex items-center justify-center">
+            {onResponsibleChange && availableUsers.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-xs text-muted-foreground">+</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  {availableUsers.map((user) => {
+                    const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
+                    const initials = getUserInitials(user.name)
+                    return (
+                      <DropdownMenuItem
+                        key={user.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onResponsibleChange(row.id, user.id)
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                          <AvatarFallback 
+                            className="text-xs text-white font-medium"
+                            style={{ backgroundColor: userColor }}
+                          >
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{user.name}</span>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                <span className="text-xs text-muted-foreground">-</span>
+              </div>
+            )}
+          </div>
+        )
+      }
+      
       const user = value
       const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
       
       return (
         <div className="flex items-center justify-center">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user.avatarUrl} alt={user.name} />
-            <AvatarFallback 
-              className="text-xs text-white font-medium"
-              style={{ backgroundColor: userColor }}
-            >
-              {fallbackInitials}
-            </AvatarFallback>
-          </Avatar>
+          {onResponsibleChange && availableUsers.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarFallback 
+                      className="text-xs text-white font-medium"
+                      style={{ backgroundColor: userColor }}
+                    >
+                      {fallbackInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {availableUsers.map((availableUser) => {
+                  const availableUserColor = (typeof availableUser.color === 'string' && availableUser.color.trim()) ? availableUser.color : generateUserColor(availableUser.id, availableUser.name)
+                  const availableInitials = getUserInitials(availableUser.name)
+                  return (
+                    <DropdownMenuItem
+                      key={availableUser.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onResponsibleChange(row.id, availableUser.id)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2",
+                        availableUser.id === user.id && "bg-muted"
+                      )}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={availableUser.avatarUrl} alt={availableUser.name} />
+                        <AvatarFallback 
+                          className="text-xs text-white font-medium"
+                          style={{ backgroundColor: availableUserColor }}
+                        >
+                          {availableInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{availableUser.name}</span>
+                      {availableUser.id === user.id && <span className="text-xs text-muted-foreground ml-auto">Atual</span>}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user.avatarUrl} alt={user.name} />
+              <AvatarFallback 
+                className="text-xs text-white font-medium"
+                style={{ backgroundColor: userColor }}
+              >
+                {fallbackInitials}
+              </AvatarFallback>
+            </Avatar>
+          )}
         </div>
       )
     }
