@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface TicketAttachment {
   id: string;
   ticket_id: string;
-  comment_id?: string | null; // Optional for backward compatibility
+  comment_id?: string | null;
   name: string;
   url: string;
   mime_type: string | null;
@@ -31,7 +31,7 @@ export const ticketAttachmentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return data ?? [];
   },
 
   async listByComment(commentId: string): Promise<TicketAttachment[]> {
@@ -42,7 +42,7 @@ export const ticketAttachmentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return data ?? [];
   },
 
   async listDirectTicketAttachments(ticketId: string): Promise<TicketAttachment[]> {
@@ -54,7 +54,7 @@ export const ticketAttachmentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return data ?? [];
   },
 
   async create(attachment: CreateTicketAttachment): Promise<TicketAttachment> {
