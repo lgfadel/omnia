@@ -62,17 +62,6 @@ export default function Tickets() {
     loadSecretarios();
   }, [loadTarefas, loadStatuses, loadSecretarios]);
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const handleSearch = async () => {
-        const results = await searchTarefas(searchQuery);
-        setFilteredTickets(results);
-      };
-      handleSearch();
-    } else {
-      setFilteredTickets(tarefas);
-    }
-  }, [searchQuery, tarefas, searchTarefas]);
 
   // Set up real-time listener
   useEffect(() => {
