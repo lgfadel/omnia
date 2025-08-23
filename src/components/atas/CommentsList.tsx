@@ -166,9 +166,9 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
                 <AvatarFallback 
                   className="text-xs text-white font-medium"
                   style={{ 
-                    backgroundColor: (typeof comment.author.color === 'string' && comment.author.color.trim()) 
-                      ? comment.author.color 
-                      : generateUserColor(comment.author.id, comment.author.name) 
+                    backgroundColor: comment.author.color && typeof comment.author.color === 'string' && comment.author.color.trim() !== ''
+              ? comment.author.color
+              : generateUserColor(comment.author.id, comment.author.name) 
                   }}
                 >
                   {getUserInitials(comment.author.name)}

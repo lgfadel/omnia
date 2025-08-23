@@ -225,7 +225,7 @@ export default function Tickets() {
     return {
       ...tarefa,
       priority: tarefa.priority,
-      dueDate: tarefa.dueDate ? formatDueDate(tarefa.dueDate) : '-',
+      dueDate: tarefa.dueDate ? formatDueDateWithStyle(tarefa.dueDate) : '-',
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo, // Keep the full object for avatar rendering
       createdAt: new Date(tarefa.createdAt).toLocaleDateString('pt-BR'),

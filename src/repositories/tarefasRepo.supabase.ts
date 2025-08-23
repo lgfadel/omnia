@@ -69,7 +69,9 @@ export const tarefasRepoSupabase = {
       throw error;
     }
 
-    return data?.map(transformTarefaFromDB) || [];
+    const tarefas = data?.map(transformTarefaFromDB) || [];
+    
+    return tarefas;
   },
 
   async getById(id: string): Promise<Tarefa | null> {

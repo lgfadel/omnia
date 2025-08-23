@@ -125,8 +125,8 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
         <AvatarFallback 
           className="text-xs text-white font-medium"
           style={{ 
-            backgroundColor: (typeof userProfile?.color === 'string' && userProfile?.color?.trim())
-              ? (userProfile?.color as string)
+            backgroundColor: userProfile?.color && typeof userProfile.color === 'string' && userProfile.color.trim() !== ''
+              ? userProfile.color
               : generateUserColor(userProfile?.id, userProfile?.name)
           }}
         >

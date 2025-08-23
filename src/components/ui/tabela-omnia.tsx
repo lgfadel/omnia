@@ -90,6 +90,9 @@ export function TabelaOmnia({
     if (key === "dueDate" && row?.dueDate) {
       const date = new Date(row.dueDate)
       const now = new Date()
+      // Set time to start of day for accurate comparison
+      now.setHours(0, 0, 0, 0)
+      date.setHours(0, 0, 0, 0)
       const isOverdue = date < now
       
       return (
@@ -247,7 +250,9 @@ export function TabelaOmnia({
     // Render secretary as badge, responsible as avatar
     if (key === "secretary" && value && row) {
       const user = value
-      const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
+      const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+          ? user.color 
+          : generateUserColor(user.id, user.name)
       
       return (
         <div className="flex items-center justify-center">
@@ -281,7 +286,9 @@ export function TabelaOmnia({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
                   {availableUsers.map((user) => {
-                    const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
+                    const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+                      ? user.color 
+                      : generateUserColor(user.id, user.name)
                     const initials = getUserInitials(user.name)
                     return (
                       <DropdownMenuItem
@@ -317,7 +324,9 @@ export function TabelaOmnia({
       }
       
       const user = value
-      const userColor = (typeof user.color === 'string' && user.color.trim()) ? user.color : generateUserColor(user.id, user.name)
+      const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== '' 
+        ? user.color 
+        : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
       
       return (
@@ -344,7 +353,9 @@ export function TabelaOmnia({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center">
                 {availableUsers.map((availableUser) => {
-                  const availableUserColor = (typeof availableUser.color === 'string' && availableUser.color.trim()) ? availableUser.color : generateUserColor(availableUser.id, availableUser.name)
+                  const availableUserColor = availableUser.color && typeof availableUser.color === 'string' && availableUser.color.trim() !== ''
+                    ? availableUser.color 
+                    : generateUserColor(availableUser.id, availableUser.name)
                   const availableInitials = getUserInitials(availableUser.name)
                   return (
                     <DropdownMenuItem
