@@ -67,58 +67,56 @@ function SortableTicketStatusItem({ status, onEdit, onDelete, isLoading }: Sorta
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className="mb-3">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 cursor-grab active:cursor-grabbing"
-                {...listeners}
-              >
-                <GripVertical className="h-4 w-4" />
-              </Button>
+      <div className="flex items-center justify-between py-3 px-4 border rounded-lg bg-white mb-2">
+        <div className="flex items-center gap-3 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 cursor-grab active:cursor-grabbing"
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </Button>
 
-              <Badge 
-                className="text-white font-medium"
-                style={{ backgroundColor: status.color }}
-              >
-                {status.name}
-              </Badge>
-              
-              {status.isDefault && (
-                <Badge variant="outline" className="text-xs">
-                  Padrão
-                </Badge>
-              )}
-            </div>
+          <span 
+            className="font-medium"
+            style={{ color: status.color }}
+          >
+            {status.name}
+          </span>
+          
+          {status.isDefault && (
+            <span className="text-sm text-gray-500">Padrão</span>
+          )}
+          
+          <span className="text-sm text-gray-400">
+            Ordem: {status.order}
+          </span>
+        </div>
 
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={() => onEdit(status)}
-                disabled={isLoading}
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
-              {!status.isDefault && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => onDelete(status.id)}
-                  disabled={isLoading}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-gray-400 hover:text-gray-600"
+            onClick={() => onEdit(status)}
+            disabled={isLoading}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          {!status.isDefault && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-400 hover:text-red-500"
+              onClick={() => onDelete(status.id)}
+              disabled={isLoading}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -175,24 +173,23 @@ export function TicketStatusList({
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base">Status de Tickets</CardTitle>
+      <div className="bg-white rounded-lg border">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-lg font-semibold text-gray-900">Status Cadastrados</h2>
           <Button 
             onClick={onCreate} 
-            size="sm" 
-            variant="outline"
+            className="bg-blue-500 hover:bg-blue-600 text-white"
             disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar
+            Novo Status
           </Button>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-6">
           {statuses.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>Nenhum status configurado</p>
-              <p className="text-sm mt-1">Clique em "Adicionar" para criar o primeiro status</p>
+              <p className="text-sm mt-1">Clique em "Novo Status" para criar o primeiro status</p>
             </div>
           ) : (
             <DndContext
@@ -201,7 +198,7 @@ export function TicketStatusList({
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={statuses} strategy={verticalListSortingStrategy}>
-                <div>
+                <div className="space-y-2">
                   {statuses.map((status) => (
                     <SortableTicketStatusItem
                       key={status.id}
@@ -215,8 +212,8 @@ export function TicketStatusList({
               </SortableContext>
             </DndContext>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
