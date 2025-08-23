@@ -495,7 +495,7 @@ export type Database = {
       }
     }
     Enums: {
-      ticket_priority: "ALTA" | "NORMAL" | "BAIXA"
+      ticket_priority: "URGENTE" | "ALTA" | "NORMAL" | "BAIXA"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -623,7 +623,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      ticket_priority: ["ALTA", "NORMAL", "BAIXA"],
+      ticket_priority: ["URGENTE", "ALTA", "NORMAL", "BAIXA"],
     },
   },
 } as const
