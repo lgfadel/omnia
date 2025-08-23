@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const ticketSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
   description: z.string().optional(),
-  priority: z.enum(['ALTA', 'NORMAL', 'BAIXA']),
+  priority: z.enum(['URGENTE', 'ALTA', 'NORMAL', 'BAIXA']),
   dueDate: z.string().optional(),
   ticket: z.string().optional(),
   statusId: z.string().min(1, 'Status é obrigatório'),
@@ -163,9 +163,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                     <SelectValue placeholder="Selecione a prioridade" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BAIXA">Baixa</SelectItem>
-                    <SelectItem value="NORMAL">Normal</SelectItem>
+                    <SelectItem value="URGENTE">Urgente</SelectItem>
                     <SelectItem value="ALTA">Alta</SelectItem>
+                    <SelectItem value="NORMAL">Normal</SelectItem>
+                    <SelectItem value="BAIXA">Baixa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

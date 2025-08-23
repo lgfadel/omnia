@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { UserRef, Attachment, Comment } from '@/data/fixtures';
 
-export type TarefaPrioridade = 'ALTA' | 'NORMAL' | 'BAIXA';
+export type TarefaPrioridade = 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
 
 export interface Tarefa {
   id: string;

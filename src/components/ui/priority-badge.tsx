@@ -8,6 +8,11 @@ interface PriorityBadgeProps {
 }
 
 const priorityConfig: Record<TarefaPrioridade, { label: string; bgColor: string; flagColor: string }> = {
+  URGENTE: {
+    label: "Urgente",
+    bgColor: "bg-red-50 border-red-200",
+    flagColor: "text-red-500"
+  },
   ALTA: {
     label: "Alta", 
     bgColor: "bg-yellow-50 border-yellow-200",
