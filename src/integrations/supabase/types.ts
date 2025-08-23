@@ -267,6 +267,7 @@ export type Database = {
       }
       omnia_ticket_attachments: {
         Row: {
+          comment_id: string | null
           created_at: string
           id: string
           mime_type: string | null
@@ -277,6 +278,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          comment_id?: string | null
           created_at?: string
           id?: string
           mime_type?: string | null
@@ -287,6 +289,7 @@ export type Database = {
           url: string
         }
         Update: {
+          comment_id?: string | null
           created_at?: string
           id?: string
           mime_type?: string | null
@@ -296,7 +299,15 @@ export type Database = {
           uploaded_by?: string | null
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "omnia_ticket_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       omnia_ticket_comments: {
         Row: {
