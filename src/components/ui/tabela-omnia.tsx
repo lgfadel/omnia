@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -104,11 +104,13 @@ export function TabelaOmnia({
     
     // Handle comment count column
     if (key === "commentCount") {
+      const count = value || 0
       return (
-        <div className="text-center">
-          <Badge variant="outline" className="text-xs">
-            {value || 0}
-          </Badge>
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-1 text-foreground">
+            <MessageCircle className="w-3 h-3" />
+            <span className="text-xs">{count}</span>
+          </div>
         </div>
       )
     }
@@ -553,7 +555,7 @@ export function TabelaOmnia({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                        className="h-8 w-8 text-foreground hover:text-foreground hover:bg-gray-100"
                         onClick={() => onView(row.id)}
                       >
                         <Eye className="w-4 h-4" />
@@ -563,7 +565,7 @@ export function TabelaOmnia({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-gray-100"
+                        className="h-8 w-8 text-foreground hover:text-foreground hover:bg-gray-100"
                         onClick={() => onDelete(row.id)}
                       >
                         <Trash2 className="w-4 h-4" />
