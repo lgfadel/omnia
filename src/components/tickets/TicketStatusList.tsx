@@ -66,58 +66,55 @@ function SortableTicketStatusItem({ status, onEdit, onDelete, isLoading }: Sorta
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <div className="flex items-center justify-between py-3 px-4 border rounded-lg bg-white mb-2">
-        <div className="flex items-center gap-3 flex-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 cursor-grab active:cursor-grabbing"
+    <Card ref={setNodeRef} style={style}>
+      <CardContent className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <GripVertical 
+            className="w-4 h-4 text-muted-foreground cursor-move" 
+            {...attributes}
             {...listeners}
-          >
-            <GripVertical className="h-4 w-4 text-gray-400" />
-          </Button>
-
-          <span 
-            className="font-medium"
-            style={{ color: status.color }}
+          />
+          <Badge 
+            variant="secondary" 
+            style={{ backgroundColor: status.color + '20', color: status.color }}
+            className="border-0"
           >
             {status.name}
-          </span>
-          
+          </Badge>
           {status.isDefault && (
-            <span className="text-sm text-gray-500">Padrão</span>
+            <Badge variant="outline" className="text-xs">
+              Padrão
+            </Badge>
           )}
-          
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-muted-foreground">
             Ordem: {status.order}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-gray-600"
+            variant="outline"
+            size="sm"
             onClick={() => onEdit(status)}
             disabled={isLoading}
           >
             <Pencil className="w-4 h-4" />
           </Button>
+          
           {!status.isDefault && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-400 hover:text-red-500"
+              variant="outline"
+              size="sm"
               onClick={() => onDelete(status.id)}
               disabled={isLoading}
+              className="text-destructive hover:text-destructive"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -172,65 +169,63 @@ export function TicketStatusList({
   }
 
   return (
-    <>
-      <div className="bg-white rounded-lg border">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Status Cadastrados</h2>
-          <Button 
-            onClick={onCreate} 
-            className="bg-blue-500 hover:bg-blue-600 text-white"
-            disabled={isLoading}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Status Cadastrados</h3>
+        <Button onClick={onCreate} className="gap-2" disabled={isLoading}>
+          <Plus className="w-4 h-4" />
+          Novo Status
+        </Button>
+      </div>
+
+      <div className="grid gap-3">
+        {statuses.length === 0 ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <p className="text-muted-foreground">Nenhum status encontrado</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Status
-          </Button>
-        </div>
-        <div className="p-6">
-          {statuses.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhum status configurado</p>
-              <p className="text-sm mt-1">Clique em "Novo Status" para criar o primeiro status</p>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={statuses} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {statuses.map((status) => (
-                    <SortableTicketStatusItem
-                      key={status.id}
-                      status={status}
-                      onEdit={onEdit}
-                      onDelete={handleDeleteClick}
-                      isLoading={isLoading}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
+            <SortableContext items={statuses.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              {statuses.map((status) => (
+                <SortableTicketStatusItem
+                  key={status.id}
+                  status={status}
+                  onEdit={onEdit}
+                  onDelete={handleDeleteClick}
+                  isLoading={isLoading}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar este status? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este status? Esta ação não pode ser desfeita.
+              Todos os tickets com este status serão afetados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>
-              Deletar
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   )
 }
