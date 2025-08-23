@@ -123,6 +123,18 @@ const Atas = () => {
     }
   }
 
+  const handleResponsibleChange = async (id: string | number, userId: string) => {
+    try {
+      const selectedUser = secretarios.find(user => user.id === userId);
+      if (selectedUser) {
+        await updateAta(id.toString(), { responsible: selectedUser });
+        loadAtas();
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar responsável:', error);
+    }
+  };
+
   const handleStatusFilterChange = (statusId: string) => {
     setStatusFilter(prev => 
       prev.includes(statusId) 
@@ -322,7 +334,9 @@ const Atas = () => {
               onView={handleView}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              onResponsibleChange={handleResponsibleChange}
               availableStatuses={statuses}
+              availableUsers={secretarios}
               grouped={true}
             />
           )}
