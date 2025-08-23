@@ -16,6 +16,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { PriorityBadge } from "@/components/ui/priority-badge"
+import { CommentsModal } from "@/components/ui/comments-modal"
 
 export interface TabelaOmniaColumn {
   key: string
@@ -43,6 +44,7 @@ interface TabelaOmniaProps {
   data: TabelaOmniaRow[] | TabelaOmniaGroupedItem[]
   onView?: (id: string | number) => void
   onDelete?: (id: string | number) => void
+  onCommentClick?: (id: string | number, title?: string) => void
   onStatusChange?: (id: string | number, statusId: string) => void
   onResponsibleChange?: (id: string | number, userId: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
@@ -59,6 +61,7 @@ export function TabelaOmnia({
   data, 
   onView, 
   onDelete, 
+  onCommentClick,
   onStatusChange,
   onResponsibleChange,
   availableStatuses = [],
@@ -69,7 +72,20 @@ export function TabelaOmnia({
   className,
   grouped = false
 }: TabelaOmniaProps) {
+  const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({ 
+    isOpen: false, 
+    ticketId: '', 
+    ticketTitle: '' 
+  })
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  const handleCommentCountChange = (ticketId: string, newCount: number) => {
+    setCommentCounts(prev => ({
+      ...prev,
+      [ticketId]: newCount
+    }))
+  }
 
   const toggleGroup = (statusName: string) => {
     const newCollapsed = new Set(collapsedGroups)
@@ -104,13 +120,32 @@ export function TabelaOmnia({
     
     // Handle comment count column
     if (key === "commentCount") {
-      const count = value || 0
+      const updatedCount = commentCounts[String(row.id)]
+      const count = updatedCount !== undefined ? updatedCount : (value || 0)
       return (
         <div className="flex items-center justify-center">
-          <div className="flex items-center gap-1 text-foreground">
-            <MessageCircle className="w-3 h-3" />
-            <span className="text-xs">{count}</span>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto p-1 hover:bg-gray-100"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onCommentClick) {
+                onCommentClick(row.id, row.title || row.name)
+              } else {
+                setCommentsModal({ 
+                  isOpen: true, 
+                  ticketId: String(row.id), 
+                  ticketTitle: row.title || row.name 
+                })
+              }
+            }}
+          >
+            <div className="flex items-center gap-1 text-foreground">
+              <MessageCircle className="w-3 h-3" />
+              <span className="text-xs">{count}</span>
+            </div>
+          </Button>
         </div>
       )
     }
@@ -555,7 +590,7 @@ export function TabelaOmnia({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-foreground hover:text-foreground hover:bg-gray-100"
+                        className="h-8 w-8 !text-foreground hover:!text-foreground hover:bg-gray-100"
                         onClick={() => onView(row.id)}
                       >
                         <Eye className="w-4 h-4" />
@@ -565,7 +600,7 @@ export function TabelaOmnia({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-foreground hover:text-foreground hover:bg-gray-100"
+                        className="h-8 w-8 !text-foreground hover:!text-foreground hover:bg-gray-100"
                         onClick={() => onDelete(row.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -578,6 +613,15 @@ export function TabelaOmnia({
           )}
         </TableBody>
       </Table>
+      
+      {/* Modal de comentários */}
+      <CommentsModal
+        isOpen={commentsModal.isOpen}
+        onClose={() => setCommentsModal({ isOpen: false, ticketId: '', ticketTitle: '' })}
+        ticketId={commentsModal.ticketId}
+        ticketTitle={commentsModal.ticketTitle}
+        onCommentCountChange={(newCount) => handleCommentCountChange(commentsModal.ticketId, newCount)}
+      />
     </div>
   )
 }
