@@ -7,25 +7,21 @@ interface PriorityBadgeProps {
   className?: string;
 }
 
-const priorityConfig: Record<TarefaPrioridade, { label: string; bgColor: string; flagColor: string }> = {
+const priorityConfig: Record<TarefaPrioridade, { label: string; flagColor: string }> = {
   URGENTE: {
     label: "Urgente",
-    bgColor: "bg-red-50 border-red-200",
     flagColor: "text-red-500"
   },
   ALTA: {
     label: "Alta", 
-    bgColor: "bg-yellow-50 border-yellow-200",
     flagColor: "text-yellow-500"
   },
   NORMAL: {
     label: "Normal",
-    bgColor: "bg-blue-50 border-blue-200", 
     flagColor: "text-blue-500"
   },
   BAIXA: {
     label: "Baixa",
-    bgColor: "bg-gray-50 border-gray-200",
     flagColor: "text-gray-500"
   }
 };
@@ -35,12 +31,11 @@ export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
   
   return (
     <div className={cn(
-      "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium",
-      config.bgColor,
+      "inline-flex items-center gap-2 text-sm font-medium",
       className
     )}>
-      <Flag className={cn("w-4 h-4", config.flagColor)} />
-      <span className={config.flagColor}>{config.label}</span>
+      <Flag className={cn("w-4 h-4 fill-current", config.flagColor)} />
+      <span className="text-black">{config.label}</span>
     </div>
   );
 }
