@@ -1,12 +1,17 @@
 import { Layout } from '@/components/layout/Layout';
+import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { TicketStatusList } from '@/components/tickets/TicketStatusList';
 import { TicketStatusForm } from '@/components/tickets/TicketStatusForm';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ConfigTicketStatus() {
-  const [editingStatus, setEditingStatus] = useState<TarefaStatus | undefined>(undefined);
+  const { toast } = useToast();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingStatus, setEditingStatus] = useState<TarefaStatus | null>(null);
   const { 
     statuses, 
     loading, 
@@ -22,74 +27,123 @@ export default function ConfigTicketStatus() {
     loadStatuses();
   }, [loadStatuses]);
 
-  const handleCreateStatus = async (data: { name: string; color: string }) => {
-    await createStatus({
-      name: data.name,
-      color: data.color,
-      order: 0,
-    });
+  const handleCreate = () => {
+    setEditingStatus(null);
+    setIsFormOpen(true);
   };
 
-  const handleUpdateStatus = async (id: string, statusData: Partial<Omit<TarefaStatus, 'id'>>) => {
-    return await updateStatus(id, statusData);
-  };
-
-  const handleDeleteStatus = async (id: string) => {
-    return await deleteStatus(id);
-  };
-
-  const handleReorderStatuses = async (newStatuses: TarefaStatus[]) => {
-    await reorderStatuses(newStatuses);
-  };
-
-  const handleEditStatus = (status: TarefaStatus) => {
+  const handleEdit = (status: TarefaStatus) => {
     setEditingStatus(status);
+    setIsFormOpen(true);
   };
 
-  const handleEditSubmit = async (data: { name: string; color: string }) => {
-    if (editingStatus) {
-      await updateStatus(editingStatus.id, data);
-      setEditingStatus(undefined);
+  const handleFormSubmit = async (data: { name: string; color: string }) => {
+    try {
+      if (editingStatus) {
+        await updateStatus(editingStatus.id, data);
+        toast({
+          title: "Status atualizado!",
+          description: `O status "${data.name}" foi atualizado com sucesso.`
+        });
+      } else {
+        await createStatus({
+          name: data.name,
+          color: data.color,
+          order: statuses.length + 1,
+        });
+        toast({
+          title: "Status criado!",
+          description: `O status "${data.name}" foi criado com sucesso.`
+        });
+      }
+      setIsFormOpen(false);
+      setEditingStatus(null);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar o status. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleEditCancel = () => {
-    setEditingStatus(undefined);
+  const handleDelete = async (id: string) => {
+    try {
+      const success = await deleteStatus(id);
+      if (success) {
+        toast({
+          title: "Status excluído!",
+          description: "O status foi excluído com sucesso."
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao excluir o status. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleReorder = async (reorderedStatuses: TarefaStatus[]) => {
+    try {
+      await reorderStatuses(reorderedStatuses);
+      toast({
+        title: "Status reordenados!",
+        description: "A ordem dos status foi atualizada com sucesso."
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao reordenar os status. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingStatus(null);
   };
 
   return (
     <Layout>
-      <div className="container mx-auto py-8 space-y-8">
+      <div className="space-y-6">
+        <BreadcrumbOmnia 
+          items={[
+            { label: "Configurações", href: "/config" },
+            { label: "Status de Tickets", isActive: true }
+          ]} 
+        />
+        
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Configuração de Status de Tickets
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie os status disponíveis para tickets do sistema
-          </p>
+          <h1 className="text-2xl font-semibold text-foreground">Configuração de Status de Tickets</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <TicketStatusForm 
-              status={editingStatus}
-              onSubmit={editingStatus ? handleEditSubmit : handleCreateStatus}
-              onCancel={handleEditCancel}
+        <TicketStatusList
+          statuses={statuses}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onCreate={handleCreate}
+          onReorder={handleReorder}
+          isLoading={loading}
+        />
+
+        <Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingStatus ? "Editar Status" : "Novo Status"}
+              </DialogTitle>
+            </DialogHeader>
+            <TicketStatusForm
+              status={editingStatus || undefined}
+              onSubmit={handleFormSubmit}
+              onCancel={handleCloseForm}
               isLoading={loading}
             />
-          </div>
-          
-          <div>
-            <TicketStatusList
-              statuses={statuses}
-              onEdit={handleEditStatus}
-              onDelete={handleDeleteStatus}
-              onCreate={() => setEditingStatus(undefined)}
-              onReorder={handleReorderStatuses}
-              isLoading={loading}
-            />
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
