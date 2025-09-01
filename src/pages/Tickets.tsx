@@ -19,6 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
+import { DueDateModal } from '@/components/ui/due-date-modal';
 
 const columns = [
   { key: "title", label: "Título", width: "w-[30%]" },
@@ -37,6 +38,8 @@ export default function Tickets() {
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(true);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
+  const [dueDateModalOpen, setDueDateModalOpen] = useState(false);
+  const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
   const { 
     tarefas, 
     loading, 
@@ -178,6 +181,27 @@ export default function Tickets() {
     }
   };
 
+  const handleDueDateClick = (taskId: string, currentDate?: Date) => {
+    const task = tarefas.find(t => t.id === taskId);
+    if (task) {
+      setSelectedTaskForDueDate({
+        id: taskId,
+        title: task.title,
+        currentDate: currentDate || null
+      });
+      setDueDateModalOpen(true);
+    }
+  };
+
+  const handleDueDateSave = async (newDate: Date | null) => {
+    try {
+      await updateTarefa(selectedTaskForDueDate.id, { dueDate: newDate });
+      loadTarefas();
+    } catch (error) {
+      console.error('Erro ao atualizar data de vencimento:', error);
+    }
+  };
+
   const handleStatusFilterChange = (statusId: string) => {
     setStatusFilter(prev => 
       prev.includes(statusId) 
@@ -195,7 +219,11 @@ export default function Tickets() {
     if (!date) return '-';
     
     const now = new Date();
-    const isOverdue = date < now;
+    const compareDate = new Date(date);
+    // Set time to start of day for accurate comparison
+    now.setHours(0, 0, 0, 0);
+    compareDate.setHours(0, 0, 0, 0);
+    const isOverdue = compareDate < now;
     
     return (
       <span className={isOverdue ? 'text-destructive font-medium' : ''}>
@@ -226,6 +254,7 @@ export default function Tickets() {
       ...tarefa,
       priority: tarefa.priority,
       dueDate: tarefa.dueDate ? formatDueDateWithStyle(tarefa.dueDate) : '-',
+      dueDateOriginal: tarefa.dueDate, // Keep original date for click handler
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo, // Keep the full object for avatar rendering
       createdAt: new Date(tarefa.createdAt).toLocaleDateString('pt-BR'),
@@ -437,6 +466,7 @@ export default function Tickets() {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
+              onDueDateClick={handleDueDateClick}
               availableStatuses={statuses}
               availableUsers={secretarios}
               grouped={true}
@@ -444,6 +474,14 @@ export default function Tickets() {
           )}
         </div>
       </div>
+      
+      <DueDateModal
+        isOpen={dueDateModalOpen}
+        onClose={() => setDueDateModalOpen(false)}
+        onSave={handleDueDateSave}
+        currentDate={selectedTaskForDueDate.currentDate}
+        taskTitle={selectedTaskForDueDate.title}
+      />
     </Layout>
   );
 };
