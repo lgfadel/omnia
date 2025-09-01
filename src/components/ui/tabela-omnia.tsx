@@ -48,6 +48,7 @@ interface TabelaOmniaProps {
   onStatusChange?: (id: string | number, statusId: string) => void
   onResponsibleChange?: (id: string | number, userId: string) => void
   onDueDateClick?: (id: string | number, currentDate?: Date) => void
+  onPriorityClick?: (id: string | number, currentPriority?: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
   availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
   sortField?: string
@@ -66,6 +67,7 @@ export function TabelaOmnia({
   onStatusChange,
   onResponsibleChange,
   onDueDateClick,
+  onPriorityClick,
   availableStatuses = [],
   availableUsers = [],
   sortField, 
@@ -101,7 +103,19 @@ export function TabelaOmnia({
   const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
     // Handle priority column
     if (key === "priority" && value) {
-      return <PriorityBadge priority={value} />
+      return (
+        <div 
+          className="cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onPriorityClick && row) {
+              onPriorityClick(row.id, value)
+            }
+          }}
+        >
+          <PriorityBadge priority={value} />
+        </div>
+      )
     }
     
     // Handle dueDate column with styling

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { useSecretariosStore } from '@/store/secretarios.store';
-import { Tarefa } from '@/repositories/tarefasRepo.supabase';
+import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { DueDateModal } from '@/components/ui/due-date-modal';
+import { PriorityModal } from '@/components/ui/priority-modal';
 
 const columns = [
   { key: "title", label: "Título", width: "w-[30%]" },
@@ -35,11 +36,13 @@ export default function Tickets() {
   const { userProfile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
-  const [showCompletedTasks, setShowCompletedTasks] = useState(true);
+  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(true);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const [dueDateModalOpen, setDueDateModalOpen] = useState(false);
   const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
+  const [priorityModalOpen, setPriorityModalOpen] = useState(false);
+  const [selectedTaskForPriority, setSelectedTaskForPriority] = useState<{ id: string; title: string; currentPriority?: TarefaPrioridade }>({ id: '', title: '' });
   const { 
     tarefas, 
     loading, 
@@ -199,6 +202,27 @@ export default function Tickets() {
       loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar data de vencimento:', error);
+    }
+  };
+
+  const handlePriorityClick = (taskId: string, currentPriority?: TarefaPrioridade) => {
+    const task = tarefas.find(t => t.id === taskId);
+    if (task) {
+      setSelectedTaskForPriority({
+        id: taskId,
+        title: task.title,
+        currentPriority: currentPriority || 'NORMAL'
+      });
+      setPriorityModalOpen(true);
+    }
+  };
+
+  const handlePrioritySave = async (newPriority: TarefaPrioridade) => {
+    try {
+      await updateTarefa(selectedTaskForPriority.id, { priority: newPriority });
+      loadTarefas();
+    } catch (error) {
+      console.error('Erro ao atualizar prioridade:', error);
     }
   };
 
@@ -467,6 +491,7 @@ export default function Tickets() {
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
               onDueDateClick={handleDueDateClick}
+              onPriorityClick={handlePriorityClick}
               availableStatuses={statuses}
               availableUsers={secretarios}
               grouped={true}
@@ -481,6 +506,14 @@ export default function Tickets() {
         onSave={handleDueDateSave}
         currentDate={selectedTaskForDueDate.currentDate}
         taskTitle={selectedTaskForDueDate.title}
+      />
+      
+      <PriorityModal
+        isOpen={priorityModalOpen}
+        onClose={() => setPriorityModalOpen(false)}
+        onSave={handlePrioritySave}
+        currentPriority={selectedTaskForPriority.currentPriority}
+        taskTitle={selectedTaskForPriority.title}
       />
     </Layout>
   );
