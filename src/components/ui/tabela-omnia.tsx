@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -504,6 +504,9 @@ export function TabelaOmnia({
       return (
         <div className="flex items-center gap-2">
           <span className="truncate">{value?.toString() || "-"}</span>
+          {row.isPrivate && (
+            <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          )}
         </div>
       )
     }

@@ -85,7 +85,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
     if (!ticket && user?.id && users.length > 0) {
       const userExists = users.find(u => u.id === user.id);
       if (userExists) {
-        setValue('assignedTo', user.id, { shouldValidate: true, shouldDirty: true });
+        setValue('assignedTo', user.id);
       }
     }
   }, [user, users, ticket, setValue]);
