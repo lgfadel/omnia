@@ -7,12 +7,16 @@ import { SecretarioList } from "@/components/secretarios/SecretarioList"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSecretariosStore } from "@/store/secretarios.store"
 import { UserRef } from "@/data/fixtures"
+import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const ConfigUsuarios = () => {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingSecretario, setEditingSecretario] = useState<UserRef | null>(null)
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const { toast } = useToast()
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setTempPassword(null), !!tempPassword)
   
   const {
     secretarios,

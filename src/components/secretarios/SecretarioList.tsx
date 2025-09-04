@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { UserRef } from "@/data/fixtures"
+import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 interface SecretarioListProps {
   secretarios: UserRef[]
@@ -48,6 +49,9 @@ const getRoleVariant = (roles: string[]) => {
 
 export function SecretarioList({ secretarios, onEdit, onDelete, onCreate, isLoading }: SecretarioListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setDeleteId(null), !!deleteId)
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id)

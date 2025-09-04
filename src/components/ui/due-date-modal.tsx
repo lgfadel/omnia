@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Calendar, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface DueDateModalProps {
   isOpen: boolean
@@ -24,6 +25,9 @@ export function DueDateModal({
 }: DueDateModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [hasDate, setHasDate] = useState(false)
+
+  // Hook para fechar modal com ESC
+  useEscapeKey(onClose, isOpen)
 
   useEffect(() => {
     if (isOpen) {

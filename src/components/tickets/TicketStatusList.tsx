@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { TarefaStatus } from "@/repositories/tarefaStatusRepo.supabase"
+import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 import {
   DndContext,
   closestCenter,
@@ -128,6 +129,9 @@ export function TicketStatusList({
 }: TicketStatusListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [statusToDelete, setStatusToDelete] = useState<string | null>(null)
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setDeleteDialogOpen(false), deleteDialogOpen)
 
   const sensors = useSensors(
     useSensor(PointerSensor),

@@ -6,6 +6,7 @@ import { Flag } from 'lucide-react'
 import { TarefaPrioridade } from '@/repositories/tarefasRepo.supabase'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { cn } from '@/lib/utils'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface PriorityModalProps {
   isOpen: boolean
@@ -30,6 +31,9 @@ export function PriorityModal({
   taskTitle 
 }: PriorityModalProps) {
   const [selectedPriority, setSelectedPriority] = useState<TarefaPrioridade>('NORMAL')
+
+  // Hook para fechar modal com ESC
+  useEscapeKey(onClose, isOpen)
 
   useEffect(() => {
     if (isOpen && currentPriority) {

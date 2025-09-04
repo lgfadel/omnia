@@ -9,6 +9,7 @@ import { TicketCommentsList } from '@/components/tickets/TicketCommentsList';
 import { TicketCommentInput } from '@/components/tickets/TicketCommentInput';
 import { MessageCircle } from 'lucide-react';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -21,6 +22,9 @@ interface CommentsModalProps {
 export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommentCountChange }: CommentsModalProps) {
   const [commentsCount, setCommentsCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Hook para fechar modal com ESC
+  useEscapeKey(onClose, isOpen);
 
   const loadCommentsCount = async () => {
     try {

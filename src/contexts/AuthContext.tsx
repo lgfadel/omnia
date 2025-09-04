@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     )
 
-    // THEN check for existing session
+    // THEN check for existing session with error handling
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
@@ -51,8 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTimeout(() => {
           fetchUserProfile(session.user.id)
         }, 0)
+      } else {
+        setUserProfile(null)
       }
       
+      setLoading(false)
+    }).catch((error) => {
+      console.warn('Auth session check failed:', error)
+      // Allow app to continue loading even if auth fails
       setLoading(false)
     })
 
@@ -68,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
 
       if (error) {
-        console.error('Error fetching user profile:', error)
+        console.warn('Error fetching user profile:', error)
+        // Don't block app loading if profile fetch fails
         return
       }
 
@@ -83,7 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      console.warn('Network error in fetchUserProfile:', error)
+      // Allow app to continue even if profile fetch fails due to network issues
     }
   }
 

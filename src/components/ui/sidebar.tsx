@@ -4,6 +4,7 @@ import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useEscapeKey } from "@/hooks/useEscapeKey"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -67,6 +68,9 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+
+    // Hook para fechar Sheet mobile com ESC
+    useEscapeKey(() => setOpenMobile(false), openMobile && isMobile)
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.

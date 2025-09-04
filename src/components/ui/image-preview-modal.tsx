@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Download, X, ZoomIn, ZoomOut, RotateCw } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useEscapeKey } from "@/hooks/useEscapeKey"
 
 interface ImagePreviewModalProps {
   isOpen: boolean
@@ -28,6 +29,9 @@ export function ImagePreviewModal({
   const [rotation, setRotation] = useState(0)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+
+  // Hook para fechar modal com ESC
+  useEscapeKey(onClose, isOpen)
   const [isClosing, setIsClosing] = useState(false)
 
   const handleZoomIn = () => {

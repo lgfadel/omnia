@@ -17,6 +17,7 @@ import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState } from "react"
 import { Ata, FIXTURE_USERS } from "@/data/fixtures"
+import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
@@ -29,6 +30,9 @@ const AtaDetail = () => {
   const [commentLoading, setCommentLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
   const [attachmentToDelete, setAttachmentToDelete] = useState<string | null>(null)
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setAttachmentToDelete(null), !!attachmentToDelete)
 
   useEffect(() => {
     loadStatuses()

@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Status } from "@/data/fixtures"
+import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 import {
   DndContext,
   closestCenter,
@@ -121,6 +122,9 @@ function SortableStatusItem({ status, onEdit, onDelete, isLoading }: SortableSta
 
 export function StatusList({ statuses, onEdit, onDelete, onCreate, onReorder, isLoading }: StatusListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setDeleteId(null), !!deleteId)
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
