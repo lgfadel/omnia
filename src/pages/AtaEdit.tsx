@@ -46,6 +46,7 @@ const AtaEdit = () => {
         secretary,
         responsible,
         statusId: data.statusId,
+        condominiumId: data.condominiumId,
         ticket: data.ticket,
         tags: data.tags
       })

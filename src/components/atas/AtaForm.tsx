@@ -15,6 +15,7 @@ import { X } from "lucide-react";
 import { Ata, UserRef } from "@/data/fixtures";
 import { useAtasStore } from "@/store/atas.store";
 import { useTagsStore } from "@/store/tags.store";
+import { useCondominiumStore } from "@/store/condominiums.store";
 import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
 import { TagInput } from "./TagInput";
 const ataSchema = z.object({
@@ -24,6 +25,7 @@ const ataSchema = z.object({
   secretaryId: z.string().optional(),
   responsibleId: z.string().optional(),
   statusId: z.string().min(1, "Status é obrigatório"),
+  condominiumId: z.string().optional(),
   ticket: z.string().optional(),
   tags: z.string().optional()
 });
@@ -46,6 +48,7 @@ export function AtaForm({
     statuses
   } = useAtasStore();
   const { loadTags } = useTagsStore();
+  const { condominiums, loadCondominiums } = useCondominiumStore();
   const [users, setUsers] = useState<UserRef[]>([]);
   const [tags, setTags] = useState<string[]>(ata?.tags || []);
 
@@ -54,7 +57,8 @@ export function AtaForm({
       try {
         const [userData] = await Promise.all([
           atasRepoSupabase.getUsers(),
-          loadTags()
+          loadTags(),
+          loadCondominiums()
         ]);
         setUsers(userData);
       } catch (error) {
@@ -62,7 +66,7 @@ export function AtaForm({
       }
     };
     loadData();
-  }, [loadTags]);
+  }, [loadTags, loadCondominiums]);
   const {
     register,
     handleSubmit,
@@ -80,6 +84,7 @@ export function AtaForm({
       secretaryId: ata?.secretary?.id || "",
       responsibleId: ata?.responsible?.id || "",
       statusId: ata?.statusId || statuses.find(s => s.isDefault)?.id || "",
+      condominiumId: ata?.condominiumId || "",
       ticket: ata?.ticket || "",
       tags: ""
     }
@@ -173,11 +178,40 @@ export function AtaForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ticket">Ticket/Código</Label>
-                <Input id="ticket" {...register("ticket")} placeholder="Ex: TCK-12345" />
+                <Label>Condomínio</Label>
+                <Select onValueChange={value => setValue("condominiumId", value)} defaultValue={watch("condominiumId")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o condomínio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {condominiums.map(condominium => (
+                      <SelectItem key={condominium.id} value={condominium.id}>
+                        {condominium.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+          </div>
 
+          <Separator />
+
+          {/* Ticket */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Informações Adicionais</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ticket">Ticket/Código</Label>
+              <Input id="ticket" {...register("ticket")} placeholder="Ex: TCK-12345" />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Tags */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Tags</h3>
             <TagInput 
               tags={tags} 
               onTagsChange={setTags} 

@@ -16,6 +16,7 @@ import AtaEdit from "./pages/AtaEdit";
 import ConfigStatus from "./pages/ConfigStatus";
 import ConfigUsuarios from "./pages/ConfigUsuarios";
 import { ConfigTags } from "./pages/ConfigTags";
+import ConfigCondominiums from "./pages/ConfigCondominiums";
 import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Tickets from "./pages/Tickets";
@@ -75,6 +76,11 @@ function App() {
               <Route path="/config/tags" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigTags />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/config/condominiums" element={
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                  <ConfigCondominiums />
                 </RoleProtectedRoute>
               } />
               <Route path="/tarefas" element={

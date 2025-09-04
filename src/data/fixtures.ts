@@ -44,6 +44,7 @@ export interface Ata {
   secretary?: UserRef;
   responsible?: UserRef;
   statusId: string;
+  condominiumId?: string;
   ticket?: string;
   tags?: string[];
   commentCount?: number;

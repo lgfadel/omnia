@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client"
 import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/fixtures"
 
+// Use existing supabase client with type casting for untyped tables
+const supabaseUntyped = supabase as any
+
 // Transform database record to Ata type
 const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
   const status = statuses.find(s => s.id === dbAta.status_id)
@@ -73,6 +76,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
       color: dbAta.responsible_user.color
     } : undefined,
     statusId: dbAta.status_id,
+    condominiumId: dbAta.condominium_id,
     ticket: dbAta.ticket,
     tags: dbAta.tags || [],
     commentCount: dbAta.comment_count || 0,
@@ -101,7 +105,7 @@ const transformStatusFromDB = (dbStatus: any): Status => ({
 export const atasRepoSupabase = {
   async list(search?: string, statusFilter?: string[]): Promise<Ata[]> {
     // First get statuses for transformation
-    const { data: statusesData } = await supabase
+    const { data: statusesData } = await supabaseUntyped
       .from('omnia_statuses')
       .select('*')
       .order('order_position')
@@ -113,12 +117,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url, color),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url, color),
-        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
-        omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
-          id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url, color)
-        )
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url, color)
       `)
       .order('created_at', { ascending: false })
 
@@ -134,14 +133,41 @@ export const atasRepoSupabase = {
 
     if (error) throw error
 
-    return data?.map(ata => transformAtaFromDB(ata, statuses)) || []
+    // Get attachments and comments separately
+    const ataIds = data?.map(ata => ata.id) || []
+    let attachments: any[] = []
+    let comments: any[] = []
+    
+    if (ataIds.length > 0) {
+      const { data: attachmentsData } = await supabaseUntyped
+        .from('omnia_attachments')
+        .select('*')
+        .in('ata_id', ataIds)
+      
+      const { data: commentsData } = await supabaseUntyped
+        .from('omnia_comments')
+        .select(`
+          *,
+          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url, color)
+        `)
+        .in('ata_id', ataIds)
+      
+      attachments = attachmentsData || []
+      comments = commentsData || []
+    }
+
+    return data?.map(ata => {
+      const ataAttachments = attachments.filter(att => att.ata_id === ata.id)
+      const ataComments = comments.filter(comm => comm.ata_id === ata.id)
+      return transformAtaFromDB({ ...ata, omnia_attachments: ataAttachments, omnia_comments: ataComments }, statuses)
+    }) || []
   },
 
   async getById(id: string): Promise<Ata | null> {
     console.log('AtasRepo: Getting ata by id:', id)
     
     // First get statuses for transformation
-    const { data: statusesData } = await supabase
+    const { data: statusesData } = await supabaseUntyped
       .from('omnia_statuses')
       .select('*')
       .order('order_position')
@@ -153,12 +179,7 @@ export const atasRepoSupabase = {
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url, color),
-        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url, color),
-        omnia_attachments:omnia_attachments!omnia_attachments_ata_id_fkey (id, name, url, size_kb, mime_type, created_at, comment_id),
-        omnia_comments:omnia_comments!omnia_comments_ata_id_fkey (
-          id, body, created_at, author_id,
-          author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url, color)
-        )
+        responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url, color)
       `)
       .eq('code', id)
       .maybeSingle()
@@ -173,8 +194,26 @@ export const atasRepoSupabase = {
       return null
     }
 
+    // Get attachments and comments separately
+    const { data: attachmentsData } = await supabaseUntyped
+      .from('omnia_attachments')
+      .select('*')
+      .eq('ata_id', data.id)
+    
+    const { data: commentsData } = await supabaseUntyped
+      .from('omnia_comments')
+      .select(`
+        *,
+        author_user:omnia_users!omnia_comments_author_id_fkey (id, name, roles, avatar_url, color)
+      `)
+      .eq('ata_id', data.id)
+
     console.log('AtasRepo: Found ata:', data)
-    return transformAtaFromDB(data, statuses)
+    return transformAtaFromDB({
+      ...data,
+      omnia_attachments: attachmentsData || [],
+      omnia_comments: commentsData || []
+    }, statuses)
   },
 
   async create(data: Omit<Ata, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Ata> {
@@ -208,6 +247,7 @@ export const atasRepoSupabase = {
         secretary_id: data.secretary?.id,
         responsible_id: data.responsible?.id,
         status_id: data.statusId,
+        condominium_id: data.condominiumId,
         ticket: data.ticket,
         tags: data.tags || [],
         created_by: user.user?.id
@@ -222,7 +262,7 @@ export const atasRepoSupabase = {
     if (error) throw error
 
     // Get statuses for transformation
-    const { data: statusesData } = await supabase
+    const { data: statusesData } = await supabaseUntyped
       .from('omnia_statuses')
       .select('*')
       .order('order_position')
@@ -241,6 +281,7 @@ export const atasRepoSupabase = {
     if (data.secretary !== undefined) updateData.secretary_id = data.secretary?.id
     if (data.responsible !== undefined) updateData.responsible_id = data.responsible?.id
     if (data.statusId !== undefined) updateData.status_id = data.statusId
+    if (data.condominiumId !== undefined) updateData.condominium_id = data.condominiumId
     if (data.ticket !== undefined) updateData.ticket = data.ticket
     if (data.tags !== undefined) updateData.tags = data.tags
 
@@ -268,7 +309,7 @@ export const atasRepoSupabase = {
     if (!updatedAta) return null
 
     // Get statuses for transformation
-    const { data: statusesData } = await supabase
+    const { data: statusesData } = await supabaseUntyped
       .from('omnia_statuses')
       .select('*')
       .order('order_position')
@@ -329,7 +370,7 @@ export const atasRepoSupabase = {
       attachments: comment.attachments
     })
 
-    const { data: newComment, error } = await supabase
+    const { data: newComment, error } = await supabaseUntyped
       .from('omnia_comments')
       .insert({
         ata_id: ata.id,
@@ -367,7 +408,7 @@ export const atasRepoSupabase = {
 
       console.log('AtasRepo: Inserting attachments:', attachmentsToInsert)
 
-      const { data: insertedAttachments, error: attachError } = await supabase
+      const { data: insertedAttachments, error: attachError } = await supabaseUntyped
         .from('omnia_attachments')
         .insert(attachmentsToInsert)
         .select('*')
@@ -415,7 +456,7 @@ export const atasRepoSupabase = {
 
     const { data: user } = await supabase.auth.getUser()
 
-    const { data: newAttachment, error } = await supabase
+    const { data: newAttachment, error } = await supabaseUntyped
       .from('omnia_attachments')
       .insert({
         ata_id: ata.id,
@@ -441,7 +482,7 @@ export const atasRepoSupabase = {
   },
 
   async updateComment(commentId: string, body: string): Promise<Comment | null> {
-    const { data: updatedComment, error } = await supabase
+    const { data: updatedComment, error } = await supabaseUntyped
       .from('omnia_comments')
       .update({ body })
       .eq('id', commentId)
@@ -455,7 +496,7 @@ export const atasRepoSupabase = {
     if (!updatedComment) return null
 
     // Get attachments separately to avoid complex join issues
-    const { data: attachments } = await supabase
+    const { data: attachments } = await supabaseUntyped
       .from('omnia_attachments')
       .select('*')
       .eq('comment_id', commentId)
@@ -484,7 +525,7 @@ export const atasRepoSupabase = {
   },
 
   async removeComment(commentId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await supabaseUntyped
       .from('omnia_comments')
       .delete()
       .eq('id', commentId)
@@ -494,7 +535,7 @@ export const atasRepoSupabase = {
   },
 
   async removeAttachment(attachmentId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await supabaseUntyped
       .from('omnia_attachments')
       .delete()
       .eq('id', attachmentId)
@@ -504,7 +545,7 @@ export const atasRepoSupabase = {
   },
 
   async getStatuses(): Promise<Status[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseUntyped
       .from('omnia_statuses')
       .select('*')
       .order('order_position')

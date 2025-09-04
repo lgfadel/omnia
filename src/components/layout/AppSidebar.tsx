@@ -10,7 +10,8 @@ import {
   KeyRound,
   ChevronDown,
   ChevronRight,
-  Ticket
+  Ticket,
+  Building2
 } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import {
@@ -45,6 +46,7 @@ const configItems = [
   { title: "Status", url: "/config/status", icon: BarChart3 },
   { title: "Status Tickets", url: "/config/ticket-status", icon: BarChart3 },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
+  { title: "Condomínios", url: "/config/condominiums", icon: Building2 },
   { title: "Tags", url: "/config/tags", icon: Tags },
 ]
 
