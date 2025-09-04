@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronDown, User, Lock } from 'lucide-react';
+import { Plus, Search, Filter, ChevronDown, User, Lock, Check } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { TabelaOmnia } from '@/components/ui/tabela-omnia';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Badge } from '@/components/ui/badge';
 import { useTarefasStore } from '@/store/tarefas.store';
@@ -44,6 +45,8 @@ export default function Tickets() {
   const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
   const [priorityModalOpen, setPriorityModalOpen] = useState(false);
   const [selectedTaskForPriority, setSelectedTaskForPriority] = useState<{ id: string; title: string; currentPriority?: TarefaPrioridade }>({ id: '', title: '' });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const { 
     tarefas, 
     loading, 
@@ -163,9 +166,19 @@ export default function Tickets() {
     navigate(`/tarefas/${id}`);
   };
 
-  const handleDelete = async (id: string | number) => {
-    if (confirm("Tem certeza que deseja excluir esta tarefa?")) {
-      await deleteTarefa(String(id));
+  const handleDelete = (id: string | number) => {
+    const task = tarefas.find(t => t.id === String(id));
+    if (task) {
+      setTaskToDelete({ id: String(id), title: task.title });
+      setDeleteConfirmOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (taskToDelete) {
+      await deleteTarefa(taskToDelete.id);
+      setDeleteConfirmOpen(false);
+      setTaskToDelete(null);
     }
   };
 
@@ -485,7 +498,9 @@ export default function Tickets() {
                     : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
                 }`}
               >
-                {showCompletedTasks ? 'Ocultar Concluídas' : 'Mostrar Concluídas'}
+                <Check className={`w-4 h-4 ${
+                  showCompletedTasks ? 'text-green-600' : 'text-gray-400'
+                }`} />
               </Button>
               
               <Button
@@ -543,6 +558,30 @@ export default function Tickets() {
         currentPriority={selectedTaskForPriority.currentPriority}
         taskTitle={selectedTaskForPriority.title}
       />
+      
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a tarefa "{taskToDelete?.title}"?
+              <br />
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

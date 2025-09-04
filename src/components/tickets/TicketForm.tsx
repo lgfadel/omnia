@@ -80,6 +80,19 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
     }
   }, [statuses, ticket, setValue]);
 
+  // Set logged user as default assignee for new tickets
+  useEffect(() => {
+    if (!ticket && user?.id && users.length > 0) {
+      const userExists = users.find(u => u.id === user.id);
+      if (userExists) {
+        setValue('assignedTo', user.id, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+  }, [user, users, ticket, setValue]);
+
+  // Force re-render when assignedTo changes
+  const assignedToValue = watch('assignedTo');
+
   const handleFormSubmit = async (data: TicketFormData) => {
     const ticketData: Partial<Tarefa> = {
       title: data.title,
@@ -196,10 +209,11 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Responsável</Label>
                 <Select
-                  value={watch('assignedTo') || undefined}
-                  onValueChange={(value) => setValue('assignedTo', value || undefined)}
+                  value={assignedToValue || ''}
+                  onValueChange={(value) => setValue('assignedTo', value || '')}
                   disabled={watch('isPrivate')}
                 >
+
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um responsável" />
                   </SelectTrigger>
@@ -245,9 +259,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                 Tarefa Privada
               </Label>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Tarefas privadas são visíveis apenas para você e administradores
-            </p>
+            
           </div>
 
           <Separator />
