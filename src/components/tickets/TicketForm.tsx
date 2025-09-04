@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TagInput } from '@/components/atas/TagInput';
 import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
@@ -27,6 +28,7 @@ const ticketSchema = z.object({
   ticket: z.string().optional(),
   statusId: z.string().min(1, 'Status é obrigatório'),
   assignedTo: z.string().optional(),
+  isPrivate: z.boolean().default(false),
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -42,7 +44,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
   const [tags, setTags] = useState<string[]>(ticket?.tags || []);
   const [attachments, setAttachments] = useState<Attachment[]>(ticket?.attachments || []);
   const { statuses, loadStatuses } = useTarefaStatusStore();
-  const { userProfile } = useAuth();
+  const { user } = useAuth();
 
 
 
@@ -62,6 +64,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       ticket: ticket?.ticket || '',
       statusId: ticket?.statusId || '',
       assignedTo: ticket?.assignedTo?.id || '',
+      isPrivate: ticket?.isPrivate || false,
     },
   });
 
@@ -88,6 +91,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       assignedTo: data.assignedTo ? users.find(u => u.id === data.assignedTo) : undefined,
       tags,
       attachments,
+      isPrivate: Boolean(data.isPrivate),
     };
 
     await onSubmit(ticketData);
@@ -194,6 +198,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                 <Select
                   value={watch('assignedTo') || undefined}
                   onValueChange={(value) => setValue('assignedTo', value || undefined)}
+                  disabled={watch('isPrivate')}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um responsável" />
@@ -206,6 +211,9 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                     ))}
                   </SelectContent>
                 </Select>
+                {watch('isPrivate') && (
+                  <p className="text-xs text-muted-foreground">Tarefas privadas são automaticamente atribuídas ao criador</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -220,6 +228,26 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                 )}
               </div>
             </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isPrivate"
+                checked={watch('isPrivate')}
+                onCheckedChange={(checked) => {
+                  setValue('isPrivate', checked as boolean);
+                  // Se marcar como privada, define o usuário corrente como responsável
+                  if (checked && user) {
+                    setValue('assignedTo', user.id);
+                  }
+                }}
+              />
+              <Label htmlFor="isPrivate" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Tarefa Privada
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tarefas privadas são visíveis apenas para você e administradores
+            </p>
           </div>
 
           <Separator />

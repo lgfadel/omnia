@@ -499,6 +499,15 @@ export function TabelaOmnia({
       return value
     }
     
+    // Handle title column
+    if (key === "title" && row) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="truncate">{value?.toString() || "-"}</span>
+        </div>
+      )
+    }
+    
     return value?.toString() || "-"
   }
 

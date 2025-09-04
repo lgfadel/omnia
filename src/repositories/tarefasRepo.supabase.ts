@@ -19,6 +19,7 @@ export interface Tarefa {
   updatedAt: Date;
   attachments?: Attachment[];
   comments?: Comment[];
+  isPrivate: boolean;
 }
 
 function transformTarefaFromDB(dbTarefa: any): Tarefa {
@@ -48,6 +49,7 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
     } : undefined,
     tags: dbTarefa.tags || [],
     commentCount: dbTarefa.comment_count || 0,
+    isPrivate: dbTarefa.is_private || false,
     createdAt: new Date(dbTarefa.created_at),
     updatedAt: new Date(dbTarefa.updated_at),
   };
@@ -106,6 +108,11 @@ export const tarefasRepoSupabase = {
       .eq('auth_user_id', currentUser?.user?.id)
       .single();
     
+    // Para tarefas privadas, usar o próprio usuário (omnia_users.id)
+    const assignedToValue = tarefa.isPrivate 
+      ? userProfile?.id 
+      : tarefa.assignedTo?.id;
+    
     const { data, error } = await supabase
       .from('omnia_tickets')
       .insert({
@@ -115,9 +122,10 @@ export const tarefasRepoSupabase = {
         due_date: tarefa.dueDate?.toISOString().split('T')[0],
         ticket: tarefa.ticket,
         status_id: tarefa.statusId,
-        assigned_to: tarefa.assignedTo?.id,
+        assigned_to: assignedToValue,
         created_by: userProfile?.id,
         tags: tarefa.tags,
+        is_private: tarefa.isPrivate,
       })
       .select(`
         *,
@@ -145,8 +153,22 @@ export const tarefasRepoSupabase = {
     }
     if (tarefa.ticket !== undefined) updateData.ticket = tarefa.ticket;
     if (tarefa.statusId !== undefined) updateData.status_id = tarefa.statusId;
-    if (tarefa.assignedTo !== undefined) updateData.assigned_to = tarefa.assignedTo?.id || null;
+    if (tarefa.assignedTo !== undefined) {
+      // Para tarefas privadas, usar o omnia_users.id do usuário atual
+      if (tarefa.isPrivate) {
+        const { data: currentUser } = await supabase.auth.getUser();
+        const { data: userProfile } = await supabase
+          .from('omnia_users')
+          .select('id')
+          .eq('auth_user_id', currentUser?.user?.id)
+          .single();
+        updateData.assigned_to = userProfile?.id || null;
+      } else {
+        updateData.assigned_to = tarefa.assignedTo?.id || null;
+      }
+    }
     if (tarefa.tags !== undefined) updateData.tags = tarefa.tags;
+    if (tarefa.isPrivate !== undefined) updateData.is_private = tarefa.isPrivate;
 
     const { data, error } = await supabase
       .from('omnia_tickets')

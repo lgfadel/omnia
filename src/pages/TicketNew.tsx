@@ -7,11 +7,13 @@ import { useSecretariosStore } from "@/store/secretarios.store";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/fixtures";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 export default function TicketNew() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { createTarefa, loading } = useTarefasStore();
   const { secretarios, loadSecretarios } = useSecretariosStore();
 
@@ -28,9 +30,10 @@ export default function TicketNew() {
         dueDate: ticketData.dueDate,
         ticket: ticketData.ticket,
         statusId: ticketData.statusId!,
-        assignedTo: ticketData.assignedTo,
+        assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
         tags: ticketData.tags || [],
-        attachments: ticketData.attachments || []
+        attachments: ticketData.attachments || [],
+        isPrivate: Boolean(ticketData.isPrivate)
       });
 
       toast({

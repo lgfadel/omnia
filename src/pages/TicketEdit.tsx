@@ -6,6 +6,7 @@ import { useSecretariosStore } from "@/store/secretarios.store";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/fixtures";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -15,6 +16,7 @@ export default function TicketEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState<Tarefa | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -62,9 +64,10 @@ export default function TicketEdit() {
         dueDate: ticketData.dueDate,
         ticket: ticketData.ticket,
         statusId: ticketData.statusId,
-        assignedTo: ticketData.assignedTo,
+        assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
         tags: ticketData.tags,
         attachments: ticketData.attachments,
+        isPrivate: ticketData.isPrivate,
       });
 
       if (updatedTicket) {

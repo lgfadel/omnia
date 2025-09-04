@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronDown, User } from 'lucide-react';
+import { Plus, Search, Filter, ChevronDown, User, Lock } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ export default function Tickets() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(true);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const [dueDateModalOpen, setDueDateModalOpen] = useState(false);
   const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
@@ -150,8 +151,13 @@ export default function Tickets() {
       });
     }
 
+    // Apply private tasks filter
+    if (showPrivateTasks) {
+      filtered = filtered.filter(task => task.isPrivate === true);
+    }
+
     setFilteredTickets(filtered);
-  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, statuses]);
+  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, statuses]);
 
   const handleView = (id: string | number) => {
     navigate(`/tarefas/${id}`);
@@ -174,8 +180,16 @@ export default function Tickets() {
 
   const handleResponsibleChange = async (id: string | number, userId: string) => {
     try {
+      const task = tarefas.find(t => t.id === id.toString());
       const selectedUser = secretarios.find(user => user.id === userId);
+      
       if (selectedUser) {
+        // Para tarefas privadas, não permitir mudança de responsável via interface
+        if (task?.isPrivate) {
+          console.warn('Não é possível alterar responsável de tarefas privadas');
+          return;
+        }
+        
         await updateTarefa(id.toString(), { assignedTo: selectedUser });
         loadTarefas();
       }
@@ -257,8 +271,8 @@ export default function Tickets() {
   };
 
   // Transform data for table display 
-  const tableData = filteredTickets.map(tarefa => {
-    const currentStatus = statuses.find(s => s.id === tarefa.statusId);
+   const tableData = filteredTickets.map(tarefa => {
+     const currentStatus = statuses.find(s => s.id === tarefa.statusId);
     
     // Map status name to badge variant
     let mappedStatus: "nao-iniciado" | "em-andamento" | "concluido" = "nao-iniciado";
@@ -285,7 +299,8 @@ export default function Tickets() {
       commentCount: tarefa.commentCount || 0,
       status: mappedStatus,
       statusName: currentStatus?.name || "Status não encontrado",
-      statusColor: currentStatus?.color || "#6B7280"
+      statusColor: currentStatus?.color || "#6B7280",
+      isPrivate: tarefa.isPrivate || false // Add isPrivate field for lock icon
     };
   });
 
@@ -471,6 +486,19 @@ export default function Tickets() {
                 }`}
               >
                 {showCompletedTasks ? 'Ocultar Concluídas' : 'Mostrar Concluídas'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPrivateTasks(!showPrivateTasks)}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
+                  showPrivateTasks 
+                    ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <Lock className="w-3 h-3" />
               </Button>
             </div>
           </div>
