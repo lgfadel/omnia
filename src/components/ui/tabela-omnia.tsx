@@ -495,10 +495,6 @@ export function TabelaOmnia({
       )
     }
     
-    if (typeof value === "string" || typeof value === "number") {
-      return value
-    }
-    
     // Handle title column
     if (key === "title" && row) {
       return (
@@ -509,6 +505,10 @@ export function TabelaOmnia({
           )}
         </div>
       )
+    }
+    
+    if (typeof value === "string" || typeof value === "number") {
+      return value
     }
     
     return value?.toString() || "-"

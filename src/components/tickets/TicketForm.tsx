@@ -44,7 +44,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
   const [tags, setTags] = useState<string[]>(ticket?.tags || []);
   const [attachments, setAttachments] = useState<Attachment[]>(ticket?.attachments || []);
   const { statuses, loadStatuses } = useTarefaStatusStore();
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
 
 
@@ -82,13 +82,13 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
 
   // Set logged user as default assignee for new tickets
   useEffect(() => {
-    if (!ticket && user?.id && users.length > 0) {
-      const userExists = users.find(u => u.id === user.id);
+    if (!ticket && userProfile?.id && users.length > 0) {
+      const userExists = users.find(u => u.id === userProfile.id);
       if (userExists) {
-        setValue('assignedTo', user.id);
+        setValue('assignedTo', userProfile.id);
       }
     }
-  }, [user, users, ticket, setValue]);
+  }, [userProfile, users, ticket, setValue]);
 
   // Force re-render when assignedTo changes
   const assignedToValue = watch('assignedTo');
@@ -250,8 +250,8 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                 onCheckedChange={(checked) => {
                   setValue('isPrivate', checked as boolean);
                   // Se marcar como privada, define o usuário corrente como responsável
-                  if (checked && user) {
-                    setValue('assignedTo', user.id);
+                  if (checked && userProfile) {
+                    setValue('assignedTo', userProfile.id);
                   }
                 }}
               />
