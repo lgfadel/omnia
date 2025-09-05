@@ -1,5 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
-import type { UserRef, Attachment, Comment } from '@/data/fixtures';
+import type { UserRef, Attachment, Comment, FIXTURE_TAREFAS, FIXTURE_USERS } from '@/data/fixtures';
 
 export type TarefaPrioridade = 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
 
@@ -22,203 +21,168 @@ export interface Tarefa {
   isPrivate: boolean;
 }
 
-function transformTarefaFromDB(dbTarefa: any): Tarefa {
-  return {
-    id: dbTarefa.id,
-    title: dbTarefa.title,
-    description: dbTarefa.description,
-    priority: dbTarefa.priority as TarefaPrioridade,
-    dueDate: dbTarefa.due_date ? new Date(dbTarefa.due_date + 'T00:00:00') : undefined,
-    ticket: dbTarefa.ticket,
-    statusId: dbTarefa.status_id,
-    assignedTo: dbTarefa.assigned_to_user ? {
-      id: dbTarefa.assigned_to_user.id,
-      name: dbTarefa.assigned_to_user.name,
-      email: dbTarefa.assigned_to_user.email,
-      roles: dbTarefa.assigned_to_user.roles,
-      avatarUrl: dbTarefa.assigned_to_user.avatar_url,
-      color: dbTarefa.assigned_to_user.color,
-    } : undefined,
-    createdBy: dbTarefa.created_by_user ? {
-      id: dbTarefa.created_by_user.id,
-      name: dbTarefa.created_by_user.name,
-      email: dbTarefa.created_by_user.email,
-      roles: dbTarefa.created_by_user.roles,
-      avatarUrl: dbTarefa.created_by_user.avatar_url,
-      color: dbTarefa.created_by_user.color,
-    } : undefined,
-    tags: dbTarefa.tags || [],
-    commentCount: dbTarefa.comment_count || 0,
-    isPrivate: dbTarefa.is_private || false,
-    createdAt: new Date(dbTarefa.created_at),
-    updatedAt: new Date(dbTarefa.updated_at),
-  };
-}
+// Fixtures temporárias até que a migração do banco seja aplicada
+const FIXTURE_TAREFAS_MOCK: Tarefa[] = [
+  {
+    id: 'T-0001',
+    title: 'Implementar dashboard de métricas',
+    description: 'Criar dashboard com gráficos de pizza e barras',
+    priority: 'ALTA',
+    dueDate: new Date('2025-02-15T00:00:00.000Z'),
+    statusId: 'ts1', // Status "Aberto"
+    assignedTo: { id: 'u1', name: 'Ana Souza', email: 'ana@exemplo.com', roles: ['SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face' },
+    createdBy: { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', roles: ['ADMIN', 'SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face' },
+    tags: ['desenvolvimento', 'frontend'],
+    commentCount: 1,
+    createdAt: new Date('2025-01-15T00:00:00.000Z'),
+    updatedAt: new Date('2025-01-15T00:00:00.000Z'),
+    ticket: 'TCK-001',
+    isPrivate: false
+  },
+  {
+    id: 'T-0002',
+    title: 'Configurar autenticação',
+    description: 'Implementar login com Supabase',
+    priority: 'ALTA',
+    dueDate: new Date('2025-02-10T00:00:00.000Z'),
+    statusId: 'ts3', // Status "Em Andamento"
+    assignedTo: { id: 'u2', name: 'Carlos Lima', email: 'carlos@exemplo.com', roles: ['SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face' },
+    createdBy: { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', roles: ['ADMIN', 'SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face' },
+    tags: ['backend', 'segurança'],
+    commentCount: 0,
+    createdAt: new Date('2025-01-10T00:00:00.000Z'),
+    updatedAt: new Date('2025-01-12T00:00:00.000Z'),
+    ticket: 'TCK-002',
+    isPrivate: false
+  },
+  {
+    id: 'T-0003',
+    title: 'Otimizar performance',
+    description: 'Melhorar tempo de carregamento',
+    priority: 'NORMAL',
+    dueDate: new Date('2025-03-01T00:00:00.000Z'),
+    statusId: 'ts4', // Status "Concluído"
+    assignedTo: { id: 'u1', name: 'Ana Souza', email: 'ana@exemplo.com', roles: ['SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face' },
+    createdBy: { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', roles: ['ADMIN', 'SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face' },
+    tags: ['performance', 'otimização'],
+    commentCount: 2,
+    createdAt: new Date('2025-01-05T00:00:00.000Z'),
+    updatedAt: new Date('2025-01-20T00:00:00.000Z'),
+    ticket: 'TCK-003',
+    isPrivate: false
+  }
+];
 
 export const tarefasRepoSupabase = {
-  async list(): Promise<Tarefa[]> {
-    const { data, error } = await supabase
-      .from('omnia_tickets')
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(id, name, email, roles, avatar_url, color),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(id, name, email, roles, avatar_url, color)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao buscar tarefas:', error);
-      throw error;
-    }
-
-    const tarefas = data?.map(transformTarefaFromDB) || [];
+  // Get all tasks or filter by optional parameters
+  async list(filters?: {
+    statusId?: string;
+    assignedTo?: string;
+    priority?: TarefaPrioridade;
+    isPrivate?: boolean;
+  }): Promise<Tarefa[]> {
+    console.log('Loading tarefas from fixtures...', filters)
     
-    return tarefas;
-  },
-
-  async getById(id: string): Promise<Tarefa | null> {
-    const { data, error } = await supabase
-      .from('omnia_tickets')
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(id, name, email, roles, avatar_url, color),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(id, name, email, roles, avatar_url, color)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    let tarefas = [...FIXTURE_TAREFAS_MOCK]
+    
+    // Aplica filtros se fornecidos
+    if (filters) {
+      if (filters.statusId) {
+        tarefas = tarefas.filter(t => t.statusId === filters.statusId)
       }
-      console.error('Erro ao buscar tarefa:', error);
-      throw error;
-    }
-
-    return data ? transformTarefaFromDB(data) : null;
-  },
-
-  async create(tarefa: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Tarefa> {
-    const { data: currentUser } = await supabase.auth.getUser();
-    
-    // Get the omnia_users id based on auth_user_id
-    const { data: userProfile } = await supabase
-      .from('omnia_users')
-      .select('id')
-      .eq('auth_user_id', currentUser?.user?.id)
-      .single();
-    
-    // Para tarefas privadas, usar o próprio usuário (omnia_users.id)
-    const assignedToValue = tarefa.isPrivate 
-      ? userProfile?.id 
-      : tarefa.assignedTo?.id;
-    
-    const { data, error } = await supabase
-      .from('omnia_tickets')
-      .insert({
-        title: tarefa.title,
-        description: tarefa.description,
-        priority: tarefa.priority,
-        due_date: tarefa.dueDate?.toISOString().split('T')[0],
-        ticket: tarefa.ticket,
-        status_id: tarefa.statusId,
-        assigned_to: assignedToValue,
-        created_by: userProfile?.id,
-        tags: tarefa.tags,
-        is_private: tarefa.isPrivate,
-      })
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(id, name, email, roles, avatar_url, color),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(id, name, email, roles, avatar_url, color)
-      `)
-      .single();
-
-    if (error) {
-      console.error('Erro ao criar tarefa:', error);
-      throw error;
-    }
-
-    return transformTarefaFromDB(data);
-  },
-
-  async update(id: string, tarefa: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>>): Promise<Tarefa | null> {
-    const updateData: any = {};
-    
-    if (tarefa.title !== undefined) updateData.title = tarefa.title;
-    if (tarefa.description !== undefined) updateData.description = tarefa.description;
-    if (tarefa.priority !== undefined) updateData.priority = tarefa.priority;
-    if (tarefa.dueDate !== undefined) {
-      updateData.due_date = tarefa.dueDate?.toISOString().split('T')[0] || null;
-    }
-    if (tarefa.ticket !== undefined) updateData.ticket = tarefa.ticket;
-    if (tarefa.statusId !== undefined) updateData.status_id = tarefa.statusId;
-    if (tarefa.assignedTo !== undefined) {
-      // Para tarefas privadas, usar o omnia_users.id do usuário atual
-      if (tarefa.isPrivate) {
-        const { data: currentUser } = await supabase.auth.getUser();
-        const { data: userProfile } = await supabase
-          .from('omnia_users')
-          .select('id')
-          .eq('auth_user_id', currentUser?.user?.id)
-          .single();
-        updateData.assigned_to = userProfile?.id || null;
-      } else {
-        updateData.assigned_to = tarefa.assignedTo?.id || null;
+      if (filters.assignedTo) {
+        tarefas = tarefas.filter(t => t.assignedTo?.id === filters.assignedTo)
+      }
+      if (filters.priority) {
+        tarefas = tarefas.filter(t => t.priority === filters.priority)
+      }
+      if (filters.isPrivate !== undefined) {
+        tarefas = tarefas.filter(t => t.isPrivate === filters.isPrivate)
       }
     }
-    if (tarefa.tags !== undefined) updateData.tags = tarefa.tags;
-    if (tarefa.isPrivate !== undefined) updateData.is_private = tarefa.isPrivate;
-
-    const { data, error } = await supabase
-      .from('omnia_tickets')
-      .update(updateData)
-      .eq('id', id)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(id, name, email, roles, avatar_url, color),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(id, name, email, roles, avatar_url, color)
-      `)
-      .single();
-
-    if (error) {
-      console.error('Erro ao atualizar tarefa:', error);
-      throw error;
-    }
-
-    return data ? transformTarefaFromDB(data) : null;
+    
+    return tarefas
   },
 
+  // Get a single task by ID
+  async get(id: string): Promise<Tarefa | null> {
+    console.log('Getting tarefa (mock):', id)
+    
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    return FIXTURE_TAREFAS_MOCK.find(t => t.id === id) || null
+  },
+
+  // Create a new task
+  async create(data: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Tarefa> {
+    console.log('Creating tarefa (mock):', data)
+    
+    const newTarefa: Tarefa = {
+      id: 'T-' + Date.now().toString().slice(-4),
+      ...data,
+      commentCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    
+    return newTarefa
+  },
+
+  // Update an existing task
+  async update(id: string, data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>): Promise<Tarefa | null> {
+    console.log('Updating tarefa (mock):', id, data)
+    
+    const existing = FIXTURE_TAREFAS_MOCK.find(t => t.id === id)
+    if (!existing) return null
+    
+    return {
+      ...existing,
+      ...data,
+      updatedAt: new Date()
+    }
+  },
+
+  // Delete a task
   async remove(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('omnia_tickets')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Erro ao deletar tarefa:', error);
-      throw error;
-    }
-
-    return true;
+    console.log('Removing tarefa (mock):', id)
+    
+    // Por enquanto apenas simula remoção
+    return true
   },
 
+  // Get tasks for the current user (considering private tasks)
+  async getMyTasks(userId: string): Promise<Tarefa[]> {
+    console.log('Getting my tarefas (mock):', userId)
+    
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Retorna tarefas onde o usuário é assignee, creator ou tarefas públicas
+    return FIXTURE_TAREFAS_MOCK.filter(t => 
+      !t.isPrivate || 
+      t.assignedTo?.id === userId || 
+      t.createdBy?.id === userId
+    )
+  },
+
+  // Search tasks by title or description
   async search(query: string): Promise<Tarefa[]> {
-    const { data, error } = await supabase
-      .from('omnia_tickets')
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(id, name, email, roles, avatar_url, color),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(id, name, email, roles, avatar_url, color)
-      `)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%,ticket.ilike.%${query}%`)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao buscar tarefas:', error);
-      throw error;
-    }
-
-    return data?.map(transformTarefaFromDB) || [];
-  },
-};
+    console.log('Searching tarefas (mock):', query)
+    
+    if (!query.trim()) return []
+    
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    const lowerQuery = query.toLowerCase()
+    return FIXTURE_TAREFAS_MOCK.filter(t => 
+      t.title.toLowerCase().includes(lowerQuery) ||
+      t.description?.toLowerCase().includes(lowerQuery) ||
+      t.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+    )
+  }
+}

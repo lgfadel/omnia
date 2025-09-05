@@ -137,7 +137,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
 
   const handleUpdateComment = async (commentId: string, body: string) => {
     try {
-      await ticketCommentsRepoSupabase.update(commentId, { body });
+      await ticketCommentsRepoSupabase.update(commentId, body);
       await loadComments();
       onCommentsChange?.();
       toast.success('Comentário atualizado com sucesso');

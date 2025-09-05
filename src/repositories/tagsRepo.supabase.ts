@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export interface Tag {
   id: string;
   name: string;
@@ -9,149 +7,92 @@ export interface Tag {
   updatedAt: string;
 }
 
+// Fixtures temporárias até que a migração do banco seja aplicada
+const FIXTURE_TAGS: Tag[] = [
+  { id: 't1', name: 'Desenvolvimento', color: '#3b82f6', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+  { id: 't2', name: 'Frontend', color: '#10b981', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+  { id: 't3', name: 'Backend', color: '#f59e0b', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+  { id: 't4', name: 'Bug', color: '#ef4444', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+  { id: 't5', name: 'Melhoria', color: '#8b5cf6', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' }
+]
+
 export const tagsRepoSupabase = {
   // Get all tags
   async list(): Promise<Tag[]> {
-    const { data, error } = await supabase
-      .from('omnia_tags')
-      .select('*')
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching tags:', error);
-      throw error;
-    }
-
-    return data.map(tag => ({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      createdAt: tag.created_at,
-      createdBy: tag.created_by,
-      updatedAt: tag.updated_at
-    }));
+    console.log('Loading tags from fixtures...')
+    
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    return FIXTURE_TAGS
   },
 
   // Create a new tag
   async create(data: Pick<Tag, 'name' | 'color'>): Promise<Tag> {
-    const { data: newTag, error } = await supabase
-      .from('omnia_tags')
-      .insert({
-        name: data.name,
-        color: data.color,
-        created_by: (await supabase.auth.getUser()).data.user?.id
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating tag:', error);
-      throw error;
+    console.log('Creating tag (mock):', data)
+    
+    // Por enquanto apenas simula criação
+    const newTag: Tag = {
+      id: 'mock-' + Date.now(),
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
-
-    return {
-      id: newTag.id,
-      name: newTag.name,
-      color: newTag.color,
-      createdAt: newTag.created_at,
-      createdBy: newTag.created_by,
-      updatedAt: newTag.updated_at
-    };
+    
+    return newTag
   },
 
   // Update a tag
   async update(id: string, data: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag | null> {
-    const { data: updatedTag, error } = await supabase
-      .from('omnia_tags')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating tag:', error);
-      throw error;
+    console.log('Updating tag (mock):', id, data)
+    
+    // Por enquanto apenas simula update
+    const existing = FIXTURE_TAGS.find(t => t.id === id)
+    if (!existing) return null
+    
+    return {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString()
     }
-
-    return updatedTag ? {
-      id: updatedTag.id,
-      name: updatedTag.name,
-      color: updatedTag.color,
-      createdAt: updatedTag.created_at,
-      createdBy: updatedTag.created_by,
-      updatedAt: updatedTag.updated_at
-    } : null;
   },
 
   // Delete a tag
   async remove(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('omnia_tags')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting tag:', error);
-      throw error;
-    }
-
-    return true;
+    console.log('Removing tag (mock):', id)
+    
+    // Por enquanto apenas simula remoção
+    return true
   },
 
   // Search tags by name (for autocomplete)
   async search(query: string): Promise<Tag[]> {
     if (!query.trim()) {
-      return [];
+      return []
     }
 
-    const { data, error } = await supabase
-      .from('omnia_tags')
-      .select('*')
-      .ilike('name', `%${query}%`)
-      .order('name')
-      .limit(10);
-
-    if (error) {
-      console.error('Error searching tags:', error);
-      throw error;
-    }
-
-    return data.map(tag => ({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      createdAt: tag.created_at,
-      createdBy: tag.created_by,
-      updatedAt: tag.updated_at
-    }));
+    console.log('Searching tags (mock):', query)
+    
+    // Por enquanto filtra os fixtures
+    return FIXTURE_TAGS.filter(tag => 
+      tag.name.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 10)
   },
 
   // Get or create a tag by name (for dynamic creation)
   async getOrCreate(name: string, color: string = '#6366f1'): Promise<Tag> {
-    // First try to find existing tag
-    const { data: existingTag, error: findError } = await supabase
-      .from('omnia_tags')
-      .select('*')
-      .eq('name', name)
-      .single();
-
-    if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error finding tag:', findError);
-      throw findError;
+    console.log('Getting or creating tag (mock):', name)
+    
+    // Primeiro tenta encontrar existente
+    const existing = FIXTURE_TAGS.find(tag => 
+      tag.name.toLowerCase() === name.toLowerCase()
+    )
+    
+    if (existing) {
+      return existing
     }
-
-    if (existingTag) {
-      return {
-        id: existingTag.id,
-        name: existingTag.name,
-        color: existingTag.color,
-        createdAt: existingTag.created_at,
-        createdBy: existingTag.created_by,
-        updatedAt: existingTag.updated_at
-      };
-    }
-
-    // Create new tag if not found
-    return this.create({ name, color });
+    
+    // Cria novo se não encontrou
+    return this.create({ name, color })
   }
-};
+}

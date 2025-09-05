@@ -37,7 +37,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
   getTarefaById: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const tarefa = await tarefasRepoSupabase.getById(id);
+      const tarefa = await tarefasRepoSupabase.get(id);
       set({ loading: false });
       return tarefa;
     } catch (error) {

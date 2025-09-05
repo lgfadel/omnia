@@ -1,5 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
-
 export interface TarefaStatus {
   id: string;
   name: string;
@@ -10,126 +8,61 @@ export interface TarefaStatus {
   updatedAt?: Date;
 }
 
-function transformTarefaStatusFromDB(dbTarefaStatus: any): TarefaStatus {
-  return {
-    id: dbTarefaStatus.id,
-    name: dbTarefaStatus.name,
-    color: dbTarefaStatus.color,
-    order: dbTarefaStatus.order_position,
-    isDefault: dbTarefaStatus.is_default,
-    createdAt: dbTarefaStatus.created_at ? new Date(dbTarefaStatus.created_at) : undefined,
-    updatedAt: dbTarefaStatus.updated_at ? new Date(dbTarefaStatus.updated_at) : undefined,
-  };
-}
+// Fixtures temporárias até que a migração do banco seja aplicada
+const FIXTURE_TAREFA_STATUSES: TarefaStatus[] = [
+  { id: 'ts1', name: 'Aberto', color: '#f59e0b', order: 1, isDefault: true },
+  { id: 'ts2', name: 'Aguardando', color: '#fbbf24', order: 2 },
+  { id: 'ts3', name: 'Em Andamento', color: '#3b82f6', order: 3 },
+  { id: 'ts4', name: 'Concluído', color: '#10b981', order: 4 },
+]
 
 export const tarefaStatusRepoSupabase = {
   async list(): Promise<TarefaStatus[]> {
-    const { data, error } = await supabase
-      .from('omnia_ticket_statuses')
-      .select('*')
-      .order('order_position');
-
-    if (error) {
-      console.error('Erro ao buscar status de tickets:', error);
-      throw error;
-    }
-
-    return data?.map(transformTarefaStatusFromDB) || [];
+    console.log('Loading tarefa statuses from fixtures...')
+    
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    return FIXTURE_TAREFA_STATUSES
   },
 
   async create(data: Omit<TarefaStatus, 'id'>): Promise<TarefaStatus> {
-    // Get the next order position
-    const { data: lastStatus } = await supabase
-      .from('omnia_ticket_statuses')
-      .select('order_position')
-      .order('order_position', { ascending: false })
-      .limit(1);
-
-    const nextOrder = lastStatus && lastStatus.length > 0 ? lastStatus[0].order_position + 1 : 1;
-
-    const { data: newStatus, error } = await supabase
-      .from('omnia_ticket_statuses')
-      .insert({
-        name: data.name,
-        color: data.color,
-        order_position: nextOrder,
-        is_default: data.isDefault || false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Erro ao criar status de ticket:', error);
-      throw error;
+    console.log('Creating tarefa status (mock):', data)
+    
+    // Por enquanto apenas simula criação
+    const newStatus: TarefaStatus = {
+      id: 'mock-' + Date.now(),
+      ...data,
+      order: data.order || FIXTURE_TAREFA_STATUSES.length + 1
     }
-
-    return transformTarefaStatusFromDB(newStatus);
+    
+    return newStatus
   },
 
   async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
-    const updateData: any = {};
+    console.log('Updating tarefa status (mock):', id, data)
     
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.color !== undefined) updateData.color = data.color;
-    if (data.order !== undefined) updateData.order_position = data.order;
-    if (data.isDefault !== undefined) updateData.is_default = data.isDefault;
-
-    const { data: updatedStatus, error } = await supabase
-      .from('omnia_ticket_statuses')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Erro ao atualizar status de ticket:', error);
-      throw error;
+    // Por enquanto apenas simula update
+    const existing = FIXTURE_TAREFA_STATUSES.find(s => s.id === id)
+    if (!existing) return null
+    
+    return {
+      ...existing,
+      ...data
     }
-
-    return updatedStatus ? transformTarefaStatusFromDB(updatedStatus) : null;
   },
 
   async remove(id: string): Promise<boolean> {
-    // Check if it's a default status
-    const { data: status } = await supabase
-      .from('omnia_ticket_statuses')
-      .select('is_default')
-      .eq('id', id)
-      .single();
-
-    if (status?.is_default) {
-      throw new Error('Não é possível deletar um status padrão');
-    }
-
-    const { error } = await supabase
-      .from('omnia_ticket_statuses')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Erro ao deletar status de ticket:', error);
-      throw error;
-    }
-
-    return true;
+    console.log('Removing tarefa status (mock):', id)
+    
+    // Por enquanto apenas simula remoção
+    return true
   },
 
   async reorder(statuses: TarefaStatus[]): Promise<void> {
-    const updates = statuses.map((status, index) => ({
-      id: status.id,
-      order_position: index + 1,
-    }));
-
-    for (const update of updates) {
-      const { error } = await supabase
-        .from('omnia_ticket_statuses')
-        .update({ order_position: update.order_position })
-        .eq('id', update.id);
-
-      if (error) {
-        console.error('Erro ao reordenar status de tickets:', error);
-        throw error;
-      }
-    }
-  },
-};
+    console.log('Reordering tarefa statuses (mock):', statuses)
+    
+    // Por enquanto apenas simula reordenação
+    return
+  }
+}
