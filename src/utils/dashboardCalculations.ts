@@ -116,7 +116,7 @@ export function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): 
     const status = statuses.find(s => s.id === tarefa.statusId)
     const statusName = status?.name || ''
     // Excluir tarefas com status que indicam conclusão (baseado nos status padrão do sistema)
-    const isActive = !['Resolvido', 'Fechado'].includes(statusName)
+    const isActive = !['Concluído'].includes(statusName)
     return isActive
   })
   
@@ -192,7 +192,7 @@ export function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): 
   const tarefasConcluidas = tarefas.filter(tarefa => {
     const status = statuses.find(s => s.id === tarefa.statusId)
     const statusName = status?.name || ''
-    return ['Resolvido', 'Fechado'].includes(statusName)
+    return ['Concluído'].includes(statusName)
   }).length
   const taxaConclusao = tarefas.length > 0 ? Math.round((tarefasConcluidas / tarefas.length) * 100) : 0
   

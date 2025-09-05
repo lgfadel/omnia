@@ -1,128 +1,53 @@
+import { Status, FIXTURE_STATUSES } from "@/data/fixtures"
 
-import { supabase } from "@/integrations/supabase/client"
-import { Status } from "@/data/fixtures"
-
-// Transform database record to Status type
-const transformStatusFromDB = (dbStatus: any): Status => ({
-  id: dbStatus.id,
-  name: dbStatus.name,
-  color: dbStatus.color,
-  order: dbStatus.order_position,
-  isDefault: dbStatus.is_default
-})
-
+// Por enquanto usando fixtures até que a migração do banco seja aplicada
 export const statusRepoSupabase = {
   async list(): Promise<Status[]> {
-    console.log('Loading statuses from database...')
+    console.log('Loading statuses from fixtures...')
     
-    const { data, error } = await supabase
-      .from('omnia_statuses')
-      .select('*')
-      .order('order_position')
-
-    if (error) {
-      console.error('Error loading statuses:', error)
-      throw error
-    }
-
-    console.log('Loaded statuses:', data)
-    return data?.map(transformStatusFromDB) || []
+    // Simula delay de rede
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    return FIXTURE_STATUSES
   },
 
   async create(data: Omit<Status, 'id'>): Promise<Status> {
-    console.log('Creating status:', data)
+    console.log('Creating status (mock):', data)
     
-    // Get the next order position
-    const { data: maxOrderData } = await supabase
-      .from('omnia_statuses')
-      .select('order_position')
-      .order('order_position', { ascending: false })
-      .limit(1)
-
-    const nextOrder = maxOrderData && maxOrderData.length > 0 
-      ? maxOrderData[0].order_position + 1 
-      : 1
-
-    const { data: newStatus, error } = await supabase
-      .from('omnia_statuses')
-      .insert({
-        name: data.name,
-        color: data.color,
-        order_position: data.order || nextOrder,
-        is_default: data.isDefault || false
-      })
-      .select('*')
-      .single()
-
-    if (error) {
-      console.error('Error creating status:', error)
-      throw error
+    // Por enquanto apenas simula criação
+    const newStatus: Status = {
+      id: 'mock-' + Date.now(),
+      ...data,
+      order: data.order || FIXTURE_STATUSES.length + 1
     }
-
-    console.log('Created status:', newStatus)
-    return transformStatusFromDB(newStatus)
+    
+    return newStatus
   },
 
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
-    console.log('Updating status:', id, data)
+    console.log('Updating status (mock):', id, data)
     
-    const updateData: any = {}
+    // Por enquanto apenas simula update
+    const existing = FIXTURE_STATUSES.find(s => s.id === id)
+    if (!existing) return null
     
-    if (data.name !== undefined) updateData.name = data.name
-    if (data.color !== undefined) updateData.color = data.color
-    if (data.order !== undefined) updateData.order_position = data.order
-    if (data.isDefault !== undefined) updateData.is_default = data.isDefault
-
-    const { data: updatedStatus, error } = await supabase
-      .from('omnia_statuses')
-      .update(updateData)
-      .eq('id', id)
-      .select('*')
-      .single()
-
-    if (error) {
-      console.error('Error updating status:', error)
-      if (error.code === 'PGRST116') return null
-      throw error
+    return {
+      ...existing,
+      ...data
     }
-
-    console.log('Updated status:', updatedStatus)
-    return transformStatusFromDB(updatedStatus)
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing status:', id)
+    console.log('Removing status (mock):', id)
     
-    const { error } = await supabase
-      .from('omnia_statuses')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      console.error('Error removing status:', error)
-      throw error
-    }
-
-    console.log('Removed status successfully')
+    // Por enquanto apenas simula remoção
     return true
   },
 
   async reorder(statuses: Status[]): Promise<void> {
-    console.log('Reordering statuses:', statuses)
+    console.log('Reordering statuses (mock):', statuses)
     
-    // Update each status order individually
-    for (let i = 0; i < statuses.length; i++) {
-      const { error } = await supabase
-        .from('omnia_statuses')
-        .update({ order_position: i + 1 })
-        .eq('id', statuses[i].id)
-      
-      if (error) {
-        console.error('Error reordering status:', error)
-        throw error
-      }
-    }
-    
-    console.log('Reordered statuses successfully')
+    // Por enquanto apenas simula reordenação
+    return
   }
 }
