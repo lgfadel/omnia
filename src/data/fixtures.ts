@@ -1,3 +1,5 @@
+import type { TarefaPrioridade } from '@/repositories/tarefasRepo.supabase'
+
 export type Role = 'ADMIN' | 'SECRETARIO' | 'USUARIO'
 
 export interface Status {
@@ -63,6 +65,89 @@ export const FIXTURE_USERS: UserRef[] = [
   { id: 'u2', name: 'Carlos Lima', email: 'carlos@exemplo.com', roles: ['SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face' },
   { id: 'u3', name: 'Marina Reis', email: 'marina@exemplo.com', roles: ['ADMIN', 'SECRETARIO'], avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face' },
 ]
+
+export interface Tarefa {
+  id: string;
+  title: string;
+  description?: string;
+  priority: TarefaPrioridade;
+  dueDate?: string;
+  ticket?: string;
+  statusId: string;
+  assignedTo?: UserRef;
+  createdBy?: UserRef;
+  tags: string[];
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isPrivate: boolean;
+}
+
+export const FIXTURE_TAREFAS: Tarefa[] = [
+  {
+    id: 'T-0001',
+    title: 'Implementar dashboard de métricas',
+    description: 'Criar dashboard com gráficos de pizza e barras',
+    priority: 'ALTA',
+    dueDate: '2025-02-15',
+    statusId: 's1',
+    assignedTo: FIXTURE_USERS[0],
+    createdBy: FIXTURE_USERS[2],
+    tags: ['desenvolvimento', 'frontend'],
+    commentCount: 1,
+    createdAt: '2025-01-15T00:00:00.000Z',
+    updatedAt: '2025-01-15T00:00:00.000Z',
+    ticket: 'TCK-001',
+    isPrivate: false
+  },
+  {
+    id: 'T-0002',
+    title: 'Configurar autenticação',
+    description: 'Implementar login com Supabase',
+    priority: 'ALTA',
+    dueDate: '2025-02-10',
+    statusId: 's2',
+    assignedTo: FIXTURE_USERS[1],
+    createdBy: FIXTURE_USERS[2],
+    tags: ['backend', 'segurança'],
+    commentCount: 0,
+    createdAt: '2025-01-10T00:00:00.000Z',
+    updatedAt: '2025-01-12T00:00:00.000Z',
+    ticket: 'TCK-002',
+    isPrivate: false
+  },
+  {
+    id: 'T-0003',
+    title: 'Revisar documentação',
+    description: 'Atualizar README e documentação técnica',
+    priority: 'NORMAL',
+    dueDate: '2025-02-20',
+    statusId: 's1',
+    assignedTo: FIXTURE_USERS[2],
+    createdBy: FIXTURE_USERS[0],
+    tags: ['documentação'],
+    commentCount: 2,
+    createdAt: '2025-01-20T00:00:00.000Z',
+    updatedAt: '2025-01-22T00:00:00.000Z',
+    ticket: 'TCK-003',
+    isPrivate: false
+  },
+  {
+    id: 'T-0004',
+    title: 'Otimizar performance',
+    description: 'Melhorar tempo de carregamento das páginas',
+    priority: 'BAIXA',
+    statusId: 's3',
+    assignedTo: FIXTURE_USERS[1],
+    createdBy: FIXTURE_USERS[0],
+    tags: ['performance', 'otimização'],
+    commentCount: 0,
+    createdAt: '2025-01-25T00:00:00.000Z',
+    updatedAt: '2025-01-25T00:00:00.000Z',
+    ticket: 'TCK-004',
+    isPrivate: false
+  }
+];
 
 export const FIXTURE_ATAS: Ata[] = [
   {
