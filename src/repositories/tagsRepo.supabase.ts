@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface Tag {
   id: string;
   name: string;
@@ -7,92 +9,163 @@ export interface Tag {
   updatedAt: string;
 }
 
-// Fixtures temporárias até que a migração do banco seja aplicada
-const FIXTURE_TAGS: Tag[] = [
-  { id: 't1', name: 'Desenvolvimento', color: '#3b82f6', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  { id: 't2', name: 'Frontend', color: '#10b981', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  { id: 't3', name: 'Backend', color: '#f59e0b', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  { id: 't4', name: 'Bug', color: '#ef4444', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  { id: 't5', name: 'Melhoria', color: '#8b5cf6', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' }
-]
-
 export const tagsRepoSupabase = {
   // Get all tags
   async list(): Promise<Tag[]> {
-    console.log('Loading tags from fixtures...')
+    console.log('Loading tags from database...')
     
-    // Simula delay de rede
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    return FIXTURE_TAGS
+    const { data, error } = await supabase
+      .from('omnia_tags' as any)
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching tags:', error);
+      throw error;
+    }
+
+    return (data as any).map((tag: any) => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      createdAt: tag.created_at,
+      createdBy: tag.created_by,
+      updatedAt: tag.updated_at
+    }));
   },
 
   // Create a new tag
   async create(data: Pick<Tag, 'name' | 'color'>): Promise<Tag> {
-    console.log('Creating tag (mock):', data)
+    console.log('Creating tag:', data)
     
-    // Por enquanto apenas simula criação
-    const newTag: Tag = {
-      id: 'mock-' + Date.now(),
-      ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const { data: user } = await supabase.auth.getUser()
+    
+    const { data: newTag, error } = await supabase
+      .from('omnia_tags' as any)
+      .insert({
+        name: data.name,
+        color: data.color,
+        created_by: user?.user?.id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating tag:', error);
+      throw error;
     }
-    
-    return newTag
+
+    return {
+      id: (newTag as any).id,
+      name: (newTag as any).name,
+      color: (newTag as any).color,
+      createdAt: (newTag as any).created_at,
+      createdBy: (newTag as any).created_by,
+      updatedAt: (newTag as any).updated_at
+    };
   },
 
   // Update a tag
   async update(id: string, data: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag | null> {
-    console.log('Updating tag (mock):', id, data)
+    console.log('Updating tag:', id, data)
     
-    // Por enquanto apenas simula update
-    const existing = FIXTURE_TAGS.find(t => t.id === id)
-    if (!existing) return null
-    
-    return {
-      ...existing,
-      ...data,
-      updatedAt: new Date().toISOString()
+    const { data: updatedTag, error } = await supabase
+      .from('omnia_tags' as any)
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating tag:', error);
+      throw error;
     }
+
+    return updatedTag ? {
+      id: (updatedTag as any).id,
+      name: (updatedTag as any).name,
+      color: (updatedTag as any).color,
+      createdAt: (updatedTag as any).created_at,
+      createdBy: (updatedTag as any).created_by,
+      updatedAt: (updatedTag as any).updated_at
+    } : null;
   },
 
   // Delete a tag
   async remove(id: string): Promise<boolean> {
-    console.log('Removing tag (mock):', id)
+    console.log('Removing tag:', id)
     
-    // Por enquanto apenas simula remoção
-    return true
+    const { error } = await supabase
+      .from('omnia_tags' as any)
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting tag:', error);
+      throw error;
+    }
+
+    return true;
   },
 
   // Search tags by name (for autocomplete)
   async search(query: string): Promise<Tag[]> {
     if (!query.trim()) {
-      return []
+      return [];
     }
 
-    console.log('Searching tags (mock):', query)
-    
-    // Por enquanto filtra os fixtures
-    return FIXTURE_TAGS.filter(tag => 
-      tag.name.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 10)
+    console.log('Searching tags:', query)
+
+    const { data, error } = await supabase
+      .from('omnia_tags' as any)
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+
+    if (error) {
+      console.error('Error searching tags:', error);
+      throw error;
+    }
+
+    return (data as any).map((tag: any) => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      createdAt: tag.created_at,
+      createdBy: tag.created_by,
+      updatedAt: tag.updated_at
+    }));
   },
 
   // Get or create a tag by name (for dynamic creation)
   async getOrCreate(name: string, color: string = '#6366f1'): Promise<Tag> {
-    console.log('Getting or creating tag (mock):', name)
+    console.log('Getting or creating tag:', name)
     
-    // Primeiro tenta encontrar existente
-    const existing = FIXTURE_TAGS.find(tag => 
-      tag.name.toLowerCase() === name.toLowerCase()
-    )
-    
-    if (existing) {
-      return existing
+    // First try to find existing tag
+    const { data: existingTag, error: findError } = await supabase
+      .from('omnia_tags' as any)
+      .select('*')
+      .eq('name', name)
+      .maybeSingle();
+
+    if (findError) {
+      console.error('Error finding tag:', findError);
+      throw findError;
     }
-    
-    // Cria novo se não encontrou
-    return this.create({ name, color })
+
+    if (existingTag) {
+      return {
+        id: (existingTag as any).id,
+        name: (existingTag as any).name,
+        color: (existingTag as any).color,
+        createdAt: (existingTag as any).created_at,
+        createdBy: (existingTag as any).created_by,
+        updatedAt: (existingTag as any).updated_at
+      };
+    }
+
+    // Create new tag if not found
+    return this.create({ name, color });
   }
 }

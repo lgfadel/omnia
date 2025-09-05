@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export interface TicketComment {
   id: string
   ticket_id: string
@@ -9,39 +11,70 @@ export interface TicketComment {
 
 export const ticketCommentsRepoSupabase = {
   async list(ticketId: string): Promise<TicketComment[]> {
-    console.log('Loading ticket comments from fixtures...', ticketId)
+    console.log('Loading ticket comments from database...', ticketId)
     
-    // Simula delay de rede
-    await new Promise(resolve => setTimeout(resolve, 100))
+    const { data, error } = await supabase
+      .from('omnia_ticket_comments' as any)
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading ticket comments:', error);
+      throw error;
+    }
     
-    // Por enquanto retorna array vazio
-    return []
+    return (data as any) || [];
   },
 
   async create(comment: Omit<TicketComment, 'id' | 'created_at'>): Promise<TicketComment> {
-    console.log('Creating ticket comment (mock):', comment)
+    console.log('Creating ticket comment:', comment)
     
-    // Por enquanto apenas simula criação
-    const newComment: TicketComment = {
-      id: 'tc-' + Date.now(),
-      ...comment,
-      created_at: new Date().toISOString()
+    const { data, error } = await supabase
+      .from('omnia_ticket_comments' as any)
+      .insert(comment)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating ticket comment:', error);
+      throw error;
     }
-    
-    return newComment
+
+    return data as any;
   },
 
   async update(id: string, body: string): Promise<TicketComment | null> {
-    console.log('Updating ticket comment (mock):', id, body)
+    console.log('Updating ticket comment:', id, body)
     
-    // Por enquanto apenas simula update
-    return null
+    const { data, error } = await supabase
+      .from('omnia_ticket_comments' as any)
+      .update({ body })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating ticket comment:', error);
+      throw error;
+    }
+
+    return data as any;
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Deleting ticket comment (mock):', id)
+    console.log('Deleting ticket comment:', id)
     
-    // Por enquanto apenas simula deleção
-    return true
+    const { error } = await supabase
+      .from('omnia_ticket_comments' as any)
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting ticket comment:', error);
+      throw error;
+    }
+
+    return true;
   }
 }
