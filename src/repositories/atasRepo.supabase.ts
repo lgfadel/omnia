@@ -53,7 +53,8 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
   })
   
   return {
-    id: dbAta.code,
+    id: dbAta.id,
+    code: dbAta.code,
     title: dbAta.title,
     description: dbAta.description,
     meetingDate: dbAta.meeting_date,
@@ -181,7 +182,7 @@ export const atasRepoSupabase = {
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url, color),
         responsible_user:omnia_users!omnia_atas_responsible_id_fkey (id, name, roles, avatar_url, color)
       `)
-      .eq('code', id)
+      .eq('id', id)
       .maybeSingle()
 
     if (error) {
@@ -237,6 +238,13 @@ export const atasRepoSupabase = {
 
     const { data: user } = await supabase.auth.getUser()
     
+    // Get the omnia_users.id for the current authenticated user
+    const { data: omniaUser } = await supabase
+      .from('omnia_users')
+      .select('id')
+      .eq('auth_user_id', user?.user?.id)
+      .single();
+    
     const { data: newAta, error } = await supabase
       .from('omnia_atas')
       .insert({
@@ -250,7 +258,7 @@ export const atasRepoSupabase = {
         condominium_id: data.condominiumId,
         ticket: data.ticket,
         tags: data.tags || [],
-        created_by: user.user?.id
+        created_by: omniaUser?.id
       })
       .select(`
         *,
@@ -288,7 +296,7 @@ export const atasRepoSupabase = {
     const { data: updatedAta, error } = await supabase
       .from('omnia_atas')
       .update(updateData)
-      .eq('code', id)
+      .eq('id', id)
       .select(`
         *,
         omnia_users:omnia_users!omnia_atas_secretary_id_fkey (id, name, roles, avatar_url, color),
@@ -323,7 +331,7 @@ export const atasRepoSupabase = {
     const { error } = await supabase
       .from('omnia_atas')
       .delete()
-      .eq('code', id)
+      .eq('id', id)
 
     if (error) throw error
     return true
@@ -331,18 +339,6 @@ export const atasRepoSupabase = {
 
   async addComment(ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>): Promise<Comment | null> {
     console.log('AtasRepo: addComment called with:', { ataId, comment })
-    
-    // First get the ata to get its UUID
-    const { data: ata } = await supabase
-      .from('omnia_atas')
-      .select('id')
-      .eq('code', ataId)
-      .single()
-
-    if (!ata) {
-      console.error('AtasRepo: ATA not found:', ataId)
-      return null
-    }
 
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()
@@ -363,20 +359,20 @@ export const atasRepoSupabase = {
     }
 
     console.log('AtasRepo: Creating comment with data:', {
-      ata_id: ata.id,
+      ata_id: ataId,
       author_id: omniaUser.id,
       body: comment.body,
-      created_by: user.user.id,
+      created_by: omniaUser.id,
       attachments: comment.attachments
     })
 
     const { data: newComment, error } = await supabaseUntyped
       .from('omnia_comments')
       .insert({
-        ata_id: ata.id,
+        ata_id: ataId,
         author_id: omniaUser.id,
         body: comment.body,
-        created_by: user.user.id
+        created_by: omniaUser.id
       })
       .select(`
         *,
@@ -397,7 +393,7 @@ export const atasRepoSupabase = {
       console.log('AtasRepo: Saving attachments:', comment.attachments)
       
       const attachmentsToInsert = comment.attachments.map(att => ({
-        ata_id: ata.id,
+        ata_id: ataId,
         comment_id: newComment.id,
         name: att.name,
         url: att.url,
@@ -445,21 +441,12 @@ export const atasRepoSupabase = {
   },
 
   async addAttachment(ataId: string, attachment: Omit<Attachment, 'id' | 'createdAt'>): Promise<Attachment | null> {
-    // First get the ata to get its UUID
-    const { data: ata } = await supabase
-      .from('omnia_atas')
-      .select('id')
-      .eq('code', ataId)
-      .single()
-
-    if (!ata) return null
-
     const { data: user } = await supabase.auth.getUser()
 
     const { data: newAttachment, error } = await supabaseUntyped
       .from('omnia_attachments')
       .insert({
-        ata_id: ata.id,
+        ata_id: ataId,
         name: attachment.name,
         url: attachment.url,
         size_kb: attachment.sizeKB,

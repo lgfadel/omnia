@@ -40,12 +40,19 @@ export const tagsRepoSupabase = {
     
     const { data: user } = await supabase.auth.getUser()
     
+    // Get the omnia_users.id for the current authenticated user
+    const { data: omniaUser } = await supabase
+      .from('omnia_users')
+      .select('id')
+      .eq('auth_user_id', user?.user?.id)
+      .single();
+    
     const { data: newTag, error } = await supabase
       .from('omnia_tags' as any)
       .insert({
         name: data.name,
         color: data.color,
-        created_by: user?.user?.id
+        created_by: omniaUser?.id
       })
       .select()
       .single();

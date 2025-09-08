@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase, type TicketComment } from '@/repositories/ticketCommentsRepo.supabase';
+import { ataCommentsRepoSupabase, type AtaComment } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase, type TicketAttachment } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { secretariosRepoSupabase } from '@/repositories/secretariosRepo.supabase';
 import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
@@ -34,6 +35,7 @@ import { toast } from 'sonner';
 interface TicketCommentsListProps {
   ticketId: string;
   onCommentsChange?: () => void;
+  contextType?: 'ticket' | 'ata';
 }
 
 interface CommentWithAttachments extends TicketComment {
@@ -47,7 +49,7 @@ interface CommentWithAttachments extends TicketComment {
   };
 }
 
-export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketCommentsListProps) => {
+export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = 'ticket' }: TicketCommentsListProps) => {
   const { userProfile } = useAuth();
   const [comments, setComments] = useState<CommentWithAttachments[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,8 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
   const loadComments = async () => {
     try {
       setLoading(true);
-      const commentsData = await ticketCommentsRepoSupabase.list(ticketId);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      const commentsData = await repo.list(ticketId);
       
       // Load users and attachments for each comment
       const [users, allAttachments] = await Promise.all([
@@ -125,7 +128,8 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
         }
       }
       
-      await ticketCommentsRepoSupabase.remove(commentId);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      await repo.remove(commentId);
       await loadComments();
       onCommentsChange?.();
       toast.success('Comentário excluído com sucesso');
@@ -137,7 +141,8 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange }: TicketComment
 
   const handleUpdateComment = async (commentId: string, body: string) => {
     try {
-      await ticketCommentsRepoSupabase.update(commentId, body);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      await repo.update(commentId, body);
       await loadComments();
       onCommentsChange?.();
       toast.success('Comentário atualizado com sucesso');

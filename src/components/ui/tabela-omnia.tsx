@@ -56,6 +56,7 @@ interface TabelaOmniaProps {
   onSort?: (field: string) => void
   className?: string
   grouped?: boolean
+  contextType?: 'ticket' | 'ata'
 }
 
 export function TabelaOmnia({ 
@@ -74,7 +75,8 @@ export function TabelaOmnia({
   sortDirection,
   onSort,
   className,
-  grouped = false
+  grouped = false,
+  contextType = 'ticket'
 }: TabelaOmniaProps) {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({ 
     isOpen: false, 
@@ -691,6 +693,7 @@ export function TabelaOmnia({
         ticketId={commentsModal.ticketId}
         ticketTitle={commentsModal.ticketTitle}
         onCommentCountChange={(newCount) => handleCommentCountChange(commentsModal.ticketId, newCount)}
+        contextType={contextType}
       />
     </div>
   )

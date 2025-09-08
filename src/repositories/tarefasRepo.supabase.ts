@@ -135,6 +135,13 @@ export const tarefasRepoSupabase = {
     console.log('Creating tarefa:', data)
     
     const { data: user } = await supabase.auth.getUser();
+    
+    // Get the omnia_users.id for the current authenticated user
+    const { data: omniaUser } = await supabase
+      .from('omnia_users')
+      .select('id')
+      .eq('auth_user_id', user?.user?.id)
+      .single();
 
     const { data: newTarefa, error } = await supabase
       .from('omnia_tickets' as any)
@@ -146,7 +153,7 @@ export const tarefasRepoSupabase = {
         ticket: data.ticket,
         status_id: data.statusId,
         assigned_to: data.assignedTo?.id,
-        created_by: user?.user?.id,
+        created_by: omniaUser?.id,
         tags: data.tags,
         is_private: data.isPrivate,
       })

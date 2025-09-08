@@ -338,6 +338,7 @@ const Atas = () => {
               availableStatuses={statuses}
               availableUsers={secretarios}
               grouped={true}
+              contextType="ata"
             />
           )}
         </div>

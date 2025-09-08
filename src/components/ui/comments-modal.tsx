@@ -9,6 +9,7 @@ import { TicketCommentsList } from '@/components/tickets/TicketCommentsList';
 import { TicketCommentInput } from '@/components/tickets/TicketCommentInput';
 import { MessageCircle } from 'lucide-react';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
+import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface CommentsModalProps {
@@ -17,9 +18,10 @@ interface CommentsModalProps {
   ticketId: string;
   ticketTitle?: string;
   onCommentCountChange?: (newCount: number) => void;
+  contextType?: 'ticket' | 'ata';
 }
 
-export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommentCountChange }: CommentsModalProps) {
+export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommentCountChange, contextType = 'ticket' }: CommentsModalProps) {
   const [commentsCount, setCommentsCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -27,8 +29,11 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
   useEscapeKey(onClose, isOpen);
 
   const loadCommentsCount = async () => {
+    if (!ticketId) return;
+    
     try {
-      const comments = await ticketCommentsRepoSupabase.list(ticketId);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      const comments = await repo.list(ticketId);
       setCommentsCount(comments.length);
     } catch (error) {
       console.error('Erro ao carregar contagem de comentários:', error);
@@ -46,7 +51,8 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
     await loadCommentsCount();
     // Notifica o componente pai sobre a mudança no contador
     if (onCommentCountChange) {
-      const comments = await ticketCommentsRepoSupabase.list(ticketId);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      const comments = await repo.list(ticketId);
       onCommentCountChange(comments.length);
     }
   };
@@ -55,7 +61,8 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
     await handleCommentsChange();
     // Notifica o componente pai sobre a mudança no contador
     if (onCommentCountChange) {
-      const comments = await ticketCommentsRepoSupabase.list(ticketId);
+      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+      const comments = await repo.list(ticketId);
       onCommentCountChange(comments.length);
     }
     // Fecha o modal após adicionar comentário
@@ -83,6 +90,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
             <TicketCommentsList 
               ticketId={ticketId} 
               onCommentsChange={handleCommentsChange}
+              contextType={contextType}
             />
           </div>
           
@@ -91,6 +99,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
             <TicketCommentInput 
               ticketId={ticketId} 
               onCommentAdded={handleCommentAdded}
+              contextType={contextType}
             />
           </div>
         </div>

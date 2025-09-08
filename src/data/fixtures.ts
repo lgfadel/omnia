@@ -38,6 +38,7 @@ export interface Comment {
 
 export interface Ata {
   id: string;
+  code?: string;
   title: string;
   description?: string;
   meetingDate?: string;
