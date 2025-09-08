@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
+import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { Attachment } from '@/data/fixtures';
 import { toast } from 'sonner';
@@ -16,9 +17,10 @@ import { toast } from 'sonner';
 interface TicketCommentInputProps {
   ticketId: string;
   onCommentAdded?: () => void;
+  contextType?: 'ticket' | 'ata';
 }
 
-export const TicketCommentInput = ({ ticketId, onCommentAdded }: TicketCommentInputProps) => {
+export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ticket' }: TicketCommentInputProps) => {
   const { userProfile } = useAuth();
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -36,12 +38,22 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded }: TicketCommentIn
       setIsSubmitting(true);
       
       // Create the comment first
-      const newComment = await ticketCommentsRepoSupabase.create({
-        ticket_id: ticketId,
-        body: body.trim(),
-        created_by: userProfile.id,
-        author_id: userProfile.id,
-      });
+      let newComment;
+      if (contextType === 'ata') {
+        const ataCommentData = {
+          ata_id: ticketId,
+          body: body.trim(),
+          author_id: userProfile.id,
+        };
+        newComment = await ataCommentsRepoSupabase.create(ataCommentData);
+      } else {
+        const ticketCommentData = {
+          ticket_id: ticketId,
+          body: body.trim(),
+          author_id: userProfile.id,
+        };
+        newComment = await ticketCommentsRepoSupabase.create(ticketCommentData);
+      }
 
       // Then create attachments linked to the comment
       for (const attachment of attachments) {
