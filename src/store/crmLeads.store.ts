@@ -208,9 +208,12 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       return await crmLeadsRepo.searchByCep(cep)
     } catch (error) {
       console.error('Erro ao buscar endereço:', error)
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado ao buscar CEP'
+      
       toast({
-        title: 'Erro',
-        description: 'Falha ao buscar endereço pelo CEP',
+        title: 'Erro ao buscar CEP',
+        description: errorMessage,
         variant: 'destructive'
       })
       throw error

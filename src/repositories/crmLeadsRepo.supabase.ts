@@ -171,22 +171,36 @@ class CrmLeadsRepository {
   async searchByCep(cep: string): Promise<ViaCepResponse | null> {
     const cleanCep = cep.replace(/\D/g, '')
     
+    if (!cleanCep) {
+      throw new Error('Por favor, informe um CEP válido')
+    }
+    
     if (cleanCep.length !== 8) {
-      throw new Error('CEP deve ter 8 dígitos')
+      throw new Error('CEP deve conter exatamente 8 dígitos. Formato: 00000-000')
     }
 
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+      
+      if (!response.ok) {
+        throw new Error('Serviço de CEP temporariamente indisponível. Tente novamente em alguns instantes.')
+      }
+      
       const data = await response.json()
       
       if (data.erro) {
-        throw new Error('CEP não encontrado')
+        throw new Error(`CEP ${cep} não foi encontrado. Verifique se o CEP está correto e tente novamente.`)
       }
       
       return data
     } catch (error) {
       console.error('Erro ao buscar CEP:', error)
-      throw error
+      
+      if (error instanceof Error) {
+        throw error
+      }
+      
+      throw new Error('Erro de conexão. Verifique sua internet e tente novamente.')
     }
   }
 
