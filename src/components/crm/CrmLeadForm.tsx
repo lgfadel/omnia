@@ -16,8 +16,55 @@ import {
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useAdministradorasStore } from '@/store/administradoras.store'
+import { useCrmStatusStore } from '@/store/crmStatus.store'
+
 import { Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
+
+// Função para formatar valor como moeda
+const formatCurrency = (value: string) => {
+  const numericValue = value.replace(/\D/g, '')
+  const formattedValue = (parseInt(numericValue) / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  })
+  return formattedValue
+}
+
+// Função para formatar telefone
+const formatPhone = (value: string) => {
+  const numericValue = value.replace(/\D/g, '').substring(0, 11) // Limita a 11 dígitos
+  
+  // Para números com 8 dígitos: (43) 9999-9999
+  if (numericValue.length === 10) {
+    return numericValue.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  }
+  // Para números com 9 dígitos: (43) 99999-9999
+  else if (numericValue.length === 11) {
+    return numericValue.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  }
+  // Para números incompletos, formatar conforme o que foi digitado
+  else if (numericValue.length > 6) {
+    if (numericValue.length <= 10) {
+      return numericValue.replace(/(\d{2})(\d{0,4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '')
+    } else {
+      return numericValue.replace(/(\d{2})(\d{0,5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '')
+    }
+  }
+  else if (numericValue.length > 2) {
+    return numericValue.replace(/(\d{2})(\d{0,5})/, '($1) $2')
+  }
+  else if (numericValue.length > 0) {
+    return numericValue.replace(/(\d{0,2})/, '($1')
+  }
+  
+  return numericValue
+}
+
+// Função para extrair apenas números do telefone
+const extractPhoneNumbers = (value: string) => {
+  return value.replace(/\D/g, '').substring(0, 11) // Limita a 11 dígitos
+}
 
 const crmLeadSchema = z.object({
   cliente: z.string().min(1, 'Nome do cliente é obrigatório'),
@@ -26,7 +73,7 @@ const crmLeadSchema = z.object({
   numero_funcionarios_terceirizados: z.number().min(0).optional(),
   administradora_atual: z.string().optional(),
   observacoes: z.string().optional(),
-  status: z.enum(['novo', 'qualificado', 'proposta_enviada', 'em_negociacao', 'on_hold', 'ganho', 'perdido']),
+  status: z.string().min(1, 'Status é obrigatório'),
   cep: z.string().optional(),
   logradouro: z.string().optional(),
   numero: z.string().optional(),
@@ -52,12 +99,21 @@ interface CrmLeadFormProps {
 export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const { createLead, updateLead, searchAddress } = useCrmLeadsStore()
   const { administradoras, loadAdministradoras } = useAdministradorasStore()
+  const { statuses, loadStatuses } = useCrmStatusStore()
   const [searchingCep, setSearchingCep] = useState(false)
 
   useEffect(() => {
     loadAdministradoras()
-  }, [loadAdministradoras])
+    loadStatuses()
+  }, [loadAdministradoras, loadStatuses])
 
+
+
+  // Encontrar o status padrão (primeiro "Novo", depois "is_default", depois o primeiro da lista)
+  const defaultStatus = statuses.find(status => status.name.toLowerCase() === 'novo') ||
+                       statuses.find(status => status.isDefault) ||
+                       statuses[0]
+  
   const form = useForm<CrmLeadFormData>({
     resolver: zodResolver(crmLeadSchema),
     defaultValues: {
@@ -67,7 +123,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       numero_funcionarios_terceirizados: lead?.numero_funcionarios_terceirizados || undefined,
       administradora_atual: lead?.administradora_atual || '',
       observacoes: lead?.observacoes || '',
-      status: lead?.status || 'novo',
+      status: lead?.status || (defaultStatus?.id || ''),
       cep: lead?.cep || '',
       logradouro: lead?.logradouro || '',
       numero: lead?.numero || '',
@@ -82,6 +138,13 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       valor_proposta: lead?.valor_proposta || undefined,
     },
   })
+
+  // Definir status padrão quando os statuses forem carregados e não for edição
+  useEffect(() => {
+    if (!lead && defaultStatus && !form.getValues('status')) {
+      form.setValue('status', defaultStatus.id)
+    }
+  }, [defaultStatus, lead, form])
 
   const onSubmit = async (data: CrmLeadFormData) => {
     try {
@@ -141,20 +204,18 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="novo">Novo</SelectItem>
-                    <SelectItem value="qualificado">Qualificado</SelectItem>
-                    <SelectItem value="proposta_enviada">Proposta Enviada</SelectItem>
-                    <SelectItem value="em_negociacao">Em Negociação</SelectItem>
-                    <SelectItem value="on_hold">Em Espera</SelectItem>
-                    <SelectItem value="ganho">Ganho</SelectItem>
-                    <SelectItem value="perdido">Perdido</SelectItem>
+                    {statuses.filter(status => status.id && status.id.trim() !== '').map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -170,11 +231,13 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                 <FormLabel>Valor da Proposta (R$)</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    {...field}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="R$ 0,00"
+                    value={field.value ? formatCurrency(field.value.toString()) : ''}
+                    onChange={(e) => {
+                      const numericValue = e.target.value.replace(/\D/g, '')
+                      const value = numericValue ? parseInt(numericValue) / 100 : undefined
+                      field.onChange(value)
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -252,7 +315,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="nenhuma">Nenhuma</SelectItem>
                     {administradoras.map((admin) => (
                       <SelectItem key={admin.id} value={admin.nome}>
                         {admin.nome}
@@ -408,7 +471,15 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input placeholder="(11) 99999-9999" {...field} />
+                    <Input 
+                      placeholder="(11) 99999-9999" 
+                      value={field.value ? formatPhone(field.value) : ''}
+                      onChange={(e) => {
+                        const formattedValue = formatPhone(e.target.value)
+                        const numericValue = extractPhoneNumbers(e.target.value)
+                        field.onChange(numericValue)
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -422,7 +493,15 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                 <FormItem>
                   <FormLabel>WhatsApp</FormLabel>
                   <FormControl>
-                    <Input placeholder="(11) 99999-9999" {...field} />
+                    <Input 
+                      placeholder="(11) 99999-9999" 
+                      value={field.value ? formatPhone(field.value) : ''}
+                      onChange={(e) => {
+                        const formattedValue = formatPhone(e.target.value)
+                        const numericValue = extractPhoneNumbers(e.target.value)
+                        field.onChange(numericValue)
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

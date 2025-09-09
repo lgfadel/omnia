@@ -46,6 +46,7 @@ const navigationItems = [
 const configItems = [
   { title: "Status", url: "/config/status", icon: BarChart3 },
   { title: "Status Tickets", url: "/config/ticket-status", icon: BarChart3 },
+  { title: "Status CRM", url: "/config/crm-status", icon: BarChart3 },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
   { title: "Condomínios", url: "/config/condominiums", icon: Building2 },
   { title: "Administradoras", url: "/config/administradoras", icon: Building2 },

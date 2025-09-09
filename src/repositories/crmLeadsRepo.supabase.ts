@@ -8,7 +8,7 @@ export interface CrmLead {
   numero_funcionarios_terceirizados?: number
   administradora_atual?: string
   observacoes?: string
-  status: 'novo' | 'qualificado' | 'proposta_enviada' | 'em_negociacao' | 'on_hold' | 'ganho' | 'perdido'
+  status: string
   cep?: string
   logradouro?: string
   numero?: string

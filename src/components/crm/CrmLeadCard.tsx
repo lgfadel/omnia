@@ -47,7 +47,7 @@ export function CrmLeadCard({ lead, onEdit, onDelete }: CrmLeadCardProps) {
             )}
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <CrmStatusBadge status={lead.status} />
+            <CrmStatusBadge statusId={lead.status} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

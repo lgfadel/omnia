@@ -19,6 +19,7 @@ import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
 import { CrmLeadCard } from '@/components/crm/CrmLeadCard'
 import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
+
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -111,30 +112,29 @@ export default function Crm() {
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
           </div>
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingLead(undefined)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Lead
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingLead ? 'Editar Lead' : 'Novo Lead'}
+                </DialogTitle>
+              </DialogHeader>
+              <CrmLeadForm
+                lead={editingLead}
+                onSuccess={handleFormSuccess}
+                onCancel={() => setIsFormOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
         
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingLead(undefined)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Lead
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingLead ? 'Editar Lead' : 'Novo Lead'}
-              </DialogTitle>
-            </DialogHeader>
-            <CrmLeadForm
-              lead={editingLead}
-              onSuccess={handleFormSuccess}
-              onCancel={() => setIsFormOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Métricas rápidas */}
+        {/* Métricas rápidas */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div className="bg-card rounded-lg p-4 border">
           <div className="text-2xl font-bold">{leads.length}</div>

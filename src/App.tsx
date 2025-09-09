@@ -27,6 +27,7 @@ import TicketEdit from "./pages/TicketEdit";
 import ConfigTicketStatus from "./pages/ConfigTicketStatus";
 import Crm from "./pages/Crm";
 import { CrmLeadDetail } from "./pages/CrmLeadDetail";
+import ConfigCrmStatus from "./pages/config/ConfigCrmStatus";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,11 @@ function App() {
               <Route path="/config/ticket-status" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigTicketStatus />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/config/crm-status" element={
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                  <ConfigCrmStatus />
                 </RoleProtectedRoute>
               } />
               <Route path="/crm" element={
