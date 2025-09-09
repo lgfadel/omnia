@@ -35,6 +35,7 @@ export interface CrmComment {
   created_by?: string
   body: string
   created_at: string
+  updated_at: string
 }
 
 export interface CrmAttachment {

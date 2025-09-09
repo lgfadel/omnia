@@ -250,6 +250,71 @@ CREATE TABLE omnia_condominiums (
 );
 ```
 
+#### `omnia_administradoras`
+```sql
+CREATE TABLE omnia_administradoras (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome VARCHAR(255) NOT NULL,
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `omnia_crm_leads`
+```sql
+CREATE TABLE omnia_crm_leads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome_condominio TEXT NOT NULL,
+  cnpj TEXT,
+  endereco TEXT,
+  telefone TEXT,
+  whatsapp TEXT,
+  nome_sindico TEXT,
+  nome_administrador TEXT,
+  administradora_atual TEXT,
+  observacoes TEXT,
+  status TEXT DEFAULT 'NOVO',
+  comment_count INTEGER DEFAULT 0,
+  created_by UUID REFERENCES omnia_users(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `omnia_crm_comments`
+```sql
+CREATE TABLE omnia_crm_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES omnia_crm_leads(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES omnia_users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `omnia_crm_attachments`
+```sql
+CREATE TABLE omnia_crm_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  comment_id UUID REFERENCES omnia_crm_comments(id) ON DELETE CASCADE,
+  lead_id UUID REFERENCES omnia_crm_leads(id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_size INTEGER,
+  file_type TEXT,
+  uploaded_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  
+  -- Constraint para garantir que o anexo pertence a um comentário OU diretamente ao lead
+  CONSTRAINT attachment_belongs_to_comment_or_lead CHECK (
+    (comment_id IS NOT NULL AND lead_id IS NULL) OR 
+    (comment_id IS NULL AND lead_id IS NOT NULL)
+  )
+);
+```
+
 ### Triggers e Funções
 
 #### Atualização de `comment_count`
@@ -805,6 +870,66 @@ git commit -m "feat: adiciona sistema de comentários em tickets
 - Verificar impacto em performance
 - Validar acessibilidade
 - Confirmar testes passando
+
+---
+
+## 🔧 Correções e Atualizações Recentes
+
+### Sistema CRM - Janeiro 2025
+
+#### Correção do Script SQL `crm_comments_attachments.sql` - Colunas de Anexos
+**Problema**: O script continha referência às colunas `file_name`, `file_path`, `file_size`, `file_type` que não existem na tabela `omnia_crm_attachments`.
+
+**Solução**: Atualizado o script para usar as colunas corretas conforme a migration real:
+
+```sql
+-- ANTES (incorreto)
+CREATE TABLE omnia_crm_attachments (
+  file_name TEXT NOT NULL,    -- ❌ Coluna inexistente
+  file_path TEXT NOT NULL,    -- ❌ Coluna inexistente
+  file_size INTEGER,          -- ❌ Coluna inexistente
+  file_type TEXT              -- ❌ Coluna inexistente
+);
+
+-- DEPOIS (correto)
+CREATE TABLE omnia_crm_attachments (
+  name TEXT NOT NULL,         -- ✅ Coluna correta
+  url TEXT NOT NULL,          -- ✅ Coluna correta
+  size_kb INTEGER,            -- ✅ Coluna correta
+  mime_type TEXT              -- ✅ Coluna correta
+);
+```
+
+#### Correção do Script SQL `crm_comments_attachments.sql` - Coluna user_id
+**Problema**: O script continha referência à coluna `user_id` que não existe na tabela `omnia_crm_comments`.
+
+**Solução**: Atualizado o script para usar `author_id` conforme a estrutura correta da tabela:
+
+```sql
+-- ANTES (incorreto)
+CREATE TABLE omnia_crm_comments (
+  user_id UUID NOT NULL REFERENCES omnia_users(id) -- ❌ Coluna inexistente
+);
+
+-- DEPOIS (correto)
+CREATE TABLE omnia_crm_comments (
+  author_id UUID NOT NULL REFERENCES omnia_users(id) -- ✅ Coluna correta
+);
+```
+
+#### Estrutura das Tabelas CRM
+As seguintes tabelas foram documentadas e corrigidas:
+
+- **`omnia_administradoras`**: Gerenciamento de administradoras de condomínios
+- **`omnia_crm_leads`**: Leads do sistema CRM
+- **`omnia_crm_comments`**: Comentários dos leads (usa `author_id`)
+- **`omnia_crm_attachments`**: Anexos dos comentários e leads (usa `name`, `url`, `size_kb`, `mime_type`)
+
+#### Arquivos Atualizados
+- ✅ `scripts/crm_comments_attachments.sql` - Corrigido colunas de anexos e `user_id` → `author_id`
+- ✅ `omnia.md` - Documentação das tabelas CRM adicionada
+- ✅ Sistema de administradoras implementado
+- ✅ Formulário CRM com Select para administradoras
 
 ---
 

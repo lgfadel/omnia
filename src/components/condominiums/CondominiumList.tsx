@@ -62,72 +62,88 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Condomínios Cadastrados</h3>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Condomínios</h2>
+          <p className="text-sm text-gray-600">
+            {condominiums.length} condomínio{condominiums.length !== 1 ? 's' : ''} cadastrado{condominiums.length !== 1 ? 's' : ''}
+          </p>
+        </div>
         <Button onClick={onCreate} disabled={isLoading}>
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" />
           Novo Condomínio
         </Button>
       </div>
 
-      {condominiums.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-gray-500">Carregando condomínios...</div>
+        </div>
+      ) : condominiums.length === 0 ? (
         <Card>
-          <CardContent className="flex items-center justify-center p-8">
-            <p className="text-muted-foreground">Nenhum condomínio cadastrado</p>
+          <CardContent className="p-8 text-center">
+            <div className="text-gray-500">
+              <Plus className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Nenhum condomínio cadastrado</h3>
+              <p className="text-sm mb-4">
+                Comece criando seu primeiro condomínio.
+              </p>
+              <Button onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Condomínio
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div>
           {condominiums.map((condominium) => (
-            <Card key={condominium.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <h4 className="font-medium text-foreground">{condominium.name}</h4>
-                      <div className="flex flex-col gap-1 mt-1">
-                        <p className="text-sm text-muted-foreground">
-                          CNPJ: {formatCNPJDisplay(condominium.cnpj)}
-                        </p>
-                        {condominium.address && (
-                          <p className="text-sm text-muted-foreground">
-                            {condominium.address}
-                          </p>
-                        )}
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          {condominium.phone && (
-                            <span>Tel: {condominium.phone}</span>
+            <Card key={condominium.id} className="mb-3">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{condominium.name}</h3>
+                        <div className="text-sm text-gray-500">
+                          {condominium.address && (
+                            <div>{condominium.address}</div>
                           )}
-                          {condominium.whatsapp && (
-                            <span>WhatsApp: {condominium.whatsapp}</span>
-                          )}
-                        </div>
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          <span>Síndico: {condominium.syndic_name || 'Não definido'}</span>
-                          <span>Gerente: {condominium.manager_name || 'Não definido'}</span>
+                          <div className="flex gap-4 mt-1">
+                            {condominium.phone && (
+                              <span>Tel: {condominium.phone}</span>
+                            )}
+                            {condominium.whatsapp && (
+                              <span>WhatsApp: {condominium.whatsapp}</span>
+                            )}
+                          </div>
+                          <div className="flex gap-4 mt-1">
+                            <span>Síndico: {condominium.syndic_name || 'Não definido'}</span>
+                            <span>Gerente: {condominium.manager_name || 'Não definido'}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(condominium)}
-                    disabled={isLoading}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteClick(condominium)}
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(condominium)}
+                      disabled={isLoading}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClick(condominium)}
+                      disabled={isLoading}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

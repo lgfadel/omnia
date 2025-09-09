@@ -48,6 +48,7 @@ const configItems = [
   { title: "Status Tickets", url: "/config/ticket-status", icon: BarChart3 },
   { title: "Usuários", url: "/config/usuarios", icon: Users },
   { title: "Condomínios", url: "/config/condominiums", icon: Building2 },
+  { title: "Administradoras", url: "/config/administradoras", icon: Building2 },
   { title: "Tags", url: "/config/tags", icon: Tags },
 ]
 

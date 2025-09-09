@@ -15,8 +15,9 @@ import {
 } from '@/components/ui/form'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
+import { useAdministradorasStore } from '@/store/administradoras.store'
 import { Search } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const crmLeadSchema = z.object({
   cliente: z.string().min(1, 'Nome do cliente é obrigatório'),
@@ -50,7 +51,12 @@ interface CrmLeadFormProps {
 
 export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const { createLead, updateLead, searchAddress } = useCrmLeadsStore()
+  const { administradoras, loadAdministradoras } = useAdministradorasStore()
   const [searchingCep, setSearchingCep] = useState(false)
+
+  useEffect(() => {
+    loadAdministradoras()
+  }, [loadAdministradoras])
 
   const form = useForm<CrmLeadFormData>({
     resolver: zodResolver(crmLeadSchema),
@@ -135,7 +141,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o status" />
@@ -239,9 +245,21 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
             render={({ field }) => (
               <FormItem className="md:col-span-2">
                 <FormLabel>Administradora Atual</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nome da administradora atual" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma administradora" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {administradoras.map((admin) => (
+                      <SelectItem key={admin.id} value={admin.nome}>
+                        {admin.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

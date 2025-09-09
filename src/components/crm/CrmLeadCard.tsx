@@ -10,16 +10,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useRoles } from '@/hooks/useRoles'
+import { useNavigate } from 'react-router-dom'
 
 interface CrmLeadCardProps {
   lead: CrmLead
-  onView: (lead: CrmLead) => void
   onEdit: (lead: CrmLead) => void
   onDelete: (id: string) => void
 }
 
-export function CrmLeadCard({ lead, onView, onEdit, onDelete }: CrmLeadCardProps) {
+export function CrmLeadCard({ lead, onEdit, onDelete }: CrmLeadCardProps) {
   const { isAdmin } = useRoles()
+  const navigate = useNavigate()
 
   const formatCurrency = (value: number | undefined) => {
     if (!value) return 'Não informado'
@@ -54,7 +55,7 @@ export function CrmLeadCard({ lead, onView, onEdit, onDelete }: CrmLeadCardProps
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onView(lead)}>
+                <DropdownMenuItem onClick={() => navigate(`/crm/${lead.id}`)}>
                   <Eye className="mr-2 h-4 w-4" />
                   Visualizar
                 </DropdownMenuItem>
@@ -122,7 +123,7 @@ export function CrmLeadCard({ lead, onView, onEdit, onDelete }: CrmLeadCardProps
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onView(lead)}
+            onClick={() => navigate(`/crm/${lead.id}`)}
           >
             Ver detalhes
           </Button>

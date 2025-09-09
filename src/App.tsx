@@ -17,6 +17,7 @@ import ConfigStatus from "./pages/ConfigStatus";
 import ConfigUsuarios from "./pages/ConfigUsuarios";
 import { ConfigTags } from "./pages/ConfigTags";
 import ConfigCondominiums from "./pages/ConfigCondominiums";
+import ConfigAdministradoras from "./pages/ConfigAdministradoras";
 import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Tickets from "./pages/Tickets";
@@ -25,6 +26,7 @@ import TicketDetail from "./pages/TicketDetail";
 import TicketEdit from "./pages/TicketEdit";
 import ConfigTicketStatus from "./pages/ConfigTicketStatus";
 import Crm from "./pages/Crm";
+import { CrmLeadDetail } from "./pages/CrmLeadDetail";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +86,11 @@ function App() {
                   <ConfigCondominiums />
                 </RoleProtectedRoute>
               } />
+              <Route path="/config/administradoras" element={
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                  <ConfigAdministradoras />
+                </RoleProtectedRoute>
+              } />
               <Route path="/tarefas" element={
                 <ProtectedRoute>
                   <Tickets />
@@ -112,6 +119,11 @@ function App() {
               <Route path="/crm" element={
                 <ProtectedRoute>
                   <Crm />
+                </ProtectedRoute>
+              } />
+              <Route path="/crm/:id" element={
+                <ProtectedRoute>
+                  <CrmLeadDetail />
                 </ProtectedRoute>
               } />
               <Route path="/change-password" element={

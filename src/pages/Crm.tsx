@@ -4,7 +4,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
 import { CrmLeadCard } from '@/components/crm/CrmLeadCard'
 import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
@@ -12,6 +23,7 @@ import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRoles } from '@/hooks/useRoles'
+import { useEscapeKeyForAlert } from '@/hooks/useEscapeKeyForAlert'
 
 export default function Crm() {
   const { user } = useAuth()
@@ -29,6 +41,10 @@ export default function Crm() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingLead, setEditingLead] = useState<CrmLead | undefined>()
   const [searchTerm, setSearchTerm] = useState('')
+  const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null)
+
+  // Hook para fechar AlertDialog com ESC
+  useEscapeKeyForAlert(() => setDeleteLeadId(null), !!deleteLeadId)
 
   useEffect(() => {
     if (user) {
@@ -64,14 +80,16 @@ export default function Crm() {
     setIsFormOpen(true)
   }
 
-  const handleView = (lead: CrmLead) => {
-    // TODO: Implementar modal de visualização
-    console.log('View lead:', lead)
-  }
+
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este lead?')) {
-      deleteLead(id)
+    setDeleteLeadId(id)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deleteLeadId) {
+      deleteLead(deleteLeadId)
+      setDeleteLeadId(null)
     }
   }
 
@@ -80,25 +98,19 @@ export default function Crm() {
     return acc
   }, {} as Record<string, number>)
 
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/' },
-    { label: 'CRM' }
-  ]
-
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <BreadcrumbOmnia items={breadcrumbs} />
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Building2 className="h-8 w-8 text-primary" />
+    <Layout>
+      <div className="space-y-6">
+        <BreadcrumbOmnia 
+          items={[
+            { label: "CRM", isActive: true }
+          ]} 
+        />
+        
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold">CRM - Leads</h1>
-            <p className="text-muted-foreground">
-              Gerencie seus leads e oportunidades de negócio
-            </p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
           </div>
-        </div>
         
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
@@ -231,13 +243,33 @@ export default function Crm() {
             <CrmLeadCard
               key={lead.id}
               lead={lead}
-              onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
           ))}
         </div>
       )}
-    </div>
+      </div>
+
+      {/* AlertDialog para confirmação de exclusão */}
+      <AlertDialog open={!!deleteLeadId} onOpenChange={() => setDeleteLeadId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteLeadId(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Layout>
   )
 }
