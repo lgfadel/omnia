@@ -24,6 +24,7 @@ import TicketNew from "./pages/TicketNew";
 import TicketDetail from "./pages/TicketDetail";
 import TicketEdit from "./pages/TicketEdit";
 import ConfigTicketStatus from "./pages/ConfigTicketStatus";
+import Crm from "./pages/Crm";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,11 @@ function App() {
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ConfigTicketStatus />
                 </RoleProtectedRoute>
+              } />
+              <Route path="/crm" element={
+                <ProtectedRoute>
+                  <Crm />
+                </ProtectedRoute>
               } />
               <Route path="/change-password" element={
                 <ProtectedRoute>

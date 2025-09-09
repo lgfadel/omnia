@@ -39,6 +39,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Atas", url: "/atas", icon: ClipboardList },
   { title: "Tarefas", url: "/tarefas", icon: Ticket },
+  { title: "CRM", url: "/crm", icon: Building2 },
   { title: "Relatórios", url: "/relatorios", icon: FileText },
 ]
 
