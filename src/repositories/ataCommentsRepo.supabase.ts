@@ -32,10 +32,7 @@ export const ataCommentsRepoSupabase = {
     
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()
-    if (!user.user) {
-      throw new Error('No authenticated user')
-    }
-
+    
     const { data: omniaUser } = await supabase
       .from('omnia_users')
       .select('id')
@@ -43,7 +40,7 @@ export const ataCommentsRepoSupabase = {
       .single()
 
     if (!omniaUser) {
-      throw new Error('Omnia user not found')
+      throw new Error('Usuário não encontrado na tabela omnia_users')
     }
 
     const { data, error } = await supabase
@@ -51,7 +48,7 @@ export const ataCommentsRepoSupabase = {
       .insert({
         ...comment,
         author_id: omniaUser.id,
-        created_by: user.user.id
+        created_by: omniaUser.id
       })
       .select()
       .single();

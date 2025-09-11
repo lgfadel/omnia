@@ -239,11 +239,32 @@ export const atasRepoSupabase = {
     const { data: user } = await supabase.auth.getUser()
     
     // Get the omnia_users.id for the current authenticated user
-    const { data: omniaUser } = await supabase
+    let { data: omniaUser } = await supabase
       .from('omnia_users')
       .select('id')
       .eq('auth_user_id', user?.user?.id)
       .single();
+    
+    // If user doesn't exist in omnia_users, create it
+    if (!omniaUser && user?.user) {
+      const { data: newOmniaUser, error: createUserError } = await supabase
+        .from('omnia_users')
+        .insert({
+          auth_user_id: user.user.id,
+          name: user.user.user_metadata?.name || user.user.email || 'Usuário',
+          email: user.user.email || '',
+          roles: ['USUARIO']
+        })
+        .select('id')
+        .single();
+      
+      if (createUserError) {
+        console.error('Error creating omnia_user:', createUserError);
+        throw new Error('Erro ao criar perfil do usuário');
+      }
+      
+      omniaUser = newOmniaUser;
+    }
     
     const { data: newAta, error } = await supabase
       .from('omnia_atas')

@@ -47,6 +47,10 @@ export const tagsRepoSupabase = {
       .eq('auth_user_id', user?.user?.id)
       .single();
     
+    if (!omniaUser) {
+      throw new Error('Usuário não encontrado na tabela omnia_users')
+    }
+    
     const { data: newTag, error } = await supabase
       .from('omnia_tags' as any)
       .insert({

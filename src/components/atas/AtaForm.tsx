@@ -11,13 +11,14 @@ import { StatusSelect } from "./StatusSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { Ata, UserRef } from "@/data/fixtures";
 import { useAtasStore } from "@/store/atas.store";
 import { useTagsStore } from "@/store/tags.store";
 import { useCondominiumStore } from "@/store/condominiums.store";
 import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
 import { TagInput } from "./TagInput";
+import { QuickCondominiumDialog } from "@/components/condominiums/QuickCondominiumDialog";
 const ataSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
@@ -51,6 +52,7 @@ export function AtaForm({
   const { condominiums, loadCondominiums } = useCondominiumStore();
   const [users, setUsers] = useState<UserRef[]>([]);
   const [tags, setTags] = useState<string[]>(ata?.tags || []);
+  const [showQuickCondominiumDialog, setShowQuickCondominiumDialog] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -89,13 +91,22 @@ export function AtaForm({
       tags: ""
     }
   });
+  const handleCondominiumCreated = (condominiumId: string) => {
+    // Recarrega a lista de condomínios
+    loadCondominiums();
+    // Seleciona o condomínio recém-criado
+    setValue("condominiumId", condominiumId);
+  };
+
   const onFormSubmit = (data: AtaFormData) => {
     onSubmit({
       ...data,
       tags
     });
   };
-  return <Card className="w-full max-w-4xl mx-auto">
+  return (
+     <>
+       <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>{ata ? 'Editar Ata' : 'Nova Ata'}</CardTitle>
       </CardHeader>
@@ -179,18 +190,29 @@ export function AtaForm({
 
               <div className="space-y-2">
                 <Label>Condomínio</Label>
-                <Select onValueChange={value => setValue("condominiumId", value)} defaultValue={watch("condominiumId")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o condomínio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {condominiums.map(condominium => (
-                      <SelectItem key={condominium.id} value={condominium.id}>
-                        {condominium.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select onValueChange={value => setValue("condominiumId", value)} defaultValue={watch("condominiumId")}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione o condomínio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {condominiums.map(condominium => (
+                        <SelectItem key={condominium.id} value={condominium.id}>
+                          {condominium.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowQuickCondominiumDialog(true)}
+                    title="Cadastrar novo condomínio"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -231,5 +253,13 @@ export function AtaForm({
           </div>
         </form>
       </CardContent>
-    </Card>;
+    </Card>
+
+    <QuickCondominiumDialog
+      open={showQuickCondominiumDialog}
+      onOpenChange={setShowQuickCondominiumDialog}
+      onCondominiumCreated={handleCondominiumCreated}
+    />
+    </>
+  );
 }
