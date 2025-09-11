@@ -6,6 +6,7 @@ import { useAtasStore } from "@/store/atas.store"
 
 import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler"
 
 const AtaNew = () => {
   const navigate = useNavigate()
@@ -43,9 +44,13 @@ const AtaNew = () => {
       navigate('/atas')
     } catch (error) {
       console.error('Erro ao criar ata:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'ata', 'omnia_atas')
+      )
       toast({
         title: "Erro ao criar ata",
-        description: "Ocorreu um erro ao criar a ata. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       })
     }

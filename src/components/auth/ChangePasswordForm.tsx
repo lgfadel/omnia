@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 import { Lock, Eye, EyeOff } from "lucide-react"
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler"
 
 const changePasswordSchema = z.object({
   newPassword: z.string().min(6, "Nova senha deve ter pelo menos 6 caracteres"),
@@ -67,9 +68,13 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
       onSuccess?.()
     } catch (error: any) {
       console.error('Error changing password:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'senha', 'auth.users')
+      );
       toast({
         title: "Erro",
-        description: error.message || "Erro ao alterar senha. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       })
     } finally {

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { useCondominiumStore } from "@/store/condominiums.store"
 import { useToast } from "@/hooks/use-toast"
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler"
 
 // Função para validar CNPJ
 const validateCNPJ = (cnpj: string): boolean => {
@@ -120,13 +121,23 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
         if (cnpjExists) {
           toast({
             title: "Erro",
-            description: "Este CNPJ já está cadastrado",
+            description: "Já existe um condomínio cadastrado com este CNPJ",
             variant: "destructive"
           })
           return
         }
       } catch (error) {
         console.error('Erro ao verificar CNPJ:', error)
+        const treatedError = handleSupabaseError(
+          error,
+          createErrorContext('read', 'condomínio', 'omnia_condominiums')
+        )
+        toast({
+          title: "Erro",
+          description: treatedError.message,
+          variant: "destructive"
+        })
+        return
       }
     }
 

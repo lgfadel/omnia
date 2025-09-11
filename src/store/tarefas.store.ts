@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { tarefasRepoSupabase, type Tarefa } from '@/repositories/tarefasRepo.supabase';
+import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler';
 
 interface TarefasStore {
   tarefas: Tarefa[];
@@ -27,8 +28,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       set({ tarefas, loading: false });
     } catch (error) {
       console.error('Erro ao carregar tarefas:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('read', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
     }
@@ -42,8 +47,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       return tarefa;
     } catch (error) {
       console.error('Erro ao buscar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('read', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
       return null;
@@ -62,8 +71,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       return novaTarefa;
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
       throw error;
@@ -87,8 +100,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       return updatedTarefa;
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
       throw error;
@@ -108,8 +125,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       return true;
     } catch (error) {
       console.error('Erro ao deletar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
       throw error;
@@ -124,8 +145,12 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       return tarefas;
     } catch (error) {
       console.error('Erro ao buscar tarefas:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('read', 'tarefa', 'omnia_tarefas')
+      );
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: treatedError.message,
         loading: false 
       });
       return [];

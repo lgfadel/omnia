@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Status } from "@/data/fixtures";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const ConfigCrmStatus = () => {
   const { toast } = useToast();
@@ -78,9 +79,13 @@ const ConfigCrmStatus = () => {
       setEditingStatus(null);
     } catch (error) {
       console.error('ConfigCrmStatus: Error submitting form:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext(editingStatus ? 'update' : 'create', 'status CRM', 'omnia_crm_statuses')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao salvar o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -99,9 +104,13 @@ const ConfigCrmStatus = () => {
       }
     } catch (error) {
       console.error('ConfigCrmStatus: Error deleting status:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'status CRM', 'omnia_crm_statuses')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao excluir o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -118,9 +127,13 @@ const ConfigCrmStatus = () => {
       });
     } catch (error) {
       console.error('ConfigCrmStatus: Error reordering statuses:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'status CRM', 'omnia_crm_statuses')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao reordenar os status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }

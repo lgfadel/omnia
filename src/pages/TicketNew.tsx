@@ -9,6 +9,7 @@ import { UserRef } from "@/data/fixtures";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 export default function TicketNew() {
   const navigate = useNavigate();
@@ -44,9 +45,13 @@ export default function TicketNew() {
       navigate('/tarefas');
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'tarefa', 'omnia_tarefas')
+      );
       toast({
         title: "Erro ao criar tarefa",
-        description: "Ocorreu um erro ao criar a tarefa. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }

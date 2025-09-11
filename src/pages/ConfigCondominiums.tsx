@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Condominium } from "@/repositories/condominiumsRepo.supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const ConfigCondominiums = () => {
   const { toast } = useToast();
@@ -82,9 +83,17 @@ const ConfigCondominiums = () => {
       setEditingCondominium(null);
     } catch (error) {
       console.error('ConfigCondominiums: Error submitting form:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext(
+          editingCondominium ? 'update' : 'create',
+          'condomínio',
+          'omnia_condominiums'
+        )
+      );
       toast({
         title: "Erro",
-        description: editingCondominium ? "Erro ao atualizar condomínio" : "Erro ao criar condomínio",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -101,9 +110,13 @@ const ConfigCondominiums = () => {
       });
     } catch (error) {
       console.error('ConfigCondominiums: Error deleting condominium:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'condomínio', 'omnia_condominiums')
+      );
       toast({
         title: "Erro",
-        description: "Erro ao excluir condomínio",
+        description: treatedError.message,
         variant: "destructive"
       });
     }

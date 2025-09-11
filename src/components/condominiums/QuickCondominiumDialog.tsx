@@ -16,6 +16,7 @@ import {
 import { useCondominiumStore } from "@/store/condominiums.store";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const quickCondominiumSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -67,9 +68,13 @@ export function QuickCondominiumDialog({
       onOpenChange(false);
       onCondominiumCreated?.(newCondominium.id);
     } catch (error) {
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'condomínio', 'omnia_condominiums')
+      );
       toast({
         title: "Erro",
-        description: "Erro ao cadastrar condomínio. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive",
       });
     } finally {

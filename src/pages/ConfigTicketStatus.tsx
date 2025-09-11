@@ -7,6 +7,7 @@ import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler';
 
 export default function ConfigTicketStatus() {
   const { toast } = useToast();
@@ -59,9 +60,13 @@ export default function ConfigTicketStatus() {
       setIsFormOpen(false);
       setEditingStatus(null);
     } catch (error) {
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext(editingStatus ? 'update' : 'create', 'status de tarefa', 'omnia_tarefa_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao salvar o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -77,9 +82,13 @@ export default function ConfigTicketStatus() {
         });
       }
     } catch (error) {
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'status de tarefa', 'omnia_tarefa_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao excluir o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -93,9 +102,13 @@ export default function ConfigTicketStatus() {
         description: "A ordem dos status foi atualizada com sucesso."
       });
     } catch (error) {
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'status de tarefa', 'omnia_tarefa_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao reordenar os status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }

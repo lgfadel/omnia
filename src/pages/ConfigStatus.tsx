@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Status } from "@/data/fixtures";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const ConfigStatus = () => {
   const { toast } = useToast();
@@ -79,9 +80,13 @@ const ConfigStatus = () => {
       setEditingStatus(null);
     } catch (error) {
       console.error('ConfigStatus: Error submitting form:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext(editingStatus ? 'update' : 'create', 'status', 'omnia_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao salvar o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -100,9 +105,13 @@ const ConfigStatus = () => {
       }
     } catch (error) {
       console.error('ConfigStatus: Error deleting status:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'status', 'omnia_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao excluir o status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }
@@ -119,9 +128,13 @@ const ConfigStatus = () => {
       });
     } catch (error) {
       console.error('ConfigStatus: Error reordering statuses:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'status', 'omnia_status')
+      );
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao reordenar os status. Tente novamente.",
+        description: treatedError.message,
         variant: "destructive"
       });
     }

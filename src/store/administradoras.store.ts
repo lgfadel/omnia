@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Administradora, administradorasRepoSupabase } from '@/repositories/administradorasRepo.supabase'
+import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler'
 
 interface AdministradorasStore {
   administradoras: Administradora[]
@@ -29,7 +30,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
       set({ administradoras, loading: false })
     } catch (error) {
       console.error('AdministradorasStore: Error loading administradoras:', error)
-      set({ error: 'Erro ao carregar administradoras', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('read', 'administradoras', 'omnia_administradoras')
+      )
+      set({ error: treatedError.message, loading: false })
     }
   },
 
@@ -46,7 +51,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
       return newAdministradora
     } catch (error) {
       console.error('AdministradorasStore: Error creating administradora:', error)
-      set({ error: 'Erro ao criar administradora', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'administradora', 'omnia_administradoras')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },
@@ -68,7 +77,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
       return updatedAdministradora
     } catch (error) {
       console.error('AdministradorasStore: Error updating administradora:', error)
-      set({ error: 'Erro ao atualizar administradora', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'administradora', 'omnia_administradoras')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },
@@ -88,7 +101,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
       return success
     } catch (error) {
       console.error('AdministradorasStore: Error deleting administradora:', error)
-      set({ error: 'Erro ao deletar administradora', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'administradora', 'omnia_administradoras')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },

@@ -11,6 +11,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 export default function TicketEdit() {
   const { id } = useParams<{ id: string }>();
@@ -80,9 +81,13 @@ export default function TicketEdit() {
       }
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'tarefa', 'omnia_tarefas')
+      );
       toast({
         title: 'Erro ao atualizar tarefa',
-        description: 'Ocorreu um erro ao atualizar a tarefa. Tente novamente.',
+        description: treatedError.message,
         variant: 'destructive',
       });
     } finally {

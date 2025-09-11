@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Condominium, condominiumsRepoSupabase } from '@/repositories/condominiumsRepo.supabase'
+import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler'
 
 interface CondominiumStore {
   condominiums: Condominium[]
@@ -31,7 +32,11 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
       set({ condominiums, loading: false })
     } catch (error) {
       console.error('CondominiumStore: Error loading condominiums:', error)
-      set({ error: 'Erro ao carregar condomínios', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('read', 'condomínios', 'omnia_condominiums')
+      )
+      set({ error: treatedError.message, loading: false })
     }
   },
 
@@ -48,7 +53,11 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
       return newCondominium
     } catch (error) {
       console.error('CondominiumStore: Error creating condominium:', error)
-      set({ error: 'Erro ao criar condomínio', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('create', 'condomínio', 'omnia_condominiums')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },
@@ -72,7 +81,11 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
       return null
     } catch (error) {
       console.error('CondominiumStore: Error updating condominium:', error)
-      set({ error: 'Erro ao atualizar condomínio', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'condomínio', 'omnia_condominiums')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },
@@ -94,7 +107,11 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
       return false
     } catch (error) {
       console.error('CondominiumStore: Error deleting condominium:', error)
-      set({ error: 'Erro ao excluir condomínio', loading: false })
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('delete', 'condomínio', 'omnia_condominiums')
+      )
+      set({ error: treatedError.message, loading: false })
       throw error
     }
   },
