@@ -114,7 +114,7 @@ export function CrmLeadDetail() {
             <div>
               <h1 className="text-3xl font-bold">{lead.cliente}</h1>
               <div className="flex items-center gap-2 mt-1">
-                <CrmStatusBadge status={lead.status} />
+                <CrmStatusBadge statusId={lead.status} />
                 <span className="text-sm text-muted-foreground">
                   Criado em {formatDate(lead.created_at)}
                 </span>
@@ -160,7 +160,7 @@ export function CrmLeadDetail() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Status</div>
-                  <CrmStatusBadge status={lead.status} />
+                  <CrmStatusBadge statusId={lead.status} />
                 </div>
 
                 <div className="space-y-2">

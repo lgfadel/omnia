@@ -90,7 +90,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
     set({ isLoading: true, error: null })
     try {
       const summary = await userPermissionsRepoSupabase.getUserPermissionsSummary(userId)
-      set({ permissionsSummary: summary, isLoading: false })
+      set({ permissionsSummary: summary || [], isLoading: false })
     } catch (error) {
       console.error('Error loading user permissions summary:', error)
       set({ 

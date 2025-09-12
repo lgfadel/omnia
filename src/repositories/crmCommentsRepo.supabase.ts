@@ -26,8 +26,7 @@ export const crmCommentsRepoSupabase = {
         lead_id,
         author_id,
         body,
-        created_at,
-        updated_at
+        created_at
       `)
       .order('created_at', { ascending: false })
 
@@ -47,8 +46,7 @@ export const crmCommentsRepoSupabase = {
         lead_id,
         author_id,
         body,
-        created_at,
-        updated_at
+        created_at
       `)
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
@@ -74,8 +72,7 @@ export const crmCommentsRepoSupabase = {
         lead_id,
         author_id,
         body,
-        created_at,
-        updated_at
+        created_at
       `)
       .single()
 
@@ -97,8 +94,7 @@ export const crmCommentsRepoSupabase = {
         lead_id,
         author_id,
         body,
-        created_at,
-        updated_at
+        created_at
       `)
       .single()
 

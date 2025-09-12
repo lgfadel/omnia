@@ -67,23 +67,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Fallback: Return mock user data when tables don't exist
-      console.warn('User table not found, using fallback user data')
+      // Try to fetch user from omnia_users table
+      const { data: userData, error } = await supabase
+        .from('omnia_users')
+        .select('id, name, email, roles, avatar_url, color')
+        .eq('auth_user_id', userId)
+        .single()
+
+      if (!error && userData) {
+        setUserProfile({
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          roles: userData.roles as Role[],
+          avatarUrl: userData.avatar_url,
+          color: userData.color || '#3B82F6'
+        })
+        return
+      }
+
+      // If user not found in omnia_users, create a new record
+      console.log('User not found in omnia_users, creating profile...')
       
-      // Get user email from auth
       const { data: authUser } = await supabase.auth.getUser()
-      
+      if (!authUser?.user) {
+        throw new Error('No authenticated user found')
+      }
+
+      const newUserData = {
+        auth_user_id: userId,
+        name: authUser.user.email?.split('@')[0] || 'Usuário',
+        email: authUser.user.email || '',
+        roles: ['USUARIO'] // Default role as string array
+      }
+
+      const { data: createdUser, error: createError } = await supabase
+        .from('omnia_users')
+        .insert(newUserData)
+        .select('id, name, email, roles, avatar_url, color')
+        .single()
+
+      if (createError) {
+        console.error('Error creating user profile:', createError)
+        // Fallback to basic profile
+        setUserProfile({
+          id: userId,
+          name: newUserData.name,
+          email: newUserData.email,
+          roles: ['USUARIO'] as Role[],
+          avatarUrl: null,
+          color: '#3B82F6'
+        })
+        return
+      }
+
+      setUserProfile({
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        roles: createdUser.roles as Role[],
+        avatarUrl: createdUser.avatar_url,
+        color: createdUser.color || '#3B82F6'
+      })
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error)
+      // Minimal fallback for auth errors
+      const { data: authUser } = await supabase.auth.getUser()
       setUserProfile({
         id: userId,
         name: authUser?.user?.email?.split('@')[0] || 'Usuário',
         email: authUser?.user?.email || '',
-        roles: ['user'] as unknown as Role[],
+        roles: ['USUARIO'] as Role[],
         avatarUrl: null,
         color: '#3B82F6'
       })
-    } catch (error) {
-      console.warn('Network error in fetchUserProfile:', error)
-      // Allow app to continue even if profile fetch fails due to network issues
     }
   }
 

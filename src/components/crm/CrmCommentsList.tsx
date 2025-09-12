@@ -58,7 +58,7 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
   const loadComments = async () => {
     try {
       setLoading(true);
-      const commentsData = await crmCommentsRepoSupabase.list(leadId);
+      const commentsData = await crmCommentsRepoSupabase.getByLeadId(leadId);
       
       // Load users and attachments for each comment
       const [users, allAttachments] = await Promise.all([
@@ -137,7 +137,7 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
 
   const handleUpdateComment = async (commentId: string, body: string) => {
     try {
-      await crmCommentsRepoSupabase.update(commentId, body);
+      await crmCommentsRepoSupabase.update(commentId, { body });
       await loadComments();
       onCommentsChange?.();
       toast.success('Comentário atualizado com sucesso');
