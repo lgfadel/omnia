@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = "https://elmxwvimjxcswjbrzznq.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI";
-
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+import { supabase } from '@/integrations/supabase/client'
 
 export interface TicketAttachment {
   id: string;
@@ -29,7 +24,7 @@ export interface CreateTicketAttachment {
 
 export const ticketAttachmentsRepoSupabase = {
   async list(ticketId: string) {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('omnia_ticket_attachments')
       .select('*')
       .eq('ticket_id', ticketId)
@@ -40,7 +35,7 @@ export const ticketAttachmentsRepoSupabase = {
   },
 
   async listByComment(commentId: string) {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('omnia_ticket_attachments')
       .select('*')
       .eq('comment_id', commentId)
@@ -51,7 +46,7 @@ export const ticketAttachmentsRepoSupabase = {
   },
 
   async listDirectTicketAttachments(ticketId: string) {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('omnia_ticket_attachments')
       .select('*')
       .eq('ticket_id', ticketId)
@@ -63,7 +58,7 @@ export const ticketAttachmentsRepoSupabase = {
   },
 
   async create(attachment: CreateTicketAttachment) {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('omnia_ticket_attachments')
       .insert(attachment)
       .select()
@@ -74,7 +69,7 @@ export const ticketAttachmentsRepoSupabase = {
   },
 
   async remove(id: string) {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from('omnia_ticket_attachments')
       .delete()
       .eq('id', id);
