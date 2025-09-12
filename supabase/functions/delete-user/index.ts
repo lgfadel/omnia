@@ -74,15 +74,38 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Parse request body
-    const { userId } = await req.json()
+    // Parse request body safely (handle empty/invalid JSON)
+    let userId: string | undefined
+    try {
+      const raw = await req.text()
+      if (!raw) {
+        return new Response(
+          JSON.stringify({ error: 'Missing request body' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      const payload = JSON.parse(raw)
+      userId = payload.userId || payload.id
+    } catch (e) {
+      console.error('Invalid JSON body:', e)
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
-    if (!userId) {
+    if (!userId || typeof userId !== 'string') {
       return new Response(
         JSON.stringify({ error: 'User ID is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }

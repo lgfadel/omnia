@@ -163,8 +163,7 @@ export const secretariosRepoSupabase = {
 
       // Use the delete-user edge function to handle both omnia_users and auth.users deletion
       const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: id },
-        headers: { 'Content-Type': 'application/json' }
+        body: { userId: id }
       })
       
       if (error) {
@@ -172,9 +171,20 @@ export const secretariosRepoSupabase = {
         // Try to extract server-provided message
         const context: any = (error as any).context
         const serverMsg = (context && (context.error || context.message || context.response?.error)) || (data as any)?.error
-        const friendly = serverMsg === 'Cannot delete user with associated records'
-          ? 'Não é possível excluir este usuário: ele possui vínculos com registros (atas, comentários, etc.). Remova os vínculos antes de excluir.'
-          : serverMsg
+        let friendly = serverMsg
+        if (serverMsg === 'Cannot delete user with associated records') {
+          friendly = 'Não é possível excluir este usuário: ele possui vínculos com registros (atas, comentários, etc.). Remova os vínculos antes de excluir.'
+        } else if (serverMsg === 'Missing request body') {
+          friendly = 'Falha ao excluir: corpo da requisição ausente.'
+        } else if (serverMsg === 'Invalid JSON body') {
+          friendly = 'Falha ao excluir: corpo da requisição inválido.'
+        } else if (serverMsg === 'User ID is required') {
+          friendly = 'ID do usuário é obrigatório.'
+        } else if (serverMsg === 'No authorization header' || serverMsg === 'Invalid token') {
+          friendly = 'Ação não autorizada: faça login novamente.'
+        } else if (serverMsg === 'Unauthorized: Admin access required') {
+          friendly = 'Apenas administradores podem excluir usuários.'
+        }
         throw new Error(friendly || `Erro ao excluir usuário: ${error.message}`)
       }
       
