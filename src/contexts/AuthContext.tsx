@@ -29,11 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         
-        // Defer profile fetching to avoid deadlock
+        // Fetch profile for authenticated user
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserProfile(session.user.id)
-          }, 0)
+          fetchUserProfile(session.user.id)
         } else {
           setUserProfile(null)
         }
@@ -48,9 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id)
-        }, 0)
+        fetchUserProfile(session.user.id)
       } else {
         setUserProfile(null)
       }
@@ -87,7 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // If user not found in omnia_users, create a new record
-      console.log('User not found in omnia_users, creating profile...')
       
       const { data: authUser } = await supabase.auth.getUser()
       if (!authUser?.user) {

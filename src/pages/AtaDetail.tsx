@@ -16,7 +16,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState } from "react"
-import { Ata, FIXTURE_USERS } from "@/data/fixtures"
+import { Ata } from "@/data/fixtures"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const AtaDetail = () => {
@@ -56,7 +56,6 @@ const AtaDetail = () => {
     
     setCommentLoading(true)
     await addComment(id, {
-      author: FIXTURE_USERS[0], // Mock current user
       body,
       attachments: attachments || []
     })

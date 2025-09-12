@@ -25,13 +25,11 @@ const ConfigAdministradoras = () => {
   const [editingAdministradora, setEditingAdministradora] = useState<Administradora | null>(null)
 
   useEffect(() => {
-    console.log('ConfigAdministradoras: Component mounted, loading administradoras...')
     loadAdministradoras()
   }, [loadAdministradoras])
 
   useEffect(() => {
     if (error) {
-      console.error('ConfigAdministradoras: Error detected:', error)
       toast({
         title: "Erro",
         description: error,
@@ -42,20 +40,16 @@ const ConfigAdministradoras = () => {
   }, [error, toast, clearError])
 
   const handleCreate = () => {
-    console.log('ConfigAdministradoras: Opening create form')
     setEditingAdministradora(null)
     setIsFormOpen(true)
   }
 
   const handleEdit = (administradora: Administradora) => {
-    console.log('ConfigAdministradoras: Opening edit form for administradora:', administradora)
     setEditingAdministradora(administradora)
     setIsFormOpen(true)
   }
 
   const handleDelete = async (id: string) => {
-    console.log('ConfigAdministradoras: Deleting administradora:', id)
-    
     try {
       await deleteAdministradora(id)
       toast({
@@ -63,7 +57,6 @@ const ConfigAdministradoras = () => {
         description: "A administradora foi excluída com sucesso."
       })
     } catch (error) {
-      console.error('ConfigAdministradoras: Error deleting administradora:', error)
       toast({
         title: "Erro",
         description: "Erro ao excluir administradora",
@@ -73,8 +66,6 @@ const ConfigAdministradoras = () => {
   }
 
   const handleFormSubmit = async (data: Omit<Administradora, 'id' | 'created_at' | 'updated_at'>) => {
-    console.log('ConfigAdministradoras: Submitting form:', data)
-    
     try {
       if (editingAdministradora) {
         await updateAdministradora(editingAdministradora.id, data)
@@ -92,7 +83,6 @@ const ConfigAdministradoras = () => {
       setIsFormOpen(false)
       setEditingAdministradora(null)
     } catch (error) {
-      console.error('ConfigAdministradoras: Error submitting form:', error)
       toast({
         title: "Erro",
         description: editingAdministradora ? "Erro ao atualizar administradora" : "Erro ao criar administradora",
@@ -102,7 +92,6 @@ const ConfigAdministradoras = () => {
   }
 
   const handleFormCancel = () => {
-    console.log('ConfigAdministradoras: Form cancelled')
     setIsFormOpen(false)
     setEditingAdministradora(null)
   }

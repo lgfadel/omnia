@@ -165,8 +165,6 @@ export const atasRepoSupabase = {
   },
 
   async getById(id: string): Promise<Ata | null> {
-    console.log('AtasRepo: Getting ata by id:', id)
-    
     // First get statuses for transformation
     const { data: statusesData } = await supabaseUntyped
       .from('omnia_statuses')
@@ -564,8 +562,6 @@ export const atasRepoSupabase = {
   },
 
   async getUsers(): Promise<UserRef[]> {
-    console.log('AtasRepo: Fetching users...')
-    
     // Use safe column selection (no email for general access)
     const { data, error } = await supabase
       .from('omnia_users')
@@ -573,7 +569,6 @@ export const atasRepoSupabase = {
       .order('name', { ascending: true })
     
     if (error) {
-      console.error('AtasRepo: Error fetching users:', error)
       throw new Error(`Erro ao buscar usuários: ${error.message}`)
     }
     

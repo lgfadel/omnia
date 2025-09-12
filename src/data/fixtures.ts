@@ -30,7 +30,7 @@ export interface Attachment {
 
 export interface Comment {
   id: string;
-  author: UserRef;
+  author?: UserRef; // Make author optional since it's handled by the repository
   body: string;
   createdAt: string;
   attachments?: Attachment[];

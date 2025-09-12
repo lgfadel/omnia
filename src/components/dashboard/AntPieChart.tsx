@@ -7,13 +7,6 @@ interface AntPieChartProps {
 }
 
 export function AntPieChart({ data, title }: AntPieChartProps) {
-  // Estado para armazenar informações de debug
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  
-  // Exibir dados recebidos no console para debug
-  useEffect(() => {
-    console.log('AntPieChart recebeu dados:', data);
-  }, [data]);
   
   // Calcular o total uma única vez fora da função de tooltip
   const totalValue = data.reduce((sum, item) => sum + (item.value || 0), 0) || 1;
@@ -33,21 +26,12 @@ export function AntPieChart({ data, title }: AntPieChartProps) {
       customContent: (title: string, items: any[]) => {
         // Verificar se temos itens válidos
         if (!items || items.length === 0) {
-          setDebugInfo(prev => ({ ...prev, customContentItems: 'Sem itens' }));
           return '';
         }
         
         // Obter o primeiro item (o que está sendo hover)
         const item = items[0];
         const datum = item?.data || {};
-        
-        // Armazenar dados do customContent para debug
-        setDebugInfo({
-          customContentTitle: title,
-          customContentItems: items,
-          customContentItem: item,
-          customContentDatum: datum
-        });
         
         // Extrair valores com fallbacks seguros
         const name = datum.name || 'Categoria';
@@ -85,28 +69,6 @@ export function AntPieChart({ data, title }: AntPieChartProps) {
     <div className="w-full">
       <h3 className="text-lg font-semibold mb-4 text-center">{title}</h3>
       <Pie {...config} />
-      
-      {/* Painel de debug */}
-      <div style={{ 
-        marginTop: '20px', 
-        padding: '10px', 
-        border: '1px solid #ddd', 
-        borderRadius: '4px',
-        backgroundColor: '#f9f9f9',
-        fontSize: '12px',
-        fontFamily: 'monospace',
-        whiteSpace: 'pre-wrap'
-      }}>
-        <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>Debug do Tooltip:</h4>
-        <div>
-          <strong>Dados recebidos:</strong>
-          <pre>{JSON.stringify(data, null, 2)}</pre>
-        </div>
-        <div style={{ marginTop: '10px' }}>
-          <strong>Informações do tooltip:</strong>
-          <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-        </div>
-      </div>
     </div>
   )
 }
