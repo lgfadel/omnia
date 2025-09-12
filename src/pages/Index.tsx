@@ -143,62 +143,7 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Próximas Oportunidades */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-4">PRÓXIMAS OPORTUNIDADES</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="border-l-4 border-l-blue-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <Target className="h-4 w-4 text-blue-600" />
-                    Automação de Processos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Identificar tarefas repetitivas para automação
-                  </p>
-                  <div className="text-xs text-blue-600 font-medium">
-                    Economia estimada: 15h/semana
-                  </div>
-                </CardContent>
-              </Card>
 
-              <Card className="border-l-4 border-l-green-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <Users className="h-4 w-4 text-green-600" />
-                    Melhoria de Comunicação
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Implementar notificações proativas para prazos
-                  </p>
-                  <div className="text-xs text-green-600 font-medium">
-                    Redução de 40% em atrasos
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-purple-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <FileText className="h-4 w-4 text-purple-600" />
-                    Padronização de Atas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Criar templates personalizados por tipo de reunião
-                  </p>
-                  <div className="text-xs text-purple-600 font-medium">
-                    Aumento de 60% na qualidade
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
 
         {/* Gráficos */}
