@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client"
+import { logger } from '@/lib/logging'
+import { supabase } from '@/integrations/supabase/client'
 
 export interface UserPermission {
   id: string
@@ -162,7 +163,7 @@ export const userPermissionsRepoSupabase = {
   async getUserPermissionsSummary(userId: string): Promise<UserPermissionSummary[]> {
     try {
       // Fallback: return empty array since get_user_permissions_summary function doesn't exist yet
-      console.warn('get_user_permissions_summary function not available in current schema')
+      logger.warn('get_user_permissions_summary function not available in current schema')
       return []
     } catch (error) {
       console.error('Error in userPermissionsRepoSupabase.getUserPermissionsSummary:', error)
@@ -173,7 +174,7 @@ export const userPermissionsRepoSupabase = {
   async checkUserMenuPermission(userId: string, menuItemPath: string): Promise<boolean> {
     try {
       // Fallback: return true since check_user_menu_permission function doesn't exist
-      console.warn('check_user_menu_permission function not available in current schema')
+      logger.warn('check_user_menu_permission function not available in current schema')
       return true
     } catch (error) {
       console.error('Error in userPermissionsRepoSupabase.checkUserMenuPermission:', error)
@@ -184,7 +185,7 @@ export const userPermissionsRepoSupabase = {
   async checkCurrentUserMenuPermission(menuItemPath: string): Promise<boolean> {
     try {
       // Fallback: return true since check_current_user_menu_permission function doesn't exist
-      console.warn('check_current_user_menu_permission function not available in current schema')
+      logger.warn('check_current_user_menu_permission function not available in current schema')
       return true
     } catch (error) {
       console.error('Error in userPermissionsRepoSupabase.checkCurrentUserMenuPermission:', error)

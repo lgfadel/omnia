@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout"
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { TabelaOmnia } from "@/components/ui/tabela-omnia"
+import { logger } from '@/lib/logging'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -118,7 +119,7 @@ const Atas = () => {
       // Reload atas to reflect the change
       loadAtas(search, statusFilter)
     } catch (error) {
-      console.error('Erro ao atualizar status:', error)
+      logger.error('Erro ao atualizar status:', error)
     }
   }
 
@@ -130,7 +131,7 @@ const Atas = () => {
         loadAtas();
       }
     } catch (error) {
-      console.error('Erro ao atualizar responsável:', error);
+      logger.error('Erro ao atualizar responsável:', error);
     }
   };
 

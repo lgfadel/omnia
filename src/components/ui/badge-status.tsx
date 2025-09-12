@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge"
+import { logger } from '@/lib/logging'
 import { cn } from "@/lib/utils"
 
 type StatusType = "nao-iniciado" | "em-andamento" | "concluido"
@@ -29,7 +30,7 @@ export function BadgeStatus({ status, children, className }: BadgeStatusProps) {
   
   // Fallback se o status não for encontrado
   if (!config) {
-    console.warn(`Status "${status}" não encontrado no statusConfig`)
+    logger.warn(`Status "${status}" não encontrado no statusConfig`)
     return (
       <Badge 
         variant="secondary" 

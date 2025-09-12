@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logging'
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, ChevronDown, User, Lock, Check } from 'lucide-react';
@@ -199,7 +200,7 @@ export default function Tickets() {
       if (selectedUser) {
         // Para tarefas privadas, não permitir mudança de responsável via interface
         if (task?.isPrivate) {
-          console.warn('Não é possível alterar responsável de tarefas privadas');
+          logger.warn('Não é possível alterar responsável de tarefas privadas');
           return;
         }
         
@@ -207,7 +208,7 @@ export default function Tickets() {
         loadTarefas();
       }
     } catch (error) {
-      console.error('Erro ao atualizar responsável:', error);
+      logger.error('Erro ao atualizar responsável:', error);
     }
   };
 
