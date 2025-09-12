@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     const { data: atasCount, error: countError } = await supabaseAnon
       .from('omnia_atas')
       .select('id')
-      .or(`secretary_id.eq.${userId},responsible_id.eq.${userId},created_by.eq.${userData.auth_user_id}`)
+      .or(`secretary_id.eq.${userId},responsible_id.eq.${userId},created_by.eq.${userId}`)
       .limit(1)
 
     if (countError) {

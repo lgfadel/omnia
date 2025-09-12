@@ -149,18 +149,37 @@ export const secretariosRepoSupabase = {
     console.log('SecretariosRepo: Deleting user:', id)
     
     try {
+      // Pre-check: verify associations to provide a friendly error before invoking the function
+      const [{ data: sec }, { data: resp }] = await Promise.all([
+        supabase.from('omnia_atas').select('id').eq('secretary_id', id).limit(1),
+        supabase.from('omnia_atas').select('id').eq('responsible_id', id).limit(1)
+      ])
+
+      if ((sec && sec.length > 0) || (resp && resp.length > 0)) {
+        throw new Error(
+          'Não é possível excluir este usuário: ele está vinculado a atas como secretário ou responsável. Reatribua as atas ou remova os vínculos e tente novamente.'
+        )
+      }
+
       // Use the delete-user edge function to handle both omnia_users and auth.users deletion
       const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: id }
+        body: { userId: id },
+        headers: { 'Content-Type': 'application/json' }
       })
       
       if (error) {
         console.error('SecretariosRepo: Error calling delete-user function:', error)
-        throw new Error(`Erro ao excluir usuário: ${error.message}`)
+        // Try to extract server-provided message
+        const context: any = (error as any).context
+        const serverMsg = (context && (context.error || context.message || context.response?.error)) || (data as any)?.error
+        const friendly = serverMsg === 'Cannot delete user with associated records'
+          ? 'Não é possível excluir este usuário: ele possui vínculos com registros (atas, comentários, etc.). Remova os vínculos antes de excluir.'
+          : serverMsg
+        throw new Error(friendly || `Erro ao excluir usuário: ${error.message}`)
       }
       
       if (!data?.success) {
-        const errorMessage = data?.error || 'Erro desconhecido ao excluir usuário'
+        const errorMessage = (data as any)?.error || 'Erro desconhecido ao excluir usuário'
         console.error('SecretariosRepo: Delete user function returned error:', errorMessage)
         throw new Error(errorMessage)
       }
