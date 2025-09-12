@@ -56,14 +56,15 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if the authenticated user has ADMIN role
-    const { data: currentUser, error: userError } = await supabaseAnon
+    // Check if the authenticated user has ADMIN role (use service role to bypass RLS)
+    const { data: currentUser, error: userError } = await supabaseAdmin
       .from('omnia_users')
-      .select('roles')
+      .select('roles, id, auth_user_id')
       .eq('auth_user_id', user.id)
       .single()
 
-    if (userError || !currentUser || !currentUser.roles.includes('ADMIN')) {
+    if (userError || !currentUser || !(currentUser.roles || []).includes('ADMIN')) {
+      console.warn('Unauthorized: Admin access required for user', user.id, 'error:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Admin access required' }),
         { 
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
     console.log('Deleting user:', userId)
 
     // Get user data from omnia_users to get the auth_user_id
-    const { data: userData, error: getUserError } = await supabaseAnon
+    const { data: userData, error: getUserError } = await supabaseAdmin
       .from('omnia_users')
       .select('auth_user_id, name, email')
       .eq('id', userId)
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
     }
 
     // Check if user has any atas associated
-    const { data: atasCount, error: countError } = await supabaseAnon
+    const { data: atasCount, error: countError } = await supabaseAdmin
       .from('omnia_atas')
       .select('id')
       .or(`secretary_id.eq.${userId},responsible_id.eq.${userId},created_by.eq.${userId}`)
@@ -134,7 +135,7 @@ Deno.serve(async (req) => {
     }
 
     // Delete user from omnia_users table first
-    const { error: deleteUserError } = await supabaseAnon
+    const { error: deleteUserError } = await supabaseAdmin
       .from('omnia_users')
       .delete()
       .eq('id', userId)
