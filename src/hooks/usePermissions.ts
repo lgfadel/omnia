@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useUserPermissionsStore } from '@/stores/userPermissions.store'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/auth/AuthProvider'
 import { MenuItem } from '@/repositories/menuItemsRepo.supabase'
 
 export interface PermissionsData {

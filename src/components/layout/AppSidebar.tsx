@@ -32,7 +32,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from '@/components/auth/AuthProvider'
 import { Button } from "@/components/ui/button"
 import { useState, useMemo } from "react"
 import { useRoles } from "@/hooks/useRoles"

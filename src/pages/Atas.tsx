@@ -11,7 +11,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useSecretariosStore } from "@/store/secretarios.store"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from '@/components/auth/AuthProvider'
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { supabase } from "@/integrations/supabase/client"
 

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Trash2, MoreVertical, Edit, Check, X, Download, FileText, Image, File, Paperclip } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { CrmComment, crmCommentsRepoSupabase } from '@/repositories/crmCommentsRepo.supabase';
 import { CrmAttachment, crmAttachmentsRepoSupabase } from '@/repositories/crmAttachmentsRepo.supabase';

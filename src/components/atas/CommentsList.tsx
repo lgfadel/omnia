@@ -27,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface CommentsListProps {
   comments: Comment[]

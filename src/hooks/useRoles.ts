@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/auth/AuthProvider'
 import { Role } from '@/data/types'
 
 export function useRoles() {

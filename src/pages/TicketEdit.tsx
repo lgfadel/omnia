@@ -6,7 +6,7 @@ import { useSecretariosStore } from "@/store/secretarios.store";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from '@/components/auth/AuthProvider';
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";

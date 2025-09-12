@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import { logger } from '@/lib/logging'
 import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/types"
 
 // Use existing supabase client with type casting for untyped tables

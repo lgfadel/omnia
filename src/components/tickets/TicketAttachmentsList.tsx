@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { ticketAttachmentsRepoSupabase, type TicketAttachment } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
 import { toast } from 'sonner';

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { UserRef, Attachment } from "@/data/types"
 import { Send, Paperclip, X, Image } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from '@/components/auth/AuthProvider'
 import { useSupabaseUpload } from "@/hooks/useSupabaseUpload"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { toast } from "@/components/ui/use-toast"

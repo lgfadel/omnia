@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, FileIcon } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { toast } from 'sonner';

@@ -18,7 +18,7 @@ import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { UserRef, Attachment } from '@/data/types';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),

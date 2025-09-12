@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { DueDateModal } from '@/components/ui/due-date-modal';
 import { PriorityModal } from '@/components/ui/priority-modal';

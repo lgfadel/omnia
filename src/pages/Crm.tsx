@@ -22,7 +22,7 @@ import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
 
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/auth/AuthProvider'
 import { useRoles } from '@/hooks/useRoles'
 import { useEscapeKeyForAlert } from '@/hooks/useEscapeKeyForAlert'
 
