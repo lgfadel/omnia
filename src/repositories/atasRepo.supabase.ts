@@ -189,7 +189,7 @@ export const atasRepoSupabase = {
     }
 
     if (!data) {
-      console.log('AtasRepo: No ata found with id:', id)
+      logger.debug('AtasRepo: No ata found with id:', id)
       return null
     }
 
@@ -207,7 +207,7 @@ export const atasRepoSupabase = {
       `)
       .eq('ata_id', data.id)
 
-    console.log('AtasRepo: Found ata:', data)
+    logger.debug('AtasRepo: Found ata:', data)
     return transformAtaFromDB({
       ...data,
       omnia_attachments: attachmentsData || [],
@@ -357,7 +357,7 @@ export const atasRepoSupabase = {
   },
 
   async addComment(ataId: string, comment: Omit<Comment, 'id' | 'createdAt'>): Promise<Comment | null> {
-    console.log('AtasRepo: addComment called with:', { ataId, comment })
+    logger.debug('AtasRepo: addComment called with:', { ataId, comment })
 
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()

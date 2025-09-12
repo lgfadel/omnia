@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AccessDenied from "./pages/AccessDenied";
@@ -44,97 +45,135 @@ function App() {
               <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="/" element={
                 <ProtectedRoute>
-                  <Index />
+                  <ErrorBoundary>
+                    <Index />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/atas" element={
                 <ProtectedRoute>
-                  <Atas />
+                  <ErrorBoundary>
+                    <Atas />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/atas/new" element={
                 <ProtectedRoute>
-                  <AtaNew />
+                  <ErrorBoundary>
+                    <AtaNew />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/atas/:id" element={
                 <ProtectedRoute>
-                  <AtaDetail />
+                  <ErrorBoundary>
+                    <AtaDetail />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/atas/:id/edit" element={
                 <ProtectedRoute>
-                  <AtaEdit />
+                  <ErrorBoundary>
+                    <AtaEdit />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/config/status" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigStatus />
+                  <ErrorBoundary>
+                    <ConfigStatus />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/config/usuarios" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigUsuarios />
+                  <ErrorBoundary>
+                    <ConfigUsuarios />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/config/tags" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigTags />
+                  <ErrorBoundary>
+                    <ConfigTags />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/config/condominiums" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigCondominiums />
+                  <ErrorBoundary>
+                    <ConfigCondominiums />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/config/administradoras" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigAdministradoras />
+                  <ErrorBoundary>
+                    <ConfigAdministradoras />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/tarefas" element={
                 <ProtectedRoute>
-                  <Tickets />
+                  <ErrorBoundary>
+                    <Tickets />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/tarefas/new" element={
                 <ProtectedRoute>
-                  <TicketNew />
+                  <ErrorBoundary>
+                    <TicketNew />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/tarefas/:id" element={
                 <ProtectedRoute>
-                  <TicketDetail />
+                  <ErrorBoundary>
+                    <TicketDetail />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/tarefas/:id/edit" element={
                 <ProtectedRoute>
-                  <TicketEdit />
+                  <ErrorBoundary>
+                    <TicketEdit />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/config/ticket-status" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigTicketStatus />
+                  <ErrorBoundary>
+                    <ConfigTicketStatus />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/config/crm-status" element={
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                  <ConfigCrmStatus />
+                  <ErrorBoundary>
+                    <ConfigCrmStatus />
+                  </ErrorBoundary>
                 </RoleProtectedRoute>
               } />
               <Route path="/crm" element={
                 <ProtectedRoute>
-                  <Crm />
+                  <ErrorBoundary>
+                    <Crm />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/crm/:id" element={
                 <ProtectedRoute>
-                  <CrmLeadDetail />
+                  <ErrorBoundary>
+                    <CrmLeadDetail />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               <Route path="/change-password" element={
                 <ProtectedRoute>
-                  <ChangePassword />
+                  <ErrorBoundary>
+                    <ChangePassword />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
