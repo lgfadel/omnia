@@ -26,13 +26,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   loading: true,
 
   initAuth: () => {
+    logger.info('Initializing authentication...')
+    
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      logger.warn('Auth initialization timeout - forcing loading=false')
+      set({ loading: false })
+    }, 10000) // 10 seconds timeout
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        logger.info('Auth state changed:', event)
+        clearTimeout(safetyTimeout) // Clear timeout when auth state changes
+        
         set({ session, user: session?.user ?? null })
         
         if (session?.user) {
-          await get().fetchUserProfile(session.user.id)
+          try {
+            await get().fetchUserProfile(session.user.id)
+          } catch (error) {
+            logger.error('Failed to fetch user profile in auth listener:', error)
+          }
         } else {
           set({ userProfile: null })
         }
@@ -41,24 +56,54 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
     )
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      set({ session, user: session?.user ?? null })
-      
-      if (session?.user) {
-        get().fetchUserProfile(session.user.id)
-      } else {
-        set({ userProfile: null })
+    // Check for existing session with retry logic
+    const checkSession = async (retryCount = 0) => {
+      try {
+        logger.info('Checking existing session...', { retryCount })
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          throw error
+        }
+
+        clearTimeout(safetyTimeout) // Clear timeout on successful session check
+        set({ session, user: session?.user ?? null })
+        
+        if (session?.user) {
+          try {
+            await get().fetchUserProfile(session.user.id)
+          } catch (profileError) {
+            logger.error('Failed to fetch user profile:', profileError)
+          }
+        } else {
+          set({ userProfile: null })
+        }
+        
+        set({ loading: false })
+        logger.info('Auth initialization completed successfully')
+      } catch (error) {
+        logger.error('Auth session check failed:', { error, retryCount })
+        
+        // Retry up to 2 times with exponential backoff
+        if (retryCount < 2) {
+          const delay = Math.pow(2, retryCount) * 1000 // 1s, 2s
+          logger.info(`Retrying session check in ${delay}ms...`)
+          setTimeout(() => checkSession(retryCount + 1), delay)
+        } else {
+          clearTimeout(safetyTimeout)
+          set({ loading: false })
+          logger.error('Auth initialization failed after retries')
+        }
       }
-      
-      set({ loading: false })
-    }).catch((error) => {
-      logger.error('Auth session check failed:', error)
-      set({ loading: false })
-    })
+    }
+
+    checkSession()
 
     // Cleanup function
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(safetyTimeout)
+      subscription.unsubscribe()
+    }
   },
 
   fetchUserProfile: async (userId: string) => {

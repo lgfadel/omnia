@@ -24,6 +24,21 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          "patterns": [
+            {
+              "group": ["@/contexts/*"],
+              "message": "Imports from @/contexts are deprecated. Use Zustand stores instead."
+            },
+            {
+              "group": ["@/data/fixtures"],
+              "message": "Imports from @/data/fixtures are deprecated. Use proper data repositories instead."
+            }
+          ]
+        }
+      ],
     },
   }
 );
