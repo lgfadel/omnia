@@ -11,7 +11,7 @@ import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
 import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
-import { Attachment } from '@/data/fixtures';
+import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
 
 interface TicketCommentInputProps {

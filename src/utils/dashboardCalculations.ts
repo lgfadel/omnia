@@ -1,4 +1,4 @@
-import { Ata, Status } from '@/data/fixtures'
+import { Ata, Status } from '@/data/types'
 import { Tarefa } from '@/repositories/tarefasRepo.supabase'
 
 // Tipos para as métricas do dashboard

@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
-import { UserRef, Attachment } from '@/data/fixtures';
+import { UserRef, Attachment } from '@/data/types';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { useAuth } from '@/contexts/AuthContext';
 

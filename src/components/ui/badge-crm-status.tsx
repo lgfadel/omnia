@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Status } from "@/data/fixtures"
+import { Status } from "@/data/types"
 import { useCrmStatusStore } from "@/store/crmStatus.store"
 
 export interface CrmStatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {

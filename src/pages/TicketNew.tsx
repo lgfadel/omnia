@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useTarefasStore } from "@/store/tarefas.store";
 import { useSecretariosStore } from "@/store/secretarios.store";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
-import { UserRef } from "@/data/fixtures";
+import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";

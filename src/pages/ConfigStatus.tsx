@@ -6,7 +6,7 @@ import { StatusForm } from "@/components/status/StatusForm";
 import { useStatusStore } from "@/store/status.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { Status } from "@/data/fixtures";
+import { Status } from "@/data/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 

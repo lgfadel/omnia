@@ -1,6 +1,6 @@
 
 import { create } from 'zustand'
-import { Status } from '@/data/fixtures'
+import { Status } from '@/data/types'
 import { statusRepoSupabase } from '@/repositories/statusRepo.supabase'
 
 interface StatusStore {

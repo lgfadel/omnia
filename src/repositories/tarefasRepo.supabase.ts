@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { UserRef, Attachment, Comment } from '@/data/fixtures';
+import type { UserRef, Attachment, Comment } from '@/data/types';
 
 export type TarefaPrioridade = 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
 

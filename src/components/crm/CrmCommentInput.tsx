@@ -10,7 +10,7 @@ import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { crmCommentsRepoSupabase } from '@/repositories/crmCommentsRepo.supabase';
 import { crmAttachmentsRepoSupabase } from '@/repositories/crmAttachmentsRepo.supabase';
-import { Attachment } from '@/data/fixtures';
+import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
 
 interface CrmCommentInputProps {
