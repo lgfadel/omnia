@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/fixtures"
+import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/types"
 
 // Use existing supabase client with type casting for untyped tables
 const supabaseUntyped = supabase as any

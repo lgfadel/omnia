@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { crmStatusRepoSupabase } from '@/repositories/crmStatusRepo.supabase';
-import { Status } from '@/data/fixtures';
+import { Status } from '@/data/types';
 
 interface CrmStatusStore {
   statuses: Status[];

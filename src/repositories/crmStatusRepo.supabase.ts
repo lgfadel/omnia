@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { Status } from "@/data/fixtures"
+import { Status } from "@/data/types"
 
 // Transform database record to Status type
 const transformCrmStatusFromDB = (dbStatus: any): Status => ({

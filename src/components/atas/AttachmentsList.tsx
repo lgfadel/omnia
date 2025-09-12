@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Attachment } from "@/data/fixtures"
+import { Attachment } from "@/data/types"
 import { Download, FileText, Trash2, X, FileImage, FileSpreadsheet, Paperclip } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"

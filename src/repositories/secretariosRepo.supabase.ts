@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { UserRef, Role } from "@/data/fixtures"
+import { UserRef, Role } from "@/data/types"
 
 // Transform database record to UserRef
 function transformUserFromDB(dbUser: any): UserRef {

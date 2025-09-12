@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Status } from "@/data/fixtures"
+import { Status } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 import {
   DndContext,

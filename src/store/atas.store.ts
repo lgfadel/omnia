@@ -1,6 +1,6 @@
 
 import { create } from 'zustand'
-import { Ata, Status, Comment, Attachment } from '@/data/fixtures'
+import { Ata, Status, Comment, Attachment } from '@/data/types'
 import { atasRepoSupabase } from '@/repositories/atasRepo.supabase'
 
 interface AtasStore {

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { UserRef } from '@/data/fixtures'
+import { UserRef } from '@/data/types'
 import { secretariosRepoSupabase } from '@/repositories/secretariosRepo.supabase'
 
 interface SecretariosStore {

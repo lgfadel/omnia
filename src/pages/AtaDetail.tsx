@@ -16,7 +16,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState } from "react"
-import { Ata } from "@/data/fixtures"
+import { Ata } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const AtaDetail = () => {

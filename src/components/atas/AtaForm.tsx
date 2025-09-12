@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
-import { Ata, UserRef } from "@/data/fixtures";
+import { Ata, UserRef } from "@/data/types";
 import { useAtasStore } from "@/store/atas.store";
 import { useTagsStore } from "@/store/tags.store";
 import { useCondominiumStore } from "@/store/condominiums.store";

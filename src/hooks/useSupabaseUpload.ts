@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/components/ui/use-toast'
-import { Attachment } from '@/data/fixtures'
+import { Attachment } from '@/data/types'
 
 export function useSupabaseUpload() {
   const [uploading, setUploading] = useState(false)

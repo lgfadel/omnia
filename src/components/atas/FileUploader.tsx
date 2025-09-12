@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, X, FileText } from "lucide-react"
-import { Attachment } from "@/data/fixtures"
+import { Attachment } from "@/data/types"
 import { useSupabaseUpload } from "@/hooks/useSupabaseUpload"
 
 interface FileUploaderProps {

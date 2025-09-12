@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { Status } from "@/data/fixtures"
+import { Status } from "@/data/types"
 import { useState } from "react"
 
 interface StatusSelectProps {

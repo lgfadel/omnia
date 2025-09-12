@@ -19,7 +19,7 @@ export interface MetricCardProps {
   onClick?: () => void
 }
 
-export function MetricCard({
+export const MetricCard = React.memo(function MetricCard({
   title,
   value,
   subtitle,
@@ -117,7 +117,7 @@ export function MetricCard({
       </div>
     </Card>
   )
-}
+})
 
 // Componente específico para métricas de atas
 export function AtasMetricCard({

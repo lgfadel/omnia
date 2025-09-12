@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext'
-import { Role } from '@/data/fixtures'
+import { Role } from '@/data/types'
 
 export function useRoles() {
   const { userProfile } = useAuth()

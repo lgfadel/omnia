@@ -6,7 +6,7 @@ import { SecretarioForm } from "@/components/secretarios/SecretarioForm"
 import { SecretarioList } from "@/components/secretarios/SecretarioList"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSecretariosStore } from "@/store/secretarios.store"
-import { UserRef } from "@/data/fixtures"
+import { UserRef } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const ConfigUsuarios = () => {
