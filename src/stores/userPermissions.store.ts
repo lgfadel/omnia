@@ -6,7 +6,7 @@ interface UserPermissionsState {
   userPermissions: UserPermission[]
   currentUserPermissions: UserPermission[]
   accessibleMenuItems: MenuItem[]
-  permissionsSummary: UserPermissionSummary | null
+  permissionsSummary: UserPermissionSummary[]
   isLoading: boolean
   error: string | null
   
@@ -32,7 +32,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
   userPermissions: [],
   currentUserPermissions: [],
   accessibleMenuItems: [],
-  permissionsSummary: null,
+  permissionsSummary: [],
   isLoading: false,
   error: null,
 
@@ -238,7 +238,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       userPermissions: [], 
       currentUserPermissions: [], 
       accessibleMenuItems: [], 
-      permissionsSummary: null, 
+      permissionsSummary: [], 
       error: null 
     })
   },

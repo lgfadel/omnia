@@ -146,7 +146,10 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
 
   reorderMenuItems: async (items: Array<{ id: string; order_index: number }>) => {
     try {
-      await menuItemsRepoSupabase.reorder(items)
+      // Update each item individually since there's no batch reorder function
+      for (const item of items) {
+        await menuItemsRepoSupabase.update(item.id, { order_index: item.order_index })
+      }
       
       // Reload items to reflect new order
       const { loadMenuItems, loadRootItems } = get()
