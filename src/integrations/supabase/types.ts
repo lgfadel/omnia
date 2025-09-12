@@ -697,6 +697,176 @@ export type Database = {
         }
         Relationships: []
       }
+      omnia_menu_items: {
+        Row: {
+          id: string
+          name: string
+          path: string
+          icon: string | null
+          parent_id: string | null
+          order_index: number
+          is_active: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          path: string
+          icon?: string | null
+          parent_id?: string | null
+          order_index?: number
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          path?: string
+          icon?: string | null
+          parent_id?: string | null
+          order_index?: number
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_menu_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_menu_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      omnia_role_permissions: {
+        Row: {
+          id: string
+          role_name: string
+          menu_item_id: string
+          can_access: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          role_name: string
+          menu_item_id: string
+          can_access?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          role_name?: string
+          menu_item_id?: string
+          can_access?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_role_permissions_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_menu_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      omnia_user_permissions: {
+        Row: {
+          id: string
+          user_id: string
+          menu_item_id: string
+          can_access: boolean
+          granted_at: string | null
+          granted_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          menu_item_id: string
+          can_access?: boolean
+          granted_at?: string | null
+          granted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          menu_item_id?: string
+          can_access?: boolean
+          granted_at?: string | null
+          granted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_user_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_user_permissions_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      users: {
+        Row: {
+          auth_user_id: string | null
+          avatar_url: string | null
+          color: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          roles: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

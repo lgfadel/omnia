@@ -44,3 +44,9 @@ debug-*.js
 seed-*.js
 fix-*.sql
 test-*.js
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

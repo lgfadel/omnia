@@ -33,7 +33,7 @@ const SPECIFIC_ERROR_MESSAGES: Record<string, Record<string, string>> = {
     '23505': 'Já existe um condomínio cadastrado com este CNPJ',
     'duplicate_key_value': 'Já existe um condomínio cadastrado com este CNPJ',
   },
-  omnia_users: {
+  users: {
     '23505': 'Já existe um usuário cadastrado com este email',
     'duplicate_key_value': 'Já existe um usuário cadastrado com este email',
   },
@@ -167,14 +167,14 @@ function extractErrorCode(message: string): string {
 function extractTableFromError(error: any): string | null {
   const message = error.message || error.toString()
   
-  // Procura por nomes de tabela na mensagem
-  const tableMatch = message.match(/table "(omnia_\w+)"/)
+  // Procura por nomes de tabela na mensagem (com e sem prefixo omnia_)
+  const tableMatch = message.match(/table "((?:omnia_)?\w+)"/)
   if (tableMatch) {
     return tableMatch[1]
   }
   
   // Procura por constraint names que geralmente incluem o nome da tabela
-  const constraintMatch = message.match(/(omnia_\w+)_/)
+  const constraintMatch = message.match(/((?:omnia_)?\w+)_/)
   if (constraintMatch) {
     return constraintMatch[1]
   }

@@ -1,3 +1,4 @@
+import React from "react"
 import { 
   ClipboardList, 
   Settings, 
@@ -11,7 +12,8 @@ import {
   ChevronDown,
   ChevronRight,
   Ticket,
-  Building2
+  Building2,
+  Menu
 } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import {
@@ -32,26 +34,57 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRoles } from "@/hooks/useRoles"
+import { useAccessibleMenuTree } from "@/hooks/useMenuItems"
+import { MenuItem } from "@/repositories/menuItemsRepo.supabase"
 
-const navigationItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Atas", url: "/atas", icon: ClipboardList },
-  { title: "Tarefas", url: "/tarefas", icon: Ticket },
-  { title: "CRM", url: "/crm", icon: Building2 },
-  { title: "Relatórios", url: "/relatorios", icon: FileText },
-]
+// Mapeamento de ícones para os itens de menu
+const iconMap: Record<string, any> = {
+  'home': Home,
+  'dashboard': Home,
+  'atas': ClipboardList,
+  'tarefas': Ticket,
+  'tickets': Ticket,
+  'crm': Building2,
+  'relatorios': FileText,
+  'reports': FileText,
+  'config': Settings,
+  'configuracoes': Settings,
+  'status': BarChart3,
+  'usuarios': Users,
+  'users': Users,
+  'condominiums': Building2,
+  'condominios': Building2,
+  'administradoras': Building2,
+  'tags': Tags,
+  'settings': Settings,
+  'menu': Menu,
+  'default': Menu
+}
 
-const configItems = [
-  { title: "Status", url: "/config/status", icon: BarChart3 },
-  { title: "Status Tickets", url: "/config/ticket-status", icon: BarChart3 },
-  { title: "Status CRM", url: "/config/crm-status", icon: BarChart3 },
-  { title: "Usuários", url: "/config/usuarios", icon: Users },
-  { title: "Condomínios", url: "/config/condominiums", icon: Building2 },
-  { title: "Administradoras", url: "/config/administradoras", icon: Building2 },
-  { title: "Tags", url: "/config/tags", icon: Tags },
-]
+// Função para obter ícone baseado no nome ou tipo do menu
+function getMenuIcon(menuItem: MenuItem) {
+  // Primeiro tenta pelo campo icon se existir
+  if (menuItem.icon && iconMap[menuItem.icon.toLowerCase()]) {
+    return iconMap[menuItem.icon.toLowerCase()]
+  }
+  
+  // Depois tenta pelo nome do menu
+  const nameKey = menuItem.name.toLowerCase().replace(/\s+/g, '')
+  if (iconMap[nameKey]) {
+    return iconMap[nameKey]
+  }
+  
+  // Depois tenta pelo path
+  const pathKey = menuItem.path.replace('/', '').toLowerCase()
+  if (iconMap[pathKey]) {
+    return iconMap[pathKey]
+  }
+  
+  // Fallback para ícone padrão
+  return iconMap.default
+}
 
 export function AppSidebar() {
   const { state } = useSidebar()
@@ -59,11 +92,111 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const { user, userProfile, signOut } = useAuth()
   const { canAccessConfig } = useRoles()
-  const [configExpanded, setConfigExpanded] = useState(false)
+  const { menuTree, isLoading, error } = useAccessibleMenuTree()
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/auth')
+  }
+
+  // Função para alternar expansão de um item
+  const toggleExpanded = (itemId: string) => {
+    const newExpanded = new Set(expandedItems)
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId)
+    } else {
+      newExpanded.add(itemId)
+    }
+    setExpandedItems(newExpanded)
+  }
+
+  // Separar itens principais dos de configuração
+  const { mainMenuItems, configMenuItems } = useMemo(() => {
+    const main: MenuItem[] = []
+    const config: MenuItem[] = []
+    
+    menuTree.forEach(item => {
+      if (item.path.startsWith('/config')) {
+        config.push(item)
+      } else {
+        main.push(item)
+      }
+    })
+    
+    return { mainMenuItems: main, configMenuItems: config }
+  }, [menuTree])
+
+  // Renderizar item de menu recursivamente
+  const renderMenuItem = (item: MenuItem & { children?: MenuItem[] }, level = 0) => {
+    const Icon = getMenuIcon(item)
+    const hasChildren = item.children && item.children.length > 0
+    const isExpanded = expandedItems.has(item.id)
+    
+    return (
+      <SidebarMenuItem key={item.id}>
+        {hasChildren ? (
+          <>
+            <SidebarMenuButton 
+              onClick={() => toggleExpanded(item.id)}
+              className="icon-text-align nav-item-hover p-2 rounded-md transition-colors"
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="truncate">{item.name}</span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 ml-auto shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+                  )}
+                </>
+              )}
+            </SidebarMenuButton>
+            {isExpanded && !collapsed && (
+              <SidebarMenuSub>
+                {item.children?.map((child) => (
+                  <SidebarMenuSubItem key={child.id}>
+                    <SidebarMenuSubButton asChild>
+                      <NavLink 
+                        to={child.path}
+                        className={({ isActive }) =>
+                          `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                            isActive 
+                              ? "nav-item-active" 
+                              : ""
+                          }`
+                        }
+                      >
+                        {React.createElement(getMenuIcon(child), { className: "w-4 h-4 shrink-0" })}
+                        <span className="truncate">{child.name}</span>
+                      </NavLink>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                ))}
+              </SidebarMenuSub>
+            )}
+          </>
+        ) : (
+          <SidebarMenuButton asChild>
+            <NavLink 
+              to={item.path} 
+              end
+              className={({ isActive }) =>
+                `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                  isActive 
+                    ? "nav-item-active" 
+                    : ""
+                }`
+              }
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="truncate">{item.name}</span>}
+            </NavLink>
+          </SidebarMenuButton>
+        )}
+      </SidebarMenuItem>
+    )
   }
 
   return (
@@ -91,80 +224,82 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                     <NavLink 
-                       to={item.url} 
-                       end
-                       className={({ isActive }) =>
-                         `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                           isActive 
-                             ? "nav-item-active" 
-                             : ""
-                         }`
-                       }
-                     >
-                       <item.icon className="w-4 h-4 shrink-0" />
-                       {!collapsed && <span className="truncate">{item.title}</span>}
-                     </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Loading State */}
+        {isLoading && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Carregando...</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {[1, 2, 3].map((i) => (
+                  <SidebarMenuItem key={i}>
+                    <div className="flex items-center gap-2 p-2">
+                      <div className="w-4 h-4 bg-gray-300 rounded animate-pulse" />
+                      {!collapsed && <div className="h-4 bg-gray-300 rounded flex-1 animate-pulse" />}
+                    </div>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Configuration - Only for ADMIN */}
-        {canAccessConfig() && (
+        {/* Error State */}
+        {error && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Erro</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="p-2 text-sm text-red-500">
+                Erro ao carregar menu: {error}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Main Navigation */}
+        {!isLoading && !error && mainMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Principal</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {mainMenuItems.map((item) => renderMenuItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Configuration Menu */}
+        {!isLoading && !error && configMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Configurações</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {configMenuItems.map((item) => renderMenuItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Fallback para usuários com acesso de configuração mas sem itens no banco */}
+        {!isLoading && !error && configMenuItems.length === 0 && canAccessConfig() && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                   <SidebarMenuButton 
-                     onClick={() => setConfigExpanded(!configExpanded)}
-                     className="icon-text-align nav-item-hover p-2 rounded-md transition-colors"
-                   >
-                     <Settings className="w-4 h-4 shrink-0" />
-                     {!collapsed && (
-                       <>
-                         <span className="truncate">Configurações</span>
-                         {configExpanded ? (
-                           <ChevronDown className="w-4 h-4 ml-auto shrink-0" />
-                         ) : (
-                           <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
-                         )}
-                       </>
-                     )}
-                   </SidebarMenuButton>
-                  {configExpanded && !collapsed && (
-                    <SidebarMenuSub>
-                      {configItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton asChild>
-                             <NavLink 
-                               to={item.url}
-                               className={({ isActive }) =>
-                                 `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                                   isActive 
-                                     ? "nav-item-active" 
-                                     : ""
-                                 }`
-                               }
-                             >
-                               <item.icon className="w-4 h-4 shrink-0" />
-                               <span className="truncate">{item.title}</span>
-                             </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/config"
+                      className={({ isActive }) =>
+                        `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                          isActive 
+                            ? "nav-item-active" 
+                            : ""
+                        }`
+                      }
+                    >
+                      <Settings className="w-4 h-4 shrink-0" />
+                      {!collapsed && <span className="truncate">Configurações</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
