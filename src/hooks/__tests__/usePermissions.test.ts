@@ -17,8 +17,8 @@ vi.mock('@/stores/userPermissions.store', () => ({
   })
 }))
 
-// Mock AuthContext
-vi.mock('@/contexts/AuthContext', () => ({
+// Mock AuthProvider
+vi.mock('@/components/auth/AuthProvider', () => ({
   useAuth: () => ({
     user: {
       id: 'user-1',
