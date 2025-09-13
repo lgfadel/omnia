@@ -15,7 +15,7 @@ interface AuthStore {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
-  initAuth: () => void
+  initAuth: () => () => void
   fetchUserProfile: (userId: string) => Promise<void>
 }
 

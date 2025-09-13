@@ -2,9 +2,118 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Navigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { supabase } from '@/integrations/supabase/client'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+}
+
+interface DiagnosticResult {
+  test: string
+  status: 'loading' | 'success' | 'error'
+  message: string
+}
+
+function DiagnosticPanel() {
+  const [diagnostics, setDiagnostics] = useState<DiagnosticResult[]>([
+    { test: 'Supabase Auth Health', status: 'loading', message: 'Verificando...' },
+    { test: 'Auth Session', status: 'loading', message: 'Verificando...' },
+    { test: 'LocalStorage', status: 'loading', message: 'Verificando...' }
+  ])
+
+  useEffect(() => {
+    const runDiagnostics = async () => {
+      // Test 1: Supabase Auth Health
+      try {
+        const healthUrl = `https://elmxwvimjxcswjbrzznq.supabase.co/auth/v1/health`
+        const response = await fetch(healthUrl, { method: 'GET' })
+        
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'Supabase Auth Health' 
+            ? { ...d, status: response.ok ? 'success' : 'error', message: response.ok ? 'OK' : `HTTP ${response.status}` }
+            : d
+        ))
+      } catch (error) {
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'Supabase Auth Health' 
+            ? { ...d, status: 'error', message: `Erro de rede: ${error}` }
+            : d
+        ))
+      }
+
+      // Test 2: Auth Session
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'Auth Session' 
+            ? { ...d, status: error ? 'error' : 'success', message: error ? `Erro: ${error.message}` : 'OK' }
+            : d
+        ))
+      } catch (error) {
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'Auth Session' 
+            ? { ...d, status: 'error', message: `Erro: ${error}` }
+            : d
+        ))
+      }
+
+      // Test 3: LocalStorage
+      try {
+        localStorage.setItem('__test__', 'test')
+        localStorage.removeItem('__test__')
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'LocalStorage' 
+            ? { ...d, status: 'success', message: 'OK' }
+            : d
+        ))
+      } catch (error) {
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'LocalStorage' 
+            ? { ...d, status: 'error', message: `Bloqueado: ${error}` }
+            : d
+        ))
+      }
+    }
+
+    runDiagnostics()
+  }, [])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center max-w-lg mx-auto p-6 border rounded-lg bg-card">
+        <div className="text-xl font-semibold mb-4">Diagnóstico de Conectividade</div>
+        
+        <div className="space-y-3 mb-6">
+          {diagnostics.map((diagnostic) => (
+            <div key={diagnostic.test} className="flex items-center justify-between p-3 border rounded">
+              <div className="text-sm font-medium">{diagnostic.test}</div>
+              <div className="flex items-center gap-2">
+                {diagnostic.status === 'loading' && (
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                )}
+                {diagnostic.status === 'success' && (
+                  <div className="w-4 h-4 bg-green-500 rounded-full" />
+                )}
+                {diagnostic.status === 'error' && (
+                  <div className="w-4 h-4 bg-red-500 rounded-full" />
+                )}
+                <span className="text-sm text-muted-foreground">{diagnostic.message}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          <Button onClick={() => window.location.reload()} className="w-full">
+            Tentar Novamente
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/auth">Ir para Login</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
@@ -36,24 +145,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (loading && showTimeout) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-xl font-semibold mb-2">Carregamento demorado</div>
-          <div className="text-muted-foreground mb-6">
-            A aplicação está demorando para carregar. Isso pode ser devido a problemas de conectividade.
-          </div>
-          <div className="space-y-3">
-            <Button onClick={() => window.location.reload()} className="w-full">
-              Tentar Novamente
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/auth">Ir para Login</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
+    return <DiagnosticPanel />
   }
 
   if (!user) {

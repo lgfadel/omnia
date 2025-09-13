@@ -2,15 +2,61 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://elmxwvimjxcswjbrzznq.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI";
+// Storage-safe wrapper for localStorage with fallback to in-memory storage
+const createSafeStorage = () => {
+  const memoryStorage = new Map<string, string>();
+  
+  return {
+    getItem: (key: string): string | null => {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn('[SUPABASE] localStorage not available, using memory storage:', error);
+        return memoryStorage.get(key) || null;
+      }
+    },
+    setItem: (key: string, value: string): void => {
+      try {
+        localStorage.setItem(key, value);
+      } catch (error) {
+        console.warn('[SUPABASE] localStorage not available, using memory storage:', error);
+        memoryStorage.set(key, value);
+      }
+    },
+    removeItem: (key: string): void => {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn('[SUPABASE] localStorage not available, using memory storage:', error);
+        memoryStorage.delete(key);
+      }
+    }
+  };
+};
+
+// Get environment variables with validation
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// Validate required environment variables
+if (!SUPABASE_URL) {
+  console.error('[SUPABASE] Missing VITE_SUPABASE_URL environment variable');
+  throw new Error('Missing VITE_SUPABASE_URL environment variable');
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  console.error('[SUPABASE] Missing VITE_SUPABASE_PUBLISHABLE_KEY environment variable');
+  throw new Error('Missing VITE_SUPABASE_PUBLISHABLE_KEY environment variable');
+}
+
+console.info('[SUPABASE] Initializing client with URL:', SUPABASE_URL);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: createSafeStorage(),
     persistSession: true,
     autoRefreshToken: true,
   }
