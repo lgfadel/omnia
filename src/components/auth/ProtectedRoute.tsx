@@ -23,7 +23,24 @@ function DiagnosticPanel() {
 
   useEffect(() => {
     const runDiagnostics = async () => {
-      // Test 1: Supabase Auth Health
+      // Test 1: LocalStorage (fast, no network)
+      try {
+        localStorage.setItem('__test__', 'test')
+        localStorage.removeItem('__test__')
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'LocalStorage' 
+            ? { ...d, status: 'success', message: 'OK' }
+            : d
+        ))
+      } catch (error) {
+        setDiagnostics(prev => prev.map(d => 
+          d.test === 'LocalStorage' 
+            ? { ...d, status: 'error', message: `Bloqueado: ${String(error)}` }
+            : d
+        ))
+      }
+
+      // Test 2: Supabase Auth Health (with apikey)
       try {
         const healthUrl = `https://elmxwvimjxcswjbrzznq.supabase.co/auth/v1/health`
         const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI"
@@ -34,7 +51,6 @@ function DiagnosticPanel() {
             Authorization: `Bearer ${anonKey}`,
           }
         })
-        
         setDiagnostics(prev => prev.map(d => 
           d.test === 'Supabase Auth Health' 
             ? { ...d, status: response.ok ? 'success' : 'error', message: response.ok ? 'OK' : `HTTP ${response.status}` }
@@ -48,9 +64,14 @@ function DiagnosticPanel() {
         ))
       }
 
-      // Test 2: Auth Session
+      // Test 3: Auth Session (with timeout)
       try {
-        const { data, error } = await supabase.auth.getSession()
+        const timeoutMs = 4000
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs))
+        ]) as any
+        const error = (sessionResult && 'error' in sessionResult) ? sessionResult.error : null
         setDiagnostics(prev => prev.map(d => 
           d.test === 'Auth Session' 
             ? { ...d, status: error ? 'error' : 'success', message: error ? `Erro: ${error.message}` : 'OK' }
@@ -59,24 +80,7 @@ function DiagnosticPanel() {
       } catch (error) {
         setDiagnostics(prev => prev.map(d => 
           d.test === 'Auth Session' 
-            ? { ...d, status: 'error', message: `Erro: ${error}` }
-            : d
-        ))
-      }
-
-      // Test 3: LocalStorage
-      try {
-        localStorage.setItem('__test__', 'test')
-        localStorage.removeItem('__test__')
-        setDiagnostics(prev => prev.map(d => 
-          d.test === 'LocalStorage' 
-            ? { ...d, status: 'success', message: 'OK' }
-            : d
-        ))
-      } catch (error) {
-        setDiagnostics(prev => prev.map(d => 
-          d.test === 'LocalStorage' 
-            ? { ...d, status: 'error', message: `Bloqueado: ${error}` }
+            ? { ...d, status: 'error', message: error instanceof Error && error.message === 'timeout' ? 'Timeout' : `Erro: ${String(error)}` }
             : d
         ))
       }

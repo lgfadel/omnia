@@ -34,27 +34,26 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ loading: false })
     }, 10000) // 10 seconds timeout
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        logger.info('Auth state changed:', event)
-        clearTimeout(safetyTimeout) // Clear timeout when auth state changes
-        
-        set({ session, user: session?.user ?? null })
-        
-        if (session?.user) {
-          try {
-            await get().fetchUserProfile(session.user.id)
-          } catch (error) {
+    // Set up auth state listener (avoid async callback deadlocks)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      logger.info('Auth state changed:', event)
+      clearTimeout(safetyTimeout) // Clear timeout when auth state changes
+      
+      set({ session, user: session?.user ?? null })
+      
+      if (session?.user) {
+        // Defer Supabase calls to avoid blocking the auth callback
+        setTimeout(() => {
+          get().fetchUserProfile(session.user!.id).catch((error) => {
             logger.error('Failed to fetch user profile in auth listener:', error)
-          }
-        } else {
-          set({ userProfile: null })
-        }
-        
-        set({ loading: false })
+          })
+        }, 0)
+      } else {
+        set({ userProfile: null })
       }
-    )
+      
+      set({ loading: false })
+    })
 
     // Check for existing session with retry logic
     const checkSession = async (retryCount = 0) => {
