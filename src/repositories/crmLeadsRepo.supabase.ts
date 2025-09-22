@@ -119,15 +119,16 @@ class CrmLeadsRepository {
       throw error
     }
 
-    // Transform the data to match the interface
+    // Transform the data to match the interface with explicit typing
+    const leadData = data as any;
     return {
-      ...data,
-      responsavel_negociacao: data.responsavel_user || data.responsavel_negociacao,
-      origem: data.origem ? {
-        id: data.origem.id,
-        name: data.origem.name,
-        color: data.origem.color,
-        isDefault: data.origem.is_default
+      ...leadData,
+      responsavel_negociacao: leadData.responsavel_user || leadData.responsavel_negociacao,
+      origem: leadData.origem ? {
+        id: leadData.origem.id,
+        name: leadData.origem.name,
+        color: leadData.origem.color,
+        isDefault: leadData.origem.is_default
       } : null
     }
   }
