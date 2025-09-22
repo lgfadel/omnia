@@ -30,6 +30,7 @@ import Crm from "./pages/Crm";
 import { CrmLeadDetail } from "./pages/CrmLeadDetail";
 import CrmLeadEdit from "./pages/CrmLeadEdit";
 import ConfigCrmStatus from "./pages/config/ConfigCrmStatus";
+import ConfigCrmOrigens from "./pages/config/ConfigCrmOrigens";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,13 @@ function App() {
                 <RoleProtectedRoute allowedRoles={['ADMIN']}>
                   <ErrorBoundary>
                     <ConfigAdministradoras />
+                  </ErrorBoundary>
+                </RoleProtectedRoute>
+              } />
+              <Route path="/config/origens" element={
+                <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                  <ErrorBoundary>
+                    <ConfigCrmOrigens />
                   </ErrorBoundary>
                 </RoleProtectedRoute>
               } />

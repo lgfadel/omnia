@@ -9,6 +9,13 @@ export interface CrmLead {
   administradora_atual?: string
   observacoes?: string
   status: string
+  origem_id?: string
+  origem?: {
+    id: string
+    name: string
+    color: string
+    isDefault: boolean
+  }
   responsavel_negociacao?: string | {
     id: string
     name: string
@@ -72,7 +79,8 @@ class CrmLeadsRepository {
       .from('omnia_crm_leads' as any)
       .select(`
         *,
-        responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color)
+        responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color),
+        origem:omnia_crm_origens!origem_id(id, name, color, is_default)
       `)
       .order('created_at', { ascending: false })
 
@@ -81,7 +89,13 @@ class CrmLeadsRepository {
     // Transform the data to match the interface
     const transformedData = (data as any)?.map((lead: any) => ({
       ...lead,
-      responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao
+      responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao,
+      origem: lead.origem ? {
+        id: lead.origem.id,
+        name: lead.origem.name,
+        color: lead.origem.color,
+        isDefault: lead.origem.is_default
+      } : null
     })) || []
     
     return transformedData
@@ -92,22 +106,30 @@ class CrmLeadsRepository {
       .from('omnia_crm_leads' as any)
       .select(`
         *,
-        responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color)
+        responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color),
+        origem:omnia_crm_origens!origem_id(id, name, color, is_default)
       `)
       .eq('id', id)
       .single()
 
-    if (error) throw error
-    
-    // Transform the data to match the interface
-    if (data) {
-      return {
-        ...(data as Record<string, any>),
-        responsavel_negociacao: (data as any).responsavel_user || (data as any).responsavel_negociacao
-      } as CrmLead
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      throw error
     }
-    
-    return null
+
+    // Transform the data to match the interface
+    return {
+      ...data,
+      responsavel_negociacao: data.responsavel_user || data.responsavel_negociacao,
+      origem: data.origem ? {
+        id: data.origem.id,
+        name: data.origem.name,
+        color: data.origem.color,
+        isDefault: data.origem.is_default
+      } : null
+    }
   }
 
   async create(lead: Partial<CrmLead>): Promise<CrmLead> {

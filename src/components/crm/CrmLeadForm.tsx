@@ -17,6 +17,7 @@ import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useAdministradorasStore } from '@/store/administradoras.store'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
+import { useCrmOrigensStore } from '@/store/crmOrigens.store'
 import { useUsersStore } from '@/store/users.store'
 
 import { Search } from 'lucide-react'
@@ -75,6 +76,7 @@ const crmLeadSchema = z.object({
   administradora_atual: z.string().optional(),
   observacoes: z.string().optional(),
   status: z.string().min(1, 'Status é obrigatório'),
+  origem_id: z.string().optional(),
   responsavel_negociacao: z.string().min(1, 'Responsável pela negociação é obrigatório'),
   cep: z.string().optional(),
   logradouro: z.string().optional(),
@@ -102,14 +104,16 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const { createLead, updateLead, searchAddress } = useCrmLeadsStore()
   const { administradoras, loadAdministradoras } = useAdministradorasStore()
   const { statuses, loadStatuses } = useCrmStatusStore()
+  const { origens, loadOrigens, getDefaultOrigem } = useCrmOrigensStore()
   const { users, loadUsers } = useUsersStore()
   const [searchingCep, setSearchingCep] = useState(false)
 
   useEffect(() => {
     loadAdministradoras()
     loadStatuses()
+    loadOrigens()
     loadUsers()
-  }, [loadAdministradoras, loadStatuses, loadUsers])
+  }, [loadAdministradoras, loadStatuses, loadOrigens, loadUsers])
 
 
 
@@ -117,6 +121,9 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const defaultStatus = statuses.find(status => status.name.toLowerCase() === 'novo') ||
                        statuses.find(status => status.isDefault) ||
                        statuses[0]
+
+  // Encontrar a origem padrão
+  const defaultOrigem = origens.find(origem => origem.isDefault) || origens[0]
   
   const form = useForm<CrmLeadFormData>({
     resolver: zodResolver(crmLeadSchema),
@@ -128,6 +135,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       administradora_atual: lead?.administradora_atual || '',
       observacoes: lead?.observacoes || '',
       status: lead?.status || (defaultStatus?.id || ''),
+      origem_id: lead?.origem_id || (defaultOrigem?.id || ''),
       responsavel_negociacao: typeof lead?.responsavel_negociacao === 'string' 
         ? lead.responsavel_negociacao 
         : lead?.responsavel_negociacao?.id || '',
@@ -152,6 +160,13 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       form.setValue('status', defaultStatus.id)
     }
   }, [defaultStatus, lead, form])
+
+  // Definir origem padrão quando as origens forem carregadas e não for edição
+  useEffect(() => {
+    if (!lead && defaultOrigem && !form.getValues('origem_id')) {
+      form.setValue('origem_id', defaultOrigem.id)
+    }
+  }, [defaultOrigem, lead, form])
 
   const onSubmit = async (data: CrmLeadFormData) => {
     try {
@@ -221,6 +236,37 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                     {statuses.filter(status => status.id && status.id.trim() !== '').map((status) => (
                       <SelectItem key={status.id} value={status.id}>
                         {status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="origem_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Origem</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {origens.filter(origem => origem.id && origem.id.trim() !== '').map((origem) => (
+                      <SelectItem key={origem.id} value={origem.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: origem.color }}
+                          />
+                          {origem.name}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

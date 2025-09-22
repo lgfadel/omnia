@@ -75,6 +75,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
               <th className="text-left py-3 px-4 font-medium text-gray-900">Condomínio</th>
               <th className="text-left py-3 px-4 font-medium text-gray-900">Data Criação</th>
               <th className="text-left py-3 px-4 font-medium text-gray-900">Responsável</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Origem</th>
               <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
               <th className="text-left py-3 px-4 font-medium text-gray-900">Ações</th>
             </tr>
@@ -84,7 +85,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
               <React.Fragment key={group.name}>
                 {/* Linha do grupo */}
                 <tr className="bg-muted/10">
-                  <td colSpan={8} className="p-0">
+                  <td colSpan={9} className="p-0">
                     <button
                        onClick={() => toggleGroup(group.name)}
                        className="flex items-center justify-between w-full text-left p-2 md:p-4 hover:bg-muted/20 transition-colors"
@@ -121,7 +122,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                     }`}
                   >
                      {/* Condomínio */}
-                     <td className="p-2 md:p-4 w-[40%]">
+                     <td className="p-2 md:p-4 w-[35%]">
                        <div className="font-medium text-sm text-foreground line-clamp-1">
                          {lead.cliente}
                        </div>
@@ -132,12 +133,12 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                      </td>
 
                      {/* Data Criação */}
-                     <td className="p-2 md:p-4 text-sm text-foreground w-[15%] hidden sm:table-cell">
+                     <td className="p-2 md:p-4 text-sm text-foreground w-[12%] hidden sm:table-cell">
                        {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                      </td>
 
                      {/* Responsável */}
-                     <td className="p-2 md:p-4 w-[12%] hidden md:table-cell">
+                     <td className="p-2 md:p-4 w-[10%] hidden md:table-cell">
                        <div className="flex justify-center">
                          {lead.responsavel_negociacao && typeof lead.responsavel_negociacao === 'object' ? (
                            <Avatar className="w-8 h-8">
@@ -161,13 +162,35 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                        </div>
                      </td>
 
+                     {/* Origem */}
+                     <td className="p-2 md:p-4 w-[13%]">
+                       {lead.origem ? (
+                         <div className="flex items-center gap-2">
+                           <div 
+                             className="w-3 h-3 rounded-full flex-shrink-0" 
+                             style={{ backgroundColor: lead.origem.color }}
+                           />
+                           <span className="text-sm text-foreground truncate">
+                             {lead.origem.name}
+                           </span>
+                         </div>
+                       ) : (
+                         <div className="flex items-center gap-2">
+                           <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
+                           <span className="text-sm text-foreground">
+                             N/A
+                           </span>
+                         </div>
+                       )}
+                     </td>
+
                      {/* Status */}
-                     <td className="p-2 md:p-4 w-[20%]">
+                     <td className="p-2 md:p-4 w-[18%]">
                        <CrmStatusBadge statusId={lead.status} />
                      </td>
 
                      {/* Ações */}
-                     <td className="p-2 md:p-4 w-[13%]">
+                     <td className="p-2 md:p-4 w-[12%]">
                        <div className="flex items-center gap-1 justify-end">
                          <button
                            onClick={(e) => {
