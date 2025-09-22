@@ -15,6 +15,7 @@ import { useSecretariosStore } from "@/store/secretarios.store"
 import { useAuth } from '@/components/auth/AuthProvider'
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 const columns = [
   { key: "title", label: "Título", width: "48" },
@@ -31,10 +32,12 @@ const Atas = () => {
   const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta, updateAta } = useAtasStore()
   const { secretarios, loadSecretarios } = useSecretariosStore()
   const { userProfile } = useAuth()
+  const { toast } = useToast()
   
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [showOnlyMyAtas, setShowOnlyMyAtas] = useState(false)
+  const [updatingSecretaryId, setUpdatingSecretaryId] = useState<string | null>(null)
 
   useEffect(() => {
     loadStatuses()
@@ -50,6 +53,14 @@ const Atas = () => {
       loadSecretarios()
     }
   }, [secretarios.length, loadSecretarios])
+
+  // Filter only users with SECRETARIO role for secretary dropdown
+  const availableSecretarios = secretarios.filter(user => 
+    user.roles && user.roles.includes('SECRETARIO')
+  )
+
+  // All users for responsible dropdown
+  const availableUsers = secretarios
 
   // Realtime listener para atualizações de atas
   useEffect(() => {
@@ -132,6 +143,31 @@ const Atas = () => {
       }
     } catch (error) {
       logger.error('Erro ao atualizar responsável:', error);
+    }
+  };
+
+  const handleSecretaryChange = async (id: string | number, userId: string) => {
+    try {
+      setUpdatingSecretaryId(id.toString())
+      const selectedUser = secretarios.find(user => user.id === userId);
+      if (selectedUser) {
+        await updateAta(id.toString(), { secretary: selectedUser });
+        loadAtas();
+        
+        toast({
+          title: "Secretário atualizado",
+          description: `Secretário alterado para ${selectedUser.name || 'Não definido'} com sucesso.`,
+        })
+      }
+    } catch (error) {
+      logger.error('Erro ao atualizar secretário:', error);
+      toast({
+        title: "Erro ao atualizar secretário",
+        description: "Não foi possível alterar o secretário. Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingSecretaryId(null)
     }
   };
 
@@ -335,10 +371,13 @@ const Atas = () => {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
+              onSecretaryChange={handleSecretaryChange}
               availableStatuses={statuses}
-              availableUsers={secretarios}
+              availableUsers={availableUsers}
+              availableSecretaries={availableSecretarios}
               grouped={true}
               contextType="ata"
+              updatingSecretaryId={updatingSecretaryId}
             />
           )}
         </div>

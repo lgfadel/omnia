@@ -47,16 +47,19 @@ interface TabelaOmniaProps {
   onCommentClick?: (id: string | number, title?: string) => void
   onStatusChange?: (id: string | number, statusId: string) => void
   onResponsibleChange?: (id: string | number, userId: string) => void
+  onSecretaryChange?: (id: string | number, userId: string) => void
   onDueDateClick?: (id: string | number, currentDate?: Date) => void
   onPriorityClick?: (id: string | number, currentPriority?: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
   availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
+  availableSecretaries?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
   sortField?: string
   sortDirection?: "asc" | "desc"
   onSort?: (field: string) => void
   className?: string
   grouped?: boolean
   contextType?: 'ticket' | 'ata'
+  updatingSecretaryId?: string | null
 }
 
 export function TabelaOmnia({ 
@@ -67,16 +70,19 @@ export function TabelaOmnia({
   onCommentClick,
   onStatusChange,
   onResponsibleChange,
+  onSecretaryChange,
   onDueDateClick,
   onPriorityClick,
   availableStatuses = [],
   availableUsers = [],
+  availableSecretaries = [],
   sortField, 
   sortDirection,
   onSort,
   className,
   grouped = false,
-  contextType = 'ticket'
+  contextType = 'ticket',
+  updatingSecretaryId
 }: TabelaOmniaProps) {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({ 
     isOpen: false, 
@@ -344,22 +350,154 @@ export function TabelaOmnia({
       }
     }
     
-    // Render secretary as badge, responsible as avatar
-    if (key === "secretary" && value && row) {
+    // Render secretary as avatar (round like responsible)
+    if (key === "secretary" && row) {
+      if (!value) {
+        // No secretary assigned - show clickable placeholder
+        const isUpdating = updatingSecretaryId === row.id.toString()
+        return (
+          <div className="flex items-center justify-center">
+            {onSecretaryChange && availableSecretaries.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild disabled={isUpdating}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={`h-8 w-8 p-0 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 ${
+                      isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? (
+                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">+</span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  {availableSecretaries.map((user) => {
+                    const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+                      ? user.color 
+                      : generateUserColor(user.id, user.name)
+                    const initials = getUserInitials(user.name)
+                    return (
+                      <DropdownMenuItem
+                        key={user.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSecretaryChange(row.id, user.id)
+                        }}
+                        className="flex items-center gap-2"
+                        disabled={isUpdating}
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                          <AvatarFallback 
+                            className="text-xs text-white font-medium"
+                            style={{ backgroundColor: userColor }}
+                          >
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{user.name}</span>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                <span className="text-xs text-muted-foreground">-</span>
+              </div>
+            )}
+          </div>
+        )
+      }
+
       const user = value
       const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
           ? user.color 
           : generateUserColor(user.id, user.name)
+      const fallbackInitials = getUserInitials(user.name)
+      const isUpdating = updatingSecretaryId === row.id.toString()
       
       return (
         <div className="flex items-center justify-center">
-          <Badge 
-            variant="secondary" 
-            className="text-white font-medium whitespace-nowrap text-xs px-3 py-2 rounded-md h-8 flex items-center"
-            style={{ backgroundColor: userColor }}
-          >
-            {user.name}
-          </Badge>
+          {onSecretaryChange && availableSecretaries.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild disabled={isUpdating}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20 ${
+                    isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={isUpdating}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarFallback 
+                      className="text-xs text-white font-medium"
+                      style={{ backgroundColor: userColor }}
+                    >
+                      {isUpdating ? (
+                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        fallbackInitials
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {availableSecretaries.map((availableUser) => {
+                  const availableUserColor = availableUser.color && typeof availableUser.color === 'string' && availableUser.color.trim() !== ''
+                    ? availableUser.color 
+                    : generateUserColor(availableUser.id, availableUser.name)
+                  const availableInitials = getUserInitials(availableUser.name)
+                  return (
+                    <DropdownMenuItem
+                      key={availableUser.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSecretaryChange(row.id, availableUser.id)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2",
+                        availableUser.id === user.id && "bg-muted"
+                      )}
+                      disabled={isUpdating}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={availableUser.avatarUrl} alt={availableUser.name} />
+                        <AvatarFallback 
+                          className="text-xs text-white font-medium"
+                          style={{ backgroundColor: availableUserColor }}
+                        >
+                          {availableInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{availableUser.name}</span>
+                      {availableUser.id === user.id && <span className="text-xs text-muted-foreground ml-auto">Atual</span>}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user.avatarUrl} alt={user.name} />
+              <AvatarFallback 
+                className="text-xs text-white font-medium"
+                style={{ backgroundColor: userColor }}
+              >
+                {fallbackInitials}
+              </AvatarFallback>
+            </Avatar>
+          )}
         </div>
       )
     }
