@@ -28,6 +28,7 @@ import TicketEdit from "./pages/TicketEdit";
 import ConfigTicketStatus from "./pages/ConfigTicketStatus";
 import Crm from "./pages/Crm";
 import { CrmLeadDetail } from "./pages/CrmLeadDetail";
+import CrmLeadEdit from "./pages/CrmLeadEdit";
 import ConfigCrmStatus from "./pages/config/ConfigCrmStatus";
 
 const queryClient = new QueryClient();
@@ -166,6 +167,13 @@ function App() {
                 <ProtectedRoute>
                   <ErrorBoundary>
                     <CrmLeadDetail />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/crm/edit/:id" element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <CrmLeadEdit />
                   </ErrorBoundary>
                 </ProtectedRoute>
               } />

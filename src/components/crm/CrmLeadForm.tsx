@@ -17,6 +17,7 @@ import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useAdministradorasStore } from '@/store/administradoras.store'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
+import { useUsersStore } from '@/store/users.store'
 
 import { Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -74,6 +75,7 @@ const crmLeadSchema = z.object({
   administradora_atual: z.string().optional(),
   observacoes: z.string().optional(),
   status: z.string().min(1, 'Status é obrigatório'),
+  responsavel_negociacao: z.string().min(1, 'Responsável pela negociação é obrigatório'),
   cep: z.string().optional(),
   logradouro: z.string().optional(),
   numero: z.string().optional(),
@@ -100,12 +102,14 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const { createLead, updateLead, searchAddress } = useCrmLeadsStore()
   const { administradoras, loadAdministradoras } = useAdministradorasStore()
   const { statuses, loadStatuses } = useCrmStatusStore()
+  const { users, loadUsers } = useUsersStore()
   const [searchingCep, setSearchingCep] = useState(false)
 
   useEffect(() => {
     loadAdministradoras()
     loadStatuses()
-  }, [loadAdministradoras, loadStatuses])
+    loadUsers()
+  }, [loadAdministradoras, loadStatuses, loadUsers])
 
 
 
@@ -124,6 +128,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       administradora_atual: lead?.administradora_atual || '',
       observacoes: lead?.observacoes || '',
       status: lead?.status || (defaultStatus?.id || ''),
+      responsavel_negociacao: lead?.responsavel_negociacao || '',
       cep: lead?.cep || '',
       logradouro: lead?.logradouro || '',
       numero: lead?.numero || '',
@@ -214,6 +219,31 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                     {statuses.filter(status => status.id && status.id.trim() !== '').map((status) => (
                       <SelectItem key={status.id} value={status.id}>
                         {status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="responsavel_negociacao"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Responsável pela Negociação *</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o responsável" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,11 +1,14 @@
 import React, { useState } from 'react'
-import { MessageCircle, Eye, Trash, ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, MessageCircle, Eye, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { CrmStatusBadge } from '@/components/ui/badge-crm-status'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useRoles } from '@/hooks/useRoles'
 import { useNavigate } from 'react-router-dom'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
+import { generateUserColor, getUserInitials } from '@/lib/userColors'
 
 interface CrmLeadsTableProps {
   leads: CrmLead[]
@@ -68,11 +71,22 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px]">
           <thead>
-            <tr className="bg-muted/20 border-b">
-              <th className="text-left p-2 md:p-4 font-medium text-xs text-muted-foreground uppercase tracking-wider w-[40%]">CONDOMÍNIO</th>
-              <th className="text-left p-2 md:p-4 font-medium text-xs text-muted-foreground uppercase tracking-wider w-[15%] hidden sm:table-cell">DATA CRIAÇÃO</th>
-              <th className="text-center p-2 md:p-4 font-medium text-xs text-muted-foreground uppercase tracking-wider w-[12%] hidden md:table-cell">RESPONSÁVEL</th>
-              <th className="text-left p-2 md:p-4 font-medium text-xs text-muted-foreground uppercase tracking-wider w-[33%]">STATUS</th>
+            <tr className="border-b">
+              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
+                Condomínio
+              </th>
+              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
+                Data Criação
+              </th>
+              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-center">
+                Responsável
+              </th>
+              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
+                Status
+              </th>
+              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-right">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +94,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
               <React.Fragment key={group.name}>
                 {/* Linha do grupo */}
                 <tr className="bg-muted/10">
-                  <td colSpan={4} className="p-0">
+                  <td colSpan={5} className="p-0">
                     <button
                        onClick={() => toggleGroup(group.name)}
                        className="flex items-center justify-between w-full text-left p-2 md:p-4 hover:bg-muted/20 transition-colors"
@@ -135,54 +149,70 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                      {/* Responsável */}
                      <td className="p-2 md:p-4 w-[12%] hidden md:table-cell">
                        <div className="flex justify-center">
-                         <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                           {lead.assigned_to ? 'AS' : 'N/A'}
-                         </div>
+                         {lead.responsavel_negociacao && typeof lead.responsavel_negociacao === 'object' ? (
+                           <Avatar className="w-8 h-8">
+                             <AvatarImage src={lead.responsavel_negociacao.avatar_url} />
+                             <AvatarFallback 
+                               className="text-xs font-medium text-white"
+                               style={{ 
+                                 backgroundColor: lead.responsavel_negociacao.color || generateUserColor(lead.responsavel_negociacao.id)
+                               }}
+                             >
+                               {getUserInitials(lead.responsavel_negociacao.name)}
+                             </AvatarFallback>
+                           </Avatar>
+                         ) : (
+                           <Avatar className="w-8 h-8">
+                             <AvatarFallback className="bg-gray-200 text-gray-600 text-xs font-medium">
+                               N/A
+                             </AvatarFallback>
+                           </Avatar>
+                         )}
                        </div>
                      </td>
 
-                     {/* Status com ícones à direita */}
-                     <td className="p-2 md:p-4 w-[33%]">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CrmStatusBadge statusId={lead.status} />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Lógica para comentários
-                            }}
-                            className="flex items-center gap-1 text-foreground hover:bg-gray-100 p-1 rounded mr-2"
-                          >
-                            <MessageCircle className="w-3 h-3" />
-                            <span className="text-xs">{lead.comment_count || 0}</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/crm/${lead.id}`);
-                            }}
-                            className="text-muted-foreground hover:text-primary hover:bg-gray-100 p-1 rounded mr-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {isAdmin() && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm('Tem certeza que deseja eliminar este lead?')) {
-                                  onDelete(lead.id);
-                                }
-                              }}
-                              className="text-muted-foreground hover:text-destructive hover:bg-gray-100 p-1 rounded"
-                            >
-                              <Trash className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                     {/* Status */}
+                     <td className="p-2 md:p-4 w-[20%]">
+                       <CrmStatusBadge statusId={lead.status} />
+                     </td>
+
+                     {/* Ações */}
+                     <td className="p-2 md:p-4 w-[13%]">
+                       <div className="flex items-center gap-1 justify-end">
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             // Lógica para comentários
+                           }}
+                           className="flex items-center gap-1 text-foreground hover:bg-gray-100 p-1 rounded"
+                         >
+                           <MessageCircle className="w-3 h-3" />
+                           <span className="text-xs">{lead.comment_count || 0}</span>
+                         </button>
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             navigate(`/crm/${lead.id}`);
+                           }}
+                           className="text-muted-foreground hover:text-primary hover:bg-gray-100 p-1 rounded"
+                         >
+                           <Eye className="w-4 h-4" />
+                         </button>
+                         {isAdmin() && (
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               if (window.confirm('Tem certeza que deseja eliminar este lead?')) {
+                                 onDelete(lead.id);
+                               }
+                             }}
+                             className="text-muted-foreground hover:text-destructive hover:bg-gray-100 p-1 rounded"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         )}
+                       </div>
+                     </td>
                   </tr>
                 ))}
               </React.Fragment>
