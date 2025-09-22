@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Filter, Building2, X } from 'lucide-react'
+import { Search, Plus, ChevronDown, User, Filter, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
+
 import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
 import { CrmLeadsTable } from '@/components/crm/CrmLeadsTable'
@@ -26,9 +26,10 @@ import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRoles } from '@/hooks/useRoles'
 import { useEscapeKeyForAlert } from '@/hooks/useEscapeKeyForAlert'
+import { getUserInitials } from '@/lib/userColors'
 
 export default function Crm() {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const { canAccessConfig } = useRoles()
   const { 
     leads, 
@@ -36,7 +37,6 @@ export default function Crm() {
     filters, 
     fetchLeads, 
     setFilters, 
-    clearFilters,
     deleteLead 
   } = useCrmLeadsStore()
   
@@ -50,6 +50,7 @@ export default function Crm() {
   const [editingLead, setEditingLead] = useState<CrmLead | undefined>()
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null)
+  const [showOnlyMyOpportunities, setShowOnlyMyOpportunities] = useState(false)
 
   // Hook para fechar AlertDialog com ESC
   useEscapeKeyForAlert(() => setDeleteLeadId(null), !!deleteLeadId)
@@ -75,6 +76,17 @@ export default function Crm() {
       setFilters({ status: undefined })
     } else {
       setFilters({ status: status as CrmLead['status'] })
+    }
+  }
+
+  const handleMyOpportunitiesToggle = () => {
+    const newShowOnlyMy = !showOnlyMyOpportunities
+    setShowOnlyMyOpportunities(newShowOnlyMy)
+    
+    if (newShowOnlyMy && userProfile?.id) {
+      setFilters({ assignedTo: userProfile.id })
+    } else {
+      setFilters({ assignedTo: undefined })
     }
   }
 
@@ -203,44 +215,31 @@ export default function Crm() {
           </SelectContent>
         </Select>
 
-        {(filters.status || filters.search) && (
-          <Button variant="outline" onClick={clearFilters}>
-            Limpar filtros
+        {/* Botão Minhas Oportunidades */}
+        {userProfile && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleMyOpportunitiesToggle}
+            className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+              showOnlyMyOpportunities 
+                ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                : 'shadow-sm hover:shadow-md'
+            }`}
+            style={{
+              backgroundColor: showOnlyMyOpportunities ? '#FBBF24' : '#F3F4F6',
+              borderColor: showOnlyMyOpportunities ? '#FBBF24' : '#D1D5DB',
+              color: showOnlyMyOpportunities ? 'white' : '#6B7280'
+            }}
+          >
+            {getUserInitials(userProfile.name || userProfile.email)}
           </Button>
         )}
+
+
       </div>
 
-      {/* Filtros ativos */}
-      {(filters.search || filters.status) && (
-        <div className="flex flex-wrap gap-2">
-          {filters.search && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Busca: {filters.search}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => handleSearch('')}
-              />
-            </Badge>
-          )}
-          {filters.status && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Status: {getStatusName(filters.status)}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => handleStatusFilter('')}
-              />
-            </Badge>
-          )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={clearFilters}
-            className="h-6 px-2 text-xs"
-          >
-            Limpar filtros
-          </Button>
-        </div>
-      )}
+
 
       {/* Lista de leads */}
       {loading ? (

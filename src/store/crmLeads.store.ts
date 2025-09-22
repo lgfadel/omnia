@@ -67,21 +67,36 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       const currentPage = page || pagination.currentPage
       const currentPageSize = pageSize || pagination.pageSize
       
-      let leads: CrmLead[]
-      let totalItems = 0
-
+      let leads: CrmLead[] = await crmLeadsRepo.getAll()
+      
+      // Aplicar filtros sequencialmente
       if (filters.status) {
-        leads = await crmLeadsRepo.filterByStatus(filters.status)
-      } else if (filters.assignedTo) {
-        leads = await crmLeadsRepo.filterByAssignedUser(filters.assignedTo)
-      } else if (filters.search) {
-        leads = await crmLeadsRepo.searchByCompany(filters.search)
-      } else {
-        leads = await crmLeadsRepo.getAll()
+        leads = leads.filter(lead => lead.status === filters.status)
+      }
+      
+      if (filters.assignedTo) {
+        leads = leads.filter(lead => {
+          // Verifica se responsavel_negociacao é um objeto com id ou uma string
+          if (typeof lead.responsavel_negociacao === 'object' && lead.responsavel_negociacao?.id) {
+            return lead.responsavel_negociacao.id === filters.assignedTo
+          } else if (typeof lead.responsavel_negociacao === 'string') {
+            return lead.responsavel_negociacao === filters.assignedTo
+          }
+          return false
+        })
+      }
+      
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase()
+        leads = leads.filter(lead => 
+          lead.cliente.toLowerCase().includes(searchTerm) ||
+          lead.administradora_atual?.toLowerCase().includes(searchTerm) ||
+          lead.observacoes?.toLowerCase().includes(searchTerm)
+        )
       }
 
       // Aplicar paginação local
-      totalItems = leads.length
+      const totalItems = leads.length
       const totalPages = Math.ceil(totalItems / currentPageSize)
       const startIndex = (currentPage - 1) * currentPageSize
       const endIndex = startIndex + currentPageSize
