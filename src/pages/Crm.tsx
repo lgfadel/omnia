@@ -110,7 +110,7 @@ export default function Crm() {
         
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Pipeline</h1>
           </div>
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
