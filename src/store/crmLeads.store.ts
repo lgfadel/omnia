@@ -13,8 +13,16 @@ interface CrmLeadsState {
     search?: string
   }
   
+  // Pagination
+  pagination: {
+    currentPage: number
+    pageSize: number
+    totalItems: number
+    totalPages: number
+  }
+  
   // Actions
-  fetchLeads: () => Promise<void>
+  fetchLeads: (page?: number, pageSize?: number) => Promise<void>
   fetchLeadById: (id: string) => Promise<CrmLead | null>
   createLead: (lead: Partial<CrmLead>) => Promise<void>
   updateLead: (id: string, updates: Partial<CrmLead>) => Promise<void>
@@ -31,6 +39,10 @@ interface CrmLeadsState {
   setFilters: (filters: Partial<CrmLeadsState['filters']>) => void
   clearFilters: () => void
   
+  // Pagination actions
+  setPage: (page: number) => void
+  setPageSize: (pageSize: number) => void
+  
   // Address search
   searchAddress: (cep: string) => Promise<any>
 }
@@ -41,12 +53,22 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
   attachments: [],
   loading: false,
   filters: {},
+  pagination: {
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+  },
 
-  fetchLeads: async () => {
+  fetchLeads: async (page?: number, pageSize?: number) => {
     set({ loading: true })
     try {
-      const { filters } = get()
+      const { filters, pagination } = get()
+      const currentPage = page || pagination.currentPage
+      const currentPageSize = pageSize || pagination.pageSize
+      
       let leads: CrmLead[]
+      let totalItems = 0
 
       if (filters.status) {
         leads = await crmLeadsRepo.filterByStatus(filters.status)
@@ -58,7 +80,22 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
         leads = await crmLeadsRepo.getAll()
       }
 
-      set({ leads })
+      // Aplicar paginação local
+      totalItems = leads.length
+      const totalPages = Math.ceil(totalItems / currentPageSize)
+      const startIndex = (currentPage - 1) * currentPageSize
+      const endIndex = startIndex + currentPageSize
+      const paginatedLeads = leads.slice(startIndex, endIndex)
+
+      set({ 
+        leads: paginatedLeads,
+        pagination: {
+          currentPage,
+          pageSize: currentPageSize,
+          totalItems,
+          totalPages
+        }
+      })
     } catch (error) {
       console.error('Erro ao carregar leads:', error)
       toast({
@@ -201,6 +238,20 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
   clearFilters: () => {
     set({ filters: {} })
     get().fetchLeads()
+  },
+
+  setPage: (page: number) => {
+    set(state => ({
+      pagination: { ...state.pagination, currentPage: page }
+    }))
+    get().fetchLeads(page)
+  },
+
+  setPageSize: (pageSize: number) => {
+    set(state => ({
+      pagination: { ...state.pagination, pageSize, currentPage: 1 }
+    }))
+    get().fetchLeads(1, pageSize)
   },
 
   searchAddress: async (cep: string) => {

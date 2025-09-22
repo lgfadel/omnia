@@ -69,24 +69,14 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
   return (
     <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="min-w-[800px] w-full">
           <thead>
-            <tr className="border-b">
-              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
-                Condomínio
-              </th>
-              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
-                Data Criação
-              </th>
-              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-center">
-                Responsável
-              </th>
-              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-left">
-                Status
-              </th>
-              <th className="text-muted-foreground text-xs uppercase tracking-wide py-4 px-6 text-right">
-                Ações
-              </th>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Condomínio</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Data Criação</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Responsável</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-900">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -94,7 +84,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
               <React.Fragment key={group.name}>
                 {/* Linha do grupo */}
                 <tr className="bg-muted/10">
-                  <td colSpan={5} className="p-0">
+                  <td colSpan={8} className="p-0">
                     <button
                        onClick={() => toggleGroup(group.name)}
                        className="flex items-center justify-between w-full text-left p-2 md:p-4 hover:bg-muted/20 transition-colors"

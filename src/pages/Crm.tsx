@@ -160,16 +160,16 @@ export default function Crm() {
         </div>
         
         {/* Métricas rápidas */}
-      <div className="grid grid-cols-7 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 lg:gap-4">
         {sortedStatuses.map((status) => (
-          <div key={status.id} className="bg-card rounded-lg p-2 sm:p-3 border min-w-0">
+          <div key={status.id} className="bg-card rounded-lg p-3 lg:p-4 border min-w-0 flex flex-col items-center text-center">
             <div 
-              className="text-lg sm:text-xl font-bold" 
+              className="text-xl lg:text-2xl font-bold mb-1" 
               style={{ color: status.color }}
             >
               {statusCounts[status.name] || 0}
             </div>
-            <div className="text-xs text-muted-foreground truncate" title={status.name}>
+            <div className="text-xs lg:text-sm text-muted-foreground truncate w-full" title={status.name}>
               {status.name}
             </div>
           </div>
