@@ -17,7 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
-import { CrmLeadCard } from '@/components/crm/CrmLeadCard'
+import { CrmLeadsTable } from '@/components/crm/CrmLeadsTable'
 import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
 
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
@@ -262,16 +262,11 @@ export default function Crm() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {leads.map((lead) => (
-            <CrmLeadCard
-              key={lead.id}
-              lead={lead}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        <CrmLeadsTable
+          leads={leads}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       )}
       </div>
 
