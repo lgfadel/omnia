@@ -238,7 +238,7 @@ export const userPermissionsRepoSupabase = {
           },
           {
             id: 'crm',
-            name: 'CRM',
+            name: 'Oportunidades',
             path: '/crm',
             icon: 'Users',
             parent_id: null,
@@ -296,7 +296,7 @@ export const userPermissionsRepoSupabase = {
         },
         {
           id: 'crm',
-          name: 'CRM',
+          name: 'Oportunidades',
           path: '/crm',
           icon: 'Users',
           parent_id: null,

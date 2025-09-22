@@ -95,7 +95,7 @@ export function CrmLeadDetail() {
       <div className="space-y-6">
         <BreadcrumbOmnia 
           items={[
-            { label: "CRM", href: "/crm" },
+            { label: "Oportunidades", href: "/crm" },
             { label: lead.cliente, isActive: true }
           ]} 
         />

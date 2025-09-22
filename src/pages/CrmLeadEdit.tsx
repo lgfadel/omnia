@@ -97,7 +97,7 @@ export default function CrmLeadEdit() {
       <div className="space-y-6">
         <BreadcrumbOmnia 
           items={[
-            { label: "CRM", href: "/crm" },
+            { label: "Oportunidades", href: "/crm" },
             { label: lead.cliente, href: `/crm/${lead.id}` },
             { label: "Editar", isActive: true }
           ]} 

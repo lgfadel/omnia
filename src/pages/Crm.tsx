@@ -141,7 +141,8 @@ export default function Crm() {
       <div className="space-y-6">
         <BreadcrumbOmnia 
           items={[
-            { label: "CRM", isActive: true }
+            { label: "Dashboard", href: "/" },
+            { label: "Oportunidades", isActive: true }
           ]} 
         />
         
@@ -152,8 +153,7 @@ export default function Crm() {
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => setEditingLead(undefined)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Lead
+                <Plus className="h-4 w-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

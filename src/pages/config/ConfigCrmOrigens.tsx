@@ -111,7 +111,7 @@ const ConfigCrmOrigens = () => {
 
   const breadcrumbItems = [
     { label: "Configurações", href: "/config" },
-    { label: "CRM", href: "/config/crm" },
+    { label: "Oportunidades", href: "/config/crm" },
     { label: "Origens do Lead", href: "/config/crm/origens" }
   ];
 
