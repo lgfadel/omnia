@@ -128,7 +128,9 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       administradora_atual: lead?.administradora_atual || '',
       observacoes: lead?.observacoes || '',
       status: lead?.status || (defaultStatus?.id || ''),
-      responsavel_negociacao: lead?.responsavel_negociacao || '',
+      responsavel_negociacao: typeof lead?.responsavel_negociacao === 'string' 
+        ? lead.responsavel_negociacao 
+        : lead?.responsavel_negociacao?.id || '',
       cep: lead?.cep || '',
       logradouro: lead?.logradouro || '',
       numero: lead?.numero || '',

@@ -102,9 +102,9 @@ class CrmLeadsRepository {
     // Transform the data to match the interface
     if (data) {
       return {
-        ...data,
+        ...(data as Record<string, any>),
         responsavel_negociacao: (data as any).responsavel_user || (data as any).responsavel_negociacao
-      } as any
+      } as CrmLead
     }
     
     return null
