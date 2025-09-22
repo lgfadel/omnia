@@ -5,10 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Administradora } from "@/repositories/administradorasRepo.supabase"
 
 const adminSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
+  tipo: z.enum(["Administradora", "Contabilidade", "Construtora", "Advogado"], {
+    required_error: "Tipo é obrigatório",
+  }),
   ativo: z.boolean().default(true),
 });
 
@@ -26,6 +30,7 @@ export function AdminForm({ administradora, onSubmit, onCancel, isLoading }: Adm
     resolver: zodResolver(adminSchema),
     defaultValues: {
       nome: administradora?.nome || "",
+      tipo: administradora?.tipo || "Administradora",
       ativo: administradora?.ativo ?? true,
     },
   });
@@ -57,6 +62,28 @@ export function AdminForm({ administradora, onSubmit, onCancel, isLoading }: Adm
             />
             {form.formState.errors.nome && (
               <p className="text-sm text-red-500">{form.formState.errors.nome.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tipo">Tipo *</Label>
+            <Select
+              value={form.watch("tipo")}
+              onValueChange={(value) => form.setValue("tipo", value as any)}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Administradora">Administradora</SelectItem>
+                <SelectItem value="Contabilidade">Contabilidade</SelectItem>
+                <SelectItem value="Construtora">Construtora</SelectItem>
+                <SelectItem value="Advogado">Advogado</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.formState.errors.tipo && (
+              <p className="text-sm text-red-500">{form.formState.errors.tipo.message}</p>
             )}
           </div>
 

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client"
 export interface Administradora {
   id: string;
   nome: string;
+  tipo: "Administradora" | "Contabilidade" | "Construtora" | "Advogado";
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -10,11 +11,13 @@ export interface Administradora {
 
 export interface CreateAdministradoraData {
   nome: string;
+  tipo: "Administradora" | "Contabilidade" | "Construtora" | "Advogado";
   ativo?: boolean;
 }
 
 export interface UpdateAdministradoraData {
   nome?: string;
+  tipo?: "Administradora" | "Contabilidade" | "Construtora" | "Advogado";
   ativo?: boolean;
 }
 
@@ -22,6 +25,7 @@ export interface UpdateAdministradoraData {
 const transformAdministradoraFromDB = (dbAdmin: any): Administradora => ({
   id: dbAdmin.id,
   nome: dbAdmin.nome,
+  tipo: dbAdmin.tipo,
   ativo: dbAdmin.ativo,
   created_at: dbAdmin.created_at,
   updated_at: dbAdmin.updated_at
@@ -46,6 +50,7 @@ export const administradorasRepoSupabase = {
       .from('omnia_administradoras' as any)
       .insert({
         nome: adminData.nome,
+        tipo: adminData.tipo,
         ativo: adminData.ativo ?? true
       })
       .select()
@@ -63,6 +68,7 @@ export const administradorasRepoSupabase = {
       .from('omnia_administradoras' as any)
       .update({
         nome: data.nome,
+        tipo: data.tipo,
         ativo: data.ativo
       })
       .eq('id', id)

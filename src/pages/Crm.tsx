@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Filter, Building2 } from 'lucide-react'
+import { Plus, Search, Filter, Building2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -21,6 +21,7 @@ import { CrmLeadCard } from '@/components/crm/CrmLeadCard'
 import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
 
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
+import { useCrmStatusStore } from '@/store/crmStatus.store'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRoles } from '@/hooks/useRoles'
@@ -39,6 +40,12 @@ export default function Crm() {
     deleteLead 
   } = useCrmLeadsStore()
   
+  const { 
+    statuses, 
+    loading: statusesLoading, 
+    loadStatuses 
+  } = useCrmStatusStore()
+  
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingLead, setEditingLead] = useState<CrmLead | undefined>()
   const [searchTerm, setSearchTerm] = useState('')
@@ -50,8 +57,9 @@ export default function Crm() {
   useEffect(() => {
     if (user) {
       fetchLeads()
+      loadStatuses()
     }
-  }, [user, fetchLeads])
+  }, [user, fetchLeads, loadStatuses])
 
   const handleSearch = (value: string) => {
     setSearchTerm(value)
@@ -94,10 +102,27 @@ export default function Crm() {
     }
   }
 
+  // Função para obter o nome do status pelo ID
+  const getStatusName = (statusId: string) => {
+    const status = statuses.find(s => s.id === statusId)
+    return status?.name || 'Desconhecido'
+  }
+
+  // Função para obter a cor do status pelo ID
+  const getStatusColor = (statusId: string) => {
+    const status = statuses.find(s => s.id === statusId)
+    return status?.color || '#6B7280'
+  }
+
+  // Calcular contadores de status usando os dados dinâmicos
   const statusCounts = leads.reduce((acc, lead) => {
-    acc[lead.status] = (acc[lead.status] || 0) + 1
+    const statusName = getStatusName(lead.status)
+    acc[statusName] = (acc[statusName] || 0) + 1
     return acc
   }, {} as Record<string, number>)
+
+  // Ordenar status pela ordem configurada
+  const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order)
 
   return (
     <Layout>
@@ -135,35 +160,20 @@ export default function Crm() {
         </div>
         
         {/* Métricas rápidas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold">{leads.length}</div>
-          <div className="text-sm text-muted-foreground">Total</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-blue-600">{statusCounts.novo || 0}</div>
-          <div className="text-sm text-muted-foreground">Novos</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-green-600">{statusCounts.qualificado || 0}</div>
-          <div className="text-sm text-muted-foreground">Qualificados</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-yellow-600">{statusCounts.proposta_enviada || 0}</div>
-          <div className="text-sm text-muted-foreground">Propostas</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-orange-600">{statusCounts.em_negociacao || 0}</div>
-          <div className="text-sm text-muted-foreground">Negociação</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-emerald-600">{statusCounts.ganho || 0}</div>
-          <div className="text-sm text-muted-foreground">Ganhos</div>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="text-2xl font-bold text-red-600">{statusCounts.perdido || 0}</div>
-          <div className="text-sm text-muted-foreground">Perdidos</div>
-        </div>
+      <div className="grid grid-cols-7 gap-2 sm:gap-3">
+        {sortedStatuses.map((status) => (
+          <div key={status.id} className="bg-card rounded-lg p-2 sm:p-3 border min-w-0">
+            <div 
+              className="text-lg sm:text-xl font-bold" 
+              style={{ color: status.color }}
+            >
+              {statusCounts[status.name] || 0}
+            </div>
+            <div className="text-xs text-muted-foreground truncate" title={status.name}>
+              {status.name}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Filtros */}
@@ -185,13 +195,11 @@ export default function Crm() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="novo">Novo</SelectItem>
-            <SelectItem value="qualificado">Qualificado</SelectItem>
-            <SelectItem value="proposta_enviada">Proposta Enviada</SelectItem>
-            <SelectItem value="em_negociacao">Em Negociação</SelectItem>
-            <SelectItem value="on_hold">Em Espera</SelectItem>
-            <SelectItem value="ganho">Ganho</SelectItem>
-            <SelectItem value="perdido">Perdido</SelectItem>
+            {sortedStatuses.map((status) => (
+              <SelectItem key={status.id} value={status.id}>
+                {status.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -203,18 +211,34 @@ export default function Crm() {
       </div>
 
       {/* Filtros ativos */}
-      {(filters.status || filters.search) && (
+      {(filters.search || filters.status) && (
         <div className="flex flex-wrap gap-2">
-          {filters.status && (
-            <Badge variant="secondary">
-              Status: {filters.status}
-            </Badge>
-          )}
           {filters.search && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="flex items-center gap-1">
               Busca: {filters.search}
+              <X 
+                className="h-3 w-3 cursor-pointer" 
+                onClick={() => handleSearch('')}
+              />
             </Badge>
           )}
+          {filters.status && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              Status: {getStatusName(filters.status)}
+              <X 
+                className="h-3 w-3 cursor-pointer" 
+                onClick={() => handleStatusFilter('')}
+              />
+            </Badge>
+          )}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearFilters}
+            className="h-6 px-2 text-xs"
+          >
+            Limpar filtros
+          </Button>
         </div>
       )}
 
