@@ -101,7 +101,10 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                             className="w-3 h-3 rounded-full" 
                             style={{ backgroundColor: group.color }}
                           />
-                          <h3 className="text-sm font-medium text-foreground uppercase tracking-wider">
+                          <h3 
+                            className="text-sm font-medium uppercase tracking-wider"
+                            style={{ color: group.color }}
+                          >
                             {group.name}
                           </h3>
                           <span className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-full font-medium">
