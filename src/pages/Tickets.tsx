@@ -416,10 +416,9 @@ export default function Tickets() {
           
           <Button 
             onClick={() => navigate('/tarefas/new')}
-            className="bg-primary hover:bg-primary/90 px-6 py-3 text-base font-medium"
+            className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg flex items-center justify-center"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Adicionar Tarefa
+            <Plus className="w-5 h-5" />
           </Button>
         </div>
 

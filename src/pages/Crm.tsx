@@ -152,8 +152,11 @@ export default function Crm() {
           </div>
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingLead(undefined)}>
-                <Plus className="h-4 w-4" />
+              <Button 
+                onClick={() => setEditingLead(undefined)}
+                className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg flex items-center justify-center"
+              >
+                <Plus className="w-5 h-5" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
