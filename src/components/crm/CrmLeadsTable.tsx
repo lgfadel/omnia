@@ -24,13 +24,14 @@ interface CrmLeadsTableProps {
 export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
   const { isAdmin } = useRoles()
   const navigate = useNavigate()
-  const { statuses } = useCrmStatusStore()
+  const { statuses, loadStatuses } = useCrmStatusStore()
   const { updateLead } = useCrmLeadsStore()
   const { users, loadUsers } = useUsersStore()
   const { origens, loadOrigens } = useCrmOrigensStore()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [updatingResponsibleId, setUpdatingResponsibleId] = useState<string | null>(null)
   const [updatingOrigemId, setUpdatingOrigemId] = useState<string | null>(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
 
   useEffect(() => {
     if (users.length === 0) {
@@ -43,6 +44,12 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
       loadOrigens()
     }
   }, [origens.length, loadOrigens])
+
+  useEffect(() => {
+    if (statuses.length === 0) {
+      loadStatuses()
+    }
+  }, [statuses.length, loadStatuses])
 
   const handleResponsibleChange = async (leadId: string, userId: string) => {
     setUpdatingResponsibleId(leadId)
@@ -63,6 +70,17 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
       console.error('Erro ao atualizar origem:', error)
     } finally {
       setUpdatingOrigemId(null)
+    }
+  }
+
+  const handleStatusChange = async (leadId: string, statusId: string) => {
+    setUpdatingStatusId(leadId)
+    try {
+      await updateLead(leadId, { status: statusId })
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error)
+    } finally {
+      setUpdatingStatusId(null)
     }
   }
 
@@ -144,12 +162,12 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                             style={{ backgroundColor: group.color }}
                           />
                           <h3 
-                            className="text-sm font-medium uppercase tracking-wider"
+                            className="text-sm uppercase tracking-wider"
                             style={{ color: group.color }}
                           >
                             {group.name}
                           </h3>
-                          <span className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-full font-medium">
+                          <span className="bg-muted text-muted-foreground text-sm px-2 py-1 rounded-full font-medium">
                             {group.leads.length}
                           </span>
                         </div>
@@ -317,6 +335,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                                  <span className="text-sm text-foreground truncate">
                                    {lead.origem?.name || 'N/A'}
                                  </span>
+                                 <ChevronDown className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                </Button>
                              </DropdownMenuTrigger>
                              <DropdownMenuContent align="start" className="w-48">
@@ -352,7 +371,59 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
 
                      {/* Status */}
                      <td className="p-2 md:p-4 w-[18%]">
-                       <CrmStatusBadge statusId={lead.status} />
+                       <div onClick={(e) => e.stopPropagation()}>
+                         {updatingStatusId === lead.id ? (
+                           <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-gray-100">
+                             <div className="w-3 h-3 rounded-full bg-gray-400 animate-pulse" />
+                             <span>Atualizando...</span>
+                           </div>
+                         ) : (
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button 
+                                 variant="ghost" 
+                                 className="h-auto p-0 hover:bg-transparent"
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                                    <div 
+                                      className="w-3 h-3 rounded-full flex-shrink-0" 
+                                      style={{ backgroundColor: statuses.find(s => s.id === lead.status)?.color || '#6b7280' }}
+                                    />
+                                    <span className="text-black">{statuses.find(s => s.id === lead.status)?.name || 'Status não encontrado'}</span>
+                                    <ChevronDown className="w-3 h-3 text-gray-500" />
+                                  </div>
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="start" className="w-48">
+                               {statuses.map((status) => {
+                                 const isSelected = status.id === lead.status
+                                 return (
+                                   <DropdownMenuItem
+                                     key={status.id}
+                                     onClick={(e) => {
+                                       e.stopPropagation()
+                                       if (!isSelected) {
+                                         handleStatusChange(lead.id, status.id)
+                                       }
+                                     }}
+                                     className={cn(
+                                       "flex items-center gap-2",
+                                       isSelected && "bg-gray-100"
+                                     )}
+                                   >
+                                     <div 
+                                       className="w-3 h-3 rounded-full flex-shrink-0" 
+                                       style={{ backgroundColor: status.color }}
+                                     />
+                                     <span className="text-sm">{status.name}</span>
+                                   </DropdownMenuItem>
+                                 )
+                               })}
+                             </DropdownMenuContent>
+                           </DropdownMenu>
+                         )}
+                       </div>
                      </td>
 
                      {/* Ações */}
