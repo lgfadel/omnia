@@ -1,14 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, MessageCircle, Eye, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CrmStatusBadge } from '@/components/ui/badge-crm-status'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useRoles } from '@/hooks/useRoles'
 import { useNavigate } from 'react-router-dom'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
+import { useCrmLeadsStore } from '@/store/crmLeads.store'
+import { useUsersStore } from '@/store/users.store'
 import { generateUserColor, getUserInitials } from '@/lib/userColors'
+import { cn } from '@/lib/utils'
 
 interface CrmLeadsTableProps {
   leads: CrmLead[]
@@ -20,9 +24,27 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
   const { isAdmin } = useRoles()
   const navigate = useNavigate()
   const { statuses } = useCrmStatusStore()
+  const { updateLead } = useCrmLeadsStore()
+  const { users, loadUsers } = useUsersStore()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [updatingResponsibleId, setUpdatingResponsibleId] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (users.length === 0) {
+      loadUsers()
+    }
+  }, [users.length, loadUsers])
 
+  const handleResponsibleChange = async (leadId: string, userId: string) => {
+    setUpdatingResponsibleId(leadId)
+    try {
+      await updateLead(leadId, { responsavel_negociacao: userId })
+    } catch (error) {
+      console.error('Erro ao atualizar responsável:', error)
+    } finally {
+      setUpdatingResponsibleId(null)
+    }
+  }
 
   const getStatusName = (statusId: string) => {
     const status = statuses.find(s => s.id === statusId)
@@ -144,23 +166,109 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                      <td className="p-2 md:p-4 w-[10%] hidden md:table-cell">
                        <div className="flex justify-center">
                          {lead.responsavel_negociacao && typeof lead.responsavel_negociacao === 'object' ? (
-                           <Avatar className="w-8 h-8">
-                             <AvatarImage src={lead.responsavel_negociacao.avatar_url} />
-                             <AvatarFallback 
-                               className="text-xs font-medium text-white"
-                               style={{ 
-                                 backgroundColor: lead.responsavel_negociacao.color || generateUserColor(lead.responsavel_negociacao.id)
-                               }}
-                             >
-                               {getUserInitials(lead.responsavel_negociacao.name)}
-                             </AvatarFallback>
-                           </Avatar>
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button 
+                                 variant="ghost" 
+                                 size="sm" 
+                                 className="h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20"
+                                 onClick={(e) => e.stopPropagation()}
+                                 disabled={updatingResponsibleId === lead.id}
+                               >
+                                 <Avatar className="h-8 w-8">
+                                   <AvatarImage src={lead.responsavel_negociacao.avatar_url} alt={lead.responsavel_negociacao.name} />
+                                   <AvatarFallback 
+                                     className="text-xs text-white font-medium"
+                                     style={{ 
+                                       backgroundColor: lead.responsavel_negociacao.color || generateUserColor(lead.responsavel_negociacao.id)
+                                     }}
+                                   >
+                                     {getUserInitials(lead.responsavel_negociacao.name)}
+                                   </AvatarFallback>
+                                 </Avatar>
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="center">
+                               {users.map((user) => {
+                                 const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+                                   ? user.color 
+                                   : generateUserColor(user.id, user.name)
+                                 const userInitials = getUserInitials(user.name)
+                                 return (
+                                   <DropdownMenuItem
+                                     key={user.id}
+                                     onClick={(e) => {
+                                       e.stopPropagation()
+                                       handleResponsibleChange(lead.id, user.id)
+                                     }}
+                                     className={cn(
+                                        "flex items-center gap-2",
+                                        user.id === (typeof lead.responsavel_negociacao === 'object' ? lead.responsavel_negociacao.id : lead.responsavel_negociacao) && "bg-muted"
+                                      )}
+                                   >
+                                     <Avatar className="h-6 w-6">
+                                        <AvatarImage src={user.avatar_url} alt={user.name} />
+                                       <AvatarFallback 
+                                         className="text-xs text-white font-medium"
+                                         style={{ backgroundColor: userColor }}
+                                       >
+                                         {userInitials}
+                                       </AvatarFallback>
+                                     </Avatar>
+                                     <span className="text-sm">{user.name}</span>
+                                      {user.id === (typeof lead.responsavel_negociacao === 'object' ? lead.responsavel_negociacao.id : lead.responsavel_negociacao) && <span className="text-xs text-muted-foreground ml-auto">Atual</span>}
+                                   </DropdownMenuItem>
+                                 )
+                               })}
+                             </DropdownMenuContent>
+                           </DropdownMenu>
                          ) : (
-                           <Avatar className="w-8 h-8">
-                             <AvatarFallback className="bg-gray-200 text-gray-600 text-xs font-medium">
-                               N/A
-                             </AvatarFallback>
-                           </Avatar>
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button 
+                                 variant="ghost" 
+                                 size="sm" 
+                                 className="h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20"
+                                 onClick={(e) => e.stopPropagation()}
+                                 disabled={updatingResponsibleId === lead.id}
+                               >
+                                 <Avatar className="w-8 h-8">
+                                   <AvatarFallback className="bg-gray-200 text-gray-600 text-xs font-medium">
+                                     N/A
+                                   </AvatarFallback>
+                                 </Avatar>
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="center">
+                               {users.map((user) => {
+                                 const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+                                   ? user.color 
+                                   : generateUserColor(user.id, user.name)
+                                 const userInitials = getUserInitials(user.name)
+                                 return (
+                                   <DropdownMenuItem
+                                     key={user.id}
+                                     onClick={(e) => {
+                                       e.stopPropagation()
+                                       handleResponsibleChange(lead.id, user.id)
+                                     }}
+                                     className="flex items-center gap-2"
+                                   >
+                                     <Avatar className="h-6 w-6">
+                                        <AvatarImage src={user.avatar_url} alt={user.name} />
+                                       <AvatarFallback 
+                                         className="text-xs text-white font-medium"
+                                         style={{ backgroundColor: userColor }}
+                                       >
+                                         {userInitials}
+                                       </AvatarFallback>
+                                     </Avatar>
+                                     <span className="text-sm">{user.name}</span>
+                                   </DropdownMenuItem>
+                                 )
+                               })}
+                             </DropdownMenuContent>
+                           </DropdownMenu>
                          )}
                        </div>
                      </td>
