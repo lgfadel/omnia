@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useUsersStore } from '@/store/users.store'
+import { useCrmOrigensStore } from '@/store/crmOrigens.store'
 import { generateUserColor, getUserInitials } from '@/lib/userColors'
 import { cn } from '@/lib/utils'
 
@@ -26,14 +27,22 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
   const { statuses } = useCrmStatusStore()
   const { updateLead } = useCrmLeadsStore()
   const { users, loadUsers } = useUsersStore()
+  const { origens, loadOrigens } = useCrmOrigensStore()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [updatingResponsibleId, setUpdatingResponsibleId] = useState<string | null>(null)
+  const [updatingOrigemId, setUpdatingOrigemId] = useState<string | null>(null)
 
   useEffect(() => {
     if (users.length === 0) {
       loadUsers()
     }
   }, [users.length, loadUsers])
+
+  useEffect(() => {
+    if (origens.length === 0) {
+      loadOrigens()
+    }
+  }, [origens.length, loadOrigens])
 
   const handleResponsibleChange = async (leadId: string, userId: string) => {
     setUpdatingResponsibleId(leadId)
@@ -43,6 +52,17 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
       console.error('Erro ao atualizar responsável:', error)
     } finally {
       setUpdatingResponsibleId(null)
+    }
+  }
+
+  const handleOrigemChange = async (leadId: string, origemId: string) => {
+    setUpdatingOrigemId(leadId)
+    try {
+      await updateLead(leadId, { origem_id: origemId })
+    } catch (error) {
+      console.error('Erro ao atualizar origem:', error)
+    } finally {
+      setUpdatingOrigemId(null)
     }
   }
 
@@ -275,24 +295,59 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
 
                      {/* Origem */}
                      <td className="p-2 md:p-4 w-[13%]">
-                       {lead.origem ? (
-                         <div className="flex items-center gap-2">
-                           <div 
-                             className="w-3 h-3 rounded-full flex-shrink-0" 
-                             style={{ backgroundColor: lead.origem.color }}
-                           />
-                           <span className="text-sm text-foreground truncate">
-                             {lead.origem.name}
-                           </span>
-                         </div>
-                       ) : (
-                         <div className="flex items-center gap-2">
-                           <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
-                           <span className="text-sm text-foreground">
-                             N/A
-                           </span>
-                         </div>
-                       )}
+                       <div className="flex items-center gap-2">
+                         {updatingOrigemId === lead.id ? (
+                           <div className="flex items-center gap-2 opacity-50">
+                             <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0 animate-pulse" />
+                             <span className="text-sm text-foreground">Atualizando...</span>
+                           </div>
+                         ) : (
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 className="h-auto p-1 hover:bg-gray-100 flex items-center gap-2"
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <div 
+                                   className="w-3 h-3 rounded-full flex-shrink-0" 
+                                   style={{ backgroundColor: lead.origem?.color || '#d1d5db' }}
+                                 />
+                                 <span className="text-sm text-foreground truncate">
+                                   {lead.origem?.name || 'N/A'}
+                                 </span>
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="start" className="w-48">
+                               {origens.map((origem) => {
+                                 const isSelected = lead.origem?.id === origem.id
+                                 return (
+                                   <DropdownMenuItem
+                                     key={origem.id}
+                                     onClick={(e) => {
+                                       e.stopPropagation()
+                                       if (!isSelected) {
+                                         handleOrigemChange(lead.id, origem.id)
+                                       }
+                                     }}
+                                     className={cn(
+                                       "flex items-center gap-2",
+                                       isSelected && "bg-gray-100"
+                                     )}
+                                   >
+                                     <div 
+                                       className="w-3 h-3 rounded-full flex-shrink-0" 
+                                       style={{ backgroundColor: origem.color }}
+                                     />
+                                     <span className="text-sm">{origem.name}</span>
+                                   </DropdownMenuItem>
+                                 )
+                               })}
+                             </DropdownMenuContent>
+                           </DropdownMenu>
+                         )}
+                       </div>
                      </td>
 
                      {/* Status */}
