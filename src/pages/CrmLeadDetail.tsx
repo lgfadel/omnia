@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Building2, Users, DollarSign, MapPin, User, Phone, Mail, MessageSquare } from 'lucide-react';
+import { Edit, Building2, Users, DollarSign, MapPin, User, Phone, Mail, MessageSquare } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { CrmStatusBadge } from '@/components/ui/badge-crm-status';
@@ -102,23 +102,13 @@ export function CrmLeadDetail() {
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/crm')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{lead.cliente}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <CrmStatusBadge statusId={lead.status} />
-                <span className="text-sm text-muted-foreground">
-                  Criado em {formatDate(lead.created_at)}
-                </span>
-              </div>
+          <div>
+            <h1 className="text-3xl font-bold">{lead.cliente}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <CrmStatusBadge statusId={lead.status} />
+              <span className="text-sm text-muted-foreground">
+                Criado em {formatDate(lead.created_at)}
+              </span>
             </div>
           </div>
           <Button onClick={handleEdit}>

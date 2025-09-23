@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight, MessageCircle, Eye, Edit, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, MessageCircle, Eye, Trash2, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 interface CrmLeadsTableProps {
   leads: CrmLead[]
   onEdit: (lead: CrmLead) => void
-  onDelete: (id: string) => void
+  onDelete: (leadId: string) => void
 }
 
 export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
@@ -444,6 +444,15 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                          >
                            <MessageCircle className="w-3 h-3" />
                            <span className="text-xs">{lead.comment_count || 0}</span>
+                         </button>
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             onEdit(lead);
+                           }}
+                           className="text-muted-foreground hover:text-primary hover:bg-gray-100 p-1 rounded"
+                         >
+                           <Edit className="w-4 h-4" />
                          </button>
                          <button
                            onClick={(e) => {

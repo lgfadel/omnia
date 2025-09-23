@@ -3,7 +3,7 @@ import { Search, Plus, ChevronDown, User, Filter, Building2 } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,10 +15,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
 import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
 import { CrmLeadsTable } from '@/components/crm/CrmLeadsTable'
 import { CrmLeadForm } from '@/components/crm/CrmLeadForm'
+
 
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
@@ -46,11 +54,12 @@ export default function Crm() {
     loadStatuses 
   } = useCrmStatusStore()
   
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingLead, setEditingLead] = useState<CrmLead | undefined>()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null)
   const [showOnlyMyOpportunities, setShowOnlyMyOpportunities] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingLead, setEditingLead] = useState<CrmLead | null>(null)
 
   // Hook para fechar AlertDialog com ESC
   useEscapeKeyForAlert(() => setDeleteLeadId(null), !!deleteLeadId)
@@ -90,16 +99,7 @@ export default function Crm() {
     }
   }
 
-  const handleFormSuccess = () => {
-    setIsFormOpen(false)
-    setEditingLead(undefined)
-    fetchLeads()
-  }
 
-  const handleEdit = (lead: CrmLead) => {
-    setEditingLead(lead)
-    setIsFormOpen(true)
-  }
 
 
 
@@ -112,6 +112,17 @@ export default function Crm() {
       deleteLead(deleteLeadId)
       setDeleteLeadId(null)
     }
+  }
+
+  const handleFormSuccess = () => {
+    setIsFormOpen(false)
+    setEditingLead(null)
+    fetchLeads()
+  }
+
+  const handleEdit = (lead: CrmLead) => {
+    setEditingLead(lead)
+    setIsFormOpen(true)
   }
 
   // Função para obter o nome do status pelo ID
@@ -150,28 +161,12 @@ export default function Crm() {
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Pipeline</h1>
           </div>
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => setEditingLead(undefined)}
-                className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg flex items-center justify-center"
-              >
-                <Plus className="w-5 h-5" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingLead ? 'Editar Lead' : 'Novo Lead'}
-                </DialogTitle>
-              </DialogHeader>
-              <CrmLeadForm
-                lead={editingLead}
-                onSuccess={handleFormSuccess}
-                onCancel={() => setIsFormOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button 
+            onClick={() => setIsFormOpen(true)}
+            className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg flex items-center justify-center"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </div>
         
         {/* Métricas rápidas */}
@@ -258,10 +253,11 @@ export default function Crm() {
               ? 'Nenhum lead corresponde aos filtros aplicados.'
               : 'Comece criando seu primeiro lead.'}
           </p>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Criar primeiro lead
-          </Button>
+          {!filters.status && !filters.search && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              Criar primeiro lead
+            </Button>
+          )}
         </div>
       ) : (
         <CrmLeadsTable
@@ -271,6 +267,22 @@ export default function Crm() {
         />
       )}
       </div>
+
+      {/* Dialog para criar/editar lead */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLead ? 'Editar Lead' : 'Novo Lead'}
+            </DialogTitle>
+          </DialogHeader>
+          <CrmLeadForm
+            lead={editingLead}
+            onSuccess={handleFormSuccess}
+            onCancel={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* AlertDialog para confirmação de exclusão */}
       <AlertDialog open={!!deleteLeadId} onOpenChange={() => setDeleteLeadId(null)}>

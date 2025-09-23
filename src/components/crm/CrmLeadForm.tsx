@@ -333,6 +333,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                   <Input
                     type="number"
                     placeholder="0"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                   />
@@ -352,6 +353,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                   <Input
                     type="number"
                     placeholder="0"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                   />
@@ -371,6 +373,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
                   <Input
                     type="number"
                     placeholder="0"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                   />
@@ -627,7 +630,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
             </Button>
           )}
           <Button type="submit">
-            {lead ? 'Atualizar' : 'Criar'} Lead
+            Salvar
           </Button>
         </div>
       </form>
