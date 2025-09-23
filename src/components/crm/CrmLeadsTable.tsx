@@ -186,7 +186,13 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                   >
                      {/* Condomínio */}
                      <td className="p-2 md:p-4 w-[35%]">
-                       <div className="font-medium text-sm text-foreground line-clamp-1">
+                       <div 
+                         className="font-medium text-sm text-foreground line-clamp-1 cursor-pointer hover:text-primary transition-colors"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           navigate(`/crm/${lead.id}`);
+                         }}
+                       >
                          {lead.cliente}
                        </div>
                        {/* Mostrar data em mobile */}
