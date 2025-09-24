@@ -9,7 +9,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
-import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
+import { ataCommentsRepoSupabase, CreateAtaComment } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
@@ -40,10 +40,10 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
       // Create the comment first
       let newComment;
       if (contextType === 'ata') {
-        const ataCommentData = {
+        const ataCommentData: CreateAtaComment = {
           ata_id: ticketId,
           body: body.trim(),
-          author_id: userProfile.id,
+          // author_id será definido automaticamente no repositório
         };
         newComment = await ataCommentsRepoSupabase.create(ataCommentData);
       } else {

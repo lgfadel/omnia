@@ -7,7 +7,7 @@ export interface CrmComment {
   created_by?: string
   author_id: string
   created_at: string
-  updated_at: string
+  updated_at?: string
   author_user?: {
     id: string
     name: string
@@ -15,6 +15,12 @@ export interface CrmComment {
     avatar_url?: string
     color?: string
   }
+}
+
+export interface CreateCrmComment {
+  lead_id: string
+  body: string
+  author_id?: string // Will be set automatically in the repository
 }
 
 export const crmCommentsRepoSupabase = {
@@ -59,12 +65,28 @@ export const crmCommentsRepoSupabase = {
     return (data as CrmComment[]) || []
   },
 
-  async create(comment: Omit<CrmComment, 'id' | 'created_at' | 'updated_at'>): Promise<CrmComment | null> {
+  async create(comment: CreateCrmComment): Promise<CrmComment> {
+    // Get current user from omnia_users
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('No authenticated user')
+    }
+
+    const { data: omniaUser } = await supabase
+      .from('omnia_users')
+      .select('id')
+      .eq('auth_user_id', user.user.id)
+      .single()
+
+    if (!omniaUser) {
+      throw new Error('Omnia user not found')
+    }
+
     const { data, error } = await supabase
       .from('omnia_crm_comments')
       .insert({
         lead_id: comment.lead_id,
-        author_id: comment.author_id,
+        author_id: omniaUser.id,
         body: comment.body
       })
       .select(`
@@ -78,10 +100,10 @@ export const crmCommentsRepoSupabase = {
 
     if (error) {
       console.error('Erro ao criar comentário:', error)
-      return null
+      throw error
     }
 
-    return data as CrmComment
+    return data
   },
 
   async update(id: string, updates: Partial<Pick<CrmComment, 'body'>>): Promise<CrmComment | null> {

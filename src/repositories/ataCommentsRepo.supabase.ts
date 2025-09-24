@@ -10,6 +10,12 @@ export interface AtaComment {
   created_at: string
 }
 
+export interface CreateAtaComment {
+  ata_id: string
+  body: string
+  // author_id será definido automaticamente no repositório
+}
+
 export const ataCommentsRepoSupabase = {
   async list(ataId: string): Promise<AtaComment[]> {
     logger.debug('Loading ata comments from database...', ataId)
@@ -21,19 +27,24 @@ export const ataCommentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading ata comments:', error);
+      logger.error('Error loading ata comments:', error);
       throw error;
     }
     
     return (data as any) || [];
   },
 
-  async create(comment: Omit<AtaComment, 'id' | 'created_at'>): Promise<AtaComment> {
+  async create(comment: CreateAtaComment): Promise<AtaComment> {
     logger.debug('Creating ata comment...', comment)
     
-    // Get current user from omnia_users
-    const { data: user } = await supabase.auth.getUser()
+    // Get current user from auth
+    const { data: user, error: userError } = await supabase.auth.getUser()
     
+    if (userError || !user.user) {
+      throw new Error('Usuário não autenticado')
+    }
+
+    // Get omnia_user for author_id
     const { data: omniaUser } = await supabase
       .from('omnia_users')
       .select('id')
@@ -44,18 +55,25 @@ export const ataCommentsRepoSupabase = {
       throw new Error('Usuário não encontrado na tabela omnia_users')
     }
 
+    // Log detailed information for debugging
+    logger.info('Creating ata comment with IDs:', {
+      authUserId: user.user.id,
+      omniaUserId: omniaUser.id,
+      ataId: comment.ata_id
+    });
+
     const { data, error } = await supabase
       .from('omnia_comments' as any)
       .insert({
         ...comment,
         author_id: omniaUser.id,
-        created_by: user.user.id
+        created_by: omniaUser.id  // Uses omnia_users.id after constraint fix
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating ata comment:', error);
+      logger.error('Error creating ata comment:', error);
       throw error;
     }
 
@@ -73,7 +91,7 @@ export const ataCommentsRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error updating ata comment:', error);
+      logger.error('Error updating ata comment:', error);
       throw error;
     }
 
@@ -89,7 +107,7 @@ export const ataCommentsRepoSupabase = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error removing ata comment:', error);
+      logger.error('Error removing ata comment:', error);
       throw error;
     }
 

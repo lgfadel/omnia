@@ -8,7 +8,7 @@ interface CrmCommentsState {
   
   // Actions
   loadComments: (leadId: string) => Promise<void>;
-  addComment: (leadId: string, body: string) => Promise<void>;
+  addComment: (leadId: string, body: string) => Promise<CrmComment>;
   updateComment: (id: string, body: string) => Promise<void>;
   removeComment: (id: string) => Promise<void>;
   clearComments: () => void;
@@ -38,18 +38,17 @@ export const useCrmCommentsStore = create<CrmCommentsState>((set, get) => ({
       const newComment = await crmCommentsRepoSupabase.create({
         lead_id: leadId,
         body,
-        author_id: '' // Will be set by the repository
-      });
+        author_id: '' // Will be set in the repository
+      })
       
-      if (newComment) {
-        const { comments } = get();
-        set({ comments: [newComment, ...comments] });
-      } else {
-        set({ error: 'Erro ao adicionar comentário' });
-      }
+      set(state => ({
+        comments: [...state.comments, newComment]
+      }))
+      
+      return newComment
     } catch (error) {
-      console.error('Error adding CRM comment:', error);
-      set({ error: error instanceof Error ? error.message : 'Erro ao adicionar comentário' });
+      console.error('Error adding comment:', error)
+      throw error
     }
   },
 
