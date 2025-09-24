@@ -3,8 +3,9 @@ import { useTarefasOportunidade } from '@/hooks/useTarefasOportunidade';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarDays, User, AlertCircle } from 'lucide-react';
+import { CalendarDays, AlertCircle, Flag } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { generateUserColor, getUserInitials } from '@/lib/userColors';
 
 interface TarefasOportunidadeProps {
   oportunidadeId: string;
@@ -60,7 +61,7 @@ export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps
       case 'ALTA':
         return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'NORMAL':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-transparent text-black border-0';
       case 'BAIXA':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -68,18 +69,18 @@ export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
+  const getPriorityFlagColor = (priority: string) => {
     switch (priority) {
       case 'URGENTE':
-        return '🔴';
+        return 'text-red-500';
       case 'ALTA':
-        return '🟠';
+        return 'text-yellow-500';
       case 'NORMAL':
-        return '🔵';
+        return 'text-blue-500';
       case 'BAIXA':
-        return '⚪';
+        return 'text-gray-500';
       default:
-        return '⚪';
+        return 'text-gray-500';
     }
   };
 
@@ -119,7 +120,8 @@ export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps
                         variant="outline"
                         className={getPriorityColor(tarefa.priority)}
                       >
-                        {getPriorityIcon(tarefa.priority)} {tarefa.priority}
+                        <Flag className={`h-3 w-3 mr-1 fill-current ${getPriorityFlagColor(tarefa.priority)}`} />
+                        {tarefa.priority}
                       </Badge>
                       <Badge
                         variant="outline"
@@ -144,17 +146,19 @@ export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps
                     
                     {tarefa.assignedTo && (
                       <div className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
                         <Avatar className="h-5 w-5">
                           <AvatarImage src={tarefa.assignedTo.avatarUrl} />
                           <AvatarFallback 
-                            className="text-xs"
-                            style={{ backgroundColor: tarefa.assignedTo.color }}
+                            className="text-xs text-white font-medium"
+                            style={{ 
+                              backgroundColor: tarefa.assignedTo.color && typeof tarefa.assignedTo.color === 'string' && tarefa.assignedTo.color.trim() !== ''
+                                ? tarefa.assignedTo.color
+                                : generateUserColor(tarefa.assignedTo.id, tarefa.assignedTo.name) 
+                            }}
                           >
-                            {tarefa.assignedTo.name.charAt(0).toUpperCase()}
+                            {getUserInitials(tarefa.assignedTo.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{tarefa.assignedTo.name}</span>
                       </div>
                     )}
                   </div>

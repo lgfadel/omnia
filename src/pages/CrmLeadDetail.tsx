@@ -15,6 +15,38 @@ import { useCrmLeadsStore } from '@/store/crmLeads.store';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase';
 import { toast } from 'sonner';
 
+// Função para formatar telefone
+const formatPhone = (value: string) => {
+  if (!value) return value;
+  
+  const numericValue = value.replace(/\D/g, '').substring(0, 11); // Limita a 11 dígitos
+  
+  // Para números com 10 dígitos: (43) 9999-9999
+  if (numericValue.length === 10) {
+    return numericValue.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  // Para números com 11 dígitos: (43) 99999-9999
+  else if (numericValue.length === 11) {
+    return numericValue.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  // Para números incompletos, formatar conforme o que foi digitado
+  else if (numericValue.length > 6) {
+    if (numericValue.length <= 10) {
+      return numericValue.replace(/(\d{2})(\d{0,4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+    } else {
+      return numericValue.replace(/(\d{2})(\d{0,5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+    }
+  }
+  else if (numericValue.length > 2) {
+    return numericValue.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+  }
+  else if (numericValue.length > 0) {
+    return numericValue.replace(/(\d{0,2})/, '($1');
+  }
+  
+  return numericValue;
+};
+
 export function CrmLeadDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -268,7 +300,7 @@ export function CrmLeadDetail() {
                         <Phone className="h-4 w-4" />
                         Telefone
                       </div>
-                      <div className="text-sm">{lead.sindico_telefone}</div>
+                      <div className="text-sm">{formatPhone(lead.sindico_telefone)}</div>
                     </div>
                   )}
                   {lead.sindico_email && (
@@ -283,7 +315,7 @@ export function CrmLeadDetail() {
                   {lead.sindico_whatsapp && (
                     <div>
                       <div className="text-sm font-medium">WhatsApp</div>
-                      <div className="text-sm">{lead.sindico_whatsapp}</div>
+                      <div className="text-sm">{formatPhone(lead.sindico_whatsapp)}</div>
                     </div>
                   )}
                 </CardContent>

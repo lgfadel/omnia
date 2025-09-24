@@ -26,13 +26,7 @@ interface TicketData {
   priority: 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
   status_id: string;
   created_at: string;
-  assigned_to_user: {
-    id: string;
-    name: string;
-    email: string;
-    avatar_url: string | null;
-    color: string | null;
-  } | null;
+  assigned_to_user: any;
 }
 
 export function useTarefasOportunidade(oportunidadeId: string) {
@@ -45,7 +39,7 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       setLoading(true);
       setError(null);
 
-      const { data, error: supabaseError } = await (supabase
+      const { data, error: supabaseError } = (await supabase
         .from('omnia_tickets')
         .select(`
           id,
@@ -63,23 +57,58 @@ export function useTarefasOportunidade(oportunidadeId: string) {
           )
         `)
         .eq('oportunidade_id', oportunidadeId)
-        .order('created_at', { ascending: false }) as any);
+        .order('created_at', { ascending: false })) as any;
 
       if (supabaseError) {
         throw supabaseError;
       }
 
-      const transformedTarefas: TarefaOportunidade[] = (data as TicketData[] || []).map((item) => ({
+      // Função para mapear status para cores específicas
+      const getStatusColor = (statusId: string): string => {
+        switch (statusId) {
+          case 'ABERTO':
+            return '#ef4444'; // Vermelho - Aberto
+          case 'EM_ANDAMENTO':
+            return '#f59e0b'; // Laranja - Em Andamento
+          case 'AGUARDANDO':
+            return '#6b7280'; // Cinza - Aguardando
+          case 'RESOLVIDO':
+          case 'CONCLUIDO':
+            return '#10b981'; // Verde - Resolvido/Concluído
+          case 'FECHADO':
+            return '#374151'; // Cinza escuro - Fechado
+          default:
+            return '#ef4444'; // Vermelho como padrão (Aberto)
+        }
+      };
+
+      // Função para mapear status para labels
+      const getStatusLabel = (statusId: string): string => {
+        switch (statusId) {
+          case 'ABERTO':
+            return 'Aberto';
+          case 'EM_ANDAMENTO':
+            return 'Em Andamento';
+          case 'AGUARDANDO':
+            return 'Aguardando';
+          case 'RESOLVIDO':
+            return 'Resolvido';
+          case 'CONCLUIDO':
+            return 'Concluído';
+          case 'FECHADO':
+            return 'Fechado';
+          default:
+            return 'Aberto';
+        }
+      };
+
+      const transformedTarefas: TarefaOportunidade[] = (data || []).map((item: TicketData) => ({
         id: item.id,
         title: item.title,
         dueDate: item.due_date ? new Date(item.due_date + 'T00:00:00') : undefined,
         status: item.status_id,
-        statusColor: item.status_id === 'ABERTO' ? '#ef4444' : 
-                    item.status_id === 'EM_ANDAMENTO' ? '#f59e0b' : 
-                    item.status_id === 'CONCLUIDO' ? '#10b981' : '#6b7280',
-        statusLabel: item.status_id === 'ABERTO' ? 'Aberto' : 
-                    item.status_id === 'EM_ANDAMENTO' ? 'Em Andamento' : 
-                    item.status_id === 'CONCLUIDO' ? 'Concluído' : 'Pendente',
+        statusColor: getStatusColor(item.status_id),
+        statusLabel: getStatusLabel(item.status_id),
         assignedTo: item.assigned_to_user ? {
           id: item.assigned_to_user.id,
           name: item.assigned_to_user.name,
