@@ -49,7 +49,7 @@ export const ataCommentsRepoSupabase = {
       .insert({
         ...comment,
         author_id: omniaUser.id,
-        created_by: omniaUser.id
+        created_by: user.user.id
       })
       .select()
       .single();
