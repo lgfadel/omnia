@@ -138,6 +138,16 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSubmit();
+      return;
+    }
+    
+    // Handle Ctrl+A for select all - ensure it works
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      if (textareaRef.current) {
+        textareaRef.current.select();
+      }
+      return;
     }
   };
 
@@ -210,7 +220,7 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder="Escreva um comentário... (Ctrl+Enter para enviar, cole imagens diretamente)"
-              className="min-h-[80px] resize-none border-0 p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="min-h-[80px] resize-none border-0 p-0"
             />
             
             {/* Attachments Display */}
