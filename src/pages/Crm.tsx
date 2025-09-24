@@ -3,6 +3,7 @@ import { Search, Plus, ChevronDown, User, Filter, Building2 } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 
 import {
   AlertDialog,
@@ -60,6 +61,7 @@ export default function Crm() {
   const [showOnlyMyOpportunities, setShowOnlyMyOpportunities] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingLead, setEditingLead] = useState<CrmLead | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
 
   // Hook para fechar AlertDialog com ESC
   useEscapeKeyForAlert(() => setDeleteLeadId(null), !!deleteLeadId)
@@ -80,11 +82,32 @@ export default function Crm() {
     }
   }
 
-  const handleStatusFilter = (status: string) => {
-    if (status === 'all') {
+  const handleStatusFilterChange = (statusId: string) => {
+    const newStatusFilter = statusFilter.includes(statusId)
+      ? statusFilter.filter(id => id !== statusId)
+      : [...statusFilter, statusId]
+    
+    setStatusFilter(newStatusFilter)
+    
+    if (newStatusFilter.length === 0) {
       setFilters({ status: undefined })
     } else {
-      setFilters({ status: status as CrmLead['status'] })
+      setFilters({ status: newStatusFilter })
+    }
+  }
+
+  const handleSelectAllStatus = () => {
+    const allStatusIds = sortedStatuses.map(status => status.id)
+    const isAllSelected = allStatusIds.every(id => statusFilter.includes(id))
+    
+    if (isAllSelected) {
+      // Desselecionar todos
+      setStatusFilter([])
+      setFilters({ status: undefined })
+    } else {
+      // Selecionar todos
+      setStatusFilter(allStatusIds)
+      setFilters({ status: allStatusIds })
     }
   }
 
@@ -198,20 +221,38 @@ export default function Crm() {
           />
         </div>
         
-        <Select onValueChange={handleStatusFilter} defaultValue="all">
-          <SelectTrigger className="w-[200px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {sortedStatuses.map((status) => (
-              <SelectItem key={status.id} value={status.id}>
-                {status.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-10 h-10 p-0 flex items-center justify-center">
+              <Filter className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[200px]">
+            <DropdownMenuCheckboxItem
+              checked={sortedStatuses.length > 0 && sortedStatuses.every(status => statusFilter.includes(status.id))}
+              onCheckedChange={handleSelectAllStatus}
+              className="font-medium"
+            >
+              Selecionar todos
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+             {sortedStatuses.map((status) => (
+               <DropdownMenuCheckboxItem
+                 key={status.id}
+                 checked={statusFilter.includes(status.id)}
+                 onCheckedChange={() => handleStatusFilterChange(status.id)}
+               >
+                 <div className="flex items-center gap-2">
+                   <div 
+                     className="w-3 h-3 rounded-full" 
+                     style={{ backgroundColor: status.color }}
+                   />
+                   <span className="text-black">{status.name}</span>
+                 </div>
+               </DropdownMenuCheckboxItem>
+             ))}
+           </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Botão Minhas Oportunidades */}
         {userProfile && (

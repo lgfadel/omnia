@@ -8,7 +8,7 @@ interface CrmLeadsState {
   attachments: CrmAttachment[]
   loading: boolean
   filters: {
-    status?: CrmLead['status']
+    status?: CrmLead['status'] | string[]
     assignedTo?: string
     search?: string
   }
@@ -71,7 +71,15 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       
       // Aplicar filtros sequencialmente
       if (filters.status) {
-        leads = leads.filter(lead => lead.status === filters.status)
+        if (Array.isArray(filters.status)) {
+          // Filtro múltiplo: inclui leads que tenham qualquer um dos status selecionados
+          if (filters.status.length > 0) {
+            leads = leads.filter(lead => filters.status!.includes(lead.status))
+          }
+        } else {
+          // Filtro único: compatibilidade com implementação anterior
+          leads = leads.filter(lead => lead.status === filters.status)
+        }
       }
       
       if (filters.assignedTo) {
