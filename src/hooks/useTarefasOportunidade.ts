@@ -26,7 +26,14 @@ interface TicketData {
   priority: 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
   status_id: string;
   created_at: string;
-  assigned_to_user: any;
+  assigned_to: string | null;
+  assigned_to_user?: {
+    id: string;
+    name: string;
+    email: string;
+    avatar_url: string | null;
+    color: string | null;
+  } | null;
 }
 
 export function useTarefasOportunidade(oportunidadeId: string) {
@@ -35,32 +42,45 @@ export function useTarefasOportunidade(oportunidadeId: string) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTarefas = async () => {
+    if (!oportunidadeId) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: supabaseError } = (await supabase
+      // Buscar tickets sem join para evitar problemas de tipagem
+      const { data: ticketsData, error: ticketsError } = await (supabase as any)
         .from('omnia_tickets')
-        .select(`
-          id,
-          title,
-          due_date,
-          priority,
-          status_id,
-          created_at,
-          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-            id,
-            name,
-            email,
-            avatar_url,
-            color
-          )
-        `)
+        .select('id, title, due_date, priority, status_id, created_at, assigned_to')
         .eq('oportunidade_id', oportunidadeId)
-        .order('created_at', { ascending: false })) as any;
+        .order('created_at', { ascending: false });
 
-      if (supabaseError) {
-        throw supabaseError;
+      if (ticketsError) throw ticketsError;
+
+      // Buscar usuários separadamente se necessário
+      const userIds = ticketsData?.map(ticket => ticket.assigned_to).filter(Boolean) || [];
+      let usersData: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: users, error: usersError } = await supabase
+          .from('omnia_users')
+          .select('id, name, email, avatar_url, color')
+          .in('id', userIds);
+        
+        if (usersError) throw usersError;
+        usersData = users || [];
+      }
+
+      // Combinar dados manualmente
+      const data = ticketsData?.map(ticket => ({
+        ...ticket,
+        assigned_to_user: ticket.assigned_to 
+          ? usersData.find(user => user.id === ticket.assigned_to)
+          : null
+      }));
+
+      if (!data) {
+        throw new Error('Nenhum dado retornado');
       }
 
       // Função para mapear status para cores específicas
