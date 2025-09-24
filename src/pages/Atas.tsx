@@ -341,13 +341,20 @@ const Atas = () => {
                 onClick={() => setShowOnlyMyAtas(!showOnlyMyAtas)}
                 className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
                   showOnlyMyAtas 
-                    ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                    ? 'shadow-lg ring-2 ring-offset-1' 
                     : 'shadow-sm hover:shadow-md'
                 }`}
                 style={{
-                  backgroundColor: showOnlyMyAtas ? '#FBBF24' : '#F3F4F6',
-                  borderColor: showOnlyMyAtas ? '#FBBF24' : '#D1D5DB',
-                  color: showOnlyMyAtas ? 'white' : '#6B7280'
+                  backgroundColor: showOnlyMyAtas 
+                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                    : '#F3F4F6',
+                  borderColor: showOnlyMyAtas 
+                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                    : '#D1D5DB',
+                  color: showOnlyMyAtas ? 'white' : '#6B7280',
+                  ...(showOnlyMyAtas && userProfile && {
+                    '--tw-ring-color': (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) + '50'
+                  })
                 }}
               >
                 {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}

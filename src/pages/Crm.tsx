@@ -35,7 +35,7 @@ import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRoles } from '@/hooks/useRoles'
 import { useEscapeKeyForAlert } from '@/hooks/useEscapeKeyForAlert'
-import { getUserInitials } from '@/lib/userColors'
+import { getUserInitials, generateUserColor } from '@/lib/userColors'
 
 export default function Crm() {
   const { user, userProfile } = useAuth()
@@ -262,13 +262,20 @@ export default function Crm() {
             onClick={handleMyOpportunitiesToggle}
             className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
               showOnlyMyOpportunities 
-                ? 'shadow-lg ring-2 ring-yellow-300 ring-offset-1' 
+                ? 'shadow-lg ring-2 ring-offset-1' 
                 : 'shadow-sm hover:shadow-md'
             }`}
             style={{
-              backgroundColor: showOnlyMyOpportunities ? '#FBBF24' : '#F3F4F6',
-              borderColor: showOnlyMyOpportunities ? '#FBBF24' : '#D1D5DB',
-              color: showOnlyMyOpportunities ? 'white' : '#6B7280'
+              backgroundColor: showOnlyMyOpportunities 
+                ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                : '#F3F4F6',
+              borderColor: showOnlyMyOpportunities 
+                ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                : '#D1D5DB',
+              color: showOnlyMyOpportunities ? 'white' : '#6B7280',
+              ...(showOnlyMyOpportunities && userProfile && {
+                '--tw-ring-color': (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) + '50'
+              })
             }}
           >
             {getUserInitials(userProfile.name || userProfile.email)}
