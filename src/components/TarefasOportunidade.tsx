@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTarefasOportunidade } from '@/hooks/useTarefasOportunidade';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ interface TarefasOportunidadeProps {
 }
 
 export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps) {
+  const navigate = useNavigate();
   const { tarefas, loading, error } = useTarefasOportunidade(oportunidadeId);
 
   if (loading) {
@@ -114,7 +116,14 @@ export function TarefasOportunidade({ oportunidadeId }: TarefasOportunidadeProps
               >
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm">{tarefa.title}</h4>
+                    <button
+                      onClick={() => navigate(`/tarefas/${tarefa.id}`)}
+                      className="font-medium text-sm text-left hover:text-blue-600 hover:underline cursor-pointer transition-colors duration-200"
+                      aria-label={`Ver detalhes da tarefa: ${tarefa.title}`}
+                      title={`Clique para ver os detalhes da tarefa: ${tarefa.title}`}
+                    >
+                      {tarefa.title}
+                    </button>
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="outline"
