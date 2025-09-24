@@ -71,4 +71,12 @@ export interface Tarefa {
   createdAt: string;
   updatedAt: string;
   isPrivate: boolean;
+  oportunidadeId?: string; // ID da oportunidade do CRM vinculada (opcional)
+}
+
+// Interface simplificada para dropdown de oportunidades
+export interface CrmLeadOption {
+  id: string;
+  cliente: string;
+  status: string;
 }

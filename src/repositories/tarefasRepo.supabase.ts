@@ -13,6 +13,7 @@ export interface Tarefa {
   statusId: string;
   assignedTo?: UserRef;
   createdBy?: UserRef;
+  oportunidadeId?: string;
   tags: string[];
   commentCount: number;
   createdAt: Date;
@@ -47,6 +48,7 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
       avatarUrl: dbTarefa.created_by_user.avatar_url,
       color: dbTarefa.created_by_user.color,
     } : undefined,
+    oportunidadeId: dbTarefa.oportunidade_id || undefined,
     tags: dbTarefa.tags || [],
     commentCount: dbTarefa.comment_count || 0,
     createdAt: new Date(dbTarefa.created_at),
@@ -143,20 +145,23 @@ export const tarefasRepoSupabase = {
       .eq('auth_user_id', user?.user?.id)
       .single();
 
+    const insertData = {
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
+      ticket: data.ticket,
+      status_id: data.statusId,
+      assigned_to: data.assignedTo?.id,
+      created_by: omniaUser?.id,
+      oportunidade_id: data.oportunidadeId,
+      tags: data.tags,
+      is_private: data.isPrivate,
+    };
+
     const { data: newTarefa, error } = await supabase
       .from('omnia_tickets' as any)
-      .insert({
-        title: data.title,
-        description: data.description,
-        priority: data.priority,
-        due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
-        ticket: data.ticket,
-        status_id: data.statusId,
-        assigned_to: data.assignedTo?.id,
-        created_by: omniaUser?.id,
-        tags: data.tags,
-        is_private: data.isPrivate,
-      })
+      .insert(insertData)
       .select(`
         *,
         assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
@@ -169,7 +174,8 @@ export const tarefasRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error creating tarefa:', error);
+      console.error('❌ Error creating tarefa:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -178,8 +184,6 @@ export const tarefasRepoSupabase = {
 
   // Update an existing task
   async update(id: string, data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>): Promise<Tarefa | null> {
-    console.log('Updating tarefa:', id, data)
-    
     const updateData: any = {};
     
     if (data.title !== undefined) updateData.title = data.title;
@@ -189,6 +193,8 @@ export const tarefasRepoSupabase = {
     if (data.ticket !== undefined) updateData.ticket = data.ticket;
     if (data.statusId !== undefined) updateData.status_id = data.statusId;
     if (data.assignedTo !== undefined) updateData.assigned_to = data.assignedTo?.id;
+    // Sempre incluir oportunidade_id se estiver presente no data, mesmo que seja undefined (para permitir NULL)
+    if ('oportunidadeId' in data) updateData.oportunidade_id = data.oportunidadeId || null;
     if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.isPrivate !== undefined) updateData.is_private = data.isPrivate;
 
@@ -208,7 +214,8 @@ export const tarefasRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error updating tarefa:', error);
+      console.error('❌ Error updating tarefa:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 

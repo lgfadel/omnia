@@ -12,6 +12,7 @@ import { TagInput } from '@/components/atas/TagInput';
 import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
 import { TicketStatusSelect } from './TicketStatusSelect';
+import { OportunidadeSelect } from './OportunidadeSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
@@ -28,6 +29,7 @@ const ticketSchema = z.object({
   ticket: z.string().optional(),
   statusId: z.string().min(1, 'Status é obrigatório'),
   assignedTo: z.string().optional(),
+  oportunidadeId: z.string().optional(),
   isPrivate: z.boolean().default(false),
 });
 
@@ -64,6 +66,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       ticket: ticket?.ticket || '',
       statusId: ticket?.statusId || '',
       assignedTo: ticket?.assignedTo?.id || '',
+      oportunidadeId: ticket?.oportunidadeId || '',
       isPrivate: ticket?.isPrivate || false,
     },
   });
@@ -102,6 +105,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       ticket: data.ticket || undefined,
       statusId: data.statusId,
       assignedTo: data.assignedTo ? users.find(u => u.id === data.assignedTo) : undefined,
+      oportunidadeId: data.oportunidadeId || undefined,
       tags,
       attachments,
       isPrivate: Boolean(data.isPrivate),
@@ -241,6 +245,19 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                   <p className="text-sm text-destructive">{errors.statusId.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Oportunidade (CRM)</Label>
+              <OportunidadeSelect
+                value={watch('oportunidadeId')}
+                onValueChange={(value) => {
+                  setValue('oportunidadeId', value);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Vincule esta tarefa a uma oportunidade do CRM (opcional)
+              </p>
             </div>
             
             <div className="flex items-center space-x-2">

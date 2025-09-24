@@ -69,6 +69,7 @@ export default function TicketEdit() {
         tags: ticketData.tags,
         attachments: ticketData.attachments,
         isPrivate: ticketData.isPrivate,
+        oportunidadeId: ticketData.oportunidadeId,
       });
 
       if (updatedTicket) {

@@ -34,7 +34,8 @@ export default function TicketNew() {
         assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
         tags: ticketData.tags || [],
         attachments: ticketData.attachments || [],
-        isPrivate: Boolean(ticketData.isPrivate)
+        isPrivate: Boolean(ticketData.isPrivate),
+        oportunidadeId: ticketData.oportunidadeId
       });
 
       toast({
