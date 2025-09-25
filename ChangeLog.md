@@ -4,6 +4,33 @@ Registro cronológico das principais mudanças, correções e melhorias implemen
 
 ---
 
+## 2025-01-24
+
+### ✨ Novas Funcionalidades
+- **Filtros de Status Aprimorados**: Implementação de múltiplas seleções nos filtros de status
+  - **Páginas afetadas**: Atas, Tarefas e Oportunidades (CRM)
+  - **Funcionalidades**:
+    - Múltiplas seleções simultâneas de status
+    - Opção "Selecionar todos" para marcar/desmarcar todos os status
+    - Separador visual para distinguir a opção "Selecionar todos"
+    - Interface consistente entre todas as páginas
+  - **Arquivos modificados**:
+    - `src/pages/Atas.tsx` - Adicionada função `handleSelectAllStatus` e opção "Selecionar todos"
+    - `src/pages/Tickets.tsx` - Adicionada função `handleSelectAllStatus` e opção "Selecionar todos"
+    - `src/pages/Crm.tsx` - Funcionalidade já estava implementada
+  - **Impacto**: Melhoria significativa na usabilidade dos filtros, permitindo análises mais flexíveis
+
+### 🎨 Melhorias de Interface
+- **Alinhamento de Botões**: Padronização da altura dos botões nas páginas de listagem
+  - **Problema**: Botões com alturas diferentes (h-8) em relação à caixa de busca (h-10)
+  - **Solução**: Uniformização de todos os botões para altura h-10
+  - **Páginas afetadas**:
+    - `src/pages/Atas.tsx` - Botões "Filtro" e "Minhas Atas"
+    - `src/pages/Tickets.tsx` - Botões "Concluídos", "Privadas" e "Minhas Tarefas"
+  - **Resultado**: Interface mais harmoniosa e profissional
+
+---
+
 ## 2025-09-11
 
 ### 🔧 Correções
@@ -139,4 +166,4 @@ Registro cronológico das principais mudanças, correções e melhorias implemen
 - Scripts SQL organizados em `supabase/migrations/`
 - Backup e versionamento mantidos via Git
 
-**Última atualização**: 11 de Setembro de 2025
+**Última atualização**: 24 de Janeiro de 2025
