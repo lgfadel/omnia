@@ -5,7 +5,7 @@ import { logger } from '@/lib/logging'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, ChevronDown, User, Filter } from "lucide-react"
 import { useState, useEffect } from "react"
@@ -179,6 +179,19 @@ const Atas = () => {
     )
   }
 
+  const handleSelectAllStatus = () => {
+    const allStatusIds = statuses.map(status => status.id)
+    const isAllSelected = allStatusIds.every(id => statusFilter.includes(id))
+    
+    if (isAllSelected) {
+      // Desselecionar todos
+      setStatusFilter([])
+    } else {
+      // Selecionar todos
+      setStatusFilter(allStatusIds)
+    }
+  }
+
   // Transform data for table display
   const filteredAtas = showOnlyMyAtas && userProfile 
     ? atas.filter(ata => ata.responsible?.id === userProfile.id)
@@ -312,6 +325,14 @@ const Atas = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
+                  <DropdownMenuCheckboxItem
+                    checked={statuses.length > 0 && statuses.every(status => statusFilter.includes(status.id))}
+                    onCheckedChange={handleSelectAllStatus}
+                    className="font-medium"
+                  >
+                    Selecionar todos
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
                   {statuses.map((status) => (
                     <DropdownMenuCheckboxItem
                       key={status.id}

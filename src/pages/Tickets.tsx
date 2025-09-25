@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { TabelaOmnia } from '@/components/ui/tabela-omnia';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Badge } from '@/components/ui/badge';
@@ -262,6 +262,19 @@ export default function Tickets() {
     );
   };
 
+  const handleSelectAllStatus = () => {
+    const allStatusIds = statuses.map(status => status.id)
+    const isAllSelected = allStatusIds.every(id => statusFilter.includes(id))
+    
+    if (isAllSelected) {
+      // Desselecionar todos
+      setStatusFilter([])
+    } else {
+      // Selecionar todos
+      setStatusFilter(allStatusIds)
+    }
+  };
+
   const formatDueDate = (date?: Date) => {
     if (!date) return '-';
     return date.toLocaleDateString('pt-BR');
@@ -447,6 +460,14 @@ export default function Tickets() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
+                  <DropdownMenuCheckboxItem
+                    checked={statuses.length > 0 && statuses.every(status => statusFilter.includes(status.id))}
+                    onCheckedChange={handleSelectAllStatus}
+                    className="font-medium"
+                  >
+                    Selecionar todos
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
                   {statuses.map((status) => (
                     <DropdownMenuCheckboxItem
                       key={status.id}
