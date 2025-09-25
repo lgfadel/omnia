@@ -436,64 +436,34 @@ export default function Tickets() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="min-w-[150px] justify-between h-10">
-                      {statusFilter.length === 0 
-                        ? "Todos os status" 
-                        : statusFilter.length === 1 
-                        ? statuses.find(s => s.id === statusFilter[0])?.name
-                        : `${statusFilter.length} selecionados`
-                      }
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56">
-                    {statuses.map((status) => (
-                      <DropdownMenuCheckboxItem
-                        key={status.id}
-                        checked={statusFilter.includes(status.id)}
-                        onCheckedChange={() => handleStatusFilterChange(status.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: status.color }}
-                          />
-                          {status.name}
-                        </div>
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
-                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
-                  showOnlyMyTasks 
-                    ? 'shadow-lg ring-2 ring-offset-1' 
-                    : 'shadow-sm hover:shadow-md'
-                }`}
-                style={{
-                  backgroundColor: showOnlyMyTasks 
-                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
-                    : '#F3F4F6',
-                  borderColor: showOnlyMyTasks 
-                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
-                    : '#D1D5DB',
-                  color: showOnlyMyTasks ? 'white' : '#6B7280',
-                  ...(showOnlyMyTasks && userProfile && {
-                    '--tw-ring-color': (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) + '50'
-                  })
-                }}
-              >
-                {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-8 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                  >
+                    <Filter className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {statuses.map((status) => (
+                    <DropdownMenuCheckboxItem
+                      key={status.id}
+                      checked={statusFilter.includes(status.id)}
+                      onCheckedChange={() => handleStatusFilterChange(status.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: status.color }}
+                        />
+                        {status.name}
+                      </div>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               
               <Button
                 variant="outline"
@@ -521,6 +491,31 @@ export default function Tickets() {
                 }`}
               >
                 <Lock className="w-3 h-3" />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
+                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+                  showOnlyMyTasks 
+                    ? 'shadow-lg ring-2 ring-offset-1' 
+                    : 'shadow-sm hover:shadow-md'
+                }`}
+                style={{
+                  backgroundColor: showOnlyMyTasks 
+                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                    : '#F3F4F6',
+                  borderColor: showOnlyMyTasks 
+                    ? (userProfile ? (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) : '#FBBF24')
+                    : '#D1D5DB',
+                  color: showOnlyMyTasks ? 'white' : '#6B7280',
+                  ...(showOnlyMyTasks && userProfile && {
+                    '--tw-ring-color': (userProfile.color || generateUserColor(userProfile.id, userProfile.name)) + '50'
+                  })
+                }}
+              >
+                {userProfile ? getUserInitials(userProfile.name) : <User className="w-3 h-3" />}
               </Button>
             </div>
           </div>

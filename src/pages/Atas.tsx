@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, ChevronDown, User } from "lucide-react"
+import { Search, Plus, ChevronDown, User, Filter } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
@@ -301,39 +301,34 @@ const Atas = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="min-w-[150px] justify-between h-10">
-                      {statusFilter.length === 0 
-                        ? "Todos os status" 
-                        : statusFilter.length === 1 
-                        ? statuses.find(s => s.id === statusFilter[0])?.name
-                        : `${statusFilter.length} selecionados`
-                      }
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56">
-                    {statuses.map((status) => (
-                      <DropdownMenuCheckboxItem
-                        key={status.id}
-                        checked={statusFilter.includes(status.id)}
-                        onCheckedChange={() => handleStatusFilterChange(status.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: status.color }}
-                          />
-                          {status.name}
-                        </div>
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-8 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                  >
+                    <Filter className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {statuses.map((status) => (
+                    <DropdownMenuCheckboxItem
+                      key={status.id}
+                      checked={statusFilter.includes(status.id)}
+                      onCheckedChange={() => handleStatusFilterChange(status.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: status.color }}
+                        />
+                        {status.name}
+                      </div>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               
               <Button
                 variant="default"
