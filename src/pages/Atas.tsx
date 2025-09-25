@@ -306,7 +306,7 @@ const Atas = () => {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="h-8 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                    className="h-10 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
                   >
                     <Filter className="w-4 h-4" />
                   </Button>
@@ -334,7 +334,7 @@ const Atas = () => {
                 variant="default"
                 size="sm"
                 onClick={() => setShowOnlyMyAtas(!showOnlyMyAtas)}
-                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+                className={`rounded-full w-10 h-10 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
                   showOnlyMyAtas 
                     ? 'shadow-lg ring-2 ring-offset-1' 
                     : 'shadow-sm hover:shadow-md'

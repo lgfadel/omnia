@@ -441,7 +441,7 @@ export default function Tickets() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="h-8 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                    className="h-10 px-3 flex items-center justify-center transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
                   >
                     <Filter className="w-4 h-4" />
                   </Button>
@@ -469,7 +469,7 @@ export default function Tickets() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                className={`h-10 px-3 text-xs font-medium transition-all duration-200 ${
                   showCompletedTasks 
                     ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' 
                     : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
@@ -484,7 +484,7 @@ export default function Tickets() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowPrivateTasks(!showPrivateTasks)}
-                className={`h-8 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
+                className={`h-10 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
                   showPrivateTasks 
                     ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
                     : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
@@ -497,7 +497,7 @@ export default function Tickets() {
                 variant="default"
                 size="sm"
                 onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
-                className={`rounded-full w-8 h-8 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
+                className={`rounded-full w-10 h-10 p-0 flex items-center justify-center text-xs font-medium self-center transition-all duration-200 ${
                   showOnlyMyTasks 
                     ? 'shadow-lg ring-2 ring-offset-1' 
                     : 'shadow-sm hover:shadow-md'
