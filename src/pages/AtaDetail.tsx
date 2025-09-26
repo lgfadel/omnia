@@ -215,7 +215,12 @@ const AtaDetail = () => {
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="anexos">
-              Anexos ({ata.attachments?.length || 0})
+              Anexos ({(() => {
+                const directAttachments = ata.attachments?.length || 0;
+                const commentAttachments = ata.comments?.reduce((total, comment) => 
+                  total + (comment.attachments?.length || 0), 0) || 0;
+                return directAttachments + commentAttachments;
+              })()})
             </TabsTrigger>
           </TabsList>
 

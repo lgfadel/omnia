@@ -158,7 +158,14 @@ export default function TicketDetail() {
         <Tabs defaultValue="resumo" className="space-y-6">
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            <TabsTrigger value="anexos">Anexos ({ticket.attachments?.length || 0})</TabsTrigger>
+            <TabsTrigger value="anexos">
+              Anexos ({(() => {
+                const directAttachments = ticket.attachments?.length || 0;
+                const commentAttachments = ticket.comments?.reduce((total, comment) => 
+                  total + (comment.attachments?.length || 0), 0) || 0;
+                return directAttachments + commentAttachments;
+              })()})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="resumo">

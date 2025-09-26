@@ -18,13 +18,13 @@ import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
 const columns = [
-  { key: "title", label: "Título", width: "48" },
-  { key: "meetingDate", label: "Data Assembleia", width: "24" },
-  { key: "responsible", label: "Responsável", width: "24" },
-  { key: "secretary", label: "Secretário", width: "24" },
-  { key: "status", label: "Status", width: "20" },
-  { key: "ticket", label: "Ticket", width: "20" },
-  { key: "commentCount", label: "Comentários", width: "16" }
+  { key: "title", label: "Título", width: "100" },
+  { key: "meetingDate", label: "Data Assembleia", width: "15" },
+  { key: "responsible", label: "Responsável", width: "12" },
+  { key: "secretary", label: "Secretário", width: "12" },
+  { key: "status", label: "Status", width: "15" },
+  { key: "ticket", label: "Ticket", width: "12" },
+  { key: "commentCount", label: "Comentários", width: "10" }
 ]
 
 const Atas = () => {
