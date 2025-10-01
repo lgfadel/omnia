@@ -50,9 +50,11 @@ interface TabelaOmniaProps {
   onSecretaryChange?: (id: string | number, userId: string) => void
   onDueDateClick?: (id: string | number, currentDate?: Date) => void
   onPriorityClick?: (id: string | number, currentPriority?: string) => void
+  onTagClick?: (tagName: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
   availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
   availableSecretaries?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
+  availableTags?: Array<{ id: string; name: string; color: string }>
   sortField?: string
   sortDirection?: "asc" | "desc"
   onSort?: (field: string) => void
@@ -73,9 +75,11 @@ export function TabelaOmnia({
   onSecretaryChange,
   onDueDateClick,
   onPriorityClick,
+  onTagClick,
   availableStatuses = [],
   availableUsers = [],
   availableSecretaries = [],
+  availableTags = [],
   sortField, 
   sortDirection,
   onSort,
@@ -637,9 +641,43 @@ export function TabelaOmnia({
     
     // Handle title column
     if (key === "title" && row) {
+      const taskTags = row.tags || []
+      const visibleTags = taskTags.slice(0, 2)
+      const remainingCount = taskTags.length - visibleTags.length
+      
       return (
         <div className="flex items-center gap-2">
           <span className="truncate">{value?.toString() || "-"}</span>
+          {taskTags.length > 0 && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {visibleTags.map((tagName: string) => {
+                const tagInfo = availableTags.find(t => t.name === tagName)
+                return (
+                  <Badge
+                    key={tagName}
+                    variant="secondary"
+                    className="text-[10px] px-1 py-0.5 h-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{
+                      backgroundColor: tagInfo?.color ? `${tagInfo.color}20` : undefined,
+                      borderColor: tagInfo?.color || undefined,
+                      color: tagInfo?.color || undefined
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTagClick?.(tagName);
+                    }}
+                  >
+                    {tagName}
+                  </Badge>
+                )
+              })}
+              {remainingCount > 0 && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0.5 h-4">
+                  +{remainingCount}
+                </Badge>
+              )}
+            </div>
+          )}
           {row.isPrivate && (
             <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
           )}

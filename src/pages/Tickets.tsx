@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
 import { useSecretariosStore } from '@/store/secretarios.store';
+import { useTagsStore } from '@/store/tags.store';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,6 +42,7 @@ export default function Tickets() {
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(true);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const [dueDateModalOpen, setDueDateModalOpen] = useState(false);
   const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
@@ -66,12 +68,17 @@ export default function Tickets() {
     secretarios, 
     loadSecretarios 
   } = useSecretariosStore();
+  const { 
+    tags, 
+    loadTags 
+  } = useTagsStore();
 
   useEffect(() => {
     loadTarefas();
     loadStatuses();
     loadSecretarios();
-  }, [loadTarefas, loadStatuses, loadSecretarios]);
+    loadTags();
+  }, [loadTarefas, loadStatuses, loadSecretarios, loadTags]);
 
 
   // Set up real-time listener
@@ -160,8 +167,15 @@ export default function Tickets() {
       filtered = filtered.filter(task => task.isPrivate === true);
     }
 
+    // Apply tag filter
+    if (selectedTagFilter) {
+      filtered = filtered.filter(task => 
+        task.tags && task.tags.includes(selectedTagFilter)
+      );
+    }
+
     setFilteredTickets(filtered);
-  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, statuses]);
+  }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, selectedTagFilter, statuses]);
 
   const handleView = (id: string | number) => {
     navigate(`/tarefas/${id}`);
@@ -243,6 +257,10 @@ export default function Tickets() {
       });
       setPriorityModalOpen(true);
     }
+  };
+
+  const handleTagClick = (tagName: string) => {
+    setSelectedTagFilter(selectedTagFilter === tagName ? null : tagName);
   };
 
   const handlePrioritySave = async (newPriority: TarefaPrioridade) => {
@@ -540,6 +558,26 @@ export default function Tickets() {
               </Button>
             </div>
           </div>
+          
+          {/* Indicador de filtro por tag ativo */}
+          {selectedTagFilter && (
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-sm text-gray-600">Filtrando por tag:</span>
+              <Badge
+                variant="secondary"
+                className="text-xs px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity"
+                style={{
+                  backgroundColor: tags.find(tag => tag.name === selectedTagFilter)?.color ? 
+                    `${tags.find(tag => tag.name === selectedTagFilter)?.color}20` : undefined,
+                  borderColor: tags.find(tag => tag.name === selectedTagFilter)?.color || undefined,
+                  color: tags.find(tag => tag.name === selectedTagFilter)?.color || undefined
+                }}
+                onClick={() => setSelectedTagFilter(null)}
+              >
+                {selectedTagFilter} ✕
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border overflow-hidden">
@@ -558,8 +596,10 @@ export default function Tickets() {
               onResponsibleChange={handleResponsibleChange}
               onDueDateClick={handleDueDateClick}
               onPriorityClick={handlePriorityClick}
+              onTagClick={handleTagClick}
               availableStatuses={statuses}
               availableUsers={secretarios}
+              availableTags={tags}
               grouped={true}
             />
           )}

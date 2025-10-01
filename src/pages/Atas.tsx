@@ -12,6 +12,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useSecretariosStore } from "@/store/secretarios.store"
+import { useTagsStore } from "@/store/tags.store"
 import { useAuth } from '@/components/auth/AuthProvider'
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { supabase } from "@/integrations/supabase/client"
@@ -31,6 +32,7 @@ const Atas = () => {
   const navigate = useNavigate()
   const { atas, statuses, loading, loadAtas, loadStatuses, deleteAta, updateAta } = useAtasStore()
   const { secretarios, loadSecretarios } = useSecretariosStore()
+  const { tags, loadTags } = useTagsStore()
   const { userProfile } = useAuth()
   const { toast } = useToast()
   
@@ -42,7 +44,8 @@ const Atas = () => {
   useEffect(() => {
     loadStatuses()
     loadAtas()
-  }, [loadAtas, loadStatuses])
+    loadTags()
+  }, [loadAtas, loadStatuses, loadTags])
 
   useEffect(() => {
     loadAtas(search, statusFilter)
@@ -397,6 +400,7 @@ const Atas = () => {
               availableStatuses={statuses}
               availableUsers={availableUsers}
               availableSecretaries={availableSecretarios}
+              availableTags={tags}
               grouped={true}
               contextType="ata"
               updatingSecretaryId={updatingSecretaryId}
