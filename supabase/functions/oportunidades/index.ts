@@ -34,7 +34,7 @@ interface OportunidadeData {
 }
 
 // Função para validar dados de entrada
-function validateOportunidadeData(data: any): { isValid: boolean; errors: string[] } {
+function validateOportunidadeData(data: Record<string, unknown>): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
   
   // Validações obrigatórias
@@ -79,8 +79,19 @@ function validateOportunidadeData(data: any): { isValid: boolean; errors: string
   }
 }
 
+// Interface para o cliente Supabase
+interface SupabaseClient {
+  from: (table: string) => {
+    select: (columns?: string) => {
+      eq: (column: string, value: string) => {
+        single: () => Promise<{ data: any; error: any }>
+      }
+    }
+  }
+}
+
 // Função para resolver status ID (converte nome para UUID se necessário)
-async function resolveStatusId(statusInput: string, supabaseClient: any): Promise<string | null> {
+async function resolveStatusId(statusInput: string, supabaseClient: SupabaseClient): Promise<string | null> {
   try {
     // Verificar se já é um UUID válido
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -145,7 +156,7 @@ async function checkApiPermissions(authHeader: string): Promise<{ authorized: bo
 }
 
 // Função para tratar erros de forma padronizada
-function handleError(error: any, operation: string): Response {
+function handleError(error: Error & { code?: string }, operation: string): Response {
   console.error(`Error in ${operation}:`, error)
   
   let statusCode = 500
@@ -341,7 +352,7 @@ serve(async (req) => {
         }
 
         // Preparar dados para inserção
-        const oportunidadeData: any = {
+        const oportunidadeData: Partial<OportunidadeData> & { status: string } = {
           cliente: body.cliente.trim(),
           status: statusId,
           assigned_to: body.assigned_to
@@ -430,7 +441,7 @@ serve(async (req) => {
         }
 
         // Preparar dados para atualização
-        const updateData: any = {}
+        const updateData: Partial<OportunidadeData> = {}
         
         const allowedFields = [
           'cliente', 'numero_unidades', 'numero_funcionarios_proprios', 'numero_funcionarios_terceirizados',
