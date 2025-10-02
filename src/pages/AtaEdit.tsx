@@ -4,8 +4,6 @@ import { AtaForm } from "@/components/atas/AtaForm"
 import { Button } from "@/components/ui/button"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
-import { logger } from '../lib/logging';
-
 
 import { useEffect, useState, useCallback } from "react"
 import { Ata } from "@/data/types"
@@ -68,7 +66,7 @@ const AtaEdit = () => {
 
       navigate(`/atas/${id}`)
     } catch (error) {
-      logger.error('Erro ao atualizar ata:', error)
+      console.error('Erro ao atualizar ata:', error)
     }
   }
 

@@ -262,7 +262,7 @@ export const atasRepoSupabase = {
       .maybeSingle()
 
     if (error) {
-      logger.error('AtasRepo: Error getting ata:', error)
+      console.error('AtasRepo: Error getting ata:', error)
       throw error
     }
 
@@ -335,7 +335,7 @@ export const atasRepoSupabase = {
         .single();
       
       if (createUserError) {
-        logger.error('Error creating omnia_user:', createUserError);
+        console.error('Error creating omnia_user:', createUserError);
         throw new Error('Erro ao criar perfil do usuário');
       }
       
@@ -407,7 +407,7 @@ export const atasRepoSupabase = {
       .maybeSingle()
 
     if (error) {
-      logger.error('AtasRepo: Error updating ata:', error)
+      console.error('AtasRepo: Error updating ata:', error)
       throw error
     }
 
@@ -440,7 +440,7 @@ export const atasRepoSupabase = {
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()
     if (!user.user) {
-      logger.error('AtasRepo: No authenticated user')
+      console.error('AtasRepo: No authenticated user')
       return null
     }
 
@@ -451,11 +451,11 @@ export const atasRepoSupabase = {
       .single()
 
     if (!omniaUser) {
-      logger.error('AtasRepo: Omnia user not found')
+      console.error('AtasRepo: Omnia user not found')
       return null
     }
 
-    logger.debug('AtasRepo: Creating comment with data:', {
+    console.log('AtasRepo: Creating comment with data:', {
       ata_id: ataId,
       author_id: omniaUser.id,
       body: comment.body,
@@ -478,16 +478,16 @@ export const atasRepoSupabase = {
       .single()
 
     if (error) {
-      logger.error('AtasRepo: Error creating comment:', error)
+      console.error('AtasRepo: Error creating comment:', error)
       throw error
     }
 
-    logger.debug('AtasRepo: Comment created successfully:', newComment)
+    console.log('AtasRepo: Comment created successfully:', newComment)
 
     // Save attachments if any
     let savedAttachments: Attachment[] = []
     if (comment.attachments && comment.attachments.length > 0) {
-      logger.debug('AtasRepo: Saving attachments:', comment.attachments)
+      console.log('AtasRepo: Saving attachments:', comment.attachments)
       
       const attachmentsToInsert = comment.attachments.map(att => ({
         ata_id: ataId,
@@ -499,7 +499,7 @@ export const atasRepoSupabase = {
         uploaded_by: user.user.id
       }))
 
-      logger.debug('AtasRepo: Inserting attachments:', attachmentsToInsert)
+      console.log('AtasRepo: Inserting attachments:', attachmentsToInsert)
 
       const { data: insertedAttachments, error: attachError } = await supabaseUntyped
         .from('omnia_attachments')
@@ -507,9 +507,9 @@ export const atasRepoSupabase = {
         .select('*')
 
       if (attachError) {
-        logger.error('AtasRepo: Error saving attachments:', attachError)
+        console.error('AtasRepo: Error saving attachments:', attachError)
       } else {
-        logger.debug('AtasRepo: Attachments saved successfully:', insertedAttachments)
+        console.log('AtasRepo: Attachments saved successfully:', insertedAttachments)
         savedAttachments = insertedAttachments?.map(att => ({
           id: att.id,
           name: att.name,

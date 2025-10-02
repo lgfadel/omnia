@@ -3,8 +3,6 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { AtaForm } from "@/components/atas/AtaForm"
 import { useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
-import { logger } from '../lib/logging';
-
 
 import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -58,7 +56,7 @@ const AtaNew = () => {
 
       navigate('/atas')
     } catch (error) {
-      logger.error('Erro ao criar ata:', error)
+      console.error('Erro ao criar ata:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('create', 'ata', 'omnia_atas')

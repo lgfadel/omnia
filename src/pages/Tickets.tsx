@@ -115,7 +115,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          logger.debug('Nova tarefa criada:', payload);
+          console.log('Nova tarefa criada:', payload);
           loadTarefas();
         }
       )
@@ -127,7 +127,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          logger.debug('Tarefa atualizada:', payload);
+          console.log('Tarefa atualizada:', payload);
           loadTarefas();
         }
       )
@@ -139,7 +139,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          logger.debug('Tarefa excluída:', payload);
+          console.log('Tarefa excluída:', payload);
           loadTarefas();
         }
       )
@@ -224,7 +224,7 @@ export default function Tickets() {
       await updateTarefa(id.toString(), { statusId });
       loadTarefas();
     } catch (error) {
-      logger.error('Erro ao atualizar status:', error);
+      console.error('Erro ao atualizar status:', error);
     }
   };
 
@@ -265,7 +265,7 @@ export default function Tickets() {
       await updateTarefa(selectedTaskForDueDate.id, { dueDate: newDate });
       loadTarefas();
     } catch (error) {
-      logger.error('Erro ao atualizar data de vencimento:', error);
+      console.error('Erro ao atualizar data de vencimento:', error);
     }
   };
 
@@ -290,7 +290,7 @@ export default function Tickets() {
       await updateTarefa(selectedTaskForPriority.id, { priority: newPriority });
       loadTarefas();
     } catch (error) {
-      logger.error('Erro ao atualizar prioridade:', error);
+      console.error('Erro ao atualizar prioridade:', error);
     }
   };
 

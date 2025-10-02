@@ -153,7 +153,7 @@ if (typeof window !== 'undefined') {
   (window as any).updateAllTagColors = updateAllTagColors;
   (window as any).checkForDuplicateColors = checkForDuplicateColors;
   
-  logger.debug('🎨 Script de atualização de cores das tags carregado!');
-  logger.debug('Execute: updateAllTagColors() para atualizar todas as tags');
-  logger.debug('Execute: checkForDuplicateColors() para verificar duplicatas');
+  console.log('🎨 Script de atualização de cores das tags carregado!');
+  console.log('Execute: updateAllTagColors() para atualizar todas as tags');
+  console.log('Execute: checkForDuplicateColors() para verificar duplicatas');
 }
