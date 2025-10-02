@@ -44,7 +44,7 @@ export const useCrmCommentsStore = create<CrmCommentsState>((set, get) => ({
       })
       
       set(state => ({
-        comments: [...state.comments, newComment]
+        comments: [newComment, ...state.comments]
       }))
       
       return newComment
