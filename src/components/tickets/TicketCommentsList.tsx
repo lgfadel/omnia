@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,7 +57,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
   const [editBody, setEditBody] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       setLoading(true);
       const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
@@ -110,13 +110,13 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId, contextType]);
 
   useEffect(() => {
     if (ticketId) {
       loadComments();
     }
-  }, [ticketId]);
+  }, [ticketId, loadComments]);
 
   const handleDeleteComment = async (commentId: string) => {
     try {

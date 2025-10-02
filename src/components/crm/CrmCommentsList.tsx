@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,7 +55,7 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
   const [editBody, setEditBody] = useState('');
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       setLoading(true);
       const commentsData = await crmCommentsRepoSupabase.getByLeadId(leadId);
@@ -107,13 +107,13 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
     } finally {
       setLoading(false);
     }
-  };
+  }, [leadId]);
 
   useEffect(() => {
     if (leadId) {
       loadComments();
     }
-  }, [leadId]);
+  }, [leadId, loadComments]);
 
   const handleDeleteComment = async (commentId: string) => {
     try {

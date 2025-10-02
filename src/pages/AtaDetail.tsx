@@ -15,7 +15,7 @@ import { Edit, FileDown, Archive, Clock, ChevronDown } from "lucide-react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Ata } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
@@ -34,22 +34,22 @@ const AtaDetail = () => {
   // Hook para fechar AlertDialog com ESC
   useEscapeKeyForAlert(() => setAttachmentToDelete(null), !!attachmentToDelete)
 
-  useEffect(() => {
-    loadStatuses()
-    loadTags()
-    if (id) {
-      loadAta()
-    }
-  }, [id, loadStatuses, loadTags])
-
-  const loadAta = async () => {
+  const loadAta = useCallback(async () => {
     if (!id) return
     
     setLoading(true)
     const ataData = await getAtaById(id)
     setAta(ataData)
     setLoading(false)
-  }
+  }, [id, getAtaById])
+
+  useEffect(() => {
+    loadStatuses()
+    loadTags()
+    if (id) {
+      loadAta()
+    }
+  }, [id, loadStatuses, loadTags, loadAta])
 
   const handleAddComment = async (body: string, attachments?: any[]) => {
     if (!id) return

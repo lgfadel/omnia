@@ -50,12 +50,7 @@ export function useMenuItems(): MenuItemsData {
   const isLoading = menuLoading || permissionsLoading
   const error = menuError || permissionsError
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    loadInitialData()
-  }, [])
-
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       await Promise.all([
         loadMenuItems(),
@@ -64,7 +59,12 @@ export function useMenuItems(): MenuItemsData {
     } catch (error) {
       console.error('Erro ao carregar itens de menu:', error)
     }
-  }
+  }, [loadMenuItems, loadRootItems])
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadInitialData()
+  }, [loadInitialData])
 
   // Filtrar itens raiz acessíveis quando os dados mudarem
   useEffect(() => {
@@ -73,7 +73,7 @@ export function useMenuItems(): MenuItemsData {
       const filteredRootItems = rootMenuItems.filter(item => accessibleIds.has(item.id))
       setAccessibleRootItems(filteredRootItems)
     }
-  }, [rootMenuItems, accessibleMenuItems])
+  }, [rootMenuItems, accessibleMenuItems, setAccessibleRootItems])
 
   // Função para obter filhos de um item
   const getChildren = useCallback(async (parentId: string): Promise<MenuItem[]> => {
@@ -195,7 +195,7 @@ export function useMenuItems(): MenuItemsData {
   const refresh = useCallback(async () => {
     clearError()
     await loadInitialData()
-  }, [clearError, loadMenuItems, loadRootItems])
+  }, [clearError, loadInitialData])
 
   return {
     allMenuItems,

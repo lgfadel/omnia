@@ -35,14 +35,7 @@ export function usePermissions(): PermissionsData {
   const [permissionsCache, setPermissionsCache] = useState<Record<string, boolean>>({})
   const [pathPermissionsCache, setPathPermissionsCache] = useState<Record<string, boolean>>({})
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    if (user) {
-      loadInitialData()
-    }
-  }, [user])
-
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       await Promise.all([
         loadCurrentUserPermissions(),
@@ -51,7 +44,14 @@ export function usePermissions(): PermissionsData {
     } catch (error) {
       console.error('Erro ao carregar dados de permissões:', error)
     }
-  }
+  }, [loadCurrentUserPermissions, loadUserAccessibleMenuItems])
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    if (user) {
+      loadInitialData()
+    }
+  }, [user, loadInitialData])
 
   // Função para verificar permissão por ID do menu item (com cache)
   const canAccess = useCallback(async (menuItemId: string): Promise<boolean> => {
@@ -134,7 +134,7 @@ export function usePermissions(): PermissionsData {
     
     // Recarregar dados
     await loadInitialData()
-  }, [clearError, loadCurrentUserPermissions, loadUserAccessibleMenuItems])
+  }, [clearError, loadInitialData])
 
   // Limpar cache quando as permissões mudarem
   useEffect(() => {

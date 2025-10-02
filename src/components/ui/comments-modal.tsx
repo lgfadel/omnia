@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
   // Hook para fechar modal com ESC
   useEscapeKey(onClose, isOpen);
 
-  const loadCommentsCount = async () => {
+  const loadCommentsCount = useCallback(async () => {
     if (!ticketId) return;
     
     try {
@@ -38,13 +38,13 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
     } catch (error) {
       console.error('Erro ao carregar contagem de comentários:', error);
     }
-  };
+  }, [ticketId, contextType]);
 
   useEffect(() => {
     if (isOpen && ticketId) {
       loadCommentsCount();
     }
-  }, [isOpen, ticketId, refreshKey]);
+  }, [isOpen, ticketId, refreshKey, loadCommentsCount]);
 
   const handleCommentsChange = async () => {
     setRefreshKey(prev => prev + 1);

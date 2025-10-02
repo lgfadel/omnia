@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -64,7 +64,7 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
     }
   }
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData.items)
     
     for (const item of items) {
@@ -93,7 +93,7 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
         }
       }
     }
-  }
+  }, [uploadFile])
 
   // Focus management for paste events
   useEffect(() => {
@@ -117,7 +117,7 @@ export function CommentInput({ onSubmit, loading }: CommentInputProps) {
       document.addEventListener('paste', handleGlobalPaste)
       return () => document.removeEventListener('paste', handleGlobalPaste)
     }
-  }, [])
+  }, [handlePaste])
 
   return (
     <div className="flex gap-3">

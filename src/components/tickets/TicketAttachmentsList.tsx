@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, Download, Eye } from 'lucide-react';
@@ -19,7 +19,7 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const loadAttachments = async () => {
+  const loadAttachments = useCallback(async () => {
     try {
       setLoading(true);
       const attachmentsData = await ticketAttachmentsRepoSupabase.list(ticketId);
@@ -30,13 +30,13 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId]);
 
   useEffect(() => {
     if (ticketId) {
       loadAttachments();
     }
-  }, [ticketId]);
+  }, [ticketId, loadAttachments]);
 
   const handleDeleteAttachment = async (attachmentId: string) => {
     try {

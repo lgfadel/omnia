@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,13 +54,7 @@ export function CrmLeadDetail() {
   const [lead, setLead] = useState<CrmLead | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (id) {
-      loadLead();
-    }
-  }, [id, refreshKey]);
-
-  const loadLead = async () => {
+  const loadLead = useCallback(async () => {
     if (!id) return;
     
     try {
@@ -83,7 +77,13 @@ export function CrmLeadDetail() {
       console.error('Erro ao carregar lead:', error);
       toast.error('Erro ao carregar lead');
     }
-  };
+  }, [id, leads, fetchLeads, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      loadLead();
+    }
+  }, [id, refreshKey, loadLead]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);

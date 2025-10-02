@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TarefaOportunidade {
@@ -41,7 +41,7 @@ export function useTarefasOportunidade(oportunidadeId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTarefas = async () => {
+  const fetchTarefas = useCallback(async () => {
     if (!oportunidadeId) return;
     
     setLoading(true);
@@ -170,13 +170,13 @@ export function useTarefasOportunidade(oportunidadeId: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [oportunidadeId]);
 
   useEffect(() => {
     if (oportunidadeId) {
       fetchTarefas();
     }
-  }, [oportunidadeId]);
+  }, [oportunidadeId, fetchTarefas]);
 
   return {
     tarefas,

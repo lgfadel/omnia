@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Ata } from "@/data/types"
 
 const AtaEdit = () => {
@@ -16,21 +16,21 @@ const AtaEdit = () => {
   const [ata, setAta] = useState<Ata | null>(null)
   const [loadingAta, setLoadingAta] = useState(true)
 
-  useEffect(() => {
-    loadStatuses()
-    if (id) {
-      loadAta()
-    }
-  }, [id, loadStatuses])
-
-  const loadAta = async () => {
+  const loadAta = useCallback(async () => {
     if (!id) return
     
     setLoadingAta(true)
     const ataData = await getAtaById(id)
     setAta(ataData)
     setLoadingAta(false)
-  }
+  }, [id, getAtaById])
+
+  useEffect(() => {
+    loadStatuses()
+    if (id) {
+      loadAta()
+    }
+  }, [id, loadStatuses, loadAta])
 
   const handleSubmit = async (data: any) => {
     if (!id) return

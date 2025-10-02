@@ -38,7 +38,7 @@ export default function TicketDetail() {
   useEffect(() => {
     loadStatuses();
     loadTags();
-  }, [loadStatuses]);
+  }, [loadStatuses, loadTags]);
 
   useEffect(() => {
     const loadTicket = async () => {

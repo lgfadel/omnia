@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAtasStore } from '@/store/atas.store'
 import { useTarefasStore } from '@/store/tarefas.store'
 import { calculateAtasMetrics, calculateTarefasMetrics, type AtasMetrics, type TarefasMetrics } from '@/utils/dashboardCalculations'
@@ -50,7 +50,7 @@ export function useDashboardData() {
   } = useTarefasStore()
 
   // Função para carregar todos os dados necessários
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setDashboardData(prev => ({ ...prev, loading: true, error: null }))
       
@@ -68,10 +68,10 @@ export function useDashboardData() {
         error: 'Erro ao carregar dados do dashboard'
       }))
     }
-  }
+  }, [loadAtas, loadStatuses, loadTarefas, setDashboardData])
 
   // Função para calcular métricas quando os dados estão disponíveis
-  const calculateMetrics = () => {
+  const calculateMetrics = useCallback(() => {
     if (atas.length === 0 && tarefas.length === 0) {
       return // Ainda carregando dados
     }
@@ -96,19 +96,19 @@ export function useDashboardData() {
         error: 'Erro ao calcular métricas do dashboard'
       }))
     }
-  }
+  }, [atas, tarefas, atasStatuses, setDashboardData])
 
   // Carregar dados iniciais
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [loadDashboardData])
 
   // Recalcular métricas quando os dados mudarem
   useEffect(() => {
     if (!atasLoading && !tarefasLoading) {
       calculateMetrics()
     }
-  }, [atas, tarefas, atasStatuses, atasLoading, tarefasLoading])
+  }, [atas, tarefas, atasStatuses, atasLoading, tarefasLoading, calculateMetrics])
 
   // Verificar erros dos stores
   useEffect(() => {
