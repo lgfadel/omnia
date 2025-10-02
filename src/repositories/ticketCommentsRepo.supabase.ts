@@ -13,7 +13,7 @@ export interface TicketComment {
 
 export const ticketCommentsRepoSupabase = {
   async list(ticketId: string): Promise<TicketComment[]> {
-    logger.debug('Loading ticket comments from database...', ticketId)
+    logger.debug(`Loading ticket comments from database: ${ticketId}`)
     
     const { data, error } = await supabase
       .from('omnia_ticket_comments' as any)
@@ -64,7 +64,7 @@ export const ticketCommentsRepoSupabase = {
   },
 
   async update(id: string, body: string): Promise<TicketComment | null> {
-    logger.debug('Updating ticket comment:', id, body)
+    logger.debug(`Updating ticket comment: ${id}`, body)
     
     const { data, error } = await supabase
       .from('omnia_ticket_comments' as any)
@@ -82,7 +82,7 @@ export const ticketCommentsRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    logger.debug('Deleting ticket comment:', id)
+    logger.debug(`Deleting ticket comment: ${id}`)
     
     const { error } = await supabase
       .from('omnia_ticket_comments' as any)

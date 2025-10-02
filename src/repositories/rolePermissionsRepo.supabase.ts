@@ -124,7 +124,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async getByRoleAndMenuItem(roleName: RoleName, menuItemId: string): Promise<RolePermission | null> {
-    logger.debug('Loading role permission by role and menu item:', roleName, menuItemId)
+    logger.debug(`Loading role permission by role and menu item: ${roleName}`, menuItemId)
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -245,7 +245,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async update(id: string, data: UpdateRolePermissionData): Promise<RolePermission | null> {
-    logger.debug('Updating role permission:', id, data)
+    logger.debug(`Updating role permission: ${id}`, data)
     
     const updateData: any = {}
     
@@ -277,7 +277,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async updateByRoleAndMenuItem(roleName: RoleName, menuItemId: string, canAccess: boolean): Promise<RolePermission | null> {
-    logger.debug('Updating role permission by role and menu item:', roleName, menuItemId, canAccess)
+    logger.debug(`Updating role permission by role and menu item: ${roleName}`, { menuItemId, canAccess })
     
     const { data: updatedPermission, error } = await supabase
       .from('omnia_role_permissions')
@@ -323,7 +323,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async removeByRoleAndMenuItem(roleName: RoleName, menuItemId: string): Promise<boolean> {
-    logger.debug('Removing role permission by role and menu item:', roleName, menuItemId)
+    logger.debug(`Removing role permission by role and menu item: ${roleName}`, menuItemId)
     
     const { error } = await supabase
       .from('omnia_role_permissions')
@@ -341,7 +341,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async bulkUpdateRolePermissions(roleName: RoleName, permissions: Array<{ menuItemId: string; canAccess: boolean }>): Promise<void> {
-    logger.debug('Bulk updating role permissions:', roleName, permissions)
+    logger.debug(`Bulk updating role permissions: ${roleName}`, permissions)
     
     // Use a transaction to update multiple permissions
     for (const permission of permissions) {

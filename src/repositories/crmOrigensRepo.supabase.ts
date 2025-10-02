@@ -59,7 +59,7 @@ export const crmOrigensRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<CrmOrigem, 'id'>>): Promise<CrmOrigem | null> {
-    logger.debug('Updating CRM origem:', id, data)
+    logger.debug(`Updating CRM origem: ${id}`, data)
     
     const updateData: any = {}
     
@@ -85,7 +85,7 @@ export const crmOrigensRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    logger.debug('Removing CRM origem:', id)
+    logger.debug(`Removing CRM origem: ${id}`)
     
     const { error } = await supabase
       .from('omnia_crm_origens' as any)
@@ -97,7 +97,7 @@ export const crmOrigensRepoSupabase = {
       throw error
     }
 
-    logger.debug('Removed CRM origem:', id)
+    logger.debug(`Removed CRM origem: ${id}`)
     return true
   },
 

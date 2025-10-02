@@ -123,7 +123,7 @@ export const secretariosRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
-    logger.debug('SecretariosRepo: Updating user:', id, data)
+    logger.debug(`SecretariosRepo: Updating user: ${id}`, data)
     
     const updateData: any = {}
     if (data.name !== undefined) updateData.name = data.name

@@ -199,7 +199,7 @@ export const menuItemsRepoSupabase = {
   },
 
   async update(id: string, data: UpdateMenuItemData): Promise<MenuItem | null> {
-    logger.debug('Updating menu item:', id, data)
+    logger.debug(`Updating menu item: ${id}`, data)
     
     const updateData: any = {}
     

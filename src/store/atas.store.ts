@@ -33,7 +33,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   error: null,
 
   loadAtas: async (search?: string, statusFilter?: string[]) => {
-    logger.debug('AtasStore: Loading atas with search:', search, 'statusFilter:', statusFilter)
+    logger.debug(`AtasStore: Loading atas with search: ${search}, statusFilter: ${statusFilter}`)
     set({ loading: true, error: null })
     
     try {
@@ -93,7 +93,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   },
 
   updateAta: async (id: string, data) => {
-    logger.debug('AtasStore: Updating ata:', id, data)
+    logger.debug(`AtasStore: Updating ata: ${id}`, data)
     set({ loading: true, error: null })
     
     try {
@@ -132,7 +132,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   },
 
   addComment: async (ataId: string, comment) => {
-    logger.debug('AtasStore: Adding comment to ata:', ataId, comment)
+    logger.debug(`AtasStore: Adding comment to ata: ${ataId}`, comment)
     
     try {
       const newComment = await atasRepoSupabase.addComment(ataId, comment)
@@ -161,7 +161,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   },
 
   updateComment: async (ataId: string, commentId: string, body: string) => {
-    logger.debug('AtasStore: Updating comment:', commentId, 'in ata:', ataId)
+    logger.debug(`AtasStore: Updating comment: ${commentId} in ata: ${ataId}`)
     
     try {
       const updatedComment = await atasRepoSupabase.updateComment(commentId, body)
@@ -191,7 +191,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   },
 
   removeComment: async (ataId: string, commentId: string) => {
-    logger.debug('AtasStore: Removing comment:', commentId, 'from ata:', ataId)
+    logger.debug(`AtasStore: Removing comment: ${commentId} from ata: ${ataId}`)
     
     try {
       const success = await atasRepoSupabase.removeComment(commentId)
@@ -220,7 +220,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   },
 
   addAttachment: async (ataId: string, attachment) => {
-    logger.debug('AtasStore: Adding attachment to ata:', ataId, attachment)
+    logger.debug(`AtasStore: Adding attachment to ata: ${ataId}`, attachment)
     
     try {
       const newAttachment = await atasRepoSupabase.addAttachment(ataId, attachment)

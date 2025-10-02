@@ -65,7 +65,7 @@ export const statusRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
-    logger.debug('Updating status:', id, data)
+    logger.debug(`Updating status: ${id}`, data)
     
     const updateData: any = {}
     
@@ -92,7 +92,7 @@ export const statusRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    logger.debug('Removing status:', id)
+    logger.debug(`Removing status: ${id}`)
     
     const { error } = await supabase
       .from('omnia_statuses' as any)

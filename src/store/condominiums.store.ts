@@ -65,7 +65,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   },
 
   updateCondominium: async (id: string, data) => {
-    logger.debug('CondominiumStore: Updating condominium:', id, data)
+    logger.debug(`CondominiumStore: Updating condominium: ${id}`, data)
     set({ loading: true, error: null })
     
     try {

@@ -73,7 +73,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
-    logger.debug('Updating tarefa status:', id, data)
+    logger.debug(`Updating tarefa status: ${id}`, data)
     
     const updateData: any = {};
     
@@ -98,7 +98,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    logger.debug('Removing tarefa status:', id)
+    logger.debug(`Removing tarefa status: ${id}`)
     
     // Check if it's a default status
     const { data: status } = await supabase

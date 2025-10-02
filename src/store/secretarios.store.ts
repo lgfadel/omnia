@@ -60,7 +60,7 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
   },
 
   updateSecretario: async (id: string, data) => {
-    logger.debug('SecretariosStore: Updating secretario:', id, data)
+    logger.debug(`SecretariosStore: Updating secretario: ${id}`, data)
     set({ loading: true, error: null })
     
     try {

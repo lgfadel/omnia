@@ -18,7 +18,7 @@ export interface CreateAtaComment {
 
 export const ataCommentsRepoSupabase = {
   async list(ataId: string): Promise<AtaComment[]> {
-    logger.debug('Loading ata comments from database...', ataId)
+    logger.debug(`Loading ata comments from database: ${ataId}`)
     
     const { data, error } = await supabase
       .from('omnia_comments' as any)
@@ -35,7 +35,7 @@ export const ataCommentsRepoSupabase = {
   },
 
   async create(comment: CreateAtaComment): Promise<AtaComment> {
-    logger.debug('Creating ata comment...', comment)
+    logger.debug('Creating ata comment:', comment)
     
     // Get current user from auth
     const { data: user, error: userError } = await supabase.auth.getUser()
@@ -81,7 +81,7 @@ export const ataCommentsRepoSupabase = {
   },
 
   async update(id: string, body: string): Promise<AtaComment | null> {
-    logger.debug('Updating ata comment...', { id, body })
+    logger.debug(`Updating ata comment: ${id}`, { body })
     
     const { data, error } = await supabase
       .from('omnia_comments' as any)
@@ -99,7 +99,7 @@ export const ataCommentsRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    logger.debug('Removing ata comment...', id)
+    logger.debug(`Removing ata comment: ${id}`)
     
     const { error } = await supabase
       .from('omnia_comments' as any)

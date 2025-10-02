@@ -57,7 +57,7 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
   },
 
   updateStatus: async (id: string, data) => {
-    logger.debug('StatusStore: Updating status:', id, data)
+    logger.debug(`StatusStore: Updating status: ${id}`, data)
     set({ loading: true, error: null })
     
     try {

@@ -42,7 +42,7 @@ export const tagsRepoSupabase = {
     logger.debug('➕ TagsRepo: Creating tag:', data);
     
     const { data: user } = await supabase.auth.getUser();
-    logger.debug('👤 TagsRepo: Current user:', user?.user?.id);
+    logger.debug(`👤 TagsRepo: Current user: ${user?.user?.id}`);
     
     // Get the omnia_users.id for the current authenticated user
     const { data: omniaUser } = await supabase
@@ -50,7 +50,7 @@ export const tagsRepoSupabase = {
       .select('id')
       .eq('auth_user_id', user?.user?.id)
       .single();
-    
+
     logger.debug('👤 TagsRepo: Omnia user:', omniaUser);
     
     if (!omniaUser) {
@@ -90,7 +90,7 @@ export const tagsRepoSupabase = {
 
   // Update a tag
   async update(id: string, data: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag | null> {
-    logger.debug('Updating tag:', { id, data })
+    logger.debug(`Updating tag: ${id}`, data)
     
     const { data: updatedTag, error } = await supabase
       .from('omnia_tags' as any)
@@ -116,7 +116,7 @@ export const tagsRepoSupabase = {
 
   // Delete a tag
   async remove(id: string): Promise<boolean> {
-    logger.debug('Removing tag:', { id })
+    logger.debug(`Removing tag: ${id}`)
     
     const { error } = await supabase
       .from('omnia_tags' as any)
@@ -137,7 +137,7 @@ export const tagsRepoSupabase = {
       return [];
     }
 
-    logger.debug('Searching tags:', { query })
+    logger.debug(`Searching tags: ${query}`)
 
     const { data, error } = await supabase
       .from('omnia_tags' as any)
@@ -163,7 +163,7 @@ export const tagsRepoSupabase = {
 
   // Get or create a tag by name (for dynamic creation)
   async getOrCreate(name: string, color?: string): Promise<Tag> {
-    logger.debug('🏷️ TagsRepo: Getting or creating tag:', { name, color });
+    logger.debug(`🏷️ TagsRepo: Getting or creating tag: ${name}`, { color });
     
     // First try to find existing tag
     const { data: existingTag, error: findError } = await supabase
@@ -178,7 +178,7 @@ export const tagsRepoSupabase = {
     }
 
     if (existingTag) {
-      logger.debug('✅ TagsRepo: Found existing tag:', { existingTag });
+      logger.debug('✅ TagsRepo: Found existing tag:', existingTag);
       return {
         id: (existingTag as any).id,
         name: (existingTag as any).name,
@@ -195,14 +195,14 @@ export const tagsRepoSupabase = {
       // Get all existing tags to check for color conflicts
       const allTags = await this.list();
       const usedColors = allTags.map(tag => tag.color);
-      logger.debug('🎨 TagsRepo: Used colors:', { usedColors });
+      logger.debug('🎨 TagsRepo: Used colors:', usedColors);
       
       color = generateUniqueTagColor(usedColors);
-      logger.debug('🎨 TagsRepo: Generated color:', { color });
+      logger.debug(`🎨 TagsRepo: Generated color: ${color}`);
     }
 
     // Create new tag
-    logger.debug('➕ TagsRepo: Creating new tag with color:', { color });
+    logger.debug(`➕ TagsRepo: Creating new tag with color: ${color}`);
     return await this.create({ name, color });
   }
 }

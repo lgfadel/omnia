@@ -77,7 +77,7 @@ export const condominiumsRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at'>>): Promise<Condominium | null> {
-    logger.debug('Updating condominium:', id, data)
+    logger.debug(`Updating condominium: ${id}`, data)
     
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')

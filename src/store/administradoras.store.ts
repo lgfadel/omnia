@@ -63,7 +63,7 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
   },
 
   updateAdministradora: async (id: string, data) => {
-    logger.debug('AdministradorasStore: Updating administradora:', id, data)
+    logger.debug(`AdministradorasStore: Updating administradora: ${id}`, data)
     set({ loading: true, error: null })
     
     try {

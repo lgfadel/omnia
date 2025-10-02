@@ -65,7 +65,7 @@ export const crmStatusRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
-    logger.debug('Updating CRM status:', id, data)
+    logger.debug(`Updating CRM status: ${id}`, data)
     
     const updateData: any = {}
     
