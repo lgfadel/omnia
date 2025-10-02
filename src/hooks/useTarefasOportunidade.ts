@@ -31,8 +31,8 @@ interface TicketData {
     id: string;
     name: string;
     email: string;
-    avatar_url: string | null;
-    color: string | null;
+    avatar_url?: string | null;
+    color?: string | null;
   } | null;
 }
 
@@ -48,18 +48,41 @@ export function useTarefasOportunidade(oportunidadeId: string) {
     setError(null);
     
     try {
-      // Buscar tickets sem join para evitar problemas de tipagem
-      const { data: ticketsData, error: ticketsError } = await (supabase as any)
-        .from('omnia_tickets')
-        .select('id, title, due_date, priority, status_id, created_at, assigned_to')
-        .eq('oportunidade_id', oportunidadeId)
-        .order('created_at', { ascending: false });
+      // Buscar tickets - usando fetch direto para evitar problemas de tipo profundo
+      const supabaseUrl = 'https://elmxwvimjxcswjbrzznq.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
+      
+      const { data: session } = await supabase.auth.getSession();
+      const authHeader = session.session?.access_token || supabaseKey;
 
-      if (ticketsError) throw ticketsError;
+      const ticketsResponse = await fetch(
+        `${supabaseUrl}/rest/v1/omnia_tickets?oportunidade_id=eq.${oportunidadeId}&select=id,title,due_date,priority,status_id,created_at,assigned_to&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${authHeader}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!ticketsResponse.ok) {
+        throw new Error('Erro ao buscar tickets');
+      }
+
+      const ticketsData: Array<{
+        id: string;
+        title: string;
+        due_date: string | null;
+        priority: 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
+        status_id: string;
+        created_at: string;
+        assigned_to: string | null;
+      }> = await ticketsResponse.json();
 
       // Buscar usuários separadamente se necessário
-      const userIds = ticketsData?.map(ticket => ticket.assigned_to).filter(Boolean) || [];
-      let usersData: any[] = [];
+      const userIds = ticketsData.map(ticket => ticket.assigned_to).filter((id): id is string => id !== null);
+      const usersData: Array<{ id: string; name: string; email: string; avatar_url?: string | null; color?: string | null }> = [];
       
       if (userIds.length > 0) {
         const { data: users, error: usersError } = await supabase
@@ -68,11 +91,11 @@ export function useTarefasOportunidade(oportunidadeId: string) {
           .in('id', userIds);
         
         if (usersError) throw usersError;
-        usersData = users || [];
+        usersData.push(...(users || []));
       }
 
       // Combinar dados manualmente
-      const data = ticketsData?.map(ticket => ({
+      const data = ticketsData.map(ticket => ({
         ...ticket,
         assigned_to_user: ticket.assigned_to 
           ? usersData.find(user => user.id === ticket.assigned_to)

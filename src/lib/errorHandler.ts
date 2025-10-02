@@ -69,7 +69,7 @@ export interface TreatedError {
  * Trata erros do Supabase e retorna mensagens mais específicas
  */
 export function handleSupabaseError(
-  error: any,
+  error: unknown,
   context?: {
     operation?: 'create' | 'update' | 'delete' | 'read'
     table?: string
@@ -84,9 +84,12 @@ export function handleSupabaseError(
     }
   }
 
+  // Type narrowing para objetos com propriedades de erro
+  const errorObj = error as { code?: string; message?: string; toString?: () => string }
+
   // Se é um erro do Supabase/PostgreSQL
-  if (error.code || error.message) {
-    const errorCode = error.code || extractErrorCode(error.message)
+  if (errorObj.code || errorObj.message) {
+    const errorCode = errorObj.code || extractErrorCode(errorObj.message || '')
     const table = context?.table || extractTableFromError(error)
     
     // Verifica se há mensagem específica para a tabela
@@ -94,7 +97,7 @@ export function handleSupabaseError(
       return {
         message: SPECIFIC_ERROR_MESSAGES[table][errorCode],
         code: errorCode,
-        details: error.message,
+        details: errorObj.message,
         isUserFriendly: true
       }
     }
@@ -104,7 +107,7 @@ export function handleSupabaseError(
       return {
         message: ERROR_MESSAGES[errorCode],
         code: errorCode,
-        details: error.message,
+        details: errorObj.message,
         isUserFriendly: true
       }
     }
@@ -121,15 +124,15 @@ export function handleSupabaseError(
     
     return {
       message: operationMessages[context.operation],
-      details: error.message || error.toString(),
+      details: errorObj.message || (errorObj.toString ? errorObj.toString() : String(error)),
       isUserFriendly: true
     }
   }
 
   // Fallback para erro genérico
   return {
-    message: error.message || 'Ocorreu um erro inesperado',
-    details: error.toString(),
+    message: errorObj.message || 'Ocorreu um erro inesperado',
+    details: errorObj.toString ? errorObj.toString() : String(error),
     isUserFriendly: false
   }
 }
@@ -164,8 +167,9 @@ function extractErrorCode(message: string): string {
 /**
  * Extrai nome da tabela do erro
  */
-function extractTableFromError(error: any): string | null {
-  const message = error.message || error.toString()
+function extractTableFromError(error: unknown): string | null {
+  const errorObj = error as { message?: string; toString?: () => string }
+  const message = errorObj.message || (errorObj.toString ? errorObj.toString() : String(error))
   
   // Procura por nomes de tabela na mensagem (com e sem prefixo omnia_)
   const tableMatch = message.match(/table "((?:omnia_)?\w+)"/)
@@ -187,7 +191,7 @@ function extractTableFromError(error: any): string | null {
  */
 export function useErrorHandler() {
   return {
-    handleError: (error: any, context?: Parameters<typeof handleSupabaseError>[1]) => {
+    handleError: (error: unknown, context?: Parameters<typeof handleSupabaseError>[1]) => {
       const treatedError = handleSupabaseError(error, context)
       console.error('Error handled:', {
         original: error,
