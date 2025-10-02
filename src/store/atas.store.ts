@@ -142,7 +142,7 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           if (ata.id === ataId) {
             return {
               ...ata,
-              comments: [...(ata.comments || []), newComment],
+              comments: [newComment, ...(ata.comments || [])],
               commentCount: (ata.commentCount || 0) + 1,
               updatedAt: new Date().toISOString()
             }
