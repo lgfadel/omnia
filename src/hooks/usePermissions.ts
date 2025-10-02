@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useUserPermissionsStore } from '@/stores/userPermissions.store'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { MenuItem } from '@/repositories/menuItemsRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 export interface PermissionsData {
   canAccess: (menuItemId: string) => Promise<boolean>
@@ -42,7 +44,7 @@ export function usePermissions(): PermissionsData {
         loadUserAccessibleMenuItems()
       ])
     } catch (error) {
-      console.error('Erro ao carregar dados de permissões:', error)
+      logger.error('Erro ao carregar dados de permissões:', error)
     }
   }, [loadCurrentUserPermissions, loadUserAccessibleMenuItems])
 
@@ -71,7 +73,7 @@ export function usePermissions(): PermissionsData {
       
       return hasAccess
     } catch (error) {
-      console.error('Erro ao verificar permissão:', error)
+      logger.error('Erro ao verificar permissão:', error)
       return false
     }
   }, [checkCurrentUserMenuPermission, permissionsCache])
@@ -94,7 +96,7 @@ export function usePermissions(): PermissionsData {
       
       return hasAccess
     } catch (error) {
-      console.error('Erro ao verificar permissão por caminho:', error)
+      logger.error('Erro ao verificar permissão por caminho:', error)
       return false
     }
   }, [checkCurrentUserMenuPermissionByPath, pathPermissionsCache])
@@ -178,7 +180,7 @@ export function useCanAccess(menuItemId: string) {
         const result = await canAccess(menuItemId)
         setCanAccessItem(result)
       } catch (error) {
-        console.error('Erro ao verificar acesso:', error)
+        logger.error('Erro ao verificar acesso:', error)
         setCanAccessItem(false)
       } finally {
         setIsChecking(false)
@@ -219,7 +221,7 @@ export function useCanAccessPath(menuPath: string) {
         const result = await canAccessPath(menuPath)
         setCanAccessRoute(result)
       } catch (error) {
-        console.error('Erro ao verificar acesso ao caminho:', error)
+        logger.error('Erro ao verificar acesso ao caminho:', error)
         setCanAccessRoute(false)
       } finally {
         setIsChecking(false)

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,59 +9,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Palette } from "lucide-react";
 import { Tag } from "@/repositories/tagsRepo.supabase";
+import { generateUniqueTagColor } from "@/utils/tagColors";
+import { useTagsStore } from "@/store/tags.store";
+import { logger } from '../../lib/logging';
+
 
 const tagSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  color: z.string().min(1, "Cor é obrigatória")
+  color: z.string().optional() // Cor agora é opcional pois será gerada automaticamente
 });
 
 type TagFormData = z.infer<typeof tagSchema>;
 
 interface TagFormProps {
   tag?: Tag;
-  onSubmit: (data: TagFormData) => void;
+  onSubmit: (data: TagFormData & { color: string }) => void; // Garantir que cor sempre seja enviada
   onCancel: () => void;
   loading?: boolean;
 }
 
-const PRESET_COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange  
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#06b6d4', // cyan
-  '#3b82f6', // blue
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-  '#6b7280'  // gray
-];
-
 export function TagForm({ tag, onSubmit, onCancel, loading }: TagFormProps) {
-  const [selectedColor, setSelectedColor] = useState(tag?.color || '#6366f1');
+  const [generatedColor, setGeneratedColor] = useState(tag?.color || '');
+  const { tags } = useTagsStore();
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors }
   } = useForm<TagFormData>({
     resolver: zodResolver(tagSchema),
     defaultValues: {
       name: tag?.name || "",
-      color: tag?.color || '#6366f1'
     }
   });
 
-  const handleColorSelect = (color: string) => {
-    setSelectedColor(color);
-    setValue('color', color);
-  };
+  // Gerar cor automática apenas para novas tags (não para edição)
+  useEffect(() => {
+    if (!tag && !generatedColor) {
+      logger.debug('🎨 TagForm: Generating automatic color for new tag...');
+      const usedColors = tags.map(t => t.color);
+      const newColor = generateUniqueTagColor(usedColors);
+      logger.debug('🎨 TagForm: Generated color:', newColor);
+      setGeneratedColor(newColor);
+    }
+  }, [tag, generatedColor, tags]);
 
   const onFormSubmit = (data: TagFormData) => {
+    logger.debug('📝 TagForm: Submitting with data:', { data, color: generatedColor });
     onSubmit({
       ...data,
-      color: selectedColor
+      color: generatedColor
     });
   };
 
@@ -84,41 +81,24 @@ export function TagForm({ tag, onSubmit, onCancel, loading }: TagFormProps) {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Cor *</Label>
-            <div className="flex items-center gap-2 mb-2">
-              <Palette className="w-4 h-4" />
-              <Badge 
-                style={{ backgroundColor: selectedColor, color: 'white' }}
-                className="border-none"
-              >
-                Prévia
-              </Badge>
+          {/* Preview da cor automática */}
+          {generatedColor && (
+            <div className="space-y-2">
+              <Label>Cor da Tag</Label>
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                <Badge 
+                  style={{ backgroundColor: generatedColor, color: 'white' }}
+                  className="border-none"
+                >
+                  {tag ? 'Cor atual' : 'Cor automática'}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {tag ? 'A cor não pode ser alterada' : 'Cor gerada automaticamente'}
+                </span>
+              </div>
             </div>
-            
-            <div className="grid grid-cols-5 gap-2">
-              {PRESET_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-8 h-8 rounded border-2 transition-all ${
-                    selectedColor === color 
-                      ? 'border-foreground scale-110' 
-                      : 'border-muted hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleColorSelect(color)}
-                />
-              ))}
-            </div>
-            
-            <Input
-              type="color"
-              value={selectedColor}
-              onChange={(e) => handleColorSelect(e.target.value)}
-              className="w-full h-10"
-            />
-          </div>
+          )}
 
           <div className="flex gap-2 justify-end pt-4">
             <Button 

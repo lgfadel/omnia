@@ -1,4 +1,6 @@
 import { PostgrestError } from '@supabase/supabase-js'
+import { logger } from './logging';
+
 
 /**
  * Mapeia códigos de erro do PostgreSQL para mensagens mais específicas
@@ -193,7 +195,7 @@ export function useErrorHandler() {
   return {
     handleError: (error: unknown, context?: Parameters<typeof handleSupabaseError>[1]) => {
       const treatedError = handleSupabaseError(error, context)
-      console.error('Error handled:', {
+      logger.error('Error handled:', {
         original: error,
         treated: treatedError,
         context

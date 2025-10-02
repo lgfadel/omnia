@@ -14,6 +14,8 @@ import { TarefasOportunidade } from '@/components/TarefasOportunidade';
 import { useCrmLeadsStore } from '@/store/crmLeads.store';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase';
 import { toast } from 'sonner';
+import { logger } from '../lib/logging';
+
 
 // Função para formatar telefone
 const formatPhone = (value: string) => {
@@ -74,7 +76,7 @@ export function CrmLeadDetail() {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar lead:', error);
+      logger.error('Erro ao carregar lead:', error);
       toast.error('Erro ao carregar lead');
     }
   }, [id, leads, fetchLeads, navigate]);

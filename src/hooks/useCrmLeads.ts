@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { crmLeadsRepo } from '@/repositories/crmLeadsRepo.supabase';
 import { CrmLeadOption } from '@/data/types';
+import { logger } from '../lib/logging';
+
 
 export function useCrmLeads() {
   const [leads, setLeads] = useState<CrmLeadOption[]>([]);
@@ -43,7 +45,7 @@ export function useCrmLeads() {
         status: lead.status
       }));
     } catch (err) {
-      console.error('Erro ao buscar oportunidades:', err);
+      logger.error('Erro ao buscar oportunidades:', err);
       return [];
     }
   };

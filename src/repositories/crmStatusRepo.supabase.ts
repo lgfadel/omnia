@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client"
 import { Status } from "@/data/types"
+import { logger } from '../lib/logging';
+
 
 // Transform database record to Status type
 const transformCrmStatusFromDB = (dbStatus: any): Status => ({
@@ -12,7 +14,7 @@ const transformCrmStatusFromDB = (dbStatus: any): Status => ({
 
 export const crmStatusRepoSupabase = {
   async list(): Promise<Status[]> {
-    console.log('Loading CRM statuses from database...')
+    logger.debug('Loading CRM statuses from database...')
     
     const { data, error } = await supabase
       .from('omnia_crm_statuses' as any)
@@ -20,16 +22,16 @@ export const crmStatusRepoSupabase = {
       .order('order_position')
 
     if (error) {
-      console.error('Error loading CRM statuses:', error)
+      logger.error('Error loading CRM statuses:', error)
       throw error
     }
 
-    console.log('Loaded CRM statuses:', data)
+    logger.debug('Loaded CRM statuses:', data)
     return data?.map(transformCrmStatusFromDB) || []
   },
 
   async create(statusData: Omit<Status, 'id'>): Promise<Status> {
-    console.log('Creating CRM status:', statusData)
+    logger.debug('Creating CRM status:', statusData)
     
     // Get the next order position
     const { data: orderData, error: orderError } = await supabase
@@ -54,16 +56,16 @@ export const crmStatusRepoSupabase = {
       .single()
 
     if (createError) {
-      console.error('Error creating CRM status:', createError)
+      logger.error('Error creating CRM status:', createError)
       throw createError
     }
 
-    console.log('Created CRM status:', newStatus)
+    logger.debug('Created CRM status:', newStatus)
     return transformCrmStatusFromDB(newStatus)
   },
 
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
-    console.log('Updating CRM status:', id, data)
+    logger.debug('Updating CRM status:', id, data)
     
     const updateData: any = {}
     
@@ -80,17 +82,17 @@ export const crmStatusRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating CRM status:', error)
+      logger.error('Error updating CRM status:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
 
-    console.log('Updated CRM status:', updatedStatus)
+    logger.debug('Updated CRM status:', updatedStatus)
     return transformCrmStatusFromDB(updatedStatus)
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing CRM status:', id)
+    logger.debug('Removing CRM status:', id)
     
     const { error } = await supabase
       .from('omnia_crm_statuses' as any)
@@ -98,16 +100,16 @@ export const crmStatusRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing CRM status:', error)
+      logger.error('Error removing CRM status:', error)
       throw error
     }
 
-    console.log('Removed CRM status successfully')
+    logger.debug('Removed CRM status successfully')
     return true
   },
 
   async reorder(statuses: Status[]): Promise<void> {
-    console.log('Reordering CRM statuses:', statuses)
+    logger.debug('Reordering CRM statuses:', statuses)
     
     // Update each status order individually
     for (let i = 0; i < statuses.length; i++) {
@@ -117,11 +119,11 @@ export const crmStatusRepoSupabase = {
         .eq('id', statuses[i].id)
       
       if (error) {
-        console.error('Error reordering CRM status:', error)
+        logger.error('Error reordering CRM status:', error)
         throw error
       }
     }
     
-    console.log('Reordered CRM statuses successfully')
+    logger.debug('Reordered CRM statuses successfully')
   }
 }

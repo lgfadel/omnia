@@ -20,6 +20,8 @@ import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useCrmLead } from '@/hooks/useCrmLead';
+import { logger } from '../lib/logging';
+
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +51,7 @@ export default function TicketDetail() {
         const ticketData = await getTarefaById(id);
         setTicket(ticketData);
       } catch (error) {
-        console.error('Erro ao carregar ticket:', error);
+        logger.error('Erro ao carregar ticket:', error);
         toast({
           title: 'Erro ao carregar ticket',
           description: 'Não foi possível carregar os dados do ticket.',
@@ -74,7 +76,7 @@ export default function TicketDetail() {
       });
       navigate('/tarefas');
     } catch (error) {
-      console.error('Erro ao deletar ticket:', error);
+      logger.error('Erro ao deletar ticket:', error);
       toast({
         title: 'Erro ao deletar ticket',
         description: 'Não foi possível deletar o ticket.',

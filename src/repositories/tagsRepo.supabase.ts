@@ -1,4 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { generateUniqueTagColor } from "@/utils/tagColors";
+import { logger } from '../lib/logging';
+
 
 export interface Tag {
   id: string;
@@ -12,7 +15,7 @@ export interface Tag {
 export const tagsRepoSupabase = {
   // Get all tags
   async list(): Promise<Tag[]> {
-    console.log('Loading tags from database...')
+    logger.debug('Loading tags from database...')
     
     const { data, error } = await supabase
       .from('omnia_tags' as any)
@@ -20,7 +23,7 @@ export const tagsRepoSupabase = {
       .order('name');
 
     if (error) {
-      console.error('Error fetching tags:', error);
+      logger.error('Error fetching tags:', error);
       throw error;
     }
 
@@ -36,9 +39,10 @@ export const tagsRepoSupabase = {
 
   // Create a new tag
   async create(data: Pick<Tag, 'name' | 'color'>): Promise<Tag> {
-    console.log('Creating tag:', data)
+    logger.debug('➕ TagsRepo: Creating tag:', data);
     
-    const { data: user } = await supabase.auth.getUser()
+    const { data: user } = await supabase.auth.getUser();
+    logger.debug('👤 TagsRepo: Current user:', user?.user?.id);
     
     // Get the omnia_users.id for the current authenticated user
     const { data: omniaUser } = await supabase
@@ -47,24 +51,32 @@ export const tagsRepoSupabase = {
       .eq('auth_user_id', user?.user?.id)
       .single();
     
+    logger.debug('👤 TagsRepo: Omnia user:', omniaUser);
+    
     if (!omniaUser) {
       throw new Error('Usuário não encontrado na tabela omnia_users')
     }
     
+    const insertData = {
+      name: data.name,
+      color: data.color,
+      created_by: omniaUser?.id
+    };
+    
+    logger.debug('💾 TagsRepo: Inserting data:', insertData);
+    
     const { data: newTag, error } = await supabase
       .from('omnia_tags' as any)
-      .insert({
-        name: data.name,
-        color: data.color,
-        created_by: omniaUser?.id
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating tag:', error);
+      logger.error('❌ TagsRepo: Error creating tag:', error);
       throw error;
     }
+
+    logger.debug('✅ TagsRepo: Tag created successfully:', newTag);
 
     return {
       id: (newTag as any).id,
@@ -78,7 +90,7 @@ export const tagsRepoSupabase = {
 
   // Update a tag
   async update(id: string, data: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag | null> {
-    console.log('Updating tag:', id, data)
+    logger.debug('Updating tag:', { id, data })
     
     const { data: updatedTag, error } = await supabase
       .from('omnia_tags' as any)
@@ -88,7 +100,7 @@ export const tagsRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error updating tag:', error);
+      logger.error('Error updating tag:', error);
       throw error;
     }
 
@@ -104,7 +116,7 @@ export const tagsRepoSupabase = {
 
   // Delete a tag
   async remove(id: string): Promise<boolean> {
-    console.log('Removing tag:', id)
+    logger.debug('Removing tag:', { id })
     
     const { error } = await supabase
       .from('omnia_tags' as any)
@@ -112,7 +124,7 @@ export const tagsRepoSupabase = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting tag:', error);
+      logger.error('Error deleting tag:', error);
       throw error;
     }
 
@@ -125,7 +137,7 @@ export const tagsRepoSupabase = {
       return [];
     }
 
-    console.log('Searching tags:', query)
+    logger.debug('Searching tags:', { query })
 
     const { data, error } = await supabase
       .from('omnia_tags' as any)
@@ -135,7 +147,7 @@ export const tagsRepoSupabase = {
       .limit(10);
 
     if (error) {
-      console.error('Error searching tags:', error);
+      logger.error('Error searching tags:', error);
       throw error;
     }
 
@@ -150,22 +162,23 @@ export const tagsRepoSupabase = {
   },
 
   // Get or create a tag by name (for dynamic creation)
-  async getOrCreate(name: string, color: string = '#6366f1'): Promise<Tag> {
-    console.log('Getting or creating tag:', name)
+  async getOrCreate(name: string, color?: string): Promise<Tag> {
+    logger.debug('🏷️ TagsRepo: Getting or creating tag:', { name, color });
     
     // First try to find existing tag
     const { data: existingTag, error: findError } = await supabase
       .from('omnia_tags' as any)
       .select('*')
       .eq('name', name)
-      .maybeSingle();
+      .single();
 
-    if (findError) {
-      console.error('Error finding tag:', findError);
+    if (findError && findError.code !== 'PGRST116') {
+      logger.error('❌ TagsRepo: Error finding tag:', findError);
       throw findError;
     }
 
     if (existingTag) {
+      logger.debug('✅ TagsRepo: Found existing tag:', { existingTag });
       return {
         id: (existingTag as any).id,
         name: (existingTag as any).name,
@@ -176,7 +189,20 @@ export const tagsRepoSupabase = {
       };
     }
 
-    // Create new tag if not found
-    return this.create({ name, color });
+    // If no color provided, generate a unique one
+    if (!color) {
+      logger.debug('🎨 TagsRepo: No color provided, generating unique color...');
+      // Get all existing tags to check for color conflicts
+      const allTags = await this.list();
+      const usedColors = allTags.map(tag => tag.color);
+      logger.debug('🎨 TagsRepo: Used colors:', { usedColors });
+      
+      color = generateUniqueTagColor(usedColors);
+      logger.debug('🎨 TagsRepo: Generated color:', { color });
+    }
+
+    // Create new tag
+    logger.debug('➕ TagsRepo: Creating new tag with color:', { color });
+    return await this.create({ name, color });
   }
 }

@@ -6,6 +6,8 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { toast } from 'sonner';
+import { logger } from '../../lib/logging';
+
 
 interface TicketFileUploaderProps {
   ticketId: string;
@@ -52,7 +54,7 @@ export const TicketFileUploader = ({ ticketId, onFileUploaded }: TicketFileUploa
       onFileUploaded?.();
       toast.success(`${uploadedAttachments.length} arquivo(s) enviado(s) com sucesso`);
     } catch (error) {
-      console.error('Erro ao fazer upload dos arquivos:', error);
+      logger.error('Erro ao fazer upload dos arquivos:', error);
       toast.error('Erro ao fazer upload dos arquivos');
     }
   };

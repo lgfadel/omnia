@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { UserRef, Attachment, Comment } from '@/data/types';
+import { logger } from '../lib/logging';
+
 
 export type TarefaPrioridade = 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
 
@@ -65,7 +67,7 @@ export const tarefasRepoSupabase = {
     priority?: TarefaPrioridade;
     isPrivate?: boolean;
   }): Promise<Tarefa[]> {
-    console.log('Loading tarefas from database...', filters)
+    logger.debug('Loading tarefas from database...', filters)
     
     let query = supabase
       .from('omnia_tickets' as any)
@@ -99,7 +101,7 @@ export const tarefasRepoSupabase = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching tarefas:', error);
+      logger.error('Error fetching tarefas:', error);
       throw error;
     }
 
@@ -108,7 +110,7 @@ export const tarefasRepoSupabase = {
 
   // Get a single task by ID
   async get(id: string): Promise<Tarefa | null> {
-    console.log('Getting tarefa:', id)
+    logger.debug('Getting tarefa:', id)
     
     const { data, error } = await supabase
       .from('omnia_tickets' as any)
@@ -125,7 +127,7 @@ export const tarefasRepoSupabase = {
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching tarefa:', error);
+      logger.error('Error fetching tarefa:', error);
       throw error;
     }
 
@@ -134,7 +136,7 @@ export const tarefasRepoSupabase = {
 
   // Create a new task
   async create(data: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Tarefa> {
-    console.log('Creating tarefa:', data)
+    logger.debug('Creating tarefa:', data)
     
     const { data: user } = await supabase.auth.getUser();
     
@@ -174,8 +176,8 @@ export const tarefasRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('❌ Error creating tarefa:', error);
-      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      logger.error('❌ Error creating tarefa:', error);
+      logger.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -214,8 +216,8 @@ export const tarefasRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('❌ Error updating tarefa:', error);
-      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      logger.error('❌ Error updating tarefa:', error);
+      logger.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -224,7 +226,7 @@ export const tarefasRepoSupabase = {
 
   // Delete a task
   async remove(id: string): Promise<boolean> {
-    console.log('Removing tarefa:', id)
+    logger.debug('Removing tarefa:', id)
     
     const { error } = await supabase
       .from('omnia_tickets' as any)
@@ -232,7 +234,7 @@ export const tarefasRepoSupabase = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting tarefa:', error);
+      logger.error('Error deleting tarefa:', error);
       throw error;
     }
 
@@ -241,7 +243,7 @@ export const tarefasRepoSupabase = {
 
   // Get tasks for the current user (considering private tasks)
   async getMyTasks(userId: string): Promise<Tarefa[]> {
-    console.log('Getting my tarefas:', userId)
+    logger.debug('Getting my tarefas:', userId)
     
     const { data, error } = await supabase
       .from('omnia_tickets' as any)
@@ -258,7 +260,7 @@ export const tarefasRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching my tarefas:', error);
+      logger.error('Error fetching my tarefas:', error);
       throw error;
     }
 
@@ -267,7 +269,7 @@ export const tarefasRepoSupabase = {
 
   // Search tasks by title or description
   async search(query: string): Promise<Tarefa[]> {
-    console.log('Searching tarefas:', query)
+    logger.debug('Searching tarefas:', query)
     
     if (!query.trim()) return [];
 
@@ -287,7 +289,7 @@ export const tarefasRepoSupabase = {
       .limit(20);
 
     if (error) {
-      console.error('Error searching tarefas:', error);
+      logger.error('Error searching tarefas:', error);
       throw error;
     }
 

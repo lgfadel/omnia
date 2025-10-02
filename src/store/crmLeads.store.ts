@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { CrmLead, CrmComment, CrmAttachment, ViaCepResponse, crmLeadsRepo } from '@/repositories/crmLeadsRepo.supabase'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '../lib/logging';
+
 
 interface CrmLeadsState {
   leads: CrmLead[]
@@ -120,7 +122,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
         }
       })
     } catch (error) {
-      console.error('Erro ao carregar leads:', error)
+      logger.error('Erro ao carregar leads:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao carregar leads',
@@ -136,7 +138,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       const lead = await crmLeadsRepo.getById(id)
       return lead
     } catch (error) {
-      console.error('Erro ao carregar lead:', error)
+      logger.error('Erro ao carregar lead:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao carregar lead',
@@ -156,7 +158,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       })
       get().fetchLeads()
     } catch (error) {
-      console.error('Erro ao criar lead:', error)
+      logger.error('Erro ao criar lead:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao criar lead',
@@ -176,7 +178,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       })
       get().fetchLeads()
     } catch (error) {
-      console.error('Erro ao atualizar lead:', error)
+      logger.error('Erro ao atualizar lead:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao atualizar lead',
@@ -194,7 +196,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       })
       get().fetchLeads()
     } catch (error) {
-      console.error('Erro ao excluir lead:', error)
+      logger.error('Erro ao excluir lead:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao excluir lead',
@@ -208,7 +210,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       const comments = await crmLeadsRepo.getComments(leadId)
       set({ comments })
     } catch (error) {
-      console.error('Erro ao carregar comentários:', error)
+      logger.error('Erro ao carregar comentários:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao carregar comentários',
@@ -228,7 +230,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
         description: 'Comentário adicionado com sucesso'
       })
     } catch (error) {
-      console.error('Erro ao criar comentário:', error)
+      logger.error('Erro ao criar comentário:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao adicionar comentário',
@@ -242,7 +244,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
       const attachments = await crmLeadsRepo.getAttachments(leadId)
       set({ attachments })
     } catch (error) {
-      console.error('Erro ao carregar anexos:', error)
+      logger.error('Erro ao carregar anexos:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao carregar anexos',
@@ -281,7 +283,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
     try {
       return await crmLeadsRepo.searchByCep(cep)
     } catch (error) {
-      console.error('Erro ao buscar endereço:', error)
+      logger.error('Erro ao buscar endereço:', error)
       
       const errorMessage = error instanceof Error ? error.message : 'Erro inesperado ao buscar CEP'
       

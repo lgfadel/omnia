@@ -11,6 +11,7 @@ import { MessageCircle } from 'lucide-react';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
 import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { logger } from '../../lib/logging';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
       const comments = await repo.list(ticketId);
       setCommentsCount(comments.length);
     } catch (error) {
-      console.error('Erro ao carregar contagem de comentários:', error);
+      logger.error('Erro ao carregar contagem de comentários:', error);
     }
   }, [ticketId, contextType]);
 

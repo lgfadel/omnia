@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
+import { logger } from '../lib/logging';
+
 
 export interface MenuItem {
   id: string
@@ -45,7 +47,7 @@ const transformMenuItemFromDB = (dbMenuItem: any): MenuItem => ({
 
 export const menuItemsRepoSupabase = {
   async list(): Promise<MenuItem[]> {
-    console.log('Loading menu items from database...')
+    logger.debug('Loading menu items from database...')
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -54,16 +56,16 @@ export const menuItemsRepoSupabase = {
       .order('order_index')
 
     if (error) {
-      console.error('Error loading menu items:', error)
+      logger.error('Error loading menu items:', error)
       throw error
     }
 
-    console.log('Loaded menu items:', data)
+    logger.debug('Loaded menu items:', data)
     return data?.map(transformMenuItemFromDB) || []
   },
 
   async listAll(): Promise<MenuItem[]> {
-    console.log('Loading all menu items from database...')
+    logger.debug('Loading all menu items from database...')
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -71,16 +73,16 @@ export const menuItemsRepoSupabase = {
       .order('order_index')
 
     if (error) {
-      console.error('Error loading all menu items:', error)
+      logger.error('Error loading all menu items:', error)
       throw error
     }
 
-    console.log('Loaded all menu items:', data)
+    logger.debug('Loaded all menu items:', data)
     return data?.map(transformMenuItemFromDB) || []
   },
 
   async getById(id: string): Promise<MenuItem | null> {
-    console.log('Loading menu item by id:', id)
+    logger.debug('Loading menu item by id:', id)
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -89,7 +91,7 @@ export const menuItemsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error loading menu item:', error)
+      logger.error('Error loading menu item:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
@@ -98,7 +100,7 @@ export const menuItemsRepoSupabase = {
   },
 
   async getByPath(path: string): Promise<MenuItem | null> {
-    console.log('Loading menu item by path:', path)
+    logger.debug('Loading menu item by path:', path)
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -108,7 +110,7 @@ export const menuItemsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error loading menu item by path:', error)
+      logger.error('Error loading menu item by path:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
@@ -117,7 +119,7 @@ export const menuItemsRepoSupabase = {
   },
 
   async getChildren(parentId: string): Promise<MenuItem[]> {
-    console.log('Loading menu item children:', parentId)
+    logger.debug('Loading menu item children:', parentId)
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -127,7 +129,7 @@ export const menuItemsRepoSupabase = {
       .order('order_index')
 
     if (error) {
-      console.error('Error loading menu item children:', error)
+      logger.error('Error loading menu item children:', error)
       throw error
     }
 
@@ -135,7 +137,7 @@ export const menuItemsRepoSupabase = {
   },
 
   async getRootItems(): Promise<MenuItem[]> {
-    console.log('Loading root menu items...')
+    logger.debug('Loading root menu items...')
     
     const { data, error } = await supabase
       .from('omnia_menu_items')
@@ -145,7 +147,7 @@ export const menuItemsRepoSupabase = {
       .order('order_index')
 
     if (error) {
-      console.error('Error loading root menu items:', error)
+      logger.error('Error loading root menu items:', error)
       throw error
     }
 
@@ -153,7 +155,7 @@ export const menuItemsRepoSupabase = {
   },
 
   async create(menuItemData: CreateMenuItemData): Promise<MenuItem> {
-    console.log('Creating menu item:', menuItemData)
+    logger.debug('Creating menu item:', menuItemData)
     
     // Get the next order index if not provided
     let orderIndex = menuItemData.order_index
@@ -165,7 +167,7 @@ export const menuItemsRepoSupabase = {
         .limit(1)
 
       if (orderError) {
-        console.error('Error getting next order index:', orderError)
+        logger.error('Error getting next order index:', orderError)
         throw orderError
       }
 
@@ -188,16 +190,16 @@ export const menuItemsRepoSupabase = {
       .single()
 
     if (createError) {
-      console.error('Error creating menu item:', createError)
+      logger.error('Error creating menu item:', createError)
       throw createError
     }
 
-    console.log('Created menu item:', newMenuItem)
+    logger.debug('Created menu item:', newMenuItem)
     return transformMenuItemFromDB(newMenuItem)
   },
 
   async update(id: string, data: UpdateMenuItemData): Promise<MenuItem | null> {
-    console.log('Updating menu item:', id, data)
+    logger.debug('Updating menu item:', id, data)
     
     const updateData: any = {}
     
@@ -216,17 +218,17 @@ export const menuItemsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating menu item:', error)
+      logger.error('Error updating menu item:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
 
-    console.log('Updated menu item:', updatedMenuItem)
+    logger.debug('Updated menu item:', updatedMenuItem)
     return transformMenuItemFromDB(updatedMenuItem)
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing menu item:', id)
+    logger.debug('Removing menu item:', id)
     
     const { error } = await supabase
       .from('omnia_menu_items')
@@ -234,16 +236,16 @@ export const menuItemsRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing menu item:', error)
+      logger.error('Error removing menu item:', error)
       throw error
     }
 
-    console.log('Removed menu item successfully')
+    logger.debug('Removed menu item successfully')
     return true
   },
 
   async reorder(menuItems: MenuItem[]): Promise<void> {
-    console.log('Reordering menu items:', menuItems)
+    logger.debug('Reordering menu items:', menuItems)
     
     // Update each menu item order individually
     for (let i = 0; i < menuItems.length; i++) {
@@ -253,11 +255,11 @@ export const menuItemsRepoSupabase = {
         .eq('id', menuItems[i].id)
       
       if (error) {
-        console.error('Error reordering menu item:', error)
+        logger.error('Error reordering menu item:', error)
         throw error
       }
     }
     
-    console.log('Reordered menu items successfully')
+    logger.debug('Reordered menu items successfully')
   }
 }

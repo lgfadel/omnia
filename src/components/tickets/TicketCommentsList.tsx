@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { logger } from '../../lib/logging';
 
 interface TicketCommentsListProps {
   ticketId: string;
@@ -90,7 +91,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
             }
           };
         } catch (error) {
-          console.error('Erro ao carregar anexos do comentário:', error);
+          logger.error('Erro ao carregar anexos do comentário:', error);
           return {
             ...comment,
             attachments: [],
@@ -105,7 +106,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       
       setComments(commentsWithAttachments);
     } catch (error) {
-      console.error('Erro ao carregar comentários:', error);
+      logger.error('Erro ao carregar comentários:', error);
       toast.error('Erro ao carregar comentários');
     } finally {
       setLoading(false);
@@ -134,7 +135,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       onCommentsChange?.();
       toast.success('Comentário excluído com sucesso');
     } catch (error) {
-      console.error('Erro ao excluir comentário:', error);
+      logger.error('Erro ao excluir comentário:', error);
       toast.error('Erro ao excluir comentário');
     }
   };
@@ -147,7 +148,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       onCommentsChange?.();
       toast.success('Comentário atualizado com sucesso');
     } catch (error) {
-      console.error('Erro ao atualizar comentário:', error);
+      logger.error('Erro ao atualizar comentário:', error);
       toast.error('Erro ao atualizar comentário');
     }
   };

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { MenuItem, CreateMenuItemData, UpdateMenuItemData, menuItemsRepoSupabase } from '@/repositories/menuItemsRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface MenuItemsState {
   menuItems: MenuItem[]
@@ -33,7 +35,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       const menuItems = await menuItemsRepoSupabase.listAll()
       set({ menuItems, isLoading: false })
     } catch (error) {
-      console.error('Error loading menu items:', error)
+      logger.error('Error loading menu items:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar itens do menu',
         isLoading: false 
@@ -47,7 +49,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       const rootItems = await menuItemsRepoSupabase.getRootItems()
       set({ rootItems, isLoading: false })
     } catch (error) {
-      console.error('Error loading root menu items:', error)
+      logger.error('Error loading root menu items:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar itens raiz do menu',
         isLoading: false 
@@ -60,7 +62,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       const children = await menuItemsRepoSupabase.getChildren(parentId)
       return children
     } catch (error) {
-      console.error('Error loading menu item children:', error)
+      logger.error('Error loading menu item children:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao carregar subitens do menu' })
       return []
     }
@@ -89,7 +91,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
         set({ rootItems: [...rootItems, newMenuItem] })
       }
     } catch (error) {
-      console.error('Error adding menu item:', error)
+      logger.error('Error adding menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao adicionar item do menu' })
     }
   },
@@ -121,7 +123,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
         set({ error: 'Erro ao atualizar item do menu' })
       }
     } catch (error) {
-      console.error('Error updating menu item:', error)
+      logger.error('Error updating menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao atualizar item do menu' })
     }
   },
@@ -139,7 +141,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       const filteredRootItems = rootItems.filter(item => item.id !== id)
       set({ rootItems: filteredRootItems })
     } catch (error) {
-      console.error('Error removing menu item:', error)
+      logger.error('Error removing menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao remover item do menu' })
     }
   },
@@ -156,7 +158,7 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       await loadMenuItems()
       await loadRootItems()
     } catch (error) {
-      console.error('Error reordering menu items:', error)
+      logger.error('Error reordering menu items:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao reordenar itens do menu' })
     }
   },

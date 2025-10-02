@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client"
 import { UserRef, Role } from "@/data/types"
+import { logger } from '../lib/logging';
+
 
 // Transform database record to UserRef
 function transformUserFromDB(dbUser: any): UserRef {
@@ -15,7 +17,7 @@ function transformUserFromDB(dbUser: any): UserRef {
 
 export const secretariosRepoSupabase = {
   async list(): Promise<UserRef[]> {
-    console.log('SecretariosRepo: Fetching all users...')
+    logger.debug('SecretariosRepo: Fetching all users...')
     
     // Check if current user is admin to determine data access level
     const { data: currentUserData } = await supabase
@@ -37,7 +39,7 @@ export const secretariosRepoSupabase = {
       .order('name', { ascending: true })
     
     if (error) {
-      console.error('SecretariosRepo: Error fetching users:', error)
+      logger.error('SecretariosRepo: Error fetching users:', error)
       throw new Error(`Erro ao buscar usuários: ${error.message}`)
     }
     
@@ -45,7 +47,7 @@ export const secretariosRepoSupabase = {
   },
 
   async getById(id: string): Promise<UserRef | null> {
-    console.log('SecretariosRepo: Fetching user by ID:', id)
+    logger.debug('SecretariosRepo: Fetching user by ID:', id)
     
     // Check if current user is admin or requesting their own data
     const { data: currentUser } = await supabase.auth.getUser()
@@ -73,7 +75,7 @@ export const secretariosRepoSupabase = {
       if (error.code === 'PGRST116') {
         return null // User not found
       }
-      console.error('SecretariosRepo: Error fetching user:', error)
+      logger.error('SecretariosRepo: Error fetching user:', error)
       throw new Error(`Erro ao buscar usuário: ${error.message}`)
     }
     
@@ -81,7 +83,7 @@ export const secretariosRepoSupabase = {
   },
 
   async create(data: Omit<UserRef, 'id'> & { password?: string }): Promise<UserRef & { tempPassword?: string }> {
-    console.log('SecretariosRepo: Creating user:', data)
+    logger.debug('SecretariosRepo: Creating user:', data)
     
     // Call edge function to create user with auth
     const { data: result, error } = await supabase.functions.invoke('create-user', {
@@ -96,16 +98,16 @@ export const secretariosRepoSupabase = {
     })
     
     if (error) {
-      console.error('SecretariosRepo: Error calling create-user function:', error)
+      logger.error('SecretariosRepo: Error calling create-user function:', error)
       throw new Error(`Erro ao criar usuário: ${error.message}`)
     }
     
     if (!result.success) {
-      console.error('SecretariosRepo: Function returned error:', result.error)
+      logger.error('SecretariosRepo: Function returned error:', result.error)
       throw new Error(result.error)
     }
     
-    console.log('SecretariosRepo: User created successfully with temp password:', result.tempPassword)
+    logger.debug('SecretariosRepo: User created successfully with temp password:', result.tempPassword)
     
     const userResult: UserRef = {
       id: result.user.id,
@@ -121,7 +123,7 @@ export const secretariosRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
-    console.log('SecretariosRepo: Updating user:', id, data)
+    logger.debug('SecretariosRepo: Updating user:', id, data)
     
     const updateData: any = {}
     if (data.name !== undefined) updateData.name = data.name
@@ -138,7 +140,7 @@ export const secretariosRepoSupabase = {
       .single()
     
     if (error) {
-      console.error('SecretariosRepo: Error updating user:', error)
+      logger.error('SecretariosRepo: Error updating user:', error)
       throw new Error(`Erro ao atualizar usuário: ${error.message}`)
     }
     
@@ -146,7 +148,7 @@ export const secretariosRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('SecretariosRepo: Deleting user:', id)
+    logger.debug('SecretariosRepo: Deleting user:', id)
     
     try {
       // Pre-check: verify associations to provide a friendly error before invoking the function
@@ -167,7 +169,7 @@ export const secretariosRepoSupabase = {
       })
       
       if (error) {
-        console.error('SecretariosRepo: Error calling delete-user function:', error)
+        logger.error('SecretariosRepo: Error calling delete-user function:', error)
         // Try to extract server-provided message
         const context: any = (error as any).context
         const serverMsg = (context && (context.error || context.message || context.response?.error)) || (data as any)?.error
@@ -190,15 +192,15 @@ export const secretariosRepoSupabase = {
       
       if (!data?.success) {
         const errorMessage = (data as any)?.error || 'Erro desconhecido ao excluir usuário'
-        console.error('SecretariosRepo: Delete user function returned error:', errorMessage)
+        logger.error('SecretariosRepo: Delete user function returned error:', errorMessage)
         throw new Error(errorMessage)
       }
       
-      console.log('SecretariosRepo: User deleted successfully:', data.deletedUser)
+      logger.debug('SecretariosRepo: User deleted successfully:', data.deletedUser)
       return true
       
     } catch (error: any) {
-      console.error('SecretariosRepo: Error deleting user:', error)
+      logger.error('SecretariosRepo: Error deleting user:', error)
       throw new Error(error.message || 'Erro ao excluir usuário')
     }
   }

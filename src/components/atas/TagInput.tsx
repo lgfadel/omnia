@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 import { useTagsStore } from "@/store/tags.store";
 import { Tag } from "@/repositories/tagsRepo.supabase";
+import { logger } from '../../lib/logging';
+
 
 interface TagInputProps {
   tags: string[];
@@ -32,7 +34,7 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
           setShowSuggestions(filteredResults.length > 0);
           setSelectedIndex(-1);
         } catch (error) {
-          console.error('Error searching tags:', error);
+          logger.error('Error searching tags:', error);
           setSuggestions([]);
           setShowSuggestions(false);
         }
@@ -54,8 +56,10 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
     }
 
     try {
+      logger.debug('TagInput: Creating tag with name:', nameToAdd);
       // Create tag in database if it doesn't exist
-      await getOrCreateTag(nameToAdd);
+      const createdTag = await getOrCreateTag(nameToAdd);
+      logger.debug('TagInput: Tag created/retrieved:', createdTag);
       
       // Add to local tags list
       onTagsChange([...tags, nameToAdd]);
@@ -63,7 +67,7 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
       setShowSuggestions(false);
       setSelectedIndex(-1);
     } catch (error) {
-      console.error('Error creating tag:', error);
+      logger.error('TagInput: Error creating tag:', error);
       // Still add to local list even if DB creation fails
       onTagsChange([...tags, nameToAdd]);
       setTagInput("");

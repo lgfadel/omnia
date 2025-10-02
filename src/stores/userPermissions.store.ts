@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { UserPermission, CreateUserPermissionData, UpdateUserPermissionData, UserPermissionSummary, userPermissionsRepoSupabase } from '@/repositories/userPermissionsRepo.supabase'
 import { MenuItem } from '@/repositories/menuItemsRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface UserPermissionsState {
   userPermissions: UserPermission[]
@@ -49,7 +51,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
         set({ userPermissions: permissions, isLoading: false })
       }
     } catch (error) {
-      console.error('Error loading user permissions:', error)
+      logger.error('Error loading user permissions:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar permissões do usuário',
         isLoading: false 
@@ -64,7 +66,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       const permissions = await userPermissionsRepoSupabase.list()
       set({ currentUserPermissions: permissions, isLoading: false })
     } catch (error) {
-      console.error('Error loading current user permissions:', error)
+      logger.error('Error loading current user permissions:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar suas permissões',
         isLoading: false 
@@ -78,7 +80,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       const menuItems = await userPermissionsRepoSupabase.getUserAccessibleMenuItems(userId)
       set({ accessibleMenuItems: menuItems, isLoading: false })
     } catch (error) {
-      console.error('Error loading user accessible menu items:', error)
+      logger.error('Error loading user accessible menu items:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar itens de menu acessíveis',
         isLoading: false 
@@ -92,7 +94,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       const summary = await userPermissionsRepoSupabase.getUserPermissionsSummary(userId)
       set({ permissionsSummary: summary || [], isLoading: false })
     } catch (error) {
-      console.error('Error loading user permissions summary:', error)
+      logger.error('Error loading user permissions summary:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao carregar resumo de permissões',
         isLoading: false 
@@ -104,7 +106,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
     try {
       return await userPermissionsRepoSupabase.checkUserMenuPermission(userId, menuItemId)
     } catch (error) {
-      console.error('Error checking user menu permission:', error)
+      logger.error('Error checking user menu permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao verificar permissão' })
       return false
     }
@@ -114,7 +116,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
     try {
       return await userPermissionsRepoSupabase.checkCurrentUserMenuPermission(menuItemId)
     } catch (error) {
-      console.error('Error checking current user menu permission:', error)
+      logger.error('Error checking current user menu permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao verificar sua permissão' })
       return false
     }
@@ -134,7 +136,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       
       return await userPermissionsRepoSupabase.checkCurrentUserMenuPermission(menuItem.id)
     } catch (error) {
-      console.error('Error checking current user menu permission by path:', error)
+      logger.error('Error checking current user menu permission by path:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao verificar permissão por caminho' })
       return false
     }
@@ -146,7 +148,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       const { userPermissions } = get()
       set({ userPermissions: [newPermission, ...userPermissions] })
     } catch (error) {
-      console.error('Error adding user permission:', error)
+      logger.error('Error adding user permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao adicionar permissão' })
     }
   },
@@ -164,7 +166,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
         set({ error: 'Erro ao atualizar permissão' })
       }
     } catch (error) {
-      console.error('Error updating user permission:', error)
+      logger.error('Error updating user permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao atualizar permissão' })
     }
   },
@@ -176,7 +178,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       const filteredPermissions = userPermissions.filter(permission => permission.id !== id)
       set({ userPermissions: filteredPermissions })
     } catch (error) {
-      console.error('Error removing user permission:', error)
+      logger.error('Error removing user permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao remover permissão' })
     }
   },
@@ -190,7 +192,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       )
       set({ userPermissions: filteredPermissions })
     } catch (error) {
-      console.error('Error removing user permission by user and menu item:', error)
+      logger.error('Error removing user permission by user and menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao remover permissão específica' })
     }
   },
@@ -212,7 +214,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
         })
       }
     } catch (error) {
-      console.error('Error granting user permission:', error)
+      logger.error('Error granting user permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao conceder permissão' })
     }
   },
@@ -228,7 +230,7 @@ export const useUserPermissionsStore = create<UserPermissionsState>((set, get) =
       }
       // If permission doesn't exist, it's already revoked (no access by default)
     } catch (error) {
-      console.error('Error revoking user permission:', error)
+      logger.error('Error revoking user permission:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao revogar permissão' })
     }
   },

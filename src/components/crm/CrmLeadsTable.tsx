@@ -14,6 +14,8 @@ import { useUsersStore } from '@/store/users.store'
 import { useCrmOrigensStore } from '@/store/crmOrigens.store'
 import { generateUserColor, getUserInitials } from '@/lib/userColors'
 import { cn } from '@/lib/utils'
+import { logger } from '../../lib/logging';
+
 
 interface CrmLeadsTableProps {
   leads: CrmLead[]
@@ -56,7 +58,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
     try {
       await updateLead(leadId, { responsavel_negociacao: userId })
     } catch (error) {
-      console.error('Erro ao atualizar responsável:', error)
+      logger.error('Erro ao atualizar responsável:', error)
     } finally {
       setUpdatingResponsibleId(null)
     }
@@ -67,7 +69,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
     try {
       await updateLead(leadId, { origem_id: origemId })
     } catch (error) {
-      console.error('Erro ao atualizar origem:', error)
+      logger.error('Erro ao atualizar origem:', error)
     } finally {
       setUpdatingOrigemId(null)
     }
@@ -78,7 +80,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
     try {
       await updateLead(leadId, { status: statusId })
     } catch (error) {
-      console.error('Erro ao atualizar status:', error)
+      logger.error('Erro ao atualizar status:', error)
     } finally {
       setUpdatingStatusId(null)
     }

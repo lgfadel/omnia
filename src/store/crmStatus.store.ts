@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { crmStatusRepoSupabase } from '@/repositories/crmStatusRepo.supabase';
 import { Status } from '@/data/types';
+import { logger } from '../lib/logging';
+
 
 interface CrmStatusStore {
   statuses: Status[];
@@ -26,7 +28,7 @@ export const useCrmStatusStore = create<CrmStatusStore>((set, get) => ({
       const statuses = await crmStatusRepoSupabase.list();
       set({ statuses, loading: false });
     } catch (error) {
-      console.error('Erro ao carregar status do CRM:', error);
+      logger.error('Erro ao carregar status do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -45,7 +47,7 @@ export const useCrmStatusStore = create<CrmStatusStore>((set, get) => ({
       });
       return newStatus;
     } catch (error) {
-      console.error('Erro ao criar status do CRM:', error);
+      logger.error('Erro ao criar status do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -70,7 +72,7 @@ export const useCrmStatusStore = create<CrmStatusStore>((set, get) => ({
       }
       return updatedStatus;
     } catch (error) {
-      console.error('Erro ao atualizar status do CRM:', error);
+      logger.error('Erro ao atualizar status do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -100,7 +102,7 @@ export const useCrmStatusStore = create<CrmStatusStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('Erro ao deletar status do CRM:', error);
+      logger.error('Erro ao deletar status do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -118,7 +120,7 @@ export const useCrmStatusStore = create<CrmStatusStore>((set, get) => ({
         loading: false 
       });
     } catch (error) {
-      console.error('Erro ao reordenar status do CRM:', error);
+      logger.error('Erro ao reordenar status do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 

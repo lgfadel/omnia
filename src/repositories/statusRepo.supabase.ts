@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client"
 import { Status } from "@/data/types"
+import { logger } from '../lib/logging';
+
 
 // Transform database record to Status type
 const transformStatusFromDB = (dbStatus: any): Status => ({
@@ -12,7 +14,7 @@ const transformStatusFromDB = (dbStatus: any): Status => ({
 
 export const statusRepoSupabase = {
   async list(): Promise<Status[]> {
-    console.log('Loading statuses from database...')
+    logger.debug('Loading statuses from database...')
     
     const { data, error } = await supabase
       .from('omnia_statuses' as any)
@@ -20,16 +22,16 @@ export const statusRepoSupabase = {
       .order('order_position')
 
     if (error) {
-      console.error('Error loading statuses:', error)
+      logger.error('Error loading statuses:', error)
       throw error
     }
 
-    console.log('Loaded statuses:', data)
+    logger.debug('Loaded statuses:', data)
     return data?.map(transformStatusFromDB) || []
   },
 
   async create(statusData: Omit<Status, 'id'>): Promise<Status> {
-    console.log('Creating status:', statusData)
+    logger.debug('Creating status:', statusData)
     
     // Get the next order position
     const { data: orderData, error: orderError } = await supabase
@@ -54,16 +56,16 @@ export const statusRepoSupabase = {
       .single()
 
     if (createError) {
-      console.error('Error creating status:', createError)
+      logger.error('Error creating status:', createError)
       throw createError
     }
 
-    console.log('Created status:', newStatus)
+    logger.debug('Created status:', newStatus)
     return transformStatusFromDB(newStatus)
   },
 
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
-    console.log('Updating status:', id, data)
+    logger.debug('Updating status:', id, data)
     
     const updateData: any = {}
     
@@ -80,17 +82,17 @@ export const statusRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating status:', error)
+      logger.error('Error updating status:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
 
-    console.log('Updated status:', updatedStatus)
+    logger.debug('Updated status:', updatedStatus)
     return transformStatusFromDB(updatedStatus)
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing status:', id)
+    logger.debug('Removing status:', id)
     
     const { error } = await supabase
       .from('omnia_statuses' as any)
@@ -98,16 +100,16 @@ export const statusRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing status:', error)
+      logger.error('Error removing status:', error)
       throw error
     }
 
-    console.log('Removed status successfully')
+    logger.debug('Removed status successfully')
     return true
   },
 
   async reorder(statuses: Status[]): Promise<void> {
-    console.log('Reordering statuses:', statuses)
+    logger.debug('Reordering statuses:', statuses)
     
     // Update each status order individually
     for (let i = 0; i < statuses.length; i++) {
@@ -117,11 +119,11 @@ export const statusRepoSupabase = {
         .eq('id', statuses[i].id)
       
       if (error) {
-        console.error('Error reordering status:', error)
+        logger.error('Error reordering status:', error)
         throw error
       }
     }
     
-    console.log('Reordered statuses successfully')
+    logger.debug('Reordered statuses successfully')
   }
 }

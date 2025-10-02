@@ -8,6 +8,8 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { ticketAttachmentsRepoSupabase, type TicketAttachment } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
 import { toast } from 'sonner';
+import { logger } from '../../lib/logging';
+
 
 interface TicketAttachmentsListProps {
   ticketId: string;
@@ -25,7 +27,7 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
       const attachmentsData = await ticketAttachmentsRepoSupabase.list(ticketId);
       setAttachments(attachmentsData);
     } catch (error) {
-      console.error('Erro ao carregar anexos:', error);
+      logger.error('Erro ao carregar anexos:', error);
       toast.error('Erro ao carregar anexos');
     } finally {
       setLoading(false);
@@ -44,7 +46,7 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
       await loadAttachments();
       toast.success('Anexo excluído com sucesso');
     } catch (error) {
-      console.error('Erro ao excluir anexo:', error);
+      logger.error('Erro ao excluir anexo:', error);
       toast.error('Erro ao excluir anexo');
     }
   };

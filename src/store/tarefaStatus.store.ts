@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { tarefaStatusRepoSupabase, type TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
+import { logger } from '../lib/logging';
+
 
 interface TarefaStatusStore {
   statuses: TarefaStatus[];
@@ -25,7 +27,7 @@ export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
       const statuses = await tarefaStatusRepoSupabase.list();
       set({ statuses, loading: false });
     } catch (error) {
-      console.error('Erro ao carregar status de tarefas:', error);
+      logger.error('Erro ao carregar status de tarefas:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -44,7 +46,7 @@ export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
       });
       return newStatus;
     } catch (error) {
-      console.error('Erro ao criar status de tarefa:', error);
+      logger.error('Erro ao criar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -69,7 +71,7 @@ export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
       }
       return updatedStatus;
     } catch (error) {
-      console.error('Erro ao atualizar status de tarefa:', error);
+      logger.error('Erro ao atualizar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -99,7 +101,7 @@ export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('Erro ao deletar status de tarefa:', error);
+      logger.error('Erro ao deletar status de tarefa:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -117,7 +119,7 @@ export const useTarefaStatusStore = create<TarefaStatusStore>((set, get) => ({
         loading: false 
       });
     } catch (error) {
-      console.error('Erro ao reordenar status de tarefas:', error);
+      logger.error('Erro ao reordenar status de tarefas:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { Administradora, administradorasRepoSupabase } from '@/repositories/administradorasRepo.supabase'
 import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler'
+import { logger } from '../lib/logging';
+
 
 interface AdministradorasStore {
   administradoras: Administradora[]
@@ -21,15 +23,15 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
   error: null,
 
   loadAdministradoras: async () => {
-    console.log('AdministradorasStore: Loading administradoras...')
+    logger.debug('AdministradorasStore: Loading administradoras...')
     set({ loading: true, error: null })
     
     try {
       const administradoras = await administradorasRepoSupabase.list()
-      console.log('AdministradorasStore: Loaded administradoras:', administradoras)
+      logger.debug('AdministradorasStore: Loaded administradoras:', administradoras)
       set({ administradoras, loading: false })
     } catch (error) {
-      console.error('AdministradorasStore: Error loading administradoras:', error)
+      logger.error('AdministradorasStore: Error loading administradoras:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('read', 'administradoras', 'omnia_administradoras')
@@ -39,7 +41,7 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
   },
 
   createAdministradora: async (data) => {
-    console.log('AdministradorasStore: Creating administradora:', data)
+    logger.debug('AdministradorasStore: Creating administradora:', data)
     set({ loading: true, error: null })
     
     try {
@@ -47,10 +49,10 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
       const { administradoras } = get()
       const updatedAdministradoras = [...administradoras, newAdministradora].sort((a, b) => a.nome.localeCompare(b.nome))
       set({ administradoras: updatedAdministradoras, loading: false })
-      console.log('AdministradorasStore: Created administradora successfully')
+      logger.debug('AdministradorasStore: Created administradora successfully')
       return newAdministradora
     } catch (error) {
-      console.error('AdministradorasStore: Error creating administradora:', error)
+      logger.error('AdministradorasStore: Error creating administradora:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('create', 'administradora', 'omnia_administradoras')
@@ -61,7 +63,7 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
   },
 
   updateAdministradora: async (id: string, data) => {
-    console.log('AdministradorasStore: Updating administradora:', id, data)
+    logger.debug('AdministradorasStore: Updating administradora:', id, data)
     set({ loading: true, error: null })
     
     try {
@@ -72,11 +74,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
           admin.id === id ? updatedAdministradora : admin
         ).sort((a, b) => a.nome.localeCompare(b.nome))
         set({ administradoras: updatedAdministradoras, loading: false })
-        console.log('AdministradorasStore: Updated administradora successfully')
+        logger.debug('AdministradorasStore: Updated administradora successfully')
       }
       return updatedAdministradora
     } catch (error) {
-      console.error('AdministradorasStore: Error updating administradora:', error)
+      logger.error('AdministradorasStore: Error updating administradora:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'administradora', 'omnia_administradoras')
@@ -87,7 +89,7 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
   },
 
   deleteAdministradora: async (id: string) => {
-    console.log('AdministradorasStore: Deleting administradora:', id)
+    logger.debug('AdministradorasStore: Deleting administradora:', id)
     set({ loading: true, error: null })
     
     try {
@@ -96,11 +98,11 @@ export const useAdministradorasStore = create<AdministradorasStore>((set, get) =
         const { administradoras } = get()
         const updatedAdministradoras = administradoras.filter(admin => admin.id !== id)
         set({ administradoras: updatedAdministradoras, loading: false })
-        console.log('AdministradorasStore: Deleted administradora successfully')
+        logger.debug('AdministradorasStore: Deleted administradora successfully')
       }
       return success
     } catch (error) {
-      console.error('AdministradorasStore: Error deleting administradora:', error)
+      logger.error('AdministradorasStore: Error deleting administradora:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'administradora', 'omnia_administradoras')

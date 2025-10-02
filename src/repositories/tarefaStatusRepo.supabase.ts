@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '../lib/logging';
+
 
 export interface TarefaStatus {
   id: string;
@@ -24,7 +26,7 @@ function transformTarefaStatusFromDB(dbTarefaStatus: any): TarefaStatus {
 
 export const tarefaStatusRepoSupabase = {
   async list(): Promise<TarefaStatus[]> {
-    console.log('Loading tarefa statuses from database...')
+    logger.debug('Loading tarefa statuses from database...')
     
     const { data, error } = await supabase
       .from('omnia_ticket_statuses' as any)
@@ -32,7 +34,7 @@ export const tarefaStatusRepoSupabase = {
       .order('order_position');
 
     if (error) {
-      console.error('Erro ao buscar status de tickets:', error);
+      logger.error('Erro ao buscar status de tickets:', error);
       throw error;
     }
 
@@ -40,7 +42,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async create(data: Omit<TarefaStatus, 'id'>): Promise<TarefaStatus> {
-    console.log('Creating tarefa status:', data)
+    logger.debug('Creating tarefa status:', data)
     
     // Get the next order position
     const { data: lastStatus } = await supabase
@@ -63,7 +65,7 @@ export const tarefaStatusRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Erro ao criar status de ticket:', error);
+      logger.error('Erro ao criar status de ticket:', error);
       throw error;
     }
 
@@ -71,7 +73,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
-    console.log('Updating tarefa status:', id, data)
+    logger.debug('Updating tarefa status:', id, data)
     
     const updateData: any = {};
     
@@ -88,7 +90,7 @@ export const tarefaStatusRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Erro ao atualizar status de ticket:', error);
+      logger.error('Erro ao atualizar status de ticket:', error);
       throw error;
     }
 
@@ -96,7 +98,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing tarefa status:', id)
+    logger.debug('Removing tarefa status:', id)
     
     // Check if it's a default status
     const { data: status } = await supabase
@@ -115,7 +117,7 @@ export const tarefaStatusRepoSupabase = {
       .eq('id', id);
 
     if (error) {
-      console.error('Erro ao deletar status de ticket:', error);
+      logger.error('Erro ao deletar status de ticket:', error);
       throw error;
     }
 
@@ -123,7 +125,7 @@ export const tarefaStatusRepoSupabase = {
   },
 
   async reorder(statuses: TarefaStatus[]): Promise<void> {
-    console.log('Reordering tarefa statuses:', statuses)
+    logger.debug('Reordering tarefa statuses:', statuses)
     
     const updates = statuses.map((status, index) => ({
       id: status.id,
@@ -137,7 +139,7 @@ export const tarefaStatusRepoSupabase = {
         .eq('id', update.id);
 
       if (error) {
-        console.error('Erro ao reordenar status de tickets:', error);
+        logger.error('Erro ao reordenar status de tickets:', error);
         throw error;
       }
     }

@@ -94,7 +94,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Nova ata criada:', payload)
+          logger.debug('Nova ata criada:', payload)
           // Recarregar a lista de atas quando uma nova for criada
           loadAtas(search, statusFilter)
         }
@@ -107,7 +107,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Ata atualizada:', payload)
+          logger.debug('Ata atualizada:', payload)
           // Recarregar a lista quando uma ata for atualizada
           loadAtas(search, statusFilter)
         }
@@ -120,7 +120,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Ata excluída:', payload)
+          logger.debug('Ata excluída:', payload)
           // Recarregar a lista quando uma ata for excluída
           loadAtas(search, statusFilter)
         }

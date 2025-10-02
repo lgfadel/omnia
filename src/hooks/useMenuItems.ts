@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useMenuItemsStore } from '@/stores/menuItems.store'
 import { usePermissions } from '@/hooks/usePermissions'
 import { MenuItem } from '@/repositories/menuItemsRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 export interface MenuItemsData {
   allMenuItems: MenuItem[]
@@ -57,7 +59,7 @@ export function useMenuItems(): MenuItemsData {
         loadRootItems()
       ])
     } catch (error) {
-      console.error('Erro ao carregar itens de menu:', error)
+      logger.error('Erro ao carregar itens de menu:', error)
     }
   }, [loadMenuItems, loadRootItems])
 
@@ -80,7 +82,7 @@ export function useMenuItems(): MenuItemsData {
     try {
       return await loadChildren(parentId)
     } catch (error) {
-      console.error('Erro ao carregar filhos do menu:', error)
+      logger.error('Erro ao carregar filhos do menu:', error)
       return []
     }
   }, [loadChildren])
@@ -97,7 +99,7 @@ export function useMenuItems(): MenuItemsData {
       
       return accessibleChildren
     } catch (error) {
-      console.error('Erro ao carregar filhos acessíveis do menu:', error)
+      logger.error('Erro ao carregar filhos acessíveis do menu:', error)
       return []
     }
   }, [loadChildren, hasPermission])

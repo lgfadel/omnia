@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Administradora } from "@/repositories/administradorasRepo.supabase"
+import { logger } from '../../lib/logging';
+
 
 const adminSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -39,7 +41,7 @@ export function AdminForm({ administradora, onSubmit, onCancel, isLoading }: Adm
     try {
       await onSubmit(data)
     } catch (error) {
-      console.error('Erro ao salvar administradora:', error)
+      logger.error('Erro ao salvar administradora:', error)
     }
   }
 

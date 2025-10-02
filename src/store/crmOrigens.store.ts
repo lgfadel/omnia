@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { crmOrigensRepoSupabase, CrmOrigem } from '@/repositories/crmOrigensRepo.supabase';
+import { logger } from '../lib/logging';
+
 
 interface CrmOrigensStore {
   origens: CrmOrigem[];
@@ -25,7 +27,7 @@ export const useCrmOrigensStore = create<CrmOrigensStore>((set, get) => ({
       const origens = await crmOrigensRepoSupabase.list();
       set({ origens, loading: false });
     } catch (error) {
-      console.error('Erro ao carregar origens do CRM:', error);
+      logger.error('Erro ao carregar origens do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -44,7 +46,7 @@ export const useCrmOrigensStore = create<CrmOrigensStore>((set, get) => ({
       });
       return newOrigem;
     } catch (error) {
-      console.error('Erro ao criar origem do CRM:', error);
+      logger.error('Erro ao criar origem do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -69,7 +71,7 @@ export const useCrmOrigensStore = create<CrmOrigensStore>((set, get) => ({
       }
       return updatedOrigem;
     } catch (error) {
-      console.error('Erro ao atualizar origem do CRM:', error);
+      logger.error('Erro ao atualizar origem do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -99,7 +101,7 @@ export const useCrmOrigensStore = create<CrmOrigensStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('Erro ao deletar origem do CRM:', error);
+      logger.error('Erro ao deletar origem do CRM:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -112,7 +114,7 @@ export const useCrmOrigensStore = create<CrmOrigensStore>((set, get) => ({
     try {
       return await crmOrigensRepoSupabase.getDefault();
     } catch (error) {
-      console.error('Erro ao buscar origem padrão:', error);
+      logger.error('Erro ao buscar origem padrão:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido'
       });

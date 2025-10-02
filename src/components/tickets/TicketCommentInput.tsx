@@ -13,6 +13,8 @@ import { ataCommentsRepoSupabase, CreateAtaComment } from '@/repositories/ataCom
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
+import { logger } from '../../lib/logging';
+
 
 interface TicketCommentInputProps {
   ticketId: string;
@@ -73,7 +75,7 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
       onCommentAdded?.();
       toast.success('Comentário adicionado com sucesso');
     } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
+      logger.error('Erro ao adicionar comentário:', error);
       toast.error('Erro ao adicionar comentário');
     } finally {
       setIsSubmitting(false);

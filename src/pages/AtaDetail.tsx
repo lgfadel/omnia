@@ -18,6 +18,8 @@ import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState, useCallback } from "react"
 import { Ata, Attachment } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
+import { logger } from '../lib/logging';
+
 
 const AtaDetail = () => {
   const { id } = useParams<{ id: string }>()
@@ -120,7 +122,7 @@ const AtaDetail = () => {
       // Reload ata to get updated status
       await loadAta()
     } catch (error) {
-      console.error('Erro ao atualizar status:', error)
+      logger.error('Erro ao atualizar status:', error)
     }
   }
 

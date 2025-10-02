@@ -2,6 +2,8 @@
 import { create } from 'zustand'
 import { Status } from '@/data/types'
 import { statusRepoSupabase } from '@/repositories/statusRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface StatusStore {
   statuses: Status[]
@@ -23,21 +25,21 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
   error: null,
 
   loadStatuses: async () => {
-    console.log('StatusStore: Loading statuses...')
+    logger.debug('StatusStore: Loading statuses...')
     set({ loading: true, error: null })
     
     try {
       const statuses = await statusRepoSupabase.list()
-      console.log('StatusStore: Loaded statuses:', statuses)
+      logger.debug('StatusStore: Loaded statuses:', statuses)
       set({ statuses, loading: false })
     } catch (error) {
-      console.error('StatusStore: Error loading statuses:', error)
+      logger.error('StatusStore: Error loading statuses:', error)
       set({ error: 'Erro ao carregar status', loading: false })
     }
   },
 
   createStatus: async (data) => {
-    console.log('StatusStore: Creating status:', data)
+    logger.debug('StatusStore: Creating status:', data)
     set({ loading: true, error: null })
     
     try {
@@ -45,17 +47,17 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
       const { statuses } = get()
       const updatedStatuses = [...statuses, newStatus].sort((a, b) => a.order - b.order)
       set({ statuses: updatedStatuses, loading: false })
-      console.log('StatusStore: Created status successfully')
+      logger.debug('StatusStore: Created status successfully')
       return newStatus
     } catch (error) {
-      console.error('StatusStore: Error creating status:', error)
+      logger.error('StatusStore: Error creating status:', error)
       set({ error: 'Erro ao criar status', loading: false })
       throw error
     }
   },
 
   updateStatus: async (id: string, data) => {
-    console.log('StatusStore: Updating status:', id, data)
+    logger.debug('StatusStore: Updating status:', id, data)
     set({ loading: true, error: null })
     
     try {
@@ -66,18 +68,18 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
           .map(s => s.id === id ? updatedStatus : s)
           .sort((a, b) => a.order - b.order)
         set({ statuses: updatedStatuses, loading: false })
-        console.log('StatusStore: Updated status successfully')
+        logger.debug('StatusStore: Updated status successfully')
       }
       return updatedStatus
     } catch (error) {
-      console.error('StatusStore: Error updating status:', error)
+      logger.error('StatusStore: Error updating status:', error)
       set({ error: 'Erro ao atualizar status', loading: false })
       return null
     }
   },
 
   deleteStatus: async (id: string) => {
-    console.log('StatusStore: Deleting status:', id)
+    logger.debug('StatusStore: Deleting status:', id)
     
     // Check if status is default
     const { statuses } = get()
@@ -92,18 +94,18 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
       const success = await statusRepoSupabase.remove(id)
       if (success) {
         set({ statuses: statuses.filter(s => s.id !== id), loading: false })
-        console.log('StatusStore: Deleted status successfully')
+        logger.debug('StatusStore: Deleted status successfully')
       }
       return success
     } catch (error) {
-      console.error('StatusStore: Error deleting status:', error)
+      logger.error('StatusStore: Error deleting status:', error)
       set({ error: 'Erro ao excluir status', loading: false })
       return false
     }
   },
 
   reorderStatuses: async (newStatuses: Status[]) => {
-    console.log('StatusStore: Reordering statuses:', newStatuses)
+    logger.debug('StatusStore: Reordering statuses:', newStatuses)
     set({ loading: true, error: null })
     
     try {
@@ -114,9 +116,9 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
       
       await statusRepoSupabase.reorder(reorderedStatuses)
       set({ statuses: reorderedStatuses, loading: false })
-      console.log('StatusStore: Reordered statuses successfully')
+      logger.debug('StatusStore: Reordered statuses successfully')
     } catch (error) {
-      console.error('StatusStore: Error reordering statuses:', error)
+      logger.error('StatusStore: Error reordering statuses:', error)
       set({ error: 'Erro ao reordenar status', loading: false })
     }
   },

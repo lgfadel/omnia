@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
+import { logger } from '../lib/logging';
+
 
 export default function TicketEdit() {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +40,7 @@ export default function TicketEdit() {
         const ticket = await getTarefaById(id);
         setTicket(ticket);
       } catch (error) {
-        console.error('Erro ao carregar tarefa:', error);
+        logger.error('Erro ao carregar tarefa:', error);
         toast({
           title: 'Erro ao carregar tarefa',
           description: 'Não foi possível carregar os dados da tarefa.',
@@ -81,7 +83,7 @@ export default function TicketEdit() {
         navigate(`/tarefas/${ticket.id}`);
       }
     } catch (error) {
-      console.error('Erro ao atualizar tarefa:', error);
+      logger.error('Erro ao atualizar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'tarefa', 'omnia_tarefas')

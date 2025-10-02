@@ -12,6 +12,8 @@ import { crmCommentsRepoSupabase } from '@/repositories/crmCommentsRepo.supabase
 import { crmAttachmentsRepoSupabase } from '@/repositories/crmAttachmentsRepo.supabase';
 import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
+import { logger } from '../../lib/logging';
+
 
 interface CrmCommentInputProps {
   leadId: string;
@@ -61,7 +63,7 @@ export const CrmCommentInput = ({ leadId, onCommentAdded }: CrmCommentInputProps
       onCommentAdded?.();
       toast.success('Comentário adicionado com sucesso');
     } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
+      logger.error('Erro ao adicionar comentário:', error);
       toast.error('Erro ao adicionar comentário');
     } finally {
       setIsSubmitting(false);

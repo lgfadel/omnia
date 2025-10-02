@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { Status } from "@/data/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
+import { logger } from '../lib/logging';
+
 
 const ConfigStatus = () => {
   const { toast } = useToast();
@@ -28,13 +30,13 @@ const ConfigStatus = () => {
   const [editingStatus, setEditingStatus] = useState<Status | null>(null);
 
   useEffect(() => {
-    console.log('ConfigStatus: Component mounted, loading statuses...')
+    logger.debug('ConfigStatus: Component mounted, loading statuses...')
     loadStatuses();
   }, [loadStatuses]);
 
   useEffect(() => {
     if (error) {
-      console.error('ConfigStatus: Error detected:', error)
+      logger.error('ConfigStatus: Error detected:', error)
       toast({
         title: "Erro",
         description: error,
@@ -45,19 +47,19 @@ const ConfigStatus = () => {
   }, [error, toast, clearError]);
 
   const handleCreate = () => {
-    console.log('ConfigStatus: Opening create form')
+    logger.debug('ConfigStatus: Opening create form')
     setEditingStatus(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (status: Status) => {
-    console.log('ConfigStatus: Opening edit form for status:', status)
+    logger.debug('ConfigStatus: Opening edit form for status:', status)
     setEditingStatus(status);
     setIsFormOpen(true);
   };
 
   const handleFormSubmit = async (data: { name: string; color: string }) => {
-    console.log('ConfigStatus: Submitting form:', data)
+    logger.debug('ConfigStatus: Submitting form:', data)
     
     try {
       if (editingStatus) {
@@ -79,7 +81,7 @@ const ConfigStatus = () => {
       setIsFormOpen(false);
       setEditingStatus(null);
     } catch (error) {
-      console.error('ConfigStatus: Error submitting form:', error)
+      logger.error('ConfigStatus: Error submitting form:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext(editingStatus ? 'update' : 'create', 'status', 'omnia_status')
@@ -93,7 +95,7 @@ const ConfigStatus = () => {
   };
 
   const handleDelete = async (id: string) => {
-    console.log('ConfigStatus: Deleting status:', id)
+    logger.debug('ConfigStatus: Deleting status:', id)
     
     try {
       const success = await deleteStatus(id);
@@ -104,7 +106,7 @@ const ConfigStatus = () => {
         });
       }
     } catch (error) {
-      console.error('ConfigStatus: Error deleting status:', error)
+      logger.error('ConfigStatus: Error deleting status:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'status', 'omnia_status')
@@ -118,7 +120,7 @@ const ConfigStatus = () => {
   };
 
   const handleReorder = async (reorderedStatuses: Status[]) => {
-    console.log('ConfigStatus: Reordering statuses:', reorderedStatuses)
+    logger.debug('ConfigStatus: Reordering statuses:', reorderedStatuses)
     
     try {
       await reorderStatuses(reorderedStatuses);
@@ -127,7 +129,7 @@ const ConfigStatus = () => {
         description: "A ordem dos status foi atualizada com sucesso."
       });
     } catch (error) {
-      console.error('ConfigStatus: Error reordering statuses:', error)
+      logger.error('ConfigStatus: Error reordering statuses:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'status', 'omnia_status')
@@ -141,12 +143,12 @@ const ConfigStatus = () => {
   };
 
   const handleCloseForm = () => {
-    console.log('ConfigStatus: Closing form')
+    logger.debug('ConfigStatus: Closing form')
     setIsFormOpen(false);
     setEditingStatus(null);
   };
 
-  console.log('ConfigStatus: Rendering with statuses:', statuses, 'loading:', loading)
+  logger.debug('ConfigStatus: Rendering with statuses:', statuses, 'loading:', loading)
 
   return (
     <Layout>

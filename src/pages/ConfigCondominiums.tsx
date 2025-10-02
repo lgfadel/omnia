@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { Condominium } from "@/repositories/condominiumsRepo.supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
+import { logger } from '../lib/logging';
+
 
 const ConfigCondominiums = () => {
   const { toast } = useToast();
@@ -26,13 +28,13 @@ const ConfigCondominiums = () => {
   const [editingCondominium, setEditingCondominium] = useState<Condominium | null>(null);
 
   useEffect(() => {
-    console.log('ConfigCondominiums: Component mounted, loading condominiums...')
+    logger.debug('ConfigCondominiums: Component mounted, loading condominiums...')
     loadCondominiums();
   }, [loadCondominiums]);
 
   useEffect(() => {
     if (error) {
-      console.error('ConfigCondominiums: Error detected:', error)
+      logger.error('ConfigCondominiums: Error detected:', error)
       toast({
         title: "Erro",
         description: error,
@@ -43,13 +45,13 @@ const ConfigCondominiums = () => {
   }, [error, toast, clearError]);
 
   const handleCreate = () => {
-    console.log('ConfigCondominiums: Opening create form')
+    logger.debug('ConfigCondominiums: Opening create form')
     setEditingCondominium(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (condominium: Condominium) => {
-    console.log('ConfigCondominiums: Opening edit form for condominium:', condominium)
+    logger.debug('ConfigCondominiums: Opening edit form for condominium:', condominium)
     setEditingCondominium(condominium);
     setIsFormOpen(true);
   };
@@ -63,7 +65,7 @@ const ConfigCondominiums = () => {
     syndic_id?: string;
     manager_id?: string;
   }) => {
-    console.log('ConfigCondominiums: Submitting form:', data)
+    logger.debug('ConfigCondominiums: Submitting form:', data)
     
     try {
       if (editingCondominium) {
@@ -82,7 +84,7 @@ const ConfigCondominiums = () => {
       setIsFormOpen(false);
       setEditingCondominium(null);
     } catch (error) {
-      console.error('ConfigCondominiums: Error submitting form:', error)
+      logger.error('ConfigCondominiums: Error submitting form:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext(
@@ -100,7 +102,7 @@ const ConfigCondominiums = () => {
   };
 
   const handleDelete = async (id: string) => {
-    console.log('ConfigCondominiums: Deleting condominium:', id)
+    logger.debug('ConfigCondominiums: Deleting condominium:', id)
     
     try {
       await deleteCondominium(id);
@@ -109,7 +111,7 @@ const ConfigCondominiums = () => {
         description: "O condomínio foi excluído com sucesso."
       });
     } catch (error) {
-      console.error('ConfigCondominiums: Error deleting condominium:', error)
+      logger.error('ConfigCondominiums: Error deleting condominium:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'condomínio', 'omnia_condominiums')
@@ -123,7 +125,7 @@ const ConfigCondominiums = () => {
   };
 
   const handleFormCancel = () => {
-    console.log('ConfigCondominiums: Form cancelled')
+    logger.debug('ConfigCondominiums: Form cancelled')
     setIsFormOpen(false);
     setEditingCondominium(null);
   };

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { usersRepoSupabase, User } from '@/repositories/usersRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface UsersState {
   users: User[]
@@ -21,7 +23,7 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       const users = await usersRepoSupabase.getAll()
       set({ users, loading: false })
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error)
+      logger.error('Erro ao carregar usuários:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         loading: false 
@@ -38,7 +40,7 @@ export const useUsersStore = create<UsersState>((set, get) => ({
     try {
       return await usersRepoSupabase.searchByName(search)
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error)
+      logger.error('Erro ao buscar usuários:', error)
       return []
     }
   }

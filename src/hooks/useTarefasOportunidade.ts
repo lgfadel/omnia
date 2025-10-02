@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '../lib/logging';
+
 
 export interface TarefaOportunidade {
   id: string;
@@ -165,7 +167,7 @@ export function useTarefasOportunidade(oportunidadeId: string) {
 
       setTarefas(transformedTarefas);
     } catch (err) {
-      console.error('Erro ao buscar tarefas da oportunidade:', err);
+      logger.error('Erro ao buscar tarefas da oportunidade:', err);
       setError('Erro ao carregar tarefas');
     } finally {
       setLoading(false);
