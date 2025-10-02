@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Comment } from "@/data/types"
+import { Comment, Attachment } from "@/data/types"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit, Check, X } from "lucide-react"
@@ -41,7 +41,7 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
   const [editBody, setEditBody] = useState("")
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
 
-  const downloadAttachment = async (attachment: any) => {
+  const downloadAttachment = async (attachment: Attachment) => {
     try {
       // Handle blob/data URLs
       if (attachment.url.startsWith('blob:')) {
@@ -340,7 +340,12 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
         onClose={() => setPreviewImage(null)}
         imageUrl={previewImage?.url || ""}
         imageName={previewImage?.name || ""}
-        onDownload={previewImage ? () => downloadAttachment({ url: previewImage.url, name: previewImage.name }) : undefined}
+        onDownload={previewImage ? () => downloadAttachment({ 
+          id: '', 
+          url: previewImage.url, 
+          name: previewImage.name, 
+          createdAt: new Date().toISOString() 
+        }) : undefined}
       />
     </div>
   )

@@ -16,7 +16,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAtasStore } from "@/store/atas.store"
 import { useTagsStore } from "@/store/tags.store"
 import { useEffect, useState, useCallback } from "react"
-import { Ata } from "@/data/types"
+import { Ata, Attachment } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 
 const AtaDetail = () => {
@@ -51,7 +51,7 @@ const AtaDetail = () => {
     }
   }, [id, loadStatuses, loadTags, loadAta])
 
-  const handleAddComment = async (body: string, attachments?: any[]) => {
+  const handleAddComment = async (body: string, attachments?: Attachment[]) => {
     if (!id) return
     
     setCommentLoading(true)
@@ -65,7 +65,7 @@ const AtaDetail = () => {
     setCommentLoading(false)
   }
 
-  const handleAddAttachment = async (attachment: any) => {
+  const handleAddAttachment = async (attachment: Omit<Attachment, 'id' | 'createdAt'>) => {
     if (!id) return
     
     setUploadLoading(true)

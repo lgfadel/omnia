@@ -69,7 +69,7 @@ export function AdminForm({ administradora, onSubmit, onCancel, isLoading }: Adm
             <Label htmlFor="tipo">Tipo *</Label>
             <Select
               value={form.watch("tipo")}
-              onValueChange={(value) => form.setValue("tipo", value as any)}
+              onValueChange={(value) => form.setValue("tipo", value as "Administradora" | "Contabilidade" | "Construtora" | "Advogado")}
               disabled={isLoading}
             >
               <SelectTrigger>

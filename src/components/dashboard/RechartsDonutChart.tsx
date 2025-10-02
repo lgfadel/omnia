@@ -5,8 +5,15 @@ interface RechartsDonutChartProps {
   title: string;
 }
 
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: { name: string; value: number; color: string; totalValue: number };
+  }>;
+}
+
 // Componente personalizado para o tooltip
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const totalValue = payload[0].payload.totalValue;

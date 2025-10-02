@@ -71,7 +71,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
 
       const commentsWithAttachments = commentsData.map((comment) => {
         try {
-          const commentAttachments = allAttachments.filter(att => (att as any).comment_id === comment.id);
+          const commentAttachments = allAttachments.filter(att => (att as TicketAttachment).comment_id === comment.id);
           const author = users.find(user => user.id === comment.author_id);
           
           return {

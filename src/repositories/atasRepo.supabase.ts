@@ -2,16 +2,93 @@ import { supabase } from "@/integrations/supabase/client"
 import { logger } from '@/lib/logging'
 import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/types"
 
+// Database types for type safety
+interface DbAta {
+  id: string;
+  code?: string;
+  title: string;
+  description?: string;
+  meeting_date?: string;
+  created_at: string;
+  updated_at: string;
+  secretary_id?: string;
+  responsible_id?: string;
+  status_id: string;
+  condominium_id?: string;
+  ticket?: string;
+  tags?: string[];
+  comment_count?: number;
+  omnia_attachments?: DbAttachment[];
+  omnia_comments?: DbComment[];
+  omnia_users?: DbUser[];
+  responsible_user?: DbUser;
+}
+
+interface DbAttachment {
+  id: string;
+  name: string;
+  url: string;
+  size_kb?: number;
+  mime_type?: string;
+  created_at: string;
+  comment_id?: string;
+}
+
+interface DbComment {
+  id: string;
+  body: string;
+  created_at: string;
+  author_id: string;
+  author_user?: DbUser;
+}
+
+interface DbUser {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  color?: string;
+  roles?: Role[];
+}
+
+interface DbStatus {
+  id: string;
+  name: string;
+  color: string;
+  order_position: number;
+  is_default?: boolean;
+}
+
+interface DbAtaUpdate {
+  title?: string;
+  description?: string;
+  meeting_date?: string;
+  secretary_id?: string;
+  responsible_id?: string;
+  status_id?: string;
+  condominium_id?: string;
+  ticket?: string;
+  tags?: string[];
+}
+
+interface SupabaseUntyped {
+  from: (table: string) => {
+    select: (columns?: string) => any;
+    insert: (data: any) => any;
+    update: (data: any) => any;
+    delete: () => any;
+  };
+}
+
 // Use existing supabase client with type casting for untyped tables
-const supabaseUntyped = supabase as any
+const supabaseUntyped = supabase as SupabaseUntyped
 
 // Transform database record to Ata type
-const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
+const transformAtaFromDB = (dbAta: DbAta, statuses: Status[]): Ata => {
   const status = statuses.find(s => s.id === dbAta.status_id)
   
   // Group attachments by comment_id for quick lookup
-  const attachmentsByCommentId: Record<string, any[]> = {}
-  ;(dbAta.omnia_attachments || []).forEach((att: any) => {
+  const attachmentsByCommentId: Record<string, DbAttachment[]> = {}
+  ;(dbAta.omnia_attachments || []).forEach((att: DbAttachment) => {
     if (att.comment_id) {
       if (!attachmentsByCommentId[att.comment_id]) attachmentsByCommentId[att.comment_id] = []
       attachmentsByCommentId[att.comment_id].push(att)
@@ -19,9 +96,9 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
   })
 
   // Transform comments with proper author handling and mapped attachments
-  const transformedComments = (dbAta.omnia_comments || []).map((comment: any) => {
+  const transformedComments = (dbAta.omnia_comments || []).map((comment: DbComment) => {
     const rawAttachments = attachmentsByCommentId[comment.id] || []
-    const mappedAttachments: Attachment[] = rawAttachments.map((att: any) => ({
+    const mappedAttachments: Attachment[] = rawAttachments.map((att: DbAttachment) => ({
       id: att.id,
       name: att.name,
       url: att.url,
@@ -83,7 +160,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
     tags: dbAta.tags || [],
     commentCount: dbAta.comment_count || 0,
     // Transform attachments
-    attachments: (dbAta.omnia_attachments || []).map((att: any) => ({
+    attachments: (dbAta.omnia_attachments || []).map((att: DbAttachment) => ({
       id: att.id,
       name: att.name,
       url: att.url,
@@ -96,7 +173,7 @@ const transformAtaFromDB = (dbAta: any, statuses: Status[]): Ata => {
 }
 
 // Transform database record to Status type
-const transformStatusFromDB = (dbStatus: any): Status => ({
+const transformStatusFromDB = (dbStatus: DbStatus): Status => ({
   id: dbStatus.id,
   name: dbStatus.name,
   color: dbStatus.color,
@@ -137,8 +214,8 @@ export const atasRepoSupabase = {
 
     // Get attachments and comments separately
     const ataIds = data?.map(ata => ata.id) || []
-    let attachments: any[] = []
-    let comments: any[] = []
+    let attachments: DbAttachment[] = []
+    let comments: DbComment[] = []
     
     if (ataIds.length > 0) {
       const { data: attachmentsData } = await supabaseUntyped
@@ -301,7 +378,7 @@ export const atasRepoSupabase = {
   },
 
   async update(id: string, data: Partial<Omit<Ata, 'id' | 'createdAt'>>): Promise<Ata | null> {
-    const updateData: any = {}
+    const updateData: DbAtaUpdate = {}
     
     if (data.title !== undefined) updateData.title = data.title
     if (data.description !== undefined) updateData.description = data.description
@@ -519,7 +596,7 @@ export const atasRepoSupabase = {
         avatarUrl: updatedComment.author_user.avatar_url,
         color: updatedComment.author_user.color
       },
-      attachments: attachments?.map((att: any) => ({
+      attachments: attachments?.map((att: DbAttachment) => ({
         id: att.id,
         name: att.name,
         url: att.url,
@@ -573,7 +650,7 @@ export const atasRepoSupabase = {
       throw new Error(`Erro ao buscar usuários: ${error.message}`)
     }
     
-    return data?.map((user: any) => ({
+    return data?.map((user: DbUser) => ({
       id: user.id,
       name: user.name,
       email: '', // Not accessible in general queries

@@ -90,7 +90,7 @@ export function SecretarioList({ secretarios, onEdit, onDelete, onCreate, isLoad
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{secretario.name}</span>
                       <Badge 
-                        variant={getRoleVariant(secretario.roles) as any}
+                        variant={getRoleVariant(secretario.roles) as "default" | "secondary" | "destructive" | "outline"}
                         className="gap-1"
                       >
                         {getRoleIcon(secretario.roles)}

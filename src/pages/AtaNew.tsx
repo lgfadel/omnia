@@ -8,6 +8,19 @@ import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler"
 
+// Type for AtaForm data
+type AtaFormData = {
+  title: string;
+  description?: string;
+  meetingDate?: string;
+  secretaryId?: string;
+  responsibleId?: string;
+  statusId: string;
+  condominiumId?: string;
+  ticket?: string;
+  tags?: string;
+}
+
 const AtaNew = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -17,7 +30,7 @@ const AtaNew = () => {
     loadStatuses()
   }, [loadStatuses])
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Omit<AtaFormData, 'tags'> & { tags: string[] }) => {
     try {
       const secretary = data.secretaryId ? { id: data.secretaryId, name: '', email: '', roles: [] } : undefined
       const responsible = data.responsibleId ? { id: data.responsibleId, name: '', email: '', roles: [] } : undefined

@@ -8,6 +8,19 @@ import { useAtasStore } from "@/store/atas.store"
 import { useEffect, useState, useCallback } from "react"
 import { Ata } from "@/data/types"
 
+// Type for AtaForm data
+type AtaFormData = {
+  title: string;
+  description?: string;
+  meetingDate?: string;
+  secretaryId?: string;
+  responsibleId?: string;
+  statusId: string;
+  condominiumId?: string;
+  ticket?: string;
+  tags?: string;
+}
+
 const AtaEdit = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -32,7 +45,7 @@ const AtaEdit = () => {
     }
   }, [id, loadStatuses, loadAta])
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Omit<AtaFormData, 'tags'> & { tags: string[] }) => {
     if (!id) return
     
     try {

@@ -18,6 +18,23 @@ import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
+// Type for table row data
+type AtaTableRow = {
+  id: string;
+  title: string;
+  secretary: { id: string; name: string; color?: string } | null;
+  responsible: { id: string; name: string; color?: string } | null;
+  secretaryName: string;
+  responsibleName: string;
+  createdAt: string;
+  meetingDate: string;
+  commentCount: number;
+  status: "nao-iniciado" | "em-andamento" | "concluido";
+  statusName: string;
+  statusColor: string;
+  ticket?: string;
+}
+
 const columns = [
   { key: "title", label: "Título", width: "100" },
   { key: "meetingDate", label: "Data Assembleia", width: "15" },
@@ -259,7 +276,7 @@ const Atas = () => {
   })
 
   // Group data by status for separators
-  const groupedData: Array<{ type: 'separator' | 'data', statusName: string, statusColor?: string, data?: any, count?: number }> = []
+  const groupedData: Array<{ type: 'separator' | 'data', statusName: string, statusColor?: string, data?: AtaTableRow, count?: number }> = []
   let currentStatus = ''
   let currentStatusCount = 0
   

@@ -40,7 +40,7 @@ import { useAccessibleMenuTree } from "@/hooks/useMenuItems"
 import { MenuItem } from "@/repositories/menuItemsRepo.supabase"
 
 // Mapeamento de ícones para os itens de menu
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'home': Home,
   'dashboard': Home,
   'atas': ClipboardList,

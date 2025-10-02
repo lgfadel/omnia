@@ -24,6 +24,28 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { DueDateModal } from '@/components/ui/due-date-modal';
 import { PriorityModal } from '@/components/ui/priority-modal';
+import { UserRef } from '@/data/types';
+
+// Type for table row data
+type TicketTableRow = Tarefa & {
+  dueDate: React.ReactNode;
+  dueDateOriginal?: Date;
+  assignedTo: string;
+  responsible: UserRef | undefined;
+  status: "nao-iniciado" | "em-andamento" | "concluido";
+  statusName: string;
+  statusColor: string;
+  isPrivate: boolean;
+};
+
+// Type for grouped data
+type GroupedDataItem = {
+  type: 'separator' | 'data';
+  statusName: string;
+  statusColor?: string;
+  data?: TicketTableRow;
+  count?: number;
+};
 
 const columns = [
   { key: "title", label: "Título", width: "w-[30%]" },
@@ -390,7 +412,7 @@ export default function Tickets() {
   });
 
   // Group data by status for separators
-  const groupedData: Array<{ type: 'separator' | 'data', statusName: string, statusColor?: string, data?: any, count?: number }> = [];
+  const groupedData: GroupedDataItem[] = [];
   let currentStatus = '';
   let currentStatusCount = 0;
   

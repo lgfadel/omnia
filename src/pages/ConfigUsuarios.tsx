@@ -6,8 +6,17 @@ import { SecretarioForm } from "@/components/secretarios/SecretarioForm"
 import { SecretarioList } from "@/components/secretarios/SecretarioList"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSecretariosStore } from "@/store/secretarios.store"
-import { UserRef } from "@/data/types"
+import { UserRef, Role } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
+
+// Type for SecretarioForm data
+type SecretarioFormData = {
+  name: string;
+  email: string;
+  password?: string;
+  roles: Role[];
+  color?: string;
+}
 
 const ConfigUsuarios = () => {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -54,7 +63,7 @@ const ConfigUsuarios = () => {
     setIsFormOpen(true)
   }
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: SecretarioFormData) => {
     try {
       if (editingSecretario) {
         await updateSecretario(editingSecretario.id, data)

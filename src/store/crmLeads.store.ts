@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { CrmLead, CrmComment, CrmAttachment, crmLeadsRepo } from '@/repositories/crmLeadsRepo.supabase'
+import { CrmLead, CrmComment, CrmAttachment, ViaCepResponse, crmLeadsRepo } from '@/repositories/crmLeadsRepo.supabase'
 import { toast } from '@/hooks/use-toast'
 
 interface CrmLeadsState {
@@ -44,7 +44,7 @@ interface CrmLeadsState {
   setPageSize: (pageSize: number) => void
   
   // Address search
-  searchAddress: (cep: string) => Promise<any>
+  searchAddress: (cep: string) => Promise<ViaCepResponse | null>
 }
 
 export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
@@ -277,7 +277,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
     get().fetchLeads(1, pageSize)
   },
 
-  searchAddress: async (cep: string) => {
+  searchAddress: async (cep: string): Promise<ViaCepResponse | null> => {
     try {
       return await crmLeadsRepo.searchByCep(cep)
     } catch (error) {

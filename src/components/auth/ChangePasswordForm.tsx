@@ -66,7 +66,7 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
 
       reset()
       onSuccess?.()
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Error changing password:', error)
       const treatedError = handleSupabaseError(
         error,

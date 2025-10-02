@@ -12,6 +12,15 @@ interface RechartsBarChartProps {
   horizontal?: boolean;
 }
 
+interface BarTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    value: number;
+    payload: { category: string; value: number };
+  }>;
+  label?: string;
+}
+
 export default function RechartsBarChart({ 
   data, 
   title, 
@@ -26,7 +35,7 @@ export default function RechartsBarChart({
   }));
 
   // Componente personalizado para o tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: BarTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="custom-tooltip" style={{

@@ -55,4 +55,4 @@ function OptimizedListComponent<T>({
 export const OptimizedList = React.memo(OptimizedListComponent) as <T>(props: OptimizedListProps<T>) => JSX.Element
 
 // Set display name for debugging
-;(OptimizedList as any).displayName = 'OptimizedList'
+;(OptimizedList as React.ComponentType<OptimizedListProps<unknown>>).displayName = 'OptimizedList'

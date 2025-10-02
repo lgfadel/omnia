@@ -6,6 +6,17 @@ interface AntPieChartProps {
   title: string
 }
 
+interface TooltipItem {
+  name: string;
+  value: number;
+  color: string;
+  data?: {
+    name: string;
+    value: number;
+    color: string;
+  };
+}
+
 export function AntPieChart({ data, title }: AntPieChartProps) {
   
   // Calcular o total uma única vez fora da função de tooltip
@@ -23,7 +34,7 @@ export function AntPieChart({ data, title }: AntPieChartProps) {
       // Configuração explícita para garantir que o tooltip seja exibido
       showTitle: false,
       showMarkers: false,
-      customContent: (title: string, items: any[]) => {
+      customContent: (title: string, items: TooltipItem[]) => {
         // Verificar se temos itens válidos
         if (!items || items.length === 0) {
           return '';
