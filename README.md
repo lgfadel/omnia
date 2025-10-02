@@ -110,4 +110,4 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para guias de desenvolvimento.
 Para informações detalhadas sobre implementação:
 - [atas.md](atas.md) - Sistema de atas
 - [tarefas.md](tarefas.md) - Sistema de tarefas
-- [docs/](docs/) - Documentação técnica específica
+- [docs/](docs/) - Documentação técnica específica.
