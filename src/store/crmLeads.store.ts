@@ -57,7 +57,7 @@ export const useCrmLeadsStore = create<CrmLeadsState>((set, get) => ({
   filters: {},
   pagination: {
     currentPage: 1,
-    pageSize: 10,
+    pageSize: 1000,
     totalItems: 0,
     totalPages: 0
   },
