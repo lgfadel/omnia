@@ -54,8 +54,10 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
     }
 
     try {
+      console.log('TagInput: Creating tag with name:', nameToAdd);
       // Create tag in database if it doesn't exist
-      await getOrCreateTag(nameToAdd);
+      const createdTag = await getOrCreateTag(nameToAdd);
+      console.log('TagInput: Tag created/retrieved:', createdTag);
       
       // Add to local tags list
       onTagsChange([...tags, nameToAdd]);
@@ -63,7 +65,7 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
       setShowSuggestions(false);
       setSelectedIndex(-1);
     } catch (error) {
-      console.error('Error creating tag:', error);
+      console.error('TagInput: Error creating tag:', error);
       // Still add to local list even if DB creation fails
       onTagsChange([...tags, nameToAdd]);
       setTagInput("");

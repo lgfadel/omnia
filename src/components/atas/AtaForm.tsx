@@ -19,6 +19,8 @@ import { useCondominiumStore } from "@/store/condominiums.store";
 import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
 import { TagInput } from "./TagInput";
 import { QuickCondominiumDialog } from "@/components/condominiums/QuickCondominiumDialog";
+import { logger } from '../../lib/logging';
+
 const ataSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
@@ -64,7 +66,7 @@ export function AtaForm({
         ]);
         setUsers(userData);
       } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+        logger.error('Erro ao carregar dados:', error);
       }
     };
     loadData();

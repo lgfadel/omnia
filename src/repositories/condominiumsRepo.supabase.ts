@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
+import { logger } from '../lib/logging';
+
 
 export interface Condominium {
   id: string
@@ -31,7 +33,7 @@ const transformCondominiumFromDB = (dbCondominium: any): Condominium => ({
 
 export const condominiumsRepoSupabase = {
   async list(): Promise<Condominium[]> {
-    console.log('Loading condominiums...')
+    logger.debug('Loading condominiums...')
     
     const { data, error } = await supabase
       .from('omnia_condominiums')
@@ -39,16 +41,16 @@ export const condominiumsRepoSupabase = {
       .order('name')
 
     if (error) {
-      console.error('Error loading condominiums:', error)
+      logger.error('Error loading condominiums:', error)
       throw error
     }
 
-    console.log('Loaded condominiums:', data)
+    logger.debug('Loaded condominiums:', data)
     return data?.map(transformCondominiumFromDB) || []
   },
 
   async create(data: Omit<Condominium, 'id' | 'created_at' | 'updated_at'>): Promise<Condominium> {
-    console.log('Creating condominium:', data)
+    logger.debug('Creating condominium:', data)
     
     const { data: newCondominium, error } = await supabase
       .from('omnia_condominiums')
@@ -66,16 +68,16 @@ export const condominiumsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error creating condominium:', error)
+      logger.error('Error creating condominium:', error)
       throw error
     }
 
-    console.log('Created condominium:', newCondominium)
+    logger.debug('Created condominium:', newCondominium)
     return transformCondominiumFromDB(newCondominium)
   },
 
   async update(id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at'>>): Promise<Condominium | null> {
-    console.log('Updating condominium:', id, data)
+    logger.debug('Updating condominium:', id, data)
     
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')
@@ -93,16 +95,16 @@ export const condominiumsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating condominium:', error)
+      logger.error('Error updating condominium:', error)
       throw error
     }
 
-    console.log('Updated condominium:', updatedCondominium)
+    logger.debug('Updated condominium:', updatedCondominium)
     return updatedCondominium ? transformCondominiumFromDB(updatedCondominium) : null
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing condominium:', id)
+    logger.debug('Removing condominium:', id)
     
     const { error } = await supabase
       .from('omnia_condominiums')
@@ -110,16 +112,16 @@ export const condominiumsRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing condominium:', error)
+      logger.error('Error removing condominium:', error)
       throw error
     }
 
-    console.log('Removed condominium:', id)
+    logger.debug('Removed condominium:', id)
     return true
   },
 
   async getById(id: string): Promise<Condominium | null> {
-    console.log('Getting condominium by id:', id)
+    logger.debug('Getting condominium by id:', id)
     
     const { data, error } = await supabase
       .from('omnia_condominiums')
@@ -128,16 +130,16 @@ export const condominiumsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error getting condominium:', error)
+      logger.error('Error getting condominium:', error)
       return null
     }
 
-    console.log('Got condominium:', data)
+    logger.debug('Got condominium:', data)
     return data ? transformCondominiumFromDB(data) : null
   },
 
   async checkCnpjExists(cnpj: string, excludeId?: string): Promise<boolean> {
-    console.log('Checking if CNPJ exists:', cnpj)
+    logger.debug('Checking if CNPJ exists:', cnpj)
     
     let query = supabase
       .from('omnia_condominiums')
@@ -151,7 +153,7 @@ export const condominiumsRepoSupabase = {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error checking CNPJ:', error)
+      logger.error('Error checking CNPJ:', error)
       throw error
     }
 

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { tarefasRepoSupabase, type Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler';
+import { logger } from '../lib/logging';
+
 
 interface TarefasStore {
   tarefas: Tarefa[];
@@ -27,7 +29,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       const tarefas = await tarefasRepoSupabase.list();
       set({ tarefas, loading: false });
     } catch (error) {
-      console.error('Erro ao carregar tarefas:', error);
+      logger.error('Erro ao carregar tarefas:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('read', 'tarefa', 'omnia_tarefas')
@@ -46,7 +48,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       set({ loading: false });
       return tarefa;
     } catch (error) {
-      console.error('Erro ao buscar tarefa:', error);
+      logger.error('Erro ao buscar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('read', 'tarefa', 'omnia_tarefas')
@@ -70,7 +72,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       });
       return novaTarefa;
     } catch (error) {
-      console.error('Erro ao criar tarefa:', error);
+      logger.error('Erro ao criar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('create', 'tarefa', 'omnia_tarefas')
@@ -99,7 +101,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       }
       return updatedTarefa;
     } catch (error) {
-      console.error('Erro ao atualizar tarefa:', error);
+      logger.error('Erro ao atualizar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'tarefa', 'omnia_tarefas')
@@ -124,7 +126,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('Erro ao deletar tarefa:', error);
+      logger.error('Erro ao deletar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'tarefa', 'omnia_tarefas')
@@ -144,7 +146,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
       set({ tarefas, loading: false });
       return tarefas;
     } catch (error) {
-      console.error('Erro ao buscar tarefas:', error);
+      logger.error('Erro ao buscar tarefas:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('read', 'tarefa', 'omnia_tarefas')

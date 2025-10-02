@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { Status } from "@/data/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
+import { logger } from '../../lib/logging';
+
 
 const ConfigCrmStatus = () => {
   const { toast } = useToast();
@@ -27,13 +29,13 @@ const ConfigCrmStatus = () => {
   const [editingStatus, setEditingStatus] = useState<Status | null>(null);
 
   useEffect(() => {
-    console.log('ConfigCrmStatus: Component mounted, loading statuses...')
+    logger.debug('ConfigCrmStatus: Component mounted, loading statuses...')
     loadStatuses();
   }, [loadStatuses]);
 
   useEffect(() => {
     if (error) {
-      console.error('ConfigCrmStatus: Error detected:', error)
+      logger.error('ConfigCrmStatus: Error detected:', error)
       toast({
         title: "Erro",
         description: error,
@@ -44,19 +46,19 @@ const ConfigCrmStatus = () => {
   }, [error, toast, clearError]);
 
   const handleCreate = () => {
-    console.log('ConfigCrmStatus: Opening create form')
+    logger.debug('ConfigCrmStatus: Opening create form')
     setEditingStatus(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (status: Status) => {
-    console.log('ConfigCrmStatus: Opening edit form for status:', status)
+    logger.debug('ConfigCrmStatus: Opening edit form for status:', status)
     setEditingStatus(status);
     setIsFormOpen(true);
   };
 
   const handleFormSubmit = async (data: { name: string; color: string }) => {
-    console.log('ConfigCrmStatus: Submitting form:', data)
+    logger.debug('ConfigCrmStatus: Submitting form:', data)
     
     try {
       if (editingStatus) {
@@ -78,7 +80,7 @@ const ConfigCrmStatus = () => {
       setIsFormOpen(false);
       setEditingStatus(null);
     } catch (error) {
-      console.error('ConfigCrmStatus: Error submitting form:', error)
+      logger.error('ConfigCrmStatus: Error submitting form:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext(editingStatus ? 'update' : 'create', 'status CRM', 'omnia_crm_statuses')
@@ -92,7 +94,7 @@ const ConfigCrmStatus = () => {
   };
 
   const handleDelete = async (id: string) => {
-    console.log('ConfigCrmStatus: Deleting status:', id)
+    logger.debug('ConfigCrmStatus: Deleting status:', id)
     
     try {
       const success = await deleteStatus(id);
@@ -103,7 +105,7 @@ const ConfigCrmStatus = () => {
         });
       }
     } catch (error) {
-      console.error('ConfigCrmStatus: Error deleting status:', error)
+      logger.error('ConfigCrmStatus: Error deleting status:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'status CRM', 'omnia_crm_statuses')
@@ -117,7 +119,7 @@ const ConfigCrmStatus = () => {
   };
 
   const handleReorder = async (reorderedStatuses: Status[]) => {
-    console.log('ConfigCrmStatus: Reordering statuses:', reorderedStatuses)
+    logger.debug('ConfigCrmStatus: Reordering statuses:', reorderedStatuses)
     
     try {
       await reorderStatuses(reorderedStatuses);
@@ -126,7 +128,7 @@ const ConfigCrmStatus = () => {
         description: "A ordem dos status foi atualizada com sucesso."
       });
     } catch (error) {
-      console.error('ConfigCrmStatus: Error reordering statuses:', error)
+      logger.error('ConfigCrmStatus: Error reordering statuses:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'status CRM', 'omnia_crm_statuses')
@@ -140,12 +142,12 @@ const ConfigCrmStatus = () => {
   };
 
   const handleCloseForm = () => {
-    console.log('ConfigCrmStatus: Closing form')
+    logger.debug('ConfigCrmStatus: Closing form')
     setIsFormOpen(false);
     setEditingStatus(null);
   };
 
-  console.log('ConfigCrmStatus: Rendering with statuses:', statuses, 'loading:', loading)
+  logger.debug('ConfigCrmStatus: Rendering with statuses:', statuses, 'loading:', loading)
 
   return (
     <Layout>

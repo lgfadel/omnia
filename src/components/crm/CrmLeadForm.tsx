@@ -13,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { logger } from '../../lib/logging';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useAdministradorasStore } from '@/store/administradoras.store'
@@ -177,7 +178,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
       }
       onSuccess?.()
     } catch (error) {
-      console.error('Erro ao salvar lead:', error)
+      logger.error('Erro ao salvar lead:', error)
     }
   }
 
@@ -196,7 +197,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
         form.setValue('complemento', address.complemento)
       }
     } catch (error) {
-      console.error('Erro ao buscar CEP:', error)
+      logger.error('Erro ao buscar CEP:', error)
     } finally {
       setSearchingCep(false)
     }

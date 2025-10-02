@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAtasStore } from '@/store/atas.store'
 import { useTarefasStore } from '@/store/tarefas.store'
 import { calculateAtasMetrics, calculateTarefasMetrics, type AtasMetrics, type TarefasMetrics } from '@/utils/dashboardCalculations'
+import { logger } from '../lib/logging';
+
 
 export interface DashboardData {
   atasMetrics: AtasMetrics
@@ -61,7 +63,7 @@ export function useDashboardData() {
         loadTarefas()
       ])
     } catch (error) {
-      console.error('Erro ao carregar dados do dashboard:', error)
+      logger.error('Erro ao carregar dados do dashboard:', error)
       setDashboardData(prev => ({
         ...prev,
         loading: false,
@@ -89,7 +91,7 @@ export function useDashboardData() {
         lastUpdated: new Date()
       }))
     } catch (error) {
-      console.error('Erro ao calcular métricas:', error)
+      logger.error('Erro ao calcular métricas:', error)
       setDashboardData(prev => ({
         ...prev,
         loading: false,

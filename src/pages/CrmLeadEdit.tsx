@@ -9,6 +9,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { logger } from '../lib/logging';
+
 
 export default function CrmLeadEdit() {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +41,7 @@ export default function CrmLeadEdit() {
           navigate('/crm');
         }
       } catch (error) {
-        console.error('Erro ao carregar lead:', error);
+        logger.error('Erro ao carregar lead:', error);
         toast({
           title: 'Erro ao carregar lead',
           description: 'Não foi possível carregar os dados do lead.',

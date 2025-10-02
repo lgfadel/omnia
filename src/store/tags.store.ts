@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Tag, tagsRepoSupabase } from '@/repositories/tagsRepo.supabase';
+import { logger } from '../lib/logging';
+
 
 interface TagsStore {
   tags: Tag[];
@@ -27,10 +29,10 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const tags = await tagsRepoSupabase.list();
-      console.log('TagsStore: Loaded tags:', tags);
+      logger.debug('TagsStore: Loaded tags:', tags);
       set({ tags, loading: false });
     } catch (error) {
-      console.error('TagsStore: Error loading tags:', error);
+      logger.error('TagsStore: Error loading tags:', error);
       set({ error: 'Erro ao carregar tags', loading: false });
     }
   },
@@ -38,10 +40,10 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
   searchTags: async (query: string) => {
     try {
       const tags = await tagsRepoSupabase.search(query);
-      console.log('TagsStore: Search results:', tags);
+      logger.debug('TagsStore: Search results:', tags);
       return tags;
     } catch (error) {
-      console.error('TagsStore: Error searching tags:', error);
+      logger.error('TagsStore: Error searching tags:', error);
       return [];
     }
   },
@@ -50,7 +52,7 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const newTag = await tagsRepoSupabase.create(data);
-      console.log('TagsStore: Created tag:', newTag);
+      logger.debug('TagsStore: Created tag:', newTag);
       
       set(state => ({
         tags: [...state.tags, newTag],
@@ -59,7 +61,7 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
       
       return newTag;
     } catch (error) {
-      console.error('TagsStore: Error creating tag:', error);
+      logger.error('TagsStore: Error creating tag:', error);
       set({ error: 'Erro ao criar tag', loading: false });
       throw error;
     }
@@ -70,7 +72,7 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
     try {
       const updatedTag = await tagsRepoSupabase.update(id, data);
       if (updatedTag) {
-        console.log('TagsStore: Updated tag:', updatedTag);
+        logger.debug('TagsStore: Updated tag:', updatedTag);
         
         set(state => ({
           tags: state.tags.map(tag => 
@@ -80,7 +82,7 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
         }));
       }
     } catch (error) {
-      console.error('TagsStore: Error updating tag:', error);
+      logger.error('TagsStore: Error updating tag:', error);
       set({ error: 'Erro ao atualizar tag', loading: false });
       throw error;
     }
@@ -90,23 +92,23 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await tagsRepoSupabase.remove(id);
-      console.log('TagsStore: Deleted tag:', id);
+      logger.debug('TagsStore: Deleted tag:', id);
       
       set(state => ({
         tags: state.tags.filter(tag => tag.id !== id),
         loading: false
       }));
     } catch (error) {
-      console.error('TagsStore: Error deleting tag:', error);
+      logger.error('TagsStore: Error deleting tag:', error);
       set({ error: 'Erro ao excluir tag', loading: false });
       throw error;
     }
   },
 
-  getOrCreateTag: async (name, color = '#6366f1') => {
+  getOrCreateTag: async (name, color) => {
     try {
       const tag = await tagsRepoSupabase.getOrCreate(name, color);
-      console.log('TagsStore: Got or created tag:', tag);
+      logger.debug('TagsStore: Got or created tag:', tag);
       
       // Add to store if not already present
       set(state => {
@@ -121,7 +123,7 @@ export const useTagsStore = create<TagsStore>((set, get) => ({
       
       return tag;
     } catch (error) {
-      console.error('TagsStore: Error getting or creating tag:', error);
+      logger.error('TagsStore: Error getting or creating tag:', error);
       throw error;
     }
   }

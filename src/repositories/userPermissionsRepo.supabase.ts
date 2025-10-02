@@ -91,7 +91,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return (data || []).map(transformUserPermissionFromDB)
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.list:', error)
+      logger.error('Error in userPermissionsRepoSupabase.list:', error)
       throw error
     }
   },
@@ -112,7 +112,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return (data || []).map(transformUserPermissionFromDB)
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.getByUserId:', error)
+      logger.error('Error in userPermissionsRepoSupabase.getByUserId:', error)
       throw error
     }
   },
@@ -133,7 +133,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return (data || []).map(transformUserPermissionFromDB)
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.getByMenuItemId:', error)
+      logger.error('Error in userPermissionsRepoSupabase.getByMenuItemId:', error)
       throw error
     }
   },
@@ -155,7 +155,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return data ? transformUserPermissionFromDB(data) : null
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.getByUserAndMenuItem:', error)
+      logger.error('Error in userPermissionsRepoSupabase.getByUserAndMenuItem:', error)
       throw error
     }
   },
@@ -166,7 +166,7 @@ export const userPermissionsRepoSupabase = {
       logger.warn('get_user_permissions_summary function not available in current schema')
       return []
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.getUserPermissionsSummary:', error)
+      logger.error('Error in userPermissionsRepoSupabase.getUserPermissionsSummary:', error)
       throw error
     }
   },
@@ -177,7 +177,7 @@ export const userPermissionsRepoSupabase = {
       logger.warn('check_user_menu_permission function not available in current schema')
       return true
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.checkUserMenuPermission:', error)
+      logger.error('Error in userPermissionsRepoSupabase.checkUserMenuPermission:', error)
       throw error
     }
   },
@@ -188,7 +188,7 @@ export const userPermissionsRepoSupabase = {
       logger.warn('check_current_user_menu_permission function not available in current schema')
       return true
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.checkCurrentUserMenuPermission:', error)
+      logger.error('Error in userPermissionsRepoSupabase.checkCurrentUserMenuPermission:', error)
       throw error
     }
   },
@@ -203,7 +203,7 @@ export const userPermissionsRepoSupabase = {
         .order('order_index', { ascending: true })
 
       if (error) {
-        console.error('Error fetching menu items from omnia_menu_items:', error)
+        logger.error('Error fetching menu items from omnia_menu_items:', error)
         // Return default menu items as fallback
         return [
           {
@@ -261,7 +261,7 @@ export const userPermissionsRepoSupabase = {
         can_access: true // For now, assume all active items are accessible
       }))
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.getUserAccessibleMenuItems:', error)
+      logger.error('Error in userPermissionsRepoSupabase.getUserAccessibleMenuItems:', error)
       // Return default menu items as fallback
       return [
         {
@@ -324,7 +324,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return transformUserPermissionFromDB(result)
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.create:', error)
+      logger.error('Error in userPermissionsRepoSupabase.create:', error)
       throw error
     }
   },
@@ -346,7 +346,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return result ? transformUserPermissionFromDB(result) : null
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.update:', error)
+      logger.error('Error in userPermissionsRepoSupabase.update:', error)
       throw error
     }
   },
@@ -361,7 +361,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return true
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.remove:', error)
+      logger.error('Error in userPermissionsRepoSupabase.remove:', error)
       throw error
     }
   },
@@ -377,7 +377,7 @@ export const userPermissionsRepoSupabase = {
       if (error) throw error
       return true
     } catch (error) {
-      console.error('Error in userPermissionsRepoSupabase.removeByUserAndMenuItem:', error)
+      logger.error('Error in userPermissionsRepoSupabase.removeByUserAndMenuItem:', error)
       throw error
     }
   }

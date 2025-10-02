@@ -1,5 +1,7 @@
 import { Ata, Status } from '@/data/types'
 import { Tarefa } from '@/repositories/tarefasRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 // Tipos para as métricas do dashboard
 export interface AtasMetrics {
@@ -46,7 +48,7 @@ const PRIORITY_COLORS = {
  * Calcula métricas das atas
  */
 export function calculateAtasMetrics(atas: Ata[], statuses: Status[]): AtasMetrics {
-  console.log('calculateAtasMetrics - statuses disponíveis:', statuses.map(s => ({ id: s.id, name: s.name, color: s.color })))
+  logger.debug('calculateAtasMetrics - statuses disponíveis:', statuses.map(s => ({ id: s.id, name: s.name, color: s.color })))
   
   // Filtrar atas abertas (excluindo 'Concluído' e 'Aprovada')
   const atasAbertas = atas.filter(ata => {
@@ -68,7 +70,7 @@ export function calculateAtasMetrics(atas: Ata[], statuses: Status[]): AtasMetri
   const distribuicaoPorStatus = Array.from(statusCount.entries()).map(([name, value]) => {
     const status = statuses.find(s => s.name === name)
     const color = status?.color || STATUS_COLORS[name as keyof typeof STATUS_COLORS] || '#6b7280'
-    console.log(`Status "${name}" - cor do banco: ${status?.color}, cor fallback: ${STATUS_COLORS[name as keyof typeof STATUS_COLORS]}, cor final: ${color}`)
+    logger.debug(`Status "${name}" - cor do banco: ${status?.color}, cor fallback: ${STATUS_COLORS[name as keyof typeof STATUS_COLORS]}, cor final: ${color}`)
     return {
       name,
       value,
@@ -108,8 +110,8 @@ export function calculateAtasMetrics(atas: Ata[], statuses: Status[]): AtasMetri
  * Calcula métricas das tarefas
  */
 export function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): TarefasMetrics {
-  console.log('calculateTarefasMetrics - tarefas:', tarefas.map(t => ({ id: t.id, priority: t.priority, statusId: t.statusId })))
-  console.log('calculateTarefasMetrics - statuses disponíveis:', statuses.map(s => ({ id: s.id, name: s.name, color: s.color })))
+  logger.debug('calculateTarefasMetrics - tarefas:', tarefas.map(t => ({ id: t.id, priority: t.priority, statusId: t.statusId })))
+  logger.debug('calculateTarefasMetrics - statuses disponíveis:', statuses.map(s => ({ id: s.id, name: s.name, color: s.color })))
   
   // Filtrar apenas tarefas ativas (excluindo tarefas concluídas)
   const tarefasAtivas = tarefas.filter(tarefa => {
@@ -133,7 +135,7 @@ export function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): 
   const distribuicaoPorStatus = Array.from(statusCount.entries()).map(([name, value]) => {
     const status = statuses.find(s => s.name === name)
     const color = status?.color || STATUS_COLORS[name as keyof typeof STATUS_COLORS] || '#6b7280'
-    console.log(`Tarefa Status "${name}" - cor do banco: ${status?.color}, cor fallback: ${STATUS_COLORS[name as keyof typeof STATUS_COLORS]}, cor final: ${color}`)
+    logger.debug(`Tarefa Status "${name}" - cor do banco: ${status?.color}, cor fallback: ${STATUS_COLORS[name as keyof typeof STATUS_COLORS]}, cor final: ${color}`)
     return {
       name,
       value,
@@ -150,7 +152,7 @@ export function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): 
   
   const distribuicaoPorPrioridade = Array.from(priorityCount.entries()).map(([name, value]) => {
     const color = PRIORITY_COLORS[name as keyof typeof PRIORITY_COLORS] || '#6b7280'
-    console.log(`Prioridade "${name}" - cor: ${color}`)
+    logger.debug(`Prioridade "${name}" - cor: ${color}`)
     return {
       name,
       value,

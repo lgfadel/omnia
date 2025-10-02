@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { Condominium, condominiumsRepoSupabase } from '@/repositories/condominiumsRepo.supabase'
 import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler'
+import { logger } from '../lib/logging';
+
 
 interface CondominiumStore {
   condominiums: Condominium[]
@@ -23,15 +25,15 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   error: null,
 
   loadCondominiums: async () => {
-    console.log('CondominiumStore: Loading condominiums...')
+    logger.debug('CondominiumStore: Loading condominiums...')
     set({ loading: true, error: null })
     
     try {
       const condominiums = await condominiumsRepoSupabase.list()
-      console.log('CondominiumStore: Loaded condominiums:', condominiums)
+      logger.debug('CondominiumStore: Loaded condominiums:', condominiums)
       set({ condominiums, loading: false })
     } catch (error) {
-      console.error('CondominiumStore: Error loading condominiums:', error)
+      logger.error('CondominiumStore: Error loading condominiums:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('read', 'condomínios', 'omnia_condominiums')
@@ -41,7 +43,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   },
 
   createCondominium: async (data) => {
-    console.log('CondominiumStore: Creating condominium:', data)
+    logger.debug('CondominiumStore: Creating condominium:', data)
     set({ loading: true, error: null })
     
     try {
@@ -49,10 +51,10 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
       const { condominiums } = get()
       const updatedCondominiums = [...condominiums, newCondominium].sort((a, b) => a.name.localeCompare(b.name))
       set({ condominiums: updatedCondominiums, loading: false })
-      console.log('CondominiumStore: Created condominium successfully')
+      logger.debug('CondominiumStore: Created condominium successfully')
       return newCondominium
     } catch (error) {
-      console.error('CondominiumStore: Error creating condominium:', error)
+      logger.error('CondominiumStore: Error creating condominium:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('create', 'condomínio', 'omnia_condominiums')
@@ -63,7 +65,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   },
 
   updateCondominium: async (id: string, data) => {
-    console.log('CondominiumStore: Updating condominium:', id, data)
+    logger.debug('CondominiumStore: Updating condominium:', id, data)
     set({ loading: true, error: null })
     
     try {
@@ -74,13 +76,13 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
           condominium.id === id ? updatedCondominium : condominium
         ).sort((a, b) => a.name.localeCompare(b.name))
         set({ condominiums: updatedCondominiums, loading: false })
-        console.log('CondominiumStore: Updated condominium successfully')
+        logger.debug('CondominiumStore: Updated condominium successfully')
         return updatedCondominium
       }
       set({ loading: false })
       return null
     } catch (error) {
-      console.error('CondominiumStore: Error updating condominium:', error)
+      logger.error('CondominiumStore: Error updating condominium:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('update', 'condomínio', 'omnia_condominiums')
@@ -91,7 +93,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   },
 
   deleteCondominium: async (id: string) => {
-    console.log('CondominiumStore: Deleting condominium:', id)
+    logger.debug('CondominiumStore: Deleting condominium:', id)
     set({ loading: true, error: null })
     
     try {
@@ -100,13 +102,13 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
         const { condominiums } = get()
         const updatedCondominiums = condominiums.filter(condominium => condominium.id !== id)
         set({ condominiums: updatedCondominiums, loading: false })
-        console.log('CondominiumStore: Deleted condominium successfully')
+        logger.debug('CondominiumStore: Deleted condominium successfully')
         return true
       }
       set({ loading: false })
       return false
     } catch (error) {
-      console.error('CondominiumStore: Error deleting condominium:', error)
+      logger.error('CondominiumStore: Error deleting condominium:', error)
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'condomínio', 'omnia_condominiums')
@@ -117,30 +119,30 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
   },
 
   getCondominiumById: async (id: string) => {
-    console.log('CondominiumStore: Getting condominium by id:', id)
+    logger.debug('CondominiumStore: Getting condominium by id:', id)
     set({ loading: true, error: null })
     
     try {
       const condominium = await condominiumsRepoSupabase.getById(id)
       set({ loading: false })
-      console.log('CondominiumStore: Got condominium:', condominium)
+      logger.debug('CondominiumStore: Got condominium:', condominium)
       return condominium
     } catch (error) {
-      console.error('CondominiumStore: Error getting condominium:', error)
+      logger.error('CondominiumStore: Error getting condominium:', error)
       set({ error: 'Erro ao buscar condomínio', loading: false })
       throw error
     }
   },
 
   checkCnpjExists: async (cnpj: string, excludeId?: string) => {
-    console.log('CondominiumStore: Checking CNPJ exists:', cnpj)
+    logger.debug('CondominiumStore: Checking CNPJ exists:', cnpj)
     
     try {
       const exists = await condominiumsRepoSupabase.checkCnpjExists(cnpj, excludeId)
-      console.log('CondominiumStore: CNPJ exists:', exists)
+      logger.debug('CondominiumStore: CNPJ exists:', exists)
       return exists
     } catch (error) {
-      console.error('CondominiumStore: Error checking CNPJ:', error)
+      logger.error('CondominiumStore: Error checking CNPJ:', error)
       throw error
     }
   },

@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client'
+import { logger } from '../lib/logging';
+
 
 export interface CrmLead {
   id: string
@@ -246,7 +248,7 @@ class CrmLeadsRepository {
       
       return data
     } catch (error) {
-      console.error('Erro ao buscar CEP:', error)
+      logger.error('Erro ao buscar CEP:', error)
       
       if (error instanceof Error) {
         throw error

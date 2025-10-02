@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { UserRef } from '@/data/types'
 import { secretariosRepoSupabase } from '@/repositories/secretariosRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface SecretariosStore {
   secretarios: UserRef[]
@@ -21,21 +23,21 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
   error: null,
 
   loadSecretarios: async () => {
-    console.log('SecretariosStore: Loading secretarios...')
+    logger.debug('SecretariosStore: Loading secretarios...')
     set({ loading: true, error: null })
     
     try {
       const secretarios = await secretariosRepoSupabase.list()
-      console.log('SecretariosStore: Loaded secretarios:', secretarios)
+      logger.debug('SecretariosStore: Loaded secretarios:', secretarios)
       set({ secretarios, loading: false })
     } catch (error) {
-      console.error('SecretariosStore: Error loading secretarios:', error)
+      logger.error('SecretariosStore: Error loading secretarios:', error)
       set({ error: 'Erro ao carregar usuários', loading: false })
     }
   },
 
   createSecretario: async (data) => {
-    console.log('SecretariosStore: Creating secretario:', data)
+    logger.debug('SecretariosStore: Creating secretario:', data)
     set({ loading: true, error: null })
     
     try {
@@ -46,19 +48,19 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
       const { tempPassword, ...newSecretario } = result
       
       set({ secretarios: [...secretarios, newSecretario], loading: false })
-      console.log('SecretariosStore: Created secretario successfully')
+      logger.debug('SecretariosStore: Created secretario successfully')
       
       // Return both the user and tempPassword if it exists
       return tempPassword ? { user: newSecretario, tempPassword } : { user: newSecretario }
     } catch (error) {
-      console.error('SecretariosStore: Error creating secretario:', error)
+      logger.error('SecretariosStore: Error creating secretario:', error)
       set({ error: 'Erro ao criar usuário', loading: false })
       throw error
     }
   },
 
   updateSecretario: async (id: string, data) => {
-    console.log('SecretariosStore: Updating secretario:', id, data)
+    logger.debug('SecretariosStore: Updating secretario:', id, data)
     set({ loading: true, error: null })
     
     try {
@@ -67,18 +69,18 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
         const { secretarios } = get()
         const updatedSecretarios = secretarios.map(s => s.id === id ? updatedSecretario : s)
         set({ secretarios: updatedSecretarios, loading: false })
-        console.log('SecretariosStore: Updated secretario successfully')
+        logger.debug('SecretariosStore: Updated secretario successfully')
       }
       return updatedSecretario
     } catch (error) {
-      console.error('SecretariosStore: Error updating secretario:', error)
+      logger.error('SecretariosStore: Error updating secretario:', error)
       set({ error: 'Erro ao atualizar usuário', loading: false })
       return null
     }
   },
 
   deleteSecretario: async (id: string) => {
-    console.log('SecretariosStore: Deleting secretario:', id)
+    logger.debug('SecretariosStore: Deleting secretario:', id)
     set({ loading: true, error: null })
     
     try {
@@ -86,11 +88,11 @@ export const useSecretariosStore = create<SecretariosStore>((set, get) => ({
       if (success) {
         const { secretarios } = get()
         set({ secretarios: secretarios.filter(s => s.id !== id), loading: false })
-        console.log('SecretariosStore: Deleted secretario successfully')
+        logger.debug('SecretariosStore: Deleted secretario successfully')
       }
       return success
     } catch (error) {
-      console.error('SecretariosStore: Error deleting secretario:', error)
+      logger.error('SecretariosStore: Error deleting secretario:', error)
       const message = error instanceof Error ? error.message : 'Erro ao excluir usuário'
       set({ error: message, loading: false })
       return false

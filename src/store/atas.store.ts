@@ -2,6 +2,8 @@
 import { create } from 'zustand'
 import { Ata, Status, Comment, Attachment } from '@/data/types'
 import { atasRepoSupabase } from '@/repositories/atasRepo.supabase'
+import { logger } from '../lib/logging';
+
 
 interface AtasStore {
   atas: Ata[]
@@ -31,67 +33,67 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
   error: null,
 
   loadAtas: async (search?: string, statusFilter?: string[]) => {
-    console.log('AtasStore: Loading atas with search:', search, 'statusFilter:', statusFilter)
+    logger.debug('AtasStore: Loading atas with search:', search, 'statusFilter:', statusFilter)
     set({ loading: true, error: null })
     
     try {
       const atas = await atasRepoSupabase.list(search, statusFilter)
-      console.log('AtasStore: Loaded atas:', atas)
+      logger.debug('AtasStore: Loaded atas:', atas)
       set({ atas, loading: false })
     } catch (error) {
-      console.error('AtasStore: Error loading atas:', error)
+      logger.error('AtasStore: Error loading atas:', error)
       set({ error: 'Erro ao carregar atas', loading: false })
     }
   },
 
   loadStatuses: async () => {
-    console.log('AtasStore: Loading statuses...')
+    logger.debug('AtasStore: Loading statuses...')
     
     try {
       const statuses = await atasRepoSupabase.getStatuses()
-      console.log('AtasStore: Loaded statuses:', statuses)
+      logger.debug('AtasStore: Loaded statuses:', statuses)
       set({ statuses })
     } catch (error) {
-      console.error('AtasStore: Error loading statuses:', error)
+      logger.error('AtasStore: Error loading statuses:', error)
       set({ error: 'Erro ao carregar status' })
     }
   },
 
   getAtaById: async (id: string) => {
-    console.log('AtasStore: Getting ata by id:', id)
+    logger.debug('AtasStore: Getting ata by id:', id)
     set({ loading: true, error: null })
     
     try {
       const ata = await atasRepoSupabase.getById(id)
-      console.log('AtasStore: Got ata:', ata)
+      logger.debug('AtasStore: Got ata:', ata)
       set({ loading: false })
       return ata
     } catch (error) {
-      console.error('AtasStore: Error getting ata:', error)
+      logger.error('AtasStore: Error getting ata:', error)
       set({ error: 'Erro ao carregar ata', loading: false })
       return null
     }
   },
 
   createAta: async (data) => {
-    console.log('AtasStore: Creating ata:', data)
+    logger.debug('AtasStore: Creating ata:', data)
     set({ loading: true, error: null })
     
     try {
       const newAta = await atasRepoSupabase.create(data)
       const { atas } = get()
       set({ atas: [newAta, ...atas], loading: false })
-      console.log('AtasStore: Created ata successfully')
+      logger.debug('AtasStore: Created ata successfully')
       return newAta
     } catch (error) {
-      console.error('AtasStore: Error creating ata:', error)
+      logger.error('AtasStore: Error creating ata:', error)
       set({ error: 'Erro ao criar ata', loading: false })
       throw error
     }
   },
 
   updateAta: async (id: string, data) => {
-    console.log('AtasStore: Updating ata:', id, data)
+    logger.debug('AtasStore: Updating ata:', id, data)
     set({ loading: true, error: null })
     
     try {
@@ -100,18 +102,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
         const { atas } = get()
         const updatedAtas = atas.map(ata => ata.id === id ? updatedAta : ata)
         set({ atas: updatedAtas, loading: false })
-        console.log('AtasStore: Updated ata successfully')
+        logger.debug('AtasStore: Updated ata successfully')
       }
       return updatedAta
     } catch (error) {
-      console.error('AtasStore: Error updating ata:', error)
+      logger.error('AtasStore: Error updating ata:', error)
       set({ error: 'Erro ao atualizar ata', loading: false })
       return null
     }
   },
 
   deleteAta: async (id: string) => {
-    console.log('AtasStore: Deleting ata:', id)
+    logger.debug('AtasStore: Deleting ata:', id)
     set({ loading: true, error: null })
     
     try {
@@ -119,18 +121,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
       if (success) {
         const { atas } = get()
         set({ atas: atas.filter(ata => ata.id !== id), loading: false })
-        console.log('AtasStore: Deleted ata successfully')
+        logger.debug('AtasStore: Deleted ata successfully')
       }
       return success
     } catch (error) {
-      console.error('AtasStore: Error deleting ata:', error)
+      logger.error('AtasStore: Error deleting ata:', error)
       set({ error: 'Erro ao excluir ata', loading: false })
       return false
     }
   },
 
   addComment: async (ataId: string, comment) => {
-    console.log('AtasStore: Adding comment to ata:', ataId, comment)
+    logger.debug('AtasStore: Adding comment to ata:', ataId, comment)
     
     try {
       const newComment = await atasRepoSupabase.addComment(ataId, comment)
@@ -148,18 +150,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           return ata
         })
         set({ atas: updatedAtas })
-        console.log('AtasStore: Added comment successfully')
+        logger.debug('AtasStore: Added comment successfully')
       }
       return newComment
     } catch (error) {
-      console.error('AtasStore: Error adding comment:', error)
+      logger.error('AtasStore: Error adding comment:', error)
       set({ error: 'Erro ao adicionar comentário' })
       return null
     }
   },
 
   updateComment: async (ataId: string, commentId: string, body: string) => {
-    console.log('AtasStore: Updating comment:', commentId, 'in ata:', ataId)
+    logger.debug('AtasStore: Updating comment:', commentId, 'in ata:', ataId)
     
     try {
       const updatedComment = await atasRepoSupabase.updateComment(commentId, body)
@@ -178,18 +180,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           return ata
         })
         set({ atas: updatedAtas })
-        console.log('AtasStore: Updated comment successfully')
+        logger.debug('AtasStore: Updated comment successfully')
       }
       return updatedComment
     } catch (error) {
-      console.error('AtasStore: Error updating comment:', error)
+      logger.error('AtasStore: Error updating comment:', error)
       set({ error: 'Erro ao atualizar comentário' })
       return null
     }
   },
 
   removeComment: async (ataId: string, commentId: string) => {
-    console.log('AtasStore: Removing comment:', commentId, 'from ata:', ataId)
+    logger.debug('AtasStore: Removing comment:', commentId, 'from ata:', ataId)
     
     try {
       const success = await atasRepoSupabase.removeComment(commentId)
@@ -207,18 +209,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           return ata
         })
         set({ atas: updatedAtas })
-        console.log('AtasStore: Removed comment successfully')
+        logger.debug('AtasStore: Removed comment successfully')
       }
       return success
     } catch (error) {
-      console.error('AtasStore: Error removing comment:', error)
+      logger.error('AtasStore: Error removing comment:', error)
       set({ error: 'Erro ao remover comentário' })
       return false
     }
   },
 
   addAttachment: async (ataId: string, attachment) => {
-    console.log('AtasStore: Adding attachment to ata:', ataId, attachment)
+    logger.debug('AtasStore: Adding attachment to ata:', ataId, attachment)
     
     try {
       const newAttachment = await atasRepoSupabase.addAttachment(ataId, attachment)
@@ -235,18 +237,18 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           return ata
         })
         set({ atas: updatedAtas })
-        console.log('AtasStore: Added attachment successfully')
+        logger.debug('AtasStore: Added attachment successfully')
       }
       return newAttachment
     } catch (error) {
-      console.error('AtasStore: Error adding attachment:', error)
+      logger.error('AtasStore: Error adding attachment:', error)
       set({ error: 'Erro ao adicionar anexo' })
       return null
     }
   },
 
   removeAttachment: async (attachmentId: string) => {
-    console.log('AtasStore: Removing attachment:', attachmentId)
+    logger.debug('AtasStore: Removing attachment:', attachmentId)
     
     try {
       const success = await atasRepoSupabase.removeAttachment(attachmentId)
@@ -263,11 +265,11 @@ export const useAtasStore = create<AtasStore>((set, get) => ({
           return ata
         })
         set({ atas: updatedAtas })
-        console.log('AtasStore: Removed attachment successfully')
+        logger.debug('AtasStore: Removed attachment successfully')
       }
       return success
     } catch (error) {
-      console.error('AtasStore: Error removing attachment:', error)
+      logger.error('AtasStore: Error removing attachment:', error)
       set({ error: 'Erro ao remover anexo' })
       return false
     }

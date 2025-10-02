@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
+import { logger } from '../lib/logging';
+
 
 export interface RolePermission {
   id: string
@@ -46,7 +48,7 @@ const transformRolePermissionFromDB = (dbRolePermission: any): RolePermission =>
 
 export const rolePermissionsRepoSupabase = {
   async list(): Promise<RolePermission[]> {
-    console.log('Loading role permissions from database...')
+    logger.debug('Loading role permissions from database...')
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -63,16 +65,16 @@ export const rolePermissionsRepoSupabase = {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error loading role permissions:', error)
+      logger.error('Error loading role permissions:', error)
       throw error
     }
 
-    console.log('Loaded role permissions:', data)
+    logger.debug('Loaded role permissions:', data)
     return data?.map(transformRolePermissionFromDB) || []
   },
 
   async getByRole(roleName: RoleName): Promise<RolePermission[]> {
-    console.log('Loading role permissions by role:', roleName)
+    logger.debug('Loading role permissions by role:', roleName)
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -89,7 +91,7 @@ export const rolePermissionsRepoSupabase = {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error loading role permissions by role:', error)
+      logger.error('Error loading role permissions by role:', error)
       throw error
     }
 
@@ -97,7 +99,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async getByMenuItemId(menuItemId: string): Promise<RolePermission[]> {
-    console.log('Loading role permissions by menu item id:', menuItemId)
+    logger.debug('Loading role permissions by menu item id:', menuItemId)
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -114,7 +116,7 @@ export const rolePermissionsRepoSupabase = {
       .order('role_name')
 
     if (error) {
-      console.error('Error loading role permissions by menu item id:', error)
+      logger.error('Error loading role permissions by menu item id:', error)
       throw error
     }
 
@@ -122,7 +124,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async getByRoleAndMenuItem(roleName: RoleName, menuItemId: string): Promise<RolePermission | null> {
-    console.log('Loading role permission by role and menu item:', roleName, menuItemId)
+    logger.debug('Loading role permission by role and menu item:', roleName, menuItemId)
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -140,7 +142,7 @@ export const rolePermissionsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error loading role permission:', error)
+      logger.error('Error loading role permission:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
@@ -149,7 +151,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async getAccessibleMenuItemsByRole(roleName: RoleName): Promise<RolePermission[]> {
-    console.log('Loading accessible menu items by role:', roleName)
+    logger.debug('Loading accessible menu items by role:', roleName)
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -168,7 +170,7 @@ export const rolePermissionsRepoSupabase = {
       .order('menu_items.order_index')
 
     if (error) {
-      console.error('Error loading accessible menu items by role:', error)
+      logger.error('Error loading accessible menu items by role:', error)
       throw error
     }
 
@@ -176,7 +178,7 @@ export const rolePermissionsRepoSupabase = {
   },
 
   async getRolePermissionsMatrix(): Promise<Record<string, Record<string, boolean>>> {
-    console.log('Loading role permissions matrix...')
+    logger.debug('Loading role permissions matrix...')
     
     const { data, error } = await supabase
       .from('omnia_role_permissions')
@@ -189,7 +191,7 @@ export const rolePermissionsRepoSupabase = {
       `)
 
     if (error) {
-      console.error('Error loading role permissions matrix:', error)
+      logger.error('Error loading role permissions matrix:', error)
       throw error
     }
 
@@ -208,12 +210,12 @@ export const rolePermissionsRepoSupabase = {
       matrix[roleName][menuPath] = canAccess
     })
 
-    console.log('Loaded role permissions matrix:', matrix)
+    logger.debug('Loaded role permissions matrix:', matrix)
     return matrix
   },
 
   async create(permissionData: CreateRolePermissionData): Promise<RolePermission> {
-    console.log('Creating role permission:', permissionData)
+    logger.debug('Creating role permission:', permissionData)
     
     const { data: newPermission, error: createError } = await supabase
       .from('omnia_role_permissions')
@@ -234,16 +236,16 @@ export const rolePermissionsRepoSupabase = {
       .single()
 
     if (createError) {
-      console.error('Error creating role permission:', createError)
+      logger.error('Error creating role permission:', createError)
       throw createError
     }
 
-    console.log('Created role permission:', newPermission)
+    logger.debug('Created role permission:', newPermission)
     return transformRolePermissionFromDB(newPermission)
   },
 
   async update(id: string, data: UpdateRolePermissionData): Promise<RolePermission | null> {
-    console.log('Updating role permission:', id, data)
+    logger.debug('Updating role permission:', id, data)
     
     const updateData: any = {}
     
@@ -265,17 +267,17 @@ export const rolePermissionsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating role permission:', error)
+      logger.error('Error updating role permission:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
 
-    console.log('Updated role permission:', updatedPermission)
+    logger.debug('Updated role permission:', updatedPermission)
     return transformRolePermissionFromDB(updatedPermission)
   },
 
   async updateByRoleAndMenuItem(roleName: RoleName, menuItemId: string, canAccess: boolean): Promise<RolePermission | null> {
-    console.log('Updating role permission by role and menu item:', roleName, menuItemId, canAccess)
+    logger.debug('Updating role permission by role and menu item:', roleName, menuItemId, canAccess)
     
     const { data: updatedPermission, error } = await supabase
       .from('omnia_role_permissions')
@@ -294,17 +296,17 @@ export const rolePermissionsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Error updating role permission:', error)
+      logger.error('Error updating role permission:', error)
       if (error.code === 'PGRST116') return null
       throw error
     }
 
-    console.log('Updated role permission:', updatedPermission)
+    logger.debug('Updated role permission:', updatedPermission)
     return transformRolePermissionFromDB(updatedPermission)
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing role permission:', id)
+    logger.debug('Removing role permission:', id)
     
     const { error } = await supabase
       .from('omnia_role_permissions')
@@ -312,16 +314,16 @@ export const rolePermissionsRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing role permission:', error)
+      logger.error('Error removing role permission:', error)
       throw error
     }
 
-    console.log('Removed role permission successfully')
+    logger.debug('Removed role permission successfully')
     return true
   },
 
   async removeByRoleAndMenuItem(roleName: RoleName, menuItemId: string): Promise<boolean> {
-    console.log('Removing role permission by role and menu item:', roleName, menuItemId)
+    logger.debug('Removing role permission by role and menu item:', roleName, menuItemId)
     
     const { error } = await supabase
       .from('omnia_role_permissions')
@@ -330,22 +332,22 @@ export const rolePermissionsRepoSupabase = {
       .eq('menu_item_id', menuItemId)
 
     if (error) {
-      console.error('Error removing role permission:', error)
+      logger.error('Error removing role permission:', error)
       throw error
     }
 
-    console.log('Removed role permission successfully')
+    logger.debug('Removed role permission successfully')
     return true
   },
 
   async bulkUpdateRolePermissions(roleName: RoleName, permissions: Array<{ menuItemId: string; canAccess: boolean }>): Promise<void> {
-    console.log('Bulk updating role permissions:', roleName, permissions)
+    logger.debug('Bulk updating role permissions:', roleName, permissions)
     
     // Use a transaction to update multiple permissions
     for (const permission of permissions) {
       await this.updateByRoleAndMenuItem(roleName, permission.menuItemId, permission.canAccess)
     }
     
-    console.log('Bulk updated role permissions successfully')
+    logger.debug('Bulk updated role permissions successfully')
   }
 }

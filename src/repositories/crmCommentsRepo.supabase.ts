@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '../lib/logging';
+
 
 export interface CrmComment {
   id: string
@@ -37,7 +39,7 @@ export const crmCommentsRepoSupabase = {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Erro ao buscar comentários:', error)
+      logger.error('Erro ao buscar comentários:', error)
       return []
     }
 
@@ -58,7 +60,7 @@ export const crmCommentsRepoSupabase = {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Erro ao buscar comentários:', error)
+      logger.error('Erro ao buscar comentários:', error)
       return []
     }
 
@@ -99,7 +101,7 @@ export const crmCommentsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Erro ao criar comentário:', error)
+      logger.error('Erro ao criar comentário:', error)
       throw error
     }
 
@@ -121,7 +123,7 @@ export const crmCommentsRepoSupabase = {
       .single()
 
     if (error) {
-      console.error('Erro ao atualizar comentário:', error)
+      logger.error('Erro ao atualizar comentário:', error)
       return null
     }
 
@@ -129,7 +131,7 @@ export const crmCommentsRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Removing CRM comment:', id)
+    logger.debug('Removing CRM comment:', id)
     
     const { error } = await supabase
       .from('omnia_crm_comments')
@@ -137,7 +139,7 @@ export const crmCommentsRepoSupabase = {
       .eq('id', id)
 
     if (error) {
-      console.error('Error removing CRM comment:', error)
+      logger.error('Error removing CRM comment:', error)
       throw error
     }
 

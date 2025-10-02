@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '../lib/logging';
+
 
 export interface TicketComment {
   id: string
@@ -11,7 +13,7 @@ export interface TicketComment {
 
 export const ticketCommentsRepoSupabase = {
   async list(ticketId: string): Promise<TicketComment[]> {
-    console.log('Loading ticket comments from database...', ticketId)
+    logger.debug('Loading ticket comments from database...', ticketId)
     
     const { data, error } = await supabase
       .from('omnia_ticket_comments' as any)
@@ -20,7 +22,7 @@ export const ticketCommentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading ticket comments:', error);
+      logger.error('Error loading ticket comments:', error);
       throw error;
     }
     
@@ -28,7 +30,7 @@ export const ticketCommentsRepoSupabase = {
   },
 
   async create(comment: Omit<TicketComment, 'id' | 'created_at'>): Promise<TicketComment> {
-    console.log('Creating ticket comment:', comment)
+    logger.debug('Creating ticket comment:', comment)
     
     // Get current user from omnia_users
     const { data: user } = await supabase.auth.getUser()
@@ -54,7 +56,7 @@ export const ticketCommentsRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error creating ticket comment:', error);
+      logger.error('Error creating ticket comment:', error);
       throw error;
     }
 
@@ -62,7 +64,7 @@ export const ticketCommentsRepoSupabase = {
   },
 
   async update(id: string, body: string): Promise<TicketComment | null> {
-    console.log('Updating ticket comment:', id, body)
+    logger.debug('Updating ticket comment:', id, body)
     
     const { data, error } = await supabase
       .from('omnia_ticket_comments' as any)
@@ -72,7 +74,7 @@ export const ticketCommentsRepoSupabase = {
       .single();
 
     if (error) {
-      console.error('Error updating ticket comment:', error);
+      logger.error('Error updating ticket comment:', error);
       throw error;
     }
 
@@ -80,7 +82,7 @@ export const ticketCommentsRepoSupabase = {
   },
 
   async remove(id: string): Promise<boolean> {
-    console.log('Deleting ticket comment:', id)
+    logger.debug('Deleting ticket comment:', id)
     
     const { error } = await supabase
       .from('omnia_ticket_comments' as any)
@@ -88,7 +90,7 @@ export const ticketCommentsRepoSupabase = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting ticket comment:', error);
+      logger.error('Error deleting ticket comment:', error);
       throw error;
     }
 

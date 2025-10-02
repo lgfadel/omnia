@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useEffect } from "react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
+import { logger } from '../lib/logging';
+
 
 export default function TicketNew() {
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ export default function TicketNew() {
 
       navigate('/tarefas');
     } catch (error) {
-      console.error('Erro ao criar tarefa:', error);
+      logger.error('Erro ao criar tarefa:', error);
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('create', 'tarefa', 'omnia_tarefas')

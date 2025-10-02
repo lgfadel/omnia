@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/components/ui/use-toast'
 import { Attachment } from '@/data/types'
+import { logger } from '../lib/logging';
+
 
 export function useSupabaseUpload() {
   const [uploading, setUploading] = useState(false)
@@ -34,7 +36,7 @@ export function useSupabaseUpload() {
         })
 
       if (error) {
-        console.error('Upload error:', error)
+        logger.error('Upload error:', error)
         toast({
           title: 'Erro no upload',
           description: 'Não foi possível enviar o arquivo. Tente novamente.',
@@ -57,7 +59,7 @@ export function useSupabaseUpload() {
         createdAt: new Date().toISOString()
       }
     } catch (error) {
-      console.error('Upload error:', error)
+      logger.error('Upload error:', error)
       toast({
         title: 'Erro no upload',
         description: 'Não foi possível enviar o arquivo. Tente novamente.',

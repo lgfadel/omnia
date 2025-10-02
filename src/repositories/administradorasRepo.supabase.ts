@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
+import { logger } from '../lib/logging';
+
 
 export interface Administradora {
   id: string;
@@ -104,7 +106,7 @@ export const administradorasRepoSupabase = {
       .single() as any
 
     if (error) {
-      console.error('Error getting administradora:', error)
+      logger.error('Error getting administradora:', error)
       return null
     }
 

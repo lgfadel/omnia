@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { CrmOrigem } from "@/repositories/crmOrigensRepo.supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { logger } from '../../lib/logging';
+
 
 const ConfigCrmOrigens = () => {
   const { toast } = useToast();
@@ -25,13 +27,13 @@ const ConfigCrmOrigens = () => {
   const [editingOrigem, setEditingOrigem] = useState<CrmOrigem | null>(null);
 
   useEffect(() => {
-    console.log('ConfigCrmOrigens: Component mounted, loading origens...')
+    logger.debug('ConfigCrmOrigens: Component mounted, loading origens...')
     loadOrigens();
   }, [loadOrigens]);
 
   useEffect(() => {
     if (error) {
-      console.error('ConfigCrmOrigens: Error detected:', error)
+      logger.error('ConfigCrmOrigens: Error detected:', error)
       toast({
         title: "Erro",
         description: error,
@@ -42,30 +44,30 @@ const ConfigCrmOrigens = () => {
   }, [error, toast, clearError]);
 
   const handleCreate = () => {
-    console.log('ConfigCrmOrigens: Opening form for new origem')
+    logger.debug('ConfigCrmOrigens: Opening form for new origem')
     setEditingOrigem(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (origem: CrmOrigem) => {
-    console.log('ConfigCrmOrigens: Opening form for editing origem:', origem.id)
+    logger.debug('ConfigCrmOrigens: Opening form for editing origem:', origem.id)
     setEditingOrigem(origem);
     setIsFormOpen(true);
   };
 
   const handleFormSubmit = async (data: { name: string; color: string }) => {
-    console.log('ConfigCrmOrigens: Form submitted with data:', data)
+    logger.debug('ConfigCrmOrigens: Form submitted with data:', data)
     
     try {
       if (editingOrigem) {
-        console.log('ConfigCrmOrigens: Updating origem:', editingOrigem.id)
+        logger.debug('ConfigCrmOrigens: Updating origem:', editingOrigem.id)
         await updateOrigem(editingOrigem.id, data);
         toast({
           title: "Sucesso",
           description: "Origem atualizada com sucesso!"
         });
       } else {
-        console.log('ConfigCrmOrigens: Creating new origem')
+        logger.debug('ConfigCrmOrigens: Creating new origem')
         await createOrigem({ ...data, isDefault: false });
         toast({
           title: "Sucesso", 
@@ -75,7 +77,7 @@ const ConfigCrmOrigens = () => {
       setIsFormOpen(false);
       setEditingOrigem(null);
     } catch (error) {
-      console.error('ConfigCrmOrigens: Error in form submission:', error)
+      logger.error('ConfigCrmOrigens: Error in form submission:', error)
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -85,7 +87,7 @@ const ConfigCrmOrigens = () => {
   };
 
   const handleDelete = async (id: string) => {
-    console.log('ConfigCrmOrigens: Deleting origem:', id)
+    logger.debug('ConfigCrmOrigens: Deleting origem:', id)
     
     try {
       await deleteOrigem(id);
@@ -94,7 +96,7 @@ const ConfigCrmOrigens = () => {
         description: "Origem excluída com sucesso!"
       });
     } catch (error) {
-      console.error('ConfigCrmOrigens: Error deleting origem:', error)
+      logger.error('ConfigCrmOrigens: Error deleting origem:', error)
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -104,7 +106,7 @@ const ConfigCrmOrigens = () => {
   };
 
   const handleFormCancel = () => {
-    console.log('ConfigCrmOrigens: Form cancelled')
+    logger.debug('ConfigCrmOrigens: Form cancelled')
     setIsFormOpen(false);
     setEditingOrigem(null);
   };
