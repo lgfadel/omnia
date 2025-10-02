@@ -42,7 +42,7 @@ export function AntPieChart({ data, title }: AntPieChartProps) {
         
         // Obter o primeiro item (o que está sendo hover)
         const item = items[0];
-        const datum = item?.data || {};
+        const datum = item?.data || { name: 'Categoria', value: 0, color: '#000' };
         
         // Extrair valores com fallbacks seguros
         const name = datum.name || 'Categoria';
