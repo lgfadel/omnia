@@ -76,7 +76,7 @@ export interface ViaCepResponse {
 class CrmLeadsRepository {
   async getAll(): Promise<CrmLead[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .select(`
         *,
         responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color),
@@ -87,23 +87,24 @@ class CrmLeadsRepository {
     if (error) throw error
     
     // Transform the data to match the interface
-    const transformedData = (data as any)?.map((lead: any) => ({
+    const rawData = data as unknown as Record<string, unknown>[];
+    const transformedData = rawData?.map((lead: Record<string, unknown>) => ({
       ...lead,
       responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao,
       origem: lead.origem ? {
-        id: lead.origem.id,
-        name: lead.origem.name,
-        color: lead.origem.color,
-        isDefault: lead.origem.is_default
+        id: (lead.origem as Record<string, unknown>).id,
+        name: (lead.origem as Record<string, unknown>).name,
+        color: (lead.origem as Record<string, unknown>).color,
+        isDefault: (lead.origem as Record<string, unknown>).is_default
       } : null
     })) || []
     
-    return transformedData
+    return transformedData as CrmLead[]
   }
 
   async getById(id: string): Promise<CrmLead | null> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .select(`
         *,
         responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color),
@@ -120,55 +121,55 @@ class CrmLeadsRepository {
     }
 
     // Transform the data to match the interface with explicit typing
-    const leadData = data as any;
+    const leadData = data as unknown as Record<string, unknown>;
     return {
       ...leadData,
       responsavel_negociacao: leadData.responsavel_user || leadData.responsavel_negociacao,
       origem: leadData.origem ? {
-        id: leadData.origem.id,
-        name: leadData.origem.name,
-        color: leadData.origem.color,
-        isDefault: leadData.origem.is_default
+        id: (leadData.origem as Record<string, unknown>).id,
+        name: (leadData.origem as Record<string, unknown>).name,
+        color: (leadData.origem as Record<string, unknown>).color,
+        isDefault: (leadData.origem as Record<string, unknown>).is_default
       } : null
-    }
+    } as CrmLead
   }
 
   async create(lead: Partial<CrmLead>): Promise<CrmLead> {
     // Get current user
     const { data: userData } = await supabase
-      .from('omnia_users' as any)
+      .from('omnia_users')
       .select('id')
       .eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id)
       .single()
 
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .insert({
         ...lead,
-        created_by: (userData as any)?.id
-      })
+        created_by: userData?.id
+      } as never)
       .select()
       .single()
 
     if (error) throw error
-    return data as any
+    return data as unknown as CrmLead
   }
 
   async update(id: string, updates: Partial<CrmLead>): Promise<CrmLead> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
-      .update(updates)
+      .from('omnia_crm_leads')
+      .update(updates as never)
       .eq('id', id)
       .select()
       .single()
 
     if (error) throw error
-    return data as any
+    return data as unknown as CrmLead
   }
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .delete()
       .eq('id', id)
 
@@ -177,46 +178,46 @@ class CrmLeadsRepository {
 
   async getComments(leadId: string): Promise<CrmComment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_comments' as any)
+      .from('omnia_crm_comments')
       .select('*')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return (data as any) || []
+    return (data as unknown as CrmComment[]) || []
   }
 
   async createComment(comment: Partial<CrmComment>): Promise<CrmComment> {
     // Get current user
     const { data: userData } = await supabase
-      .from('omnia_users' as any)
+      .from('omnia_users')
       .select('id')
       .eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id)
       .single()
 
     const { data, error } = await supabase
-      .from('omnia_crm_comments' as any)
+      .from('omnia_crm_comments')
       .insert({
         ...comment,
-        author_id: (userData as any)?.id,
-        created_by: (userData as any)?.id
-      })
+        author_id: userData?.id,
+        created_by: userData?.id
+      } as never)
       .select()
       .single()
 
     if (error) throw error
-    return data as any
+    return data as unknown as CrmComment
   }
 
   async getAttachments(leadId: string): Promise<CrmAttachment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_attachments' as any)
+      .from('omnia_crm_attachments')
       .select('*')
       .eq('lead_id', leadId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false})
 
     if (error) throw error
-    return (data as any) || []
+    return (data as unknown as CrmAttachment[]) || []
   }
 
   async searchByCep(cep: string): Promise<ViaCepResponse | null> {
@@ -257,28 +258,29 @@ class CrmLeadsRepository {
 
   async filterByStatus(status: CrmLead['status']): Promise<CrmLead[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .select(`
         *,
         responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color)
       `)
-      .eq('status', status)
+      .eq('status', status as never)
       .order('created_at', { ascending: false })
 
     if (error) throw error
     
     // Transformar os dados para corresponder à interface CrmLead
-    const transformedData = (data as any)?.map((lead: any) => ({
+    const rawData = data as unknown as Record<string, unknown>[];
+    const transformedData = rawData?.map((lead: Record<string, unknown>) => ({
       ...lead,
       responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao
     })) || []
 
-    return transformedData
+    return transformedData as CrmLead[]
   }
 
   async filterByAssignedUser(userId: string): Promise<CrmLead[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .select(`
         *,
         responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color)
@@ -289,17 +291,18 @@ class CrmLeadsRepository {
     if (error) throw error
     
     // Transformar os dados para corresponder à interface CrmLead
-    const transformedData = (data as any)?.map((lead: any) => ({
+    const rawData = data as unknown as Record<string, unknown>[];
+    const transformedData = rawData?.map((lead: Record<string, unknown>) => ({
       ...lead,
       responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao
     })) || []
 
-    return transformedData
+    return transformedData as CrmLead[]
   }
 
   async searchByCompany(searchTerm: string): Promise<CrmLead[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_leads' as any)
+      .from('omnia_crm_leads')
       .select(`
         *,
         responsavel_user:omnia_users!responsavel_negociacao(id, name, avatar_url, color)
@@ -310,12 +313,13 @@ class CrmLeadsRepository {
     if (error) throw error
     
     // Transformar os dados para corresponder à interface CrmLead
-    const transformedData = (data as any)?.map((lead: any) => ({
+    const rawData = data as unknown as Record<string, unknown>[];
+    const transformedData = rawData?.map((lead: Record<string, unknown>) => ({
       ...lead,
       responsavel_negociacao: lead.responsavel_user || lead.responsavel_negociacao
     })) || []
 
-    return transformedData
+    return transformedData as CrmLead[]
   }
 }
 
