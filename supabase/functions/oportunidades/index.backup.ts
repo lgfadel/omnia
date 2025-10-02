@@ -1,6 +1,6 @@
-// @ts-ignore
+// @ts-expect-error Deno module import not recognized by TypeScript
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-// @ts-ignore
+// @ts-expect-error ESM module import not recognized by TypeScript
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -150,9 +150,9 @@ serve(async (req) => {
       )
     }
 
-    // @ts-ignore
+    // @ts-expect-error Deno global not recognized by TypeScript
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    // @ts-ignore
+    // @ts-expect-error Deno global not recognized by TypeScript
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
     const supabaseClient = createClient(
