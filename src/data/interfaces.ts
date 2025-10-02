@@ -48,7 +48,7 @@ export interface BaseFormData {
   description?: string
 }
 
-export interface BaseFormProps<T = any> {
+export interface BaseFormProps<T = Record<string, unknown>> {
   open: boolean
   onOpenChange: (open: boolean) => void
   data?: T
@@ -56,9 +56,9 @@ export interface BaseFormProps<T = any> {
 }
 
 // API Response interfaces
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T
-  error?: any
+  error?: Error | string | null
   loading?: boolean
 }
 
