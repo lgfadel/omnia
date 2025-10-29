@@ -27,7 +27,7 @@ import { PriorityModal } from '@/components/ui/priority-modal';
 import { UserRef } from '@/data/types';
 
 // Type for table row data
-type TicketTableRow = Tarefa & {
+type TicketTableRow = Omit<Tarefa, 'dueDate'> & {
   dueDate: React.ReactNode;
   dueDateOriginal?: Date;
   assignedTo: string;
@@ -66,8 +66,8 @@ export default function Tickets() {
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
-  const [dueDateModalOpen, setDueDateModalOpen] = useState(false);
-  const [selectedTaskForDueDate, setSelectedTaskForDueDate] = useState<{ id: string; title: string; currentDate?: Date | null }>({ id: '', title: '' });
+
+
   const [priorityModalOpen, setPriorityModalOpen] = useState(false);
   const [selectedTaskForPriority, setSelectedTaskForPriority] = useState<{ id: string; title: string; currentPriority?: TarefaPrioridade }>({ id: '', title: '' });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -248,21 +248,11 @@ export default function Tickets() {
     }
   };
 
-  const handleDueDateClick = (taskId: string, currentDate?: Date) => {
-    const task = tarefas.find(t => t.id === taskId);
-    if (task) {
-      setSelectedTaskForDueDate({
-        id: taskId,
-        title: task.title,
-        currentDate: currentDate || null
-      });
-      setDueDateModalOpen(true);
-    }
-  };
 
-  const handleDueDateSave = async (newDate: Date | null) => {
+
+  const handleDueDateSave = async (newDate: Date | null, taskId: string) => {
     try {
-      await updateTarefa(selectedTaskForDueDate.id, { dueDate: newDate });
+      await updateTarefa(taskId, { dueDate: newDate });
       loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar data de vencimento:', error);
@@ -358,7 +348,13 @@ export default function Tickets() {
     return {
       ...tarefa,
       priority: tarefa.priority,
-      dueDate: tarefa.dueDate ? formatDueDateWithStyle(tarefa.dueDate) : '-',
+      dueDate: (
+        <DueDateModal
+          onSave={(newDate) => handleDueDateSave(newDate, tarefa.id)}
+          currentDate={tarefa.dueDate}
+          taskTitle={tarefa.title}
+        />
+      ),
       dueDateOriginal: tarefa.dueDate, // Keep original date for click handler
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo, // Keep the full object for avatar rendering
@@ -616,7 +612,7 @@ export default function Tickets() {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
-              onDueDateClick={handleDueDateClick}
+
               onPriorityClick={handlePriorityClick}
               onTagClick={handleTagClick}
               availableStatuses={statuses}
@@ -628,13 +624,7 @@ export default function Tickets() {
         </div>
       </div>
       
-      <DueDateModal
-        isOpen={dueDateModalOpen}
-        onClose={() => setDueDateModalOpen(false)}
-        onSave={handleDueDateSave}
-        currentDate={selectedTaskForDueDate.currentDate}
-        taskTitle={selectedTaskForDueDate.title}
-      />
+
       
       <PriorityModal
         isOpen={priorityModalOpen}

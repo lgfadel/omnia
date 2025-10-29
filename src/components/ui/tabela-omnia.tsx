@@ -48,7 +48,7 @@ interface TabelaOmniaProps {
   onStatusChange?: (id: string | number, statusId: string) => void
   onResponsibleChange?: (id: string | number, userId: string) => void
   onSecretaryChange?: (id: string | number, userId: string) => void
-  onDueDateClick?: (id: string | number, currentDate?: Date) => void
+
   onPriorityClick?: (id: string | number, currentPriority?: string) => void
   onTagClick?: (tagName: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
@@ -73,7 +73,6 @@ export function TabelaOmnia({
   onStatusChange,
   onResponsibleChange,
   onSecretaryChange,
-  onDueDateClick,
   onPriorityClick,
   onTagClick,
   availableStatuses = [],
@@ -130,62 +129,9 @@ export function TabelaOmnia({
       )
     }
     
-    // Handle dueDate column with styling
+    // Handle dueDate column - now it's a React component
     if (key === "dueDate") {
-      if (!row?.dueDateOriginal && value === '-') {
-        return (
-          <span 
-            className="text-muted-foreground cursor-pointer hover:text-primary transition-colors"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (onDueDateClick) {
-                onDueDateClick(row.id)
-              }
-            }}
-          >
-            {value}
-          </span>
-        )
-      }
-      
-      if (row?.dueDateOriginal) {
-        const date = new Date(row.dueDateOriginal)
-        const now = new Date()
-        // Set time to start of day for accurate comparison
-        now.setHours(0, 0, 0, 0)
-        date.setHours(0, 0, 0, 0)
-        const isOverdue = date < now
-        
-        return (
-          <span 
-            className={`cursor-pointer hover:underline transition-all ${
-              isOverdue ? 'text-destructive font-medium hover:text-destructive/80' : 'hover:text-primary'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation()
-              if (onDueDateClick) {
-                onDueDateClick(row.id, date)
-              }
-            }}
-          >
-            {value}
-          </span>
-        )
-      }
-      
-      return (
-        <span 
-          className="cursor-pointer hover:text-primary transition-colors"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (onDueDateClick) {
-              onDueDateClick(row.id)
-            }
-          }}
-        >
-          {value}
-        </span>
-      )
+      return value
     }
     
     // Handle comment count column

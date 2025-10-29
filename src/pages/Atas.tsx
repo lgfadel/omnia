@@ -36,13 +36,13 @@ type AtaTableRow = {
 }
 
 const columns = [
-  { key: "title", label: "Título", width: "100" },
-  { key: "meetingDate", label: "Data Assembleia", width: "15" },
-  { key: "responsible", label: "Responsável", width: "12" },
-  { key: "secretary", label: "Secretário", width: "12" },
-  { key: "status", label: "Status", width: "15" },
-  { key: "ticket", label: "Ticket", width: "12" },
-  { key: "commentCount", label: "Comentários", width: "10" }
+  { key: "title", label: "Título", width: "w-[35%]" },
+  { key: "meetingDate", label: "Data Assembleia", width: "w-[12%]" },
+  { key: "responsible", label: "Responsável", width: "w-[10%]" },
+  { key: "secretary", label: "Secretário", width: "w-[10%]" },
+  { key: "status", label: "Status", width: "w-[12%]" },
+  { key: "ticket", label: "Ticket", width: "w-[8%]" },
+  { key: "commentCount", label: "Comentários", width: "w-[8%]" }
 ]
 
 const Atas = () => {
