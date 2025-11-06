@@ -19,6 +19,7 @@ import { useCondominiumStore } from "@/store/condominiums.store";
 import { atasRepoSupabase } from "@/repositories/atasRepo.supabase";
 import { TagInput } from "./TagInput";
 import { QuickCondominiumDialog } from "@/components/condominiums/QuickCondominiumDialog";
+import { CondominiumSelect } from "@/components/condominiums/CondominiumSelect";
 import { logger } from '../../lib/logging';
 
 const ataSchema = z.object({
@@ -193,18 +194,14 @@ export function AtaForm({
               <div className="space-y-2">
                 <Label>Condomínio</Label>
                 <div className="flex gap-2">
-                  <Select onValueChange={value => setValue("condominiumId", value)} defaultValue={watch("condominiumId")}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione o condomínio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {condominiums.map(condominium => (
-                        <SelectItem key={condominium.id} value={condominium.id}>
-                          {condominium.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex-1">
+                    <CondominiumSelect
+                      condominiums={condominiums}
+                      value={watch("condominiumId")}
+                      onValueChange={(value) => setValue("condominiumId", value)}
+                      placeholder="Selecione o condomínio"
+                    />
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
