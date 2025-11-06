@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarIcon, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -26,29 +24,41 @@ export function DueDateModal({
     setOpen(false)
   }
 
-  const handleRemoveDate = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onSave(null)
-  }
+  // Removido: ação de remover data. A interface agora exibe apenas a data simples.
 
   const formatDateForDisplay = (date: Date) => {
-    return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+    // Exibir apenas em formato simples dd/MM/yyyy
+    return format(date, 'dd/MM/yyyy', { locale: ptBR })
   }
+
+  const isOverdue = (() => {
+    if (!currentDate) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const compareDate = new Date(currentDate)
+    compareDate.setHours(0, 0, 0, 0)
+    // Atrasado = vencido até ontem (data < hoje)
+    return compareDate < today
+  })()
 
   return (
     <div className="flex items-center gap-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
+          <span
+            role="button"
+            tabIndex={0}
             className={cn(
-              "justify-start text-left font-normal",
-              !currentDate && "text-muted-foreground"
+              "inline-flex whitespace-nowrap justify-start text-left font-normal text-sm cursor-pointer select-none",
+              !currentDate && "text-muted-foreground",
+              currentDate && isOverdue && "text-destructive font-medium"
             )}
+            aria-label="Alterar data de vencimento"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {currentDate ? formatDateForDisplay(currentDate) : "Definir data de vencimento"}
-          </Button>
+            {currentDate ? formatDateForDisplay(currentDate) : "-"}
+          </span>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
@@ -61,17 +71,7 @@ export function DueDateModal({
         </PopoverContent>
       </Popover>
       
-      {currentDate && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-gray-100"
-          onClick={handleRemoveDate}
-          title="Remover data de vencimento"
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      )}
+      {/* Removido: botão de remover data. Mantemos apenas a data simples como trigger. */}
     </div>
   )
 }

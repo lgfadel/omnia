@@ -731,8 +731,19 @@ export function TabelaOmnia({
                       key={`${row.id}-${column.key}`} 
                       className={cn(
                         "text-sm py-4 px-6",
+                        column.width,
                         (column.key === "secretary" || column.key === "responsible") && "text-center"
                       )}
+                      onClick={(e) => {
+                        if (column.key === "dueDate") {
+                          e.stopPropagation()
+                        }
+                      }}
+                      onMouseDown={(e) => {
+                        if (column.key === "dueDate") {
+                          e.stopPropagation()
+                        }
+                      }}
                     >
                       {renderCellValue(row[column.key], column.key, row)}
                     </TableCell>
@@ -772,8 +783,19 @@ export function TabelaOmnia({
                     key={`${row.id}-${column.key}`} 
                     className={cn(
                       "text-sm py-4 px-6",
+                      column.width,
                       (column.key === "secretary" || column.key === "responsible") && "text-center"
                     )}
+                    onClick={(e) => {
+                      if (column.key === "dueDate") {
+                        e.stopPropagation()
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      if (column.key === "dueDate") {
+                        e.stopPropagation()
+                      }
+                    }}
                   >
                     {renderCellValue(row[column.key], column.key, row)}
                   </TableCell>
