@@ -7,6 +7,7 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+		"./apps/web-next/src/**/*.{ts,tsx}",
 	],
 	prefix: "",
 	theme: {

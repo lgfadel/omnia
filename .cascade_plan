@@ -1,0 +1,3 @@
+1. Sincronizar estilos globais no app Next (copiar index.css + layout-responsive para apps/web-next/src/app).
+2. Conectar layout do Next aos providers globais (QueryClient, Auth, toasts, ErrorBoundary) e ajustar page.tsx placeholder.
+3. Rodar installs/audit para alinhar dependências e locks (root e apps/web-next).
