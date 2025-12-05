@@ -51,8 +51,8 @@ export function useTarefasOportunidade(oportunidadeId: string) {
     
     try {
       // Buscar tickets - usando fetch direto para evitar problemas de tipo profundo
-      const supabaseUrl = 'https://elmxwvimjxcswjbrzznq.supabase.co';
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co';
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
       
       const { data: session } = await supabase.auth.getSession();
       const authHeader = session.session?.access_token || supabaseKey;

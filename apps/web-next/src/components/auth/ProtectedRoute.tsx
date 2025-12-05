@@ -42,8 +42,8 @@ function DiagnosticPanel() {
 
       // Test 2: Supabase Auth Health (with apikey)
       try {
-        const healthUrl = `https://elmxwvimjxcswjbrzznq.supabase.co/auth/v1/health`
-        const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI"
+        const healthUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co'}/auth/v1/health`
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI"
         const response = await fetch(healthUrl, { 
           method: 'GET',
           headers: {

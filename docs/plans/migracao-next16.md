@@ -116,14 +116,19 @@ Páginas migradas para App Router:
 - `/config/origens` → `app/config/origens/page.tsx`
 - `not-found.tsx` criado
 
-### 🔄 Fase 4 — Dados e componentes (Em andamento)
+### ✅ Fase 4 — Dados e componentes (Concluída)
 - Componentes marcados como `"use client"` onde necessário
 - Componentes compartilhados, stores, hooks, lib, integrations já copiados para `apps/web-next/src/`
-- Pendente: finalizar lint/build após remoção do alias cruzado (rodar `npm --prefix apps/web-next run lint`/`build`)
+- Build passa com sucesso após correções de TypeScript e SSR
+- Repositórios normalizados para lidar com campos nulos do Supabase
+- Renderização dinâmica configurada para páginas dependentes de autenticação
 
-### 🔄 Fase 5 — API e integrações (Pendente)
-- Pendente: revisar variáveis de ambiente `NEXT_PUBLIC_*`
-- Pendente: configurar `next.config.ts` para domínios de imagem
+### ✅ Fase 5 — API e integrações (Concluída)
+- ✅ Substituídas credenciais hardcoded por `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- ✅ Configurado `next.config.ts` com `images.remotePatterns` para Supabase storage
+- ✅ Adicionado `output: 'standalone'` para deploy
+- ✅ Criado `docs/env.example` com template de variáveis de ambiente
+- ✅ Build validado sem warnings críticos
 
 ### ⏳ Fase 6-9 (Pendentes)
 - Testes, performance, deploy e limpeza
