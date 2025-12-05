@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
@@ -76,10 +77,13 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img 
+            <Image 
               src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
               alt="Omnia Logo" 
+              width={160}
+              height={64}
               className="h-16 w-auto"
+              priority
             />
           </div>
         </CardHeader>

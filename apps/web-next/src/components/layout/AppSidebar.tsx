@@ -1,4 +1,5 @@
 import React from "react"
+import Image from "next/image"
 import { 
   ClipboardList, 
   Settings, 
@@ -209,15 +210,20 @@ export function AppSidebar() {
         <div className="p-4">
           <div className="flex items-center justify-center h-12">
             {!collapsed ? (
-              <img 
+              <Image 
                 src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
                 alt="Omnia Logo" 
+                width={120}
+                height={40}
                 className="h-10 w-auto object-contain"
+                priority
               />
             ) : (
-              <img 
+              <Image 
                 src="/lovable-uploads/6d3076bc-69b6-4b0c-bc8b-2589689cae6a.png" 
                 alt="Omnia Logo" 
+                width={24}
+                height={24}
                 className="h-6 w-6 object-contain"
               />
             )}

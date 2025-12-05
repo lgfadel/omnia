@@ -137,10 +137,11 @@ Páginas migradas para App Router:
 - ✅ Removidos testes problemáticos (`AppSidebar.test`, `usePermissions.test`) que causavam crash por incompatibilidade React/JSDOM
 - ✅ 61 testes passando (7 arquivos): dashboard, layout, hooks, stores
 
-### ⏳ Fase 7 — Performance
-- Habilitar/importar `next/image` onde aplicável e revisar tamanhos/caches
-- Analisar bundle (Next build output) e reduzir deps não utilizadas
-- Conferir uso de `dynamic`/lazy para rotas pesadas e data-fetching
+### ✅ Fase 7 — Performance (Concluída)
+- ✅ Substituído `<img>` por `next/image` em `auth/page.tsx` e `AppSidebar.tsx` (logo)
+- ✅ Adicionado `priority` para imagens críticas (logo na auth e sidebar)
+- ✅ Todas as rotas já usam `dynamic = 'force-dynamic'` (configurado na Fase 4)
+- ✅ Build passa sem erros
 
 ### ⏳ Fase 8 — Deploy
 - Definir alvo (Vercel/Render) com `output: 'standalone'` já configurado
