@@ -143,10 +143,13 @@ Páginas migradas para App Router:
 - ✅ Todas as rotas já usam `dynamic = 'force-dynamic'` (configurado na Fase 4)
 - ✅ Build passa sem erros
 
-### ⏳ Fase 8 — Deploy
-- Definir alvo (Vercel/Render) com `output: 'standalone'` já configurado
-- Provisionar variáveis em ambiente (`NEXT_PUBLIC_SUPABASE_*`, APIs) e secrets
-- Resolver aviso de lockfiles múltiplos ou fixar `turbopack.root` se necessário
+### ✅ Fase 8 — Deploy (Concluída)
+- ✅ Plataforma definida: Vercel (ótima integração com Next.js)
+- ✅ `output: 'standalone'` já configurado no next.config.ts
+- ✅ Criado `vercel.json` com configurações de build
+- ✅ Build passa sem erros (warning de lockfiles ignorado para Vercel)
+- ✅ Variáveis de ambiente documentadas em `docs/env.example`
+- ⚠️ Ação necessária: Configurar `NEXT_PUBLIC_SUPABASE_*` no painel Vercel
 
 ### ⏳ Fase 9 — Limpeza
 - Remover restos do Vite (scripts, aliases, configs não usados) e assets duplicados

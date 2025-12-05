@@ -18,6 +18,6 @@ const nextConfig: NextConfig = {
   },
   // Force dynamic rendering for auth-dependent app
   output: 'standalone',
-};
+  };
 
 export default nextConfig;
