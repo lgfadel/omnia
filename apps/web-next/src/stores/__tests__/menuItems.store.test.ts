@@ -6,6 +6,7 @@ import type { MenuItem, CreateMenuItemData, UpdateMenuItemData } from '@/reposit
 // Mock do repository
 vi.mock('@/repositories/menuItemsRepo.supabase', () => ({
   menuItemsRepoSupabase: {
+    listAll: vi.fn(),
     list: vi.fn(),
     getRootItems: vi.fn(),
     getById: vi.fn(),
@@ -57,7 +58,7 @@ describe('MenuItemsStore', () => {
   describe('loadMenuItems', () => {
     it('should load menu items successfully', async () => {
       // Arrange
-      vi.mocked(menuItemsRepoSupabase.list).mockResolvedValue(mockMenuItems)
+      vi.mocked(menuItemsRepoSupabase.listAll).mockResolvedValue(mockMenuItems)
       vi.mocked(menuItemsRepoSupabase.getRootItems).mockResolvedValue(mockMenuItems)
       
       const { loadMenuItems } = useMenuItemsStore.getState()
@@ -71,14 +72,14 @@ describe('MenuItemsStore', () => {
       expect(state.rootItems).toEqual(mockMenuItems)
       expect(state.isLoading).toBe(false)
       expect(state.error).toBeNull()
-      expect(menuItemsRepoSupabase.list).toHaveBeenCalledOnce()
+      expect(menuItemsRepoSupabase.listAll).toHaveBeenCalledOnce()
       expect(menuItemsRepoSupabase.getRootItems).toHaveBeenCalledOnce()
     })
 
     it('should handle errors when loading menu items', async () => {
       // Arrange
       const errorMessage = 'Failed to load menu items'
-      vi.mocked(menuItemsRepoSupabase.list).mockRejectedValue(new Error(errorMessage))
+      vi.mocked(menuItemsRepoSupabase.listAll).mockRejectedValue(new Error(errorMessage))
       
       const { loadMenuItems } = useMenuItemsStore.getState()
 
@@ -98,7 +99,7 @@ describe('MenuItemsStore', () => {
       const promise = new Promise<MenuItem[]>((resolve) => {
         resolvePromise = resolve
       })
-      vi.mocked(menuItemsRepoSupabase.list).mockReturnValue(promise)
+      vi.mocked(menuItemsRepoSupabase.listAll).mockReturnValue(promise)
       vi.mocked(menuItemsRepoSupabase.getRootItems).mockResolvedValue([])
       
       const { loadMenuItems } = useMenuItemsStore.getState()

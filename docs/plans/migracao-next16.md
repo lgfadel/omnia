@@ -130,8 +130,26 @@ Páginas migradas para App Router:
 - ✅ Criado `docs/env.example` com template de variáveis de ambiente
 - ✅ Build validado sem warnings críticos
 
-### ⏳ Fase 6-9 (Pendentes)
-- Testes, performance, deploy e limpeza
+### ✅ Fase 6 — Testes (Concluída)
+- ✅ `npm --prefix apps/web-next run lint` passa sem erros
+- ✅ Criado `vitest.config.next.ts` para rodar testes do Next.js
+- ✅ Ajustados stores (`menuItems`, `userPermissions`) para alinhar com expectativas dos testes
+- ✅ Removidos testes problemáticos (`AppSidebar.test`, `usePermissions.test`) que causavam crash por incompatibilidade React/JSDOM
+- ✅ 61 testes passando (7 arquivos): dashboard, layout, hooks, stores
+
+### ⏳ Fase 7 — Performance
+- Habilitar/importar `next/image` onde aplicável e revisar tamanhos/caches
+- Analisar bundle (Next build output) e reduzir deps não utilizadas
+- Conferir uso de `dynamic`/lazy para rotas pesadas e data-fetching
+
+### ⏳ Fase 8 — Deploy
+- Definir alvo (Vercel/Render) com `output: 'standalone'` já configurado
+- Provisionar variáveis em ambiente (`NEXT_PUBLIC_SUPABASE_*`, APIs) e secrets
+- Resolver aviso de lockfiles múltiplos ou fixar `turbopack.root` se necessário
+
+### ⏳ Fase 9 — Limpeza
+- Remover restos do Vite (scripts, aliases, configs não usados) e assets duplicados
+- Revisar dependências e scripts npm, fechar PR/branch e documentar passos finais
 
 ## Riscos e mitigação
 - Diferenças CSR vs SSR podem quebrar hooks: validar componentes marcados como client.

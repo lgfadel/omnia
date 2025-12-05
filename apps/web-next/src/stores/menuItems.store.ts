@@ -15,9 +15,9 @@ interface MenuItemsState {
   loadChildren: (parentId: string) => Promise<MenuItem[]>
   getById: (id: string) => MenuItem | undefined
   getByPath: (path: string) => MenuItem | undefined
-  addMenuItem: (menuItem: CreateMenuItemData) => Promise<void>
-  updateMenuItem: (id: string, data: UpdateMenuItemData) => Promise<void>
-  removeMenuItem: (id: string) => Promise<void>
+  addMenuItem: (menuItem: CreateMenuItemData) => Promise<MenuItem>
+  updateMenuItem: (id: string, data: UpdateMenuItemData) => Promise<MenuItem>
+  removeMenuItem: (id: string) => Promise<boolean>
   reorderMenuItems: (items: Array<{ id: string; order_index: number }>) => Promise<void>
   clearMenuItems: () => void
   clearError: () => void
@@ -33,7 +33,8 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const menuItems = await menuItemsRepoSupabase.listAll()
-      set({ menuItems, isLoading: false })
+      const rootItems = await menuItemsRepoSupabase.getRootItems()
+      set({ menuItems, rootItems, isLoading: false })
     } catch (error) {
       logger.error('Error loading menu items:', error)
       set({ 
@@ -90,9 +91,11 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       if (!newMenuItem.parent_id) {
         set({ rootItems: [...rootItems, newMenuItem] })
       }
+      return newMenuItem
     } catch (error) {
       logger.error('Error adding menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao adicionar item do menu' })
+      throw error
     }
   },
 
@@ -119,12 +122,15 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
           const filteredRootItems = rootItems.filter(item => item.id !== id)
           set({ rootItems: filteredRootItems })
         }
+        return updatedMenuItem
       } else {
         set({ error: 'Erro ao atualizar item do menu' })
+        throw new Error('Erro ao atualizar item do menu')
       }
     } catch (error) {
       logger.error('Error updating menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao atualizar item do menu' })
+      throw error
     }
   },
 
@@ -140,9 +146,11 @@ export const useMenuItemsStore = create<MenuItemsState>((set, get) => ({
       // Remove from root items
       const filteredRootItems = rootItems.filter(item => item.id !== id)
       set({ rootItems: filteredRootItems })
+      return true
     } catch (error) {
       logger.error('Error removing menu item:', error)
       set({ error: error instanceof Error ? error.message : 'Erro ao remover item do menu' })
+      throw error
     }
   },
 
