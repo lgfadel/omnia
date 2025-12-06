@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Navigate, Link } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Role } from '@/data/types'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ interface RoleProtectedRouteProps {
 
 export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRouteProps) {
   const { user, userProfile, loading } = useAuth()
+  const router = useRouter()
   const [showTimeout, setShowTimeout] = useState(false)
 
   useEffect(() => {
@@ -25,6 +27,13 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
       setShowTimeout(false)
     }
   }, [loading, user, userProfile])
+
+  // Redirect to auth if no user session
+  useEffect(() => {
+    if (!user && !loading) {
+      router.push('/auth')
+    }
+  }, [user, loading, router])
 
   // Show loading spinner while checking authentication
   if (loading && !showTimeout) {
@@ -52,7 +61,7 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
               Tentar Novamente
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/auth">Ir para Login</Link>
+              <Link href="/auth">Ir para Login</Link>
             </Button>
           </div>
         </div>
@@ -60,11 +69,7 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
     )
   }
 
-  // Redirect to auth if no user session
-  if (!user) {
-    return <Navigate to="/auth" replace />
-  }
-
+  
   // Wait for user profile to load - don't redirect immediately
   if (!userProfile) {
     return (
@@ -82,8 +87,15 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
     userProfile.roles.includes(role)
   )
 
-  if (!hasPermission) {
-    return <Navigate to="/access-denied" replace />
+  // Redirect to access-denied if user doesn't have required roles
+  useEffect(() => {
+    if (user && userProfile && !loading && !hasPermission) {
+      router.push('/access-denied')
+    }
+  }, [user, userProfile, loading, hasPermission, router])
+
+  if (!hasPermission && user && userProfile && !loading) {
+    return null // Will redirect via useEffect
   }
 
   return <>{children}</>

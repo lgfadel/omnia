@@ -1,5 +1,5 @@
 import { ChevronRight, Home } from "lucide-react"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 export interface BreadcrumbItem {
@@ -17,7 +17,7 @@ export function BreadcrumbOmnia({ items, className }: BreadcrumbOmniaProps) {
   return (
     <nav className={cn("breadcrumb-responsive flex items-center space-x-2 text-sm text-muted-foreground py-2", className)}>
       <Link 
-        to="/" 
+        href="/" 
         className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
       >
         <Home className="w-4 h-4" />
@@ -30,7 +30,7 @@ export function BreadcrumbOmnia({ items, className }: BreadcrumbOmniaProps) {
           
           {item.href && !item.isActive ? (
             <Link 
-              to={item.href}
+              href={item.href}
               className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
             >
               {item.label}

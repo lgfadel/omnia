@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CrmStatusBadge } from '@/components/ui/badge-crm-status'
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
 import { useRoles } from '@/hooks/useRoles'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { useCrmStatusStore } from '@/store/crmStatus.store'
 import { useCrmLeadsStore } from '@/store/crmLeads.store'
 import { useUsersStore } from '@/store/users.store'
@@ -25,7 +25,7 @@ interface CrmLeadsTableProps {
 
 export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
   const { isAdmin } = useRoles()
-  const navigate = useNavigate()
+  const router = useRouter()
   const { statuses, loadStatuses } = useCrmStatusStore()
   const { updateLead } = useCrmLeadsStore()
   const { users, loadUsers } = useUsersStore()
@@ -192,7 +192,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                          className="font-medium text-sm text-foreground line-clamp-1 cursor-pointer hover:text-primary transition-colors"
                          onClick={(e) => {
                            e.stopPropagation();
-                           navigate(`/crm/${lead.id}`);
+                           router.push(`/crm/${lead.id}`);
                          }}
                        >
                          {lead.cliente}
@@ -459,7 +459,7 @@ export function CrmLeadsTable({ leads, onEdit, onDelete }: CrmLeadsTableProps) {
                          <button
                            onClick={(e) => {
                              e.stopPropagation();
-                             navigate(`/crm/${lead.id}`);
+                             router.push(`/crm/${lead.id}`);
                            }}
                            className="text-muted-foreground hover:text-primary hover:bg-gray-100 p-1 rounded"
                          >

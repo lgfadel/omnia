@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { Navigate, Link } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -119,7 +120,7 @@ function DiagnosticPanel() {
             Tentar Novamente
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <Link to="/auth">Ir para Login</Link>
+            <Link href="/auth">Ir para Login</Link>
           </Button>
         </div>
       </div>
@@ -129,6 +130,7 @@ function DiagnosticPanel() {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
+  const router = useRouter()
   const [showTimeout, setShowTimeout] = useState(false)
 
   useEffect(() => {
@@ -143,6 +145,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       setShowTimeout(false)
     }
   }, [loading])
+
+  // Redirect to auth if no user session
+  useEffect(() => {
+    if (!user && !loading) {
+      router.push('/auth')
+    }
+  }, [user, loading, router])
 
   if (loading && !showTimeout) {
     return (
@@ -159,8 +168,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <DiagnosticPanel />
   }
 
-  if (!user) {
-    return <Navigate to="/auth" replace />
+  if (!user && !loading) {
+    return null // Will redirect via useEffect
   }
 
   return <>{children}</>

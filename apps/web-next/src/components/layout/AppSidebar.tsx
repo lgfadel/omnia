@@ -16,7 +16,8 @@ import {
   Building2,
   Menu
 } from "lucide-react"
-import { NavLink, useNavigate } from "react-router-dom"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -90,7 +91,8 @@ function getMenuIcon(menuItem: MenuItem) {
 export function AppSidebar() {
   const { state } = useSidebar()
   const collapsed = state === "collapsed"
-  const navigate = useNavigate()
+  const router = useRouter()
+  const pathname = usePathname()
   const { user, userProfile, signOut } = useAuth()
   const { canAccessConfig } = useRoles()
   const { menuTree, isLoading, error } = useAccessibleMenuTree()
@@ -98,7 +100,7 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await signOut()
-    navigate('/auth')
+    router.push('/auth')
   }
 
   // Função para alternar expansão de um item
@@ -159,19 +161,13 @@ export function AppSidebar() {
                 {item.children?.map((child) => (
                   <SidebarMenuSubItem key={child.id}>
                     <SidebarMenuSubButton asChild>
-                      <NavLink 
-                        to={child.path}
-                        className={({ isActive }) =>
-                          `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                            isActive 
-                              ? "nav-item-active" 
-                              : ""
-                          }`
-                        }
+                      <Link 
+                        href={child.path}
+                        className={pathname === child.path ? "bg-accent text-accent-foreground" : "text-muted-foreground"}
                       >
                         {React.createElement(getMenuIcon(child), { className: "w-4 h-4 shrink-0" })}
                         <span className="truncate">{child.name}</span>
-                      </NavLink>
+                      </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                 ))}
@@ -180,20 +176,13 @@ export function AppSidebar() {
           </>
         ) : (
           <SidebarMenuButton asChild>
-            <NavLink 
-              to={item.path} 
-              end
-              className={({ isActive }) =>
-                `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                  isActive 
-                    ? "nav-item-active" 
-                    : ""
-                }`
-              }
+            <Link 
+              href={item.path}
+              className={pathname === item.path ? "bg-accent text-accent-foreground" : "text-muted-foreground"}
             >
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && <span className="truncate">{item.name}</span>}
-            </NavLink>
+            </Link>
           </SidebarMenuButton>
         )}
       </SidebarMenuItem>
@@ -292,19 +281,17 @@ export function AppSidebar() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to="/config"
-                      className={({ isActive }) =>
-                        `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                          isActive 
-                            ? "nav-item-active" 
-                            : ""
-                        }`
-                      }
+                    <Link 
+                      href="/config"
+                      className={`icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                        pathname === "/config"
+                          ? "nav-item-active" 
+                          : "text-muted-foreground"
+                      }`}
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       {!collapsed && <span className="truncate">Configurações</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -332,19 +319,17 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-               <NavLink 
-                 to="/change-password"
-                 className={({ isActive }) =>
-                   `icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
-                     isActive 
-                       ? "nav-item-active" 
-                       : ""
-                   }`
-                 }
+               <Link 
+                 href="/change-password"
+                 className={`icon-text-align nav-item-hover p-2 rounded-md transition-colors ${
+                   pathname === "/change-password"
+                     ? "nav-item-active" 
+                     : "text-muted-foreground"
+                 }`}
                >
                  <KeyRound className="w-4 h-4 shrink-0" />
                  {!collapsed && <span className="truncate">Alterar Senha</span>}
-               </NavLink>
+               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
