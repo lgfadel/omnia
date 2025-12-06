@@ -151,9 +151,14 @@ Páginas migradas para App Router:
 - ✅ Variáveis de ambiente documentadas em `docs/env.example`
 - ⚠️ Ação necessária: Configurar `NEXT_PUBLIC_SUPABASE_*` no painel Vercel
 
-### ⏳ Fase 9 — Limpeza
-- Remover restos do Vite (scripts, aliases, configs não usados) e assets duplicados
-- Revisar dependências e scripts npm, fechar PR/branch e documentar passos finais
+### ✅ Fase 9 — Limpeza (Concluída)
+- ✅ Removido diretório `src/` (código Vite antigo)
+- ✅ Removido `index.html` e `vite.config.ts`
+- ✅ Removidos arquivos temporários `vite.config.ts.timestamp-*.mjs`
+- ✅ Atualizado `package.json` com scripts apontando para Next.js
+- ✅ Criado `apps/web-next/src/test/setup.ts` para testes
+- ✅ Atualizado `vitest.config.next.ts` com novo path do setup
+- ✅ Build e testes passando (61 testes)
 
 ## Riscos e mitigação
 - Diferenças CSR vs SSR podem quebrar hooks: validar componentes marcados como client.

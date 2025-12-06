@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./apps/web-next/src/test/setup.ts'],
     include: ['apps/web-next/src/**/*.{test,spec}.{ts,tsx}']
   },
   resolve: {
