@@ -121,7 +121,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             name: userData.name,
             email: userData.email,
             roles: userData.roles as Role[],
-            avatarUrl: userData.avatar_url ?? undefined,
+            avatarUrl: userData.avatar_url,
             color: userData.color || '#3B82F6'
           }
         })
@@ -156,7 +156,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             name: newUserData.name,
             email: newUserData.email,
             roles: ['USUARIO'] as Role[],
-            avatarUrl: undefined,
+            avatarUrl: null,
             color: '#3B82F6'
           }
         })
@@ -169,7 +169,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           name: createdUser.name,
           email: createdUser.email,
           roles: createdUser.roles as Role[],
-          avatarUrl: createdUser.avatar_url ?? undefined,
+          avatarUrl: createdUser.avatar_url,
           color: createdUser.color || '#3B82F6'
         }
       })
@@ -183,7 +183,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           name: authUser?.user?.email?.split('@')[0] || 'Usuário',
           email: authUser?.user?.email || '',
           roles: ['USUARIO'] as Role[],
-          avatarUrl: undefined,
+          avatarUrl: null,
           color: '#3B82F6'
         }
       })
@@ -205,7 +205,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signIn: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
