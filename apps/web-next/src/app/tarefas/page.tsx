@@ -35,6 +35,7 @@ type TicketTableRow = Omit<Tarefa, 'dueDate' | 'assignedTo' | 'createdAt'> & {
   assignedTo: string;
   responsible: UserRef | undefined;
   createdAt: string;
+  ticket: string;
   status: "nao-iniciado" | "em-andamento" | "concluido";
   statusName: string;
   statusColor: string;
@@ -55,6 +56,7 @@ const columns = [
   { key: "priority", label: "Prioridade", width: "w-[12%]" },
   { key: "dueDate", label: "Vencimento", width: "w-[15%]" },
   { key: "responsible", label: "Responsável", width: "w-[18%]" },
+  { key: "ticket", label: "Ticket", width: "w-[10%]" },
   { key: "statusId", label: "Status", width: "w-[15%]" },
   { key: "commentCount", label: "Comentários", width: "w-[10%]" }
 ];
@@ -329,6 +331,7 @@ export default function Tickets() {
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo,
       createdAt: new Date(tarefa.createdAt).toLocaleDateString('pt-BR'),
+      ticket: tarefa.ticket || '',
       commentCount: tarefa.commentCount || 0,
       status: mappedStatus,
       statusName: currentStatus?.name || "Status não encontrado",
