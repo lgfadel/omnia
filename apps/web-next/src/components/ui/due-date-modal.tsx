@@ -24,6 +24,12 @@ export function DueDateModal({
     setOpen(false)
   }
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setOpen(!open)
+  }
+
   // Removido: ação de remover data. A interface agora exibe apenas a data simples.
 
   const formatDateForDisplay = (date: Date) => {
@@ -54,8 +60,13 @@ export function DueDateModal({
               currentDate && isOverdue && "text-destructive font-medium"
             )}
             aria-label="Alterar data de vencimento"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            onClick={handleTriggerClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setOpen(!open)
+              }
+            }}
           >
             {currentDate ? formatDateForDisplay(currentDate) : "-"}
           </span>
