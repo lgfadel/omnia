@@ -103,7 +103,7 @@
 - [x] Registrar `created_by` (quem fez a alteração) na notificação
 - [x] Implementado via triggers no Postgres (`SECURITY DEFINER`) para não depender do frontend e evitar necessidade de policy `INSERT`
 
-### Fase 4 — Serviço/API de notificações ⬜
+### Fase 4 — Serviço/API de notificações ✅
 
 **Opções de implementação**:
 1. **Edge Function** (recomendado para lógica complexa)
@@ -117,6 +117,15 @@
   - `markAllAsRead(userId)` — atualiza todas não lidas
 - [ ] Aplicar RLS: usuário só lê/atualiza suas notificações
 - [ ] Supabase Realtime para push de novas notificações (subscribe em `omnia_notifications` filtrando por `user_id`)
+
+**Implementado** (app):
+- [x] `apps/web-next/src/repositories/notificationsRepo.supabase.ts`: `listUnread`, `listRecent`, `markAsRead`, `markAllAsRead`
+- [x] `apps/web-next/src/stores/notifications.store.ts`: Zustand store com `unreadCount` e subscribe Realtime (INSERT/UPDATE)
+- [x] `apps/web-next/src/components/notifications/NotificationsBootstrap.tsx` montado em `app/providers.tsx`
+
+**Implementado** (migrations):
+- [x] `20251214233000_enable_realtime_omnia_notifications.sql`: habilita publication `supabase_realtime` para `public.omnia_notifications`
+- [x] `20251214234000_fix_omnia_notifications_rls.sql`: garante policies de SELECT/UPDATE em `public.omnia_notifications`
 
 ### Fase 5 — UI mínima ⬜
 

@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { NotificationsBootstrap } from "@/components/notifications/NotificationsBootstrap";
 
 export function Providers({ children }: { children: ReactNode }) {
   // Create QueryClient once per app shell
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <Toaster />
         <Sonner />
         <AuthProvider>
+          <NotificationsBootstrap />
           <ErrorBoundary>{children}</ErrorBoundary>
         </AuthProvider>
       </TooltipProvider>
