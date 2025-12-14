@@ -91,17 +91,17 @@
 - [x] Chamada da Edge Function `notify-mentions` após criar comentário (tickets e atas)
 - [x] Tickets: enviar `ticket_comment_id` para permitir remoção automática (`ON DELETE CASCADE`) ao apagar o comentário
 
-### Fase 3 — Detecção de troca de responsável/secretário ⬜
+### Fase 3 — Detecção de troca de responsável/secretário ✅
 
 **Arquivos-chave**:
 - `apps/web-next/src/repositories/tarefasRepo.supabase.ts` — update de tarefas (campo `assignedTo`)
 - `apps/web-next/src/repositories/atasRepo.supabase.ts` — atas têm `secretary_id` e `responsible_id`
 
 **Tarefas**:
-- [ ] No update de tarefa: buscar valor anterior de `assigned_to`, comparar com novo
-- [ ] Se mudou e novo usuário é ativo: criar notificação type="assigned"
-- [ ] No update de ata: mesma lógica para `secretary_id` (type="secretary") e `responsible_id`
-- [ ] Registrar `created_by` (quem fez a alteração) na notificação
+- [x] No update de tarefa: detectar mudança de `assigned_to` e criar notificação type="assigned" (somente usuários ativos)
+- [x] No update de ata: detectar mudança de `secretary_id` (type="secretary") e `responsible_id` (type="responsible")
+- [x] Registrar `created_by` (quem fez a alteração) na notificação
+- [x] Implementado via triggers no Postgres (`SECURITY DEFINER`) para não depender do frontend e evitar necessidade de policy `INSERT`
 
 ### Fase 4 — Serviço/API de notificações ⬜
 

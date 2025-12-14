@@ -668,6 +668,7 @@ export type Database = {
           user_id: string
           type: string
           ticket_id: string | null
+          ata_id: string | null
           comment_id: string | null
           ticket_comment_id: string | null
           created_by: string | null
@@ -679,6 +680,7 @@ export type Database = {
           user_id: string
           type: string
           ticket_id?: string | null
+          ata_id?: string | null
           comment_id?: string | null
           ticket_comment_id?: string | null
           created_by?: string | null
@@ -690,6 +692,7 @@ export type Database = {
           user_id?: string
           type?: string
           ticket_id?: string | null
+          ata_id?: string | null
           comment_id?: string | null
           ticket_comment_id?: string | null
           created_by?: string | null
@@ -712,6 +715,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "omnia_notifications_ata_id_fkey"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_notifications_comment_id_fkey"
             columns: ["comment_id"]
             isOneToOne: false
@@ -731,47 +741,8 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
-          },
+          }
         ]
-      }
-      omnia_users: {
-        Row: {
-          active: boolean | null
-          auth_user_id: string | null
-          avatar_url: string | null
-          color: string | null
-          created_at: string
-          email: string
-          id: string
-          name: string
-          roles: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean | null
-          auth_user_id?: string | null
-          avatar_url?: string | null
-          color?: string | null
-          created_at?: string
-          email: string
-          id?: string
-          name: string
-          roles?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean | null
-          auth_user_id?: string | null
-          avatar_url?: string | null
-          color?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          name?: string
-          roles?: string[] | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       omnia_menu_items: {
         Row: {
