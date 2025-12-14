@@ -24,9 +24,11 @@
 - Confirmar chave única para `nome` (display) ou definir fallback (autocomplete que resolve userId).
 
 ### Fase 1 — Modelo de dados e migrações
-- Criar tabela `notifications` com: `id`, `userId`, `type` ("assigned" | "secretary" | "mentioned"), `ticketId`, `commentId` (nullable), `createdBy`, `createdAt`, `readAt`.
-- Adicionar índice por `userId, readAt` e constraint para evitar duplicados idênticos recentes (opcional: unique parcial em type/user/ticket/comment).
-- Garantir que `users` tenha flag `active`; usar isso para filtrar destinatários.
+- Criar tabela `notifications` com: `id`, `user_id`, `type` ("assigned" | "secretary" | "mentioned"), `ticket_id`, `comment_id` (nullable), `created_by`, `created_at`, `read_at`.
+- Índices: (`user_id`, `read_at`) e, se necessário, índice para (`type`, `user_id`, `ticket_id`, `comment_id`) para consulta e dedupe.
+- Constraint de dedupe opcional: unique parcial em (`type`, `user_id`, `ticket_id`, `comment_id`) onde `read_at IS NULL`.
+- Adicionar coluna `active boolean default true` em `omnia_users` (se ainda não existir) e refletir em tipos/SDK.
+- Atualizar tipos Supabase gerados (se aplicável) e reexportar modelos usados em stores/repos.
 
 ### Fase 2 — Parsing de menções em comentários
 - No backend de criação de comentário:
