@@ -55,23 +55,30 @@
 ### Fase 1 — Modelo de dados e migrações ✅
 
 **Implementado** (migration `20251207230000_add_notifications_table.sql`):
-- [x] Tabela `notifications` criada com campos: `id`, `user_id`, `type`, `ticket_id`, `comment_id`, `created_by`, `created_at`, `read_at`
-- [x] Índice `notifications_user_read_idx` em (`user_id`, `read_at`)
-- [x] Índice `notifications_type_user_ticket_comment_idx` para consultas
-- [x] Unique partial index `notifications_dedupe_unread_idx` para dedupe de não lidas
+- [x] Tabela `omnia_notifications` (renomeada de `notifications`) com campos: `id`, `user_id`, `type`, `ticket_id`, `comment_id`, `ticket_comment_id`, `created_by`, `created_at`, `read_at`
+- [x] Índice `omnia_notifications_user_read_idx` em (`user_id`, `read_at`)
+- [x] Índice `omnia_notifications_type_user_ticket_comment_idx` para consultas
+- [x] Unique partial index `omnia_notifications_dedupe_unread_idx` para dedupe de não lidas
 - [x] Coluna `active boolean default true` adicionada a `omnia_users`
 
 **Implementado** (migration `20251214170000_add_notifications_rls.sql`):
-- [x] RLS habilitado em `public.notifications`
+- [x] RLS habilitado em `public.omnia_notifications`
 - [x] Policy de `SELECT` (usuário só vê as próprias notificações)
 - [x] Policy de `UPDATE` (usuário só atualiza as próprias notificações — ex.: marcar como lida)
 
+**Implementado** (migration `20251214190000_rename_notifications_to_omnia_notifications.sql`):
+- [x] Rename `public.notifications` → `public.omnia_notifications` (padrão `omnia_`)
+
+**Implementado** (migration `20251214200000_add_ticket_comment_fk_to_omnia_notifications.sql`):
+- [x] Coluna `ticket_comment_id` em `public.omnia_notifications` com FK para `public.omnia_ticket_comments(id)`
+- [x] `ON DELETE CASCADE` para remover notificações de menção quando o comentário de ticket é apagado
+
 **Implementado** (app):
-- [x] Types Supabase atualizados em `apps/web-next/src/integrations/supabase/types.ts` (inclui `notifications` e `omnia_users.active`)
+- [x] Types Supabase atualizados em `apps/web-next/src/integrations/supabase/types.ts` (inclui `omnia_notifications` e `omnia_users.active`)
 - [x] `apps/web-next/src/repositories/usersRepo.supabase.ts`: `User.active` e `getActiveUsers()` filtrando `active = true`
 - [x] Migrações aplicadas no banco com sucesso (confirmado em 2025-12-14)
 
-### Fase 2 — Parsing de menções em comentários ⬜
+### Fase 2 — Parsing de menções em comentários ✅
 
 **Arquivos-chave para implementação**:
 - `apps/web-next/src/repositories/ticketCommentsRepo.supabase.ts` — criação de comentários em tickets
@@ -79,11 +86,10 @@
 - `apps/web-next/src/components/tickets/TicketCommentInput.tsx` — UI de input de comentários
 
 **Tarefas**:
-- [ ] Criar utilitário `parseMentions(body: string): string[]` que extrai `@nome` ou `@[userId]`
-- [ ] No frontend: implementar autocomplete de usuários ativos no `TicketCommentInput`
-- [ ] No backend (repo): ao criar comentário, chamar `parseMentions`, resolver userIds, criar notificações type="mentioned"
-- [ ] Adicionar coluna `mentions uuid[]` em `omnia_ticket_comments` (opcional, para histórico)
-- [ ] Sanitizar corpo de comentário antes de renderizar
+- [x] No frontend: autocomplete de usuários ativos no `TicketCommentInput`
+- [x] Inserção de menções como `@Nome` no input com conversão para `@[userId]` ao salvar
+- [x] Chamada da Edge Function `notify-mentions` após criar comentário (tickets e atas)
+- [x] Tickets: enviar `ticket_comment_id` para permitir remoção automática (`ON DELETE CASCADE`) ao apagar o comentário
 
 ### Fase 3 — Detecção de troca de responsável/secretário ⬜
 
@@ -110,7 +116,7 @@
   - `markAsRead(notificationId)` — atualiza `read_at`
   - `markAllAsRead(userId)` — atualiza todas não lidas
 - [ ] Aplicar RLS: usuário só lê/atualiza suas notificações
-- [ ] Supabase Realtime para push de novas notificações (subscribe em `notifications` filtrando por `user_id`)
+- [ ] Supabase Realtime para push de novas notificações (subscribe em `omnia_notifications` filtrando por `user_id`)
 
 ### Fase 5 — UI mínima ⬜
 
@@ -162,18 +168,18 @@ Sem decisões abertas no momento.
 
 ## Próximos passos imediatos
 
-1. **Finalizar Fase 1** — criar migration com RLS policies para `notifications`:
+1. **Finalizar Fase 1** — criar migration com RLS policies para `omnia_notifications`:
    ```sql
    -- SELECT: usuário só vê suas notificações
-   CREATE POLICY "Users can view own notifications" ON notifications
+   CREATE POLICY "Users can view own notifications" ON omnia_notifications
      FOR SELECT USING (user_id = (SELECT id FROM omnia_users WHERE auth_user_id = auth.uid()));
    
    -- INSERT: sistema pode criar (via service role ou trigger)
-   CREATE POLICY "System can create notifications" ON notifications
+   CREATE POLICY "System can create notifications" ON omnia_notifications
      FOR INSERT WITH CHECK (true);
    
    -- UPDATE: usuário só atualiza suas notificações (marcar como lida)
-   CREATE POLICY "Users can update own notifications" ON notifications
+   CREATE POLICY "Users can update own notifications" ON omnia_notifications
      FOR UPDATE USING (user_id = (SELECT id FROM omnia_users WHERE auth_user_id = auth.uid()));
    ```
 
@@ -185,7 +191,7 @@ Sem decisões abertas no momento.
 3. **Criar `notificationsRepo.supabase.ts`** com operações básicas
 
 4. **Adicionar Realtime no frontend** (store/repo)
-   - Subscribe em `notifications` filtrando por `user_id`
+   - Subscribe em `omnia_notifications` filtrando por `user_id`
    - Atualizar badge/lista ao receber `INSERT` (e opcionalmente `UPDATE` para `read_at`)
 
 5. **Implementar UI mínima** (badge + dropdown) no `TopBar`
@@ -194,6 +200,9 @@ Sem decisões abertas no momento.
 
 ## Resumo de segurança
 - Notificar apenas usuários ativos (filtrar por `active = true`)
-- RLS policies por `user_id` em `notifications`
+- RLS policies por `user_id` em `omnia_notifications`
 - Sanitizar renderização de comentários; menções só viram links/chips após validação de userId
 - INSERT de notificações deve ser restrito (service role ou triggers)
+
+## Convenção de nomenclatura (padrão do banco)
+- Tabelas do domínio devem usar o prefixo `omnia_` (ex.: `omnia_notifications`).

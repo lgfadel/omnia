@@ -74,10 +74,6 @@ export function useDashboardData() {
 
   // Função para calcular métricas quando os dados estão disponíveis
   const calculateMetrics = useCallback(() => {
-    if (atas.length === 0 && tarefas.length === 0) {
-      return // Ainda carregando dados
-    }
-
     try {
       const atasMetrics = calculateAtasMetrics(atas, atasStatuses)
       const tarefasMetrics = calculateTarefasMetrics(tarefas, atasStatuses)

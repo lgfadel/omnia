@@ -8,9 +8,11 @@ import { Send, Paperclip, X, Image } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
+import { supabase } from '@/integrations/supabase/client';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
 import { ataCommentsRepoSupabase, CreateAtaComment } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
+import { usersRepoSupabase, type User as OmniaUser } from '@/repositories/usersRepo.supabase';
 import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
 import { logger } from '../../lib/logging';
@@ -27,9 +29,71 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<OmniaUser[]>([]);
+  const [mentionState, setMentionState] = useState<{ start: number; end: number; query: string } | null>(null);
+  const [mentionMap, setMentionMap] = useState<Map<string, string>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { uploadFile, uploading } = useSupabaseUpload();
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const users = await usersRepoSupabase.getActiveUsers();
+        setActiveUsers(users);
+      } catch (error) {
+        logger.error('Erro ao carregar usuários ativos para menções:', error);
+      }
+    };
+
+    load();
+  }, []);
+
+  const getMentionState = (text: string, caret: number | null | undefined) => {
+    const pos = typeof caret === 'number' ? caret : text.length;
+    const before = text.slice(0, pos);
+    const at = before.lastIndexOf('@');
+
+    if (at === -1) return null;
+
+    const prev = at > 0 ? before[at - 1] : ' ';
+    if (!/\s/.test(prev)) return null;
+
+    const afterAt = before.slice(at + 1);
+    if (!afterAt) return { start: at, end: pos, query: '' };
+    if (afterAt.startsWith('[')) return null;
+    if (/\s/.test(afterAt)) return null;
+
+    return { start: at, end: pos, query: afterAt };
+  };
+
+  const insertMention = (user: OmniaUser) => {
+    if (!mentionState || !user.name) return;
+
+    const before = body.slice(0, mentionState.start);
+    const after = body.slice(mentionState.end);
+    const displayToken = `@${user.name} `;
+    const nextBody = `${before}${displayToken}${after}`;
+    setBody(nextBody);
+    setMentionMap((prev) => new Map(prev).set(user.name!, user.id));
+    setMentionState(null);
+
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      textareaRef.current.focus();
+      const caretPos = before.length + displayToken.length;
+      textareaRef.current.setSelectionRange(caretPos, caretPos);
+    });
+  };
+
+  const convertMentionsToIds = (text: string): string => {
+    let result = text;
+    mentionMap.forEach((userId, userName) => {
+      const regex = new RegExp(`@${userName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'g');
+      result = result.replace(regex, `@[${userId}]`);
+    });
+    return result;
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -38,23 +102,38 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
 
     try {
       setIsSubmitting(true);
+
+      const commentBody = convertMentionsToIds(body.trim());
       
       // Create the comment first
       let newComment;
       if (contextType === 'ata') {
         const ataCommentData: CreateAtaComment = {
           ata_id: ticketId,
-          body: body.trim(),
+          body: commentBody,
           // author_id será definido automaticamente no repositório
         };
         newComment = await ataCommentsRepoSupabase.create(ataCommentData);
       } else {
         const ticketCommentData = {
           ticket_id: ticketId,
-          body: body.trim(),
+          body: commentBody,
           author_id: userProfile.id,
         };
         newComment = await ticketCommentsRepoSupabase.create(ticketCommentData);
+      }
+
+      try {
+        await supabase.functions.invoke('notify-mentions', {
+          body: {
+            body: commentBody,
+            ticket_id: contextType === 'ticket' ? ticketId : null,
+            comment_id: contextType === 'ata' ? newComment.id : null,
+            ticket_comment_id: contextType === 'ticket' ? newComment.id : null,
+          },
+        });
+      } catch (error) {
+        logger.error('Erro ao notificar menções:', error);
       }
 
       // Then create attachments linked to the comment
@@ -72,6 +151,7 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
 
       setBody('');
       setAttachments([]);
+      setMentionMap(new Map());
       onCommentAdded?.();
       toast.success('Comentário adicionado com sucesso');
     } catch (error) {
@@ -85,6 +165,28 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
   const handleCancel = () => {
     setBody('');
     setAttachments([]);
+    setMentionMap(new Map());
+  };
+
+  const renderHighlightedText = () => {
+    if (!body) return null;
+    const mentionNames = Array.from(mentionMap.keys());
+    if (mentionNames.length === 0) return body;
+
+    const pattern = mentionNames
+      .map((name) => `@${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+      .join('|');
+    const regex = new RegExp(`(${pattern})`, 'g');
+    const parts = body.split(regex);
+
+    return parts.map((part, i) => {
+      const isMention = mentionNames.some((name) => part === `@${name}`);
+      return isMention ? (
+        <span key={i} className="text-blue-600 font-medium">{part}</span>
+      ) : (
+        <span key={i}>{part}</span>
+      );
+    });
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,6 +303,13 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
   const userInitials = getUserInitials(userProfile.name || userProfile.email);
   const hasContent = body.trim() || attachments.length > 0;
 
+  const mentionMatches = mentionState
+    ? activeUsers
+        .filter((u) => u.id !== userProfile.id)
+        .filter((u) => u.name?.toLowerCase().includes(mentionState.query.toLowerCase()))
+        .slice(0, 6)
+    : [];
+
   return (
     <Card>
       <CardContent className="p-4">
@@ -218,12 +327,40 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
             <Textarea
               ref={textareaRef}
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setBody(next);
+                setMentionState(getMentionState(next, e.target.selectionStart));
+              }}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder="Escreva um comentário... (Ctrl+Enter para enviar, cole imagens diretamente)"
               className="min-h-[80px] resize-none border-0 p-0"
             />
+            {mentionMap.size > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {Array.from(mentionMap.keys()).map((name) => (
+                  <span key={name} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    @{name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {mentionState && mentionMatches.length > 0 && (
+              <div className="border rounded-md bg-white shadow-sm">
+                {mentionMatches.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                    onClick={() => insertMention(u)}
+                  >
+                    @{u.name}
+                  </button>
+                ))}
+              </div>
+            )}
             
             {/* Attachments Display */}
             {attachments.length > 0 && (

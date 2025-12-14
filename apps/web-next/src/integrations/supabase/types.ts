@@ -662,13 +662,14 @@ export type Database = {
           },
         ]
       }
-      notifications: {
+      omnia_notifications: {
         Row: {
           id: string
           user_id: string
           type: string
           ticket_id: string | null
           comment_id: string | null
+          ticket_comment_id: string | null
           created_by: string | null
           created_at: string
           read_at: string | null
@@ -679,6 +680,7 @@ export type Database = {
           type: string
           ticket_id?: string | null
           comment_id?: string | null
+          ticket_comment_id?: string | null
           created_by?: string | null
           created_at?: string
           read_at?: string | null
@@ -689,34 +691,42 @@ export type Database = {
           type?: string
           ticket_id?: string | null
           comment_id?: string | null
+          ticket_comment_id?: string | null
           created_by?: string | null
           created_at?: string
           read_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "notifications_user_id_fkey"
+            foreignKeyName: "omnia_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notifications_ticket_id_fkey"
+            foreignKeyName: "omnia_notifications_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "omnia_tickets"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notifications_comment_id_fkey"
+            foreignKeyName: "omnia_notifications_comment_id_fkey"
             columns: ["comment_id"]
             isOneToOne: false
             referencedRelation: "omnia_comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notifications_created_by_fkey"
+            foreignKeyName: "omnia_notifications_ticket_comment_id_fkey"
+            columns: ["ticket_comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
