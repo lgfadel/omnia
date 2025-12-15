@@ -49,85 +49,107 @@ export function NotificationsMenu() {
   const markAsRead = useNotificationsStore((s) => s.markAsRead)
   const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead)
   const loading = useNotificationsStore((s) => s.loading)
+  const error = useNotificationsStore((s) => s.error)
+  const loadRecent = useNotificationsStore((s) => s.loadRecent)
+  const currentUserId = useNotificationsStore((s) => s.currentUserId)
 
   const [entityTitleByNotificationId, setEntityTitleByNotificationId] = useState<Record<string, string>>({})
 
   const visibleNotifications = useMemo(() => notifications.slice(0, 10), [notifications])
 
   useEffect(() => {
-    const missing = visibleNotifications.filter((n) => !entityTitleByNotificationId[n.id])
+    const missing = visibleNotifications.filter((n) => entityTitleByNotificationId[n.id] === undefined)
     if (missing.length === 0) return
 
     const load = async () => {
-      const ticketIds = Array.from(
-        new Set(missing.map((n) => n.ticket_id).filter(Boolean) as string[])
-      )
-      const ataIdsDirect = Array.from(
-        new Set(missing.map((n) => n.ata_id).filter(Boolean) as string[])
-      )
-      const commentIds = Array.from(
-        new Set(
-          missing
-            .filter((n) => !n.ata_id)
-            .map((n) => n.comment_id)
-            .filter(Boolean) as string[]
+      try {
+        const ticketIds = Array.from(
+          new Set(missing.map((n) => n.ticket_id).filter(Boolean) as string[])
         )
-      )
+        const ataIdsDirect = Array.from(
+          new Set(missing.map((n) => n.ata_id).filter(Boolean) as string[])
+        )
+        const commentIds = Array.from(
+          new Set(
+            missing
+              .filter((n) => !n.ata_id)
+              .map((n) => n.comment_id)
+              .filter(Boolean) as string[]
+          )
+        )
 
-      const ticketTitleById: Record<string, string> = {}
-      const ataTitleById: Record<string, string> = {}
-      const commentToAtaId: Record<string, string> = {}
+        const ticketTitleById: Record<string, string> = {}
+        const ataTitleById: Record<string, string> = {}
+        const commentToAtaId: Record<string, string> = {}
 
-      if (ticketIds.length > 0) {
-        const { data } = await supabase
-          .from('omnia_tickets')
-          .select('id, title')
-          .in('id', ticketIds)
+        if (ticketIds.length > 0) {
+          const { data } = await supabase
+            .from('omnia_tickets')
+            .select('id, title')
+            .in('id', ticketIds)
 
-        ;(data ?? []).forEach((t: any) => {
-          if (t?.id && t?.title) ticketTitleById[t.id] = t.title
-        })
-      }
-
-      if (commentIds.length > 0) {
-        const { data } = await supabase
-          .from('omnia_comments')
-          .select('id, ata_id')
-          .in('id', commentIds)
-
-        ;(data ?? []).forEach((c: any) => {
-          if (c?.id && c?.ata_id) commentToAtaId[c.id] = c.ata_id
-        })
-      }
-
-      const ataIdsFromComments = Object.values(commentToAtaId)
-      const ataIds = Array.from(new Set([...ataIdsDirect, ...ataIdsFromComments]))
-
-      if (ataIds.length > 0) {
-        const { data } = await supabase
-          .from('omnia_atas')
-          .select('id, code, title')
-          .in('id', ataIds)
-
-        ;(data ?? []).forEach((a: any) => {
-          if (!a?.id) return
-          const label = a.title
-          if (label) ataTitleById[a.id] = label
-        })
-      }
-
-      setEntityTitleByNotificationId((prev) => {
-        const next = { ...prev }
-        for (const n of missing) {
-          const title =
-            (n.ticket_id ? ticketTitleById[n.ticket_id] : null) ||
-            (n.ata_id ? ataTitleById[n.ata_id] : null) ||
-            (n.comment_id ? ataTitleById[commentToAtaId[n.comment_id]] : null)
-
-          if (title) next[n.id] = title
+          ;(data ?? []).forEach((t: any) => {
+            if (t?.id && t?.title) ticketTitleById[t.id] = t.title
+          })
         }
-        return next
-      })
+
+        if (commentIds.length > 0) {
+          const { data } = await supabase
+            .from('omnia_comments')
+            .select('id, ata_id')
+            .in('id', commentIds)
+
+          ;(data ?? []).forEach((c: any) => {
+            if (c?.id && c?.ata_id) commentToAtaId[c.id] = c.ata_id
+          })
+        }
+
+        const ataIdsFromComments = Object.values(commentToAtaId)
+        const ataIds = Array.from(new Set([...ataIdsDirect, ...ataIdsFromComments]))
+
+        if (ataIds.length > 0) {
+          const { data } = await supabase
+            .from('omnia_atas')
+            .select('id, code, title')
+            .in('id', ataIds)
+
+          ;(data ?? []).forEach((a: any) => {
+            if (!a?.id) return
+            const label = a.title
+            if (label) ataTitleById[a.id] = label
+          })
+        }
+
+        setEntityTitleByNotificationId((prev) => {
+          const next = { ...prev }
+          for (const n of missing) {
+            const title =
+              (n.ticket_id ? ticketTitleById[n.ticket_id] : null) ||
+              (n.ata_id ? ataTitleById[n.ata_id] : null) ||
+              (n.comment_id ? ataTitleById[commentToAtaId[n.comment_id]] : null)
+
+            if (title) {
+              next[n.id] = title
+              continue
+            }
+
+            if (n.ticket_id) next[n.id] = 'Tarefa removida'
+            else if (n.ata_id || n.comment_id) next[n.id] = 'Ata removida'
+            else next[n.id] = 'Notificação'
+          }
+          return next
+        })
+      } catch {
+        setEntityTitleByNotificationId((prev) => {
+          const next = { ...prev }
+          for (const n of missing) {
+            if (n.ticket_id) next[n.id] = 'Tarefa'
+            else if (n.ata_id || n.comment_id) next[n.id] = 'Ata'
+            else next[n.id] = 'Notificação'
+          }
+          return next
+        })
+      }
     }
 
     load()
@@ -192,6 +214,30 @@ export function NotificationsMenu() {
           </Button>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {error && (
+          <DropdownMenuItem
+            className="text-muted-foreground"
+            onSelect={(e) => {
+              e.preventDefault()
+            }}
+          >
+            <div className="flex w-full items-center justify-between gap-2">
+              <span>Erro ao carregar</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={async () => {
+                  if (!currentUserId) return
+                  await loadRecent(currentUserId)
+                }}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          </DropdownMenuItem>
+        )}
 
         {loading && (
           <DropdownMenuItem disabled className="text-muted-foreground">

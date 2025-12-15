@@ -11,10 +11,10 @@
 |------|-----------|--------|
 | 0 | Descoberta e alinhamento | ✅ Concluída |
 | 1 | Modelo de dados e migrações | ✅ Concluída |
-| 2 | Parsing de menções | ⬜ Pendente |
-| 3 | Detecção de troca responsável/secretário | ⬜ Pendente |
-| 4 | Serviço/API de notificações | ⬜ Pendente |
-| 5 | UI mínima | ⬜ Pendente |
+| 2 | Parsing de menções | ✅ Concluída |
+| 3 | Detecção de troca responsável/secretário | ✅ Concluída |
+| 4 | Serviço/API de notificações | ✅ Concluída |
+| 5 | UI mínima | ✅ Concluída |
 | 6 | QA e segurança | ⬜ Pendente |
 | 7 | Observabilidade e rollout | ⬜ Pendente |
 
@@ -111,12 +111,12 @@
 3. **Queries diretas** via Supabase client com RLS
 
 **Tarefas**:
-- [ ] Criar `notificationsRepo.supabase.ts` com métodos:
+- [x] Criar `notificationsRepo.supabase.ts` com métodos:
   - `listUnread(userId)` — notificações não lidas do usuário
   - `markAsRead(notificationId)` — atualiza `read_at`
   - `markAllAsRead(userId)` — atualiza todas não lidas
-- [ ] Aplicar RLS: usuário só lê/atualiza suas notificações
-- [ ] Supabase Realtime para push de novas notificações (subscribe em `omnia_notifications` filtrando por `user_id`)
+- [x] Aplicar RLS: usuário só lê/atualiza suas notificações
+- [x] Supabase Realtime para push de novas notificações (subscribe em `omnia_notifications`)
 
 **Implementado** (app):
 - [x] `apps/web-next/src/repositories/notificationsRepo.supabase.ts`: `listUnread`, `listRecent`, `markAsRead`, `markAllAsRead`
@@ -152,6 +152,36 @@
 - [ ] Testes de RLS: usuário só vê suas notificações
 - [ ] Testes manuais: fluxo completo de menção, troca de responsável, badge, marcar como lida
 
+**Roteiro de QA manual (recomendado)**:
+1. **Sessão A + Sessão B (2 navegadores diferentes / anônimo)**
+   - Logar na sessão A com usuário A
+   - Logar na sessão B com usuário B
+
+2. **Realtime (menção)**
+   - Na sessão A, abrir uma tarefa e mencionar B em um comentário (autocomplete) e salvar
+   - Confirmar na sessão B que:
+     - Badge incrementa sem refresh
+     - Dropdown mostra a notificação nova
+     - Ao clicar, navega para a entidade correta
+
+3. **Marcar como lida**
+   - Na sessão B, abrir dropdown e marcar uma notificação como lida
+   - Confirmar que o contador reduz e o item fica com estilo de “lida”
+   - Usar “Marcar todas como lidas” e confirmar contador 0
+
+4. **Realtime (assigned/secretary/responsible)**
+   - Na sessão A, atribuir uma tarefa para B e confirmar notificação em B
+   - Se aplicável, trocar secretary/responsible de uma ata para B e confirmar notificação em B
+
+5. **RLS (segurança)**
+   - Confirmar que B não enxerga notificações de A
+   - Confirmar que B não consegue marcar como lida notificações de A (via UI e/ou tentativa de chamada)
+
+6. **Cascade delete (menções em ticket comment)**
+   - Na sessão A, mencionar B em comentário de ticket
+   - Apagar o comentário
+   - Confirmar que a notificação correspondente some da lista de B (recarregar caso necessário)
+
 ### Fase 7 — Observabilidade e rollout ⬜
 
 **Tarefas**:
@@ -179,33 +209,19 @@ Sem decisões abertas no momento.
 
 ## Próximos passos imediatos
 
-1. **Finalizar Fase 1** — criar migration com RLS policies para `omnia_notifications`:
-   ```sql
-   -- SELECT: usuário só vê suas notificações
-   CREATE POLICY "Users can view own notifications" ON omnia_notifications
-     FOR SELECT USING (user_id = (SELECT id FROM omnia_users WHERE auth_user_id = auth.uid()));
-   
-   -- INSERT: sistema pode criar (via service role ou trigger)
-   CREATE POLICY "System can create notifications" ON omnia_notifications
-     FOR INSERT WITH CHECK (true);
-   
-   -- UPDATE: usuário só atualiza suas notificações (marcar como lida)
-   CREATE POLICY "Users can update own notifications" ON omnia_notifications
-     FOR UPDATE USING (user_id = (SELECT id FROM omnia_users WHERE auth_user_id = auth.uid()));
-   ```
+1. **Fase 6 (QA e segurança)**
+   - Validar RLS: usuário só consegue `SELECT/UPDATE` as próprias notificações
+   - Teste em 2 sessões (usuário A menciona / atribui; usuário B recebe em realtime)
+   - Validar cascade delete: apagar comentário de ticket remove notificações de menção relacionadas
 
-2. **Regenerar tipos Supabase**:
-   ```bash
-   npx supabase gen types typescript --project-id elmxwvimjxcswjbrzznq > apps/web-next/src/integrations/supabase/types.ts
-   ```
+2. **Edge cases de UI**
+   - Estado de loading/erro no dropdown
+   - Caso entidade tenha sido deletada (ata/tarefa) ou sem título
+   - (Opcional) deep-link para o comentário específico quando existir
 
-3. **Criar `notificationsRepo.supabase.ts`** com operações básicas
-
-4. **Adicionar Realtime no frontend** (store/repo)
-   - Subscribe em `omnia_notifications` filtrando por `user_id`
-   - Atualizar badge/lista ao receber `INSERT` (e opcionalmente `UPDATE` para `read_at`)
-
-5. **Implementar UI mínima** (badge + dropdown) no `TopBar`
+3. **Fase 7 (observabilidade e rollout)**
+   - Logs mínimos no Edge Function `notify-mentions` para falhas de resolução/criação
+   - Checklist de deploy: migrations + edge function + app
 
 ---
 

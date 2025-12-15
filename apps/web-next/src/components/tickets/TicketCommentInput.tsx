@@ -16,6 +16,7 @@ import { usersRepoSupabase, type User as OmniaUser } from '@/repositories/usersR
 import { Attachment } from '@/data/types';
 import { toast } from 'sonner';
 import { logger } from '../../lib/logging';
+import { getMentionState, convertMentionsToIds } from '@/lib/mentions';
 
 
 interface TicketCommentInputProps {
@@ -49,24 +50,6 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
     load();
   }, []);
 
-  const getMentionState = (text: string, caret: number | null | undefined) => {
-    const pos = typeof caret === 'number' ? caret : text.length;
-    const before = text.slice(0, pos);
-    const at = before.lastIndexOf('@');
-
-    if (at === -1) return null;
-
-    const prev = at > 0 ? before[at - 1] : ' ';
-    if (!/\s/.test(prev)) return null;
-
-    const afterAt = before.slice(at + 1);
-    if (!afterAt) return { start: at, end: pos, query: '' };
-    if (afterAt.startsWith('[')) return null;
-    if (/\s/.test(afterAt)) return null;
-
-    return { start: at, end: pos, query: afterAt };
-  };
-
   const insertMention = (user: OmniaUser) => {
     if (!mentionState || !user.name) return;
 
@@ -86,15 +69,6 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
     });
   };
 
-  const convertMentionsToIds = (text: string): string => {
-    let result = text;
-    mentionMap.forEach((userId, userName) => {
-      const regex = new RegExp(`@${userName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'g');
-      result = result.replace(regex, `@[${userId}]`);
-    });
-    return result;
-  };
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -103,7 +77,7 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
     try {
       setIsSubmitting(true);
 
-      const commentBody = convertMentionsToIds(body.trim());
+      const commentBody = convertMentionsToIds(body.trim(), mentionMap);
       
       // Create the comment first
       let newComment;
