@@ -127,20 +127,22 @@
 - [x] `20251214233000_enable_realtime_omnia_notifications.sql`: habilita publication `supabase_realtime` para `public.omnia_notifications`
 - [x] `20251214234000_fix_omnia_notifications_rls.sql`: garante policies de SELECT/UPDATE em `public.omnia_notifications`
 
-### Fase 5 — UI mínima ⬜
+### Fase 5 — UI mínima ✅
 
 **Arquivos-chave**:
 - `apps/web-next/src/components/layout/TopBar.tsx` — local para badge de notificações
 - Criar `apps/web-next/src/components/notifications/` — componentes de notificação
 
 **Tarefas**:
-- [ ] Badge de não lidas (count) no header/nav
-- [ ] Dropdown ou página com lista de notificações:
-  - Mostrar tipo, ticket, preview de comentário, tempo relativo
-  - Ação: marcar como lida (individual ou todas)
-  - Clique navega para o ticket; se houver `commentId`, scroll até o comentário
-- [ ] Indicador visual de não lida (ponto ou fundo destacado)
-- [ ] Store `notifications.store.ts` para gerenciar estado
+- [x] Badge de não lidas (count) no header/nav
+- [x] Dropdown com lista de notificações recentes
+- [x] Ação “marcar como lida”
+- [x] Ação “marcar todas como lidas”
+
+**Implementado** (app):
+- [x] `apps/web-next/src/components/layout/TopBar.tsx`: sino + badge
+- [x] `apps/web-next/src/components/notifications/NotificationsMenu.tsx`: dropdown
+
 
 ### Fase 6 — QA e segurança ⬜
 

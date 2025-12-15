@@ -1,0 +1,240 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Bell } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useNotificationsStore } from '@/stores/notifications.store'
+import { supabase } from '@/integrations/supabase/client'
+
+const formatActionLabel = (type: string) => {
+  switch (type) {
+    case 'mentioned':
+      return 'Você foi mencionado'
+    case 'assigned':
+      return 'O ticket foi atribuído a você'
+    case 'secretary':
+      return 'Você é o novo secretário'
+    case 'responsible':
+      return 'Você é o novo responsável'
+    default:
+      return 'Atualização'
+  }
+}
+
+const formatNotificationMeta = (createdAt: string) => {
+  const d = new Date(createdAt)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
+export function NotificationsMenu() {
+  const router = useRouter()
+  const notifications = useNotificationsStore((s) => s.notifications)
+  const unreadCount = useNotificationsStore((s) => s.unreadCount)
+  const markAsRead = useNotificationsStore((s) => s.markAsRead)
+  const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead)
+  const loading = useNotificationsStore((s) => s.loading)
+
+  const [entityTitleByNotificationId, setEntityTitleByNotificationId] = useState<Record<string, string>>({})
+
+  const visibleNotifications = useMemo(() => notifications.slice(0, 10), [notifications])
+
+  useEffect(() => {
+    const missing = visibleNotifications.filter((n) => !entityTitleByNotificationId[n.id])
+    if (missing.length === 0) return
+
+    const load = async () => {
+      const ticketIds = Array.from(
+        new Set(missing.map((n) => n.ticket_id).filter(Boolean) as string[])
+      )
+      const ataIdsDirect = Array.from(
+        new Set(missing.map((n) => n.ata_id).filter(Boolean) as string[])
+      )
+      const commentIds = Array.from(
+        new Set(
+          missing
+            .filter((n) => !n.ata_id)
+            .map((n) => n.comment_id)
+            .filter(Boolean) as string[]
+        )
+      )
+
+      const ticketTitleById: Record<string, string> = {}
+      const ataTitleById: Record<string, string> = {}
+      const commentToAtaId: Record<string, string> = {}
+
+      if (ticketIds.length > 0) {
+        const { data } = await supabase
+          .from('omnia_tickets')
+          .select('id, title')
+          .in('id', ticketIds)
+
+        ;(data ?? []).forEach((t: any) => {
+          if (t?.id && t?.title) ticketTitleById[t.id] = t.title
+        })
+      }
+
+      if (commentIds.length > 0) {
+        const { data } = await supabase
+          .from('omnia_comments')
+          .select('id, ata_id')
+          .in('id', commentIds)
+
+        ;(data ?? []).forEach((c: any) => {
+          if (c?.id && c?.ata_id) commentToAtaId[c.id] = c.ata_id
+        })
+      }
+
+      const ataIdsFromComments = Object.values(commentToAtaId)
+      const ataIds = Array.from(new Set([...ataIdsDirect, ...ataIdsFromComments]))
+
+      if (ataIds.length > 0) {
+        const { data } = await supabase
+          .from('omnia_atas')
+          .select('id, code, title')
+          .in('id', ataIds)
+
+        ;(data ?? []).forEach((a: any) => {
+          if (!a?.id) return
+          const label = a.title
+          if (label) ataTitleById[a.id] = label
+        })
+      }
+
+      setEntityTitleByNotificationId((prev) => {
+        const next = { ...prev }
+        for (const n of missing) {
+          const title =
+            (n.ticket_id ? ticketTitleById[n.ticket_id] : null) ||
+            (n.ata_id ? ataTitleById[n.ata_id] : null) ||
+            (n.comment_id ? ataTitleById[commentToAtaId[n.comment_id]] : null)
+
+          if (title) next[n.id] = title
+        }
+        return next
+      })
+    }
+
+    load()
+  }, [visibleNotifications, entityTitleByNotificationId])
+
+  const navigateFromNotification = useCallback(
+    async (n: { ticket_id: string | null; ata_id: string | null; comment_id: string | null }) => {
+      if (n.ticket_id) {
+        router.push(`/tarefas/${n.ticket_id}`)
+        return
+      }
+
+      if (n.ata_id) {
+        router.push(`/atas/${n.ata_id}`)
+        return
+      }
+
+      if (n.comment_id) {
+        const { data } = await supabase
+          .from('omnia_comments')
+          .select('ata_id')
+          .eq('id', n.comment_id)
+          .maybeSingle()
+
+        const ataId = (data as { ata_id: string | null } | null)?.ata_id
+        if (ataId) {
+          router.push(`/atas/${ataId}`)
+        }
+      }
+    },
+    [router]
+  )
+
+  const onMarkAllAsRead = useCallback(async () => {
+    await markAllAsRead()
+  }, [markAllAsRead])
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Notificações</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={onMarkAllAsRead}
+            disabled={unreadCount === 0}
+          >
+            Marcar todas como lidas
+          </Button>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        {loading && (
+          <DropdownMenuItem disabled className="text-muted-foreground">
+            Carregando...
+          </DropdownMenuItem>
+        )}
+
+        {!loading && notifications.length === 0 && (
+          <DropdownMenuItem disabled className="text-muted-foreground">
+            Nenhuma notificação
+          </DropdownMenuItem>
+        )}
+
+        {!loading &&
+          visibleNotifications.map((n) => {
+            const title =
+              entityTitleByNotificationId[n.id] ||
+              (n.ticket_id ? 'Tarefa' : n.ata_id || n.comment_id ? 'Ata' : 'Notificação')
+
+            const action = formatActionLabel(n.type)
+            const meta = formatNotificationMeta(n.created_at)
+            const isUnread = !n.read_at
+
+            return (
+              <DropdownMenuItem
+                key={n.id}
+                className="flex flex-col items-start gap-1"
+                onSelect={async () => {
+                  if (isUnread) await markAsRead(n.id)
+                  await navigateFromNotification(n)
+                }}
+              >
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className={isUnread ? 'font-semibold truncate' : 'truncate'}>{title}</span>
+                  {meta && (
+                    <span className="text-xs text-muted-foreground">{meta}</span>
+                  )}
+                </div>
+                <div className="w-full text-xs text-muted-foreground">{action}</div>
+              </DropdownMenuItem>
+            )
+          })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}

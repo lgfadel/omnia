@@ -15,7 +15,7 @@ interface NotificationsStore {
   init: (userId: string) => Promise<void>
   cleanup: () => void
 
-  loadUnread: (userId: string) => Promise<void>
+  loadRecent: (userId: string) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: () => Promise<void>
 }
@@ -32,6 +32,13 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
   currentUserId: null,
 
   init: async (userId: string) => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      supabase.realtime.setAuth(data.session?.access_token ?? '')
+    } catch (error) {
+      logger.warn('Failed to set realtime auth token before subscribing', error)
+    }
+
     const { channel, currentUserId } = get()
     if (channel && currentUserId === userId) return
 
@@ -45,7 +52,7 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
 
     set({ currentUserId: userId })
 
-    await get().loadUnread(userId)
+    await get().loadRecent(userId)
 
     const nextChannel = supabase
       .channel(`omnia_notifications:${userId}`)
@@ -55,10 +62,11 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
           event: 'INSERT',
           schema: 'public',
           table: 'omnia_notifications',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const inserted = payload.new as OmniaNotification
+
+          if (inserted.user_id !== userId) return
 
           set((state) => {
             const exists = state.notifications.some((n) => n.id === inserted.id)
@@ -79,10 +87,11 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
           event: 'UPDATE',
           schema: 'public',
           table: 'omnia_notifications',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const updated = payload.new as OmniaNotification
+
+          if (updated.user_id !== userId) return
 
           set((state) => {
             const nextNotifications = state.notifications.map((n) =>
@@ -116,11 +125,11 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
     set({ channel: null, currentUserId: null })
   },
 
-  loadUnread: async (userId: string) => {
+  loadRecent: async (userId: string) => {
     set({ loading: true, error: null })
 
     try {
-      const data = await notificationsRepoSupabase.listUnread({ userId, limit: 100 })
+      const data = await notificationsRepoSupabase.listRecent({ userId, limit: 50 })
       set({
         notifications: data,
         unreadCount: computeUnreadCount(data),
