@@ -147,40 +147,13 @@
 ### Fase 6 — QA e segurança ⬜
 
 **Tarefas**:
-- [ ] Testes unitários para `parseMentions` (incluindo usuários inexistentes/inativos)
+- [x] Testes unitários para menções (`getMentionState`/`convertMentionsToIds`)
 - [ ] Testes de integração para criação de notificação por mudança de responsável
 - [ ] Testes de RLS: usuário só vê suas notificações
-- [ ] Testes manuais: fluxo completo de menção, troca de responsável, badge, marcar como lida
+- [ ] Sessão UAT executada e validada (ver seção **Sessão UAT (pós-merge)**)
 
-**Roteiro de QA manual (recomendado)**:
-1. **Sessão A + Sessão B (2 navegadores diferentes / anônimo)**
-   - Logar na sessão A com usuário A
-   - Logar na sessão B com usuário B
-
-2. **Realtime (menção)**
-   - Na sessão A, abrir uma tarefa e mencionar B em um comentário (autocomplete) e salvar
-   - Confirmar na sessão B que:
-     - Badge incrementa sem refresh
-     - Dropdown mostra a notificação nova
-     - Ao clicar, navega para a entidade correta
-
-3. **Marcar como lida**
-   - Na sessão B, abrir dropdown e marcar uma notificação como lida
-   - Confirmar que o contador reduz e o item fica com estilo de “lida”
-   - Usar “Marcar todas como lidas” e confirmar contador 0
-
-4. **Realtime (assigned/secretary/responsible)**
-   - Na sessão A, atribuir uma tarefa para B e confirmar notificação em B
-   - Se aplicável, trocar secretary/responsible de uma ata para B e confirmar notificação em B
-
-5. **RLS (segurança)**
-   - Confirmar que B não enxerga notificações de A
-   - Confirmar que B não consegue marcar como lida notificações de A (via UI e/ou tentativa de chamada)
-
-6. **Cascade delete (menções em ticket comment)**
-   - Na sessão A, mencionar B em comentário de ticket
-   - Apagar o comentário
-   - Confirmar que a notificação correspondente some da lista de B (recarregar caso necessário)
+**Notas**:
+- Suite de testes Vitest estabilizada (mocks estáveis, `next/navigation` mock, cleanup entre testes).
 
 ### Fase 7 — Observabilidade e rollout ⬜
 
@@ -188,6 +161,40 @@
 - [ ] Logs para criação de notificações e falhas de resolução de @nome
 - [ ] Métricas básicas: notificações criadas por tipo, lidas
 - [ ] Rollout gradual: staging primeiro; feature flag em produção se necessário
+
+---
+
+## Sessão UAT (pós-merge)
+
+> Objetivo: validar ponta-a-ponta (UI + realtime + segurança/RLS + cascade delete) em ambiente real.
+
+### Preparação
+- [ ] Abrir **duas sessões** (ex.: Chrome normal + janela anônima / outro navegador)
+- [ ] Logar na sessão A com usuário A
+- [ ] Logar na sessão B com usuário B
+
+### Realtime (menção)
+- [ ] Na sessão A, abrir uma tarefa e mencionar B em um comentário (autocomplete) e salvar
+- [ ] Na sessão B, confirmar que o badge incrementa sem refresh
+- [ ] Na sessão B, confirmar que o dropdown mostra a notificação nova
+- [ ] Na sessão B, clicar e confirmar que navega para a entidade correta
+
+### Marcar como lida
+- [ ] Marcar 1 notificação como lida reduz o contador
+- [ ] “Marcar todas como lidas” zera o contador
+
+### Realtime (assigned/secretary/responsible)
+- [ ] Na sessão A, atribuir uma tarefa para B e confirmar notificação em B
+- [ ] Se aplicável, trocar secretary/responsible de uma ata para B e confirmar notificação em B
+
+### RLS (segurança)
+- [ ] Confirmar que B não enxerga notificações de A
+- [ ] Confirmar que B não consegue marcar como lida notificações de A (UPDATE bloqueado)
+
+### Cascade delete (menções em ticket comment)
+- [ ] Na sessão A, mencionar B em comentário de ticket
+- [ ] Apagar o comentário
+- [ ] Confirmar que a notificação correspondente some da lista de B (recarregar caso necessário)
 
 ---
 
@@ -209,17 +216,10 @@ Sem decisões abertas no momento.
 
 ## Próximos passos imediatos
 
-1. **Fase 6 (QA e segurança)**
-   - Validar RLS: usuário só consegue `SELECT/UPDATE` as próprias notificações
-   - Teste em 2 sessões (usuário A menciona / atribui; usuário B recebe em realtime)
-   - Validar cascade delete: apagar comentário de ticket remove notificações de menção relacionadas
+1. **Sessão UAT (pós-merge)**
+   - Executar o checklist de validação ponta-a-ponta
 
-2. **Edge cases de UI**
-   - Estado de loading/erro no dropdown
-   - Caso entidade tenha sido deletada (ata/tarefa) ou sem título
-   - (Opcional) deep-link para o comentário específico quando existir
-
-3. **Fase 7 (observabilidade e rollout)**
+2. **Fase 7 (observabilidade e rollout)**
    - Logs mínimos no Edge Function `notify-mentions` para falhas de resolução/criação
    - Checklist de deploy: migrations + edge function + app
 
