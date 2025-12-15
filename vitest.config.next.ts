@@ -8,7 +8,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./apps/web-next/src/test/setup.ts'],
-    include: ['apps/web-next/src/**/*.{test,spec}.{ts,tsx}']
+    include: ['apps/web-next/src/**/*.{test,spec}.{ts,tsx}'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    fileParallelism: false,
   },
   resolve: {
     alias: {

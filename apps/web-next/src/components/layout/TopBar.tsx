@@ -1,4 +1,7 @@
+"use client"
+
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { NotificationsMenu } from "@/components/notifications/NotificationsMenu"
 
 export function TopBar() {
   return (
@@ -8,6 +11,9 @@ export function TopBar() {
           <SidebarTrigger className="h-6 w-6 nav-item-hover p-1 rounded-md" />
         </div>
         <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <NotificationsMenu />
+        </div>
       </div>
     </header>
   )

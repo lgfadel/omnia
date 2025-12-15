@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +59,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [userNameById, setUserNameById] = useState<Record<string, string>>({});
 
   const loadComments = useCallback(async () => {
     try {
@@ -71,6 +72,10 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
         secretariosRepoSupabase.list(),
         ticketAttachmentsRepoSupabase.list(ticketId)
       ]);
+
+      setUserNameById(
+        Object.fromEntries(users.map((u) => [u.id, u.name]))
+      );
 
       const commentsWithAttachments = commentsData.map((comment) => {
         try {
@@ -248,6 +253,36 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
     }
   };
 
+  const renderBodyWithMentions = (text: string) => {
+    const parts: ReactNode[] = [];
+    const regex = /@\[([0-9a-fA-F-]{36})\]/g;
+    let lastIndex = 0;
+
+    for (const match of text.matchAll(regex)) {
+      const idx = match.index ?? 0;
+      const userId = match[1];
+
+      if (idx > lastIndex) {
+        parts.push(text.slice(lastIndex, idx));
+      }
+
+      const name = userNameById[userId];
+      parts.push(
+        <span key={`${userId}-${idx}`} className="font-medium text-primary">
+          @{name ?? 'usuário'}
+        </span>
+      );
+
+      lastIndex = idx + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts;
+  };
+
   if (loading) {
     return <div>Carregando comentários...</div>;
   }
@@ -372,7 +407,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
                   </div>
                 ) : (
                   <div className="text-sm whitespace-pre-wrap break-words">
-                    {comment.body}
+                    {renderBodyWithMentions(comment.body)}
                   </div>
                 )}
                 

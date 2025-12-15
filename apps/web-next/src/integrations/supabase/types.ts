@@ -598,6 +598,7 @@ export type Database = {
           due_date: string | null
           id: string
           is_private: boolean | null
+          opportunity_id: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
           status_id: string
           tags: string[] | null
@@ -661,41 +662,87 @@ export type Database = {
           },
         ]
       }
-      omnia_users: {
+      omnia_notifications: {
         Row: {
-          auth_user_id: string | null
-          avatar_url: string | null
-          color: string | null
-          created_at: string
-          email: string
           id: string
-          name: string
-          roles: string[] | null
-          updated_at: string
+          user_id: string
+          type: string
+          ticket_id: string | null
+          ata_id: string | null
+          comment_id: string | null
+          ticket_comment_id: string | null
+          created_by: string | null
+          created_at: string
+          read_at: string | null
         }
         Insert: {
-          auth_user_id?: string | null
-          avatar_url?: string | null
-          color?: string | null
-          created_at?: string
-          email: string
           id?: string
-          name: string
-          roles?: string[] | null
-          updated_at?: string
+          user_id: string
+          type: string
+          ticket_id?: string | null
+          ata_id?: string | null
+          comment_id?: string | null
+          ticket_comment_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          read_at?: string | null
         }
         Update: {
-          auth_user_id?: string | null
-          avatar_url?: string | null
-          color?: string | null
-          created_at?: string
-          email?: string
           id?: string
-          name?: string
-          roles?: string[] | null
-          updated_at?: string
+          user_id?: string
+          type?: string
+          ticket_id?: string | null
+          ata_id?: string | null
+          comment_id?: string | null
+          ticket_comment_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          read_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "omnia_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_ata_id_fkey"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_ticket_comment_id_fkey"
+            columns: ["ticket_comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       omnia_menu_items: {
         Row: {
@@ -830,6 +877,45 @@ export type Database = {
             referencedColumns: ["id"]
           }
         ]
+      }
+      omnia_users: {
+        Row: {
+          active: boolean | null
+          auth_user_id: string | null
+          avatar_url: string | null
+          color: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          roles: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {

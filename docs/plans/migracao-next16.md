@@ -1,5 +1,7 @@
 # Plano de migração para Next.js 16 (App Router + Turbopack)
 
+**Status**: ✅ **CONCLUÍDO** (Dezembro 2024)
+
 ## Objetivo
 Migrar o frontend atual (Vite/React + Tailwind + React Router + Vitest/Playwright) para Next.js 16 utilizando App Router e Turbopack, preservando funcionalidades, reduzindo tempo de build e habilitando SSR/ISR onde fizer sentido.
 

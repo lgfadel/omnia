@@ -28,16 +28,13 @@ Key top-level directories and notable files (based on current repository state w
 
 ### Key Configuration Files
 - `package.json` — Dependencies, scripts, and project metadata.
-- `tsconfig.json` — TypeScript compiler options.
-- `tsconfig.app.json` — Application-specific TypeScript config.
-- `tsconfig.node.json` — Node.js-specific TypeScript config.
-- `vite.config.ts` — Vite build tool configuration.
-- `vitest.config.ts` — Vitest testing configuration.
-- `tailwind.config.ts` — Tailwind CSS customization.
-- `postcss.config.js` — PostCSS processing setup.
-- `eslint.config.js` — ESLint linting rules.
+- `apps/web-next/` — Next.js 16 application (App Router + Turbopack).
+- `apps/web-next/next.config.ts` — Next.js configuration.
+- `apps/web-next/tailwind.config.ts` — Tailwind CSS customization.
+- `vitest.config.next.ts` — Vitest testing configuration for Next.js.
 - `playwright.config.ts` — Playwright E2E testing setup.
 - `vercel.json` — Vercel deployment configuration.
+- `supabase/` — Database migrations and Edge Functions.
 
 For a full directory tree, use `tree` or `ls -la` in the root.
 

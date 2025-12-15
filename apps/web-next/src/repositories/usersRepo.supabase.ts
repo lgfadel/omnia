@@ -8,6 +8,7 @@ export interface User {
   avatar_url?: string
   roles: string[]
   color?: string
+  active: boolean
   created_at: string
   updated_at: string
 }
@@ -29,6 +30,7 @@ const mapDbUser = (user: any): User => ({
   avatar_url: user.avatar_url ?? undefined,
   roles: user.roles ?? [],
   color: user.color ?? undefined,
+  active: user.active ?? true,
   created_at: user.created_at,
   updated_at: user.updated_at,
 })
@@ -76,6 +78,7 @@ export const usersRepoSupabase = {
     const { data, error } = await supabase
       .from('omnia_users')
       .select('*')
+      .eq('active', true)
       .order('name', { ascending: true })
 
     if (error) throw error

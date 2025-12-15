@@ -38,6 +38,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       logger.info('Auth state changed:', event)
       clearTimeout(safetyTimeout) // Clear timeout when auth state changes
+
+      try {
+        supabase.realtime.setAuth(session?.access_token ?? '')
+      } catch (error) {
+        logger.warn('Failed to set realtime auth token', error)
+      }
       
       set({ session, user: session?.user ?? null })
       
@@ -66,6 +72,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         }
 
         clearTimeout(safetyTimeout) // Clear timeout on successful session check
+
+        try {
+          supabase.realtime.setAuth(session?.access_token ?? '')
+        } catch (realtimeError) {
+          logger.warn('Failed to set realtime auth token on session check', realtimeError)
+        }
+
         set({ session, user: session?.user ?? null })
         
         if (session?.user) {
@@ -120,7 +133,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             id: userData.id,
             name: userData.name,
             email: userData.email,
-            roles: userData.roles as Role[],
+            roles: (userData.roles ?? []) as Role[],
             avatarUrl: userData.avatar_url ?? undefined,
             color: userData.color || '#3B82F6'
           }
@@ -168,7 +181,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           id: createdUser.id,
           name: createdUser.name,
           email: createdUser.email,
-          roles: createdUser.roles as Role[],
+          roles: (createdUser.roles ?? []) as Role[],
           avatarUrl: createdUser.avatar_url ?? undefined,
           color: createdUser.color || '#3B82F6'
         }
@@ -218,6 +231,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error) {
       logger.error('Error signing out:', error)
     } finally {
+      try {
+        supabase.realtime.setAuth('')
+      } catch (error) {
+        logger.warn('Failed to clear realtime auth token on sign out', error)
+      }
       // Always clear local state even if server signout fails
       set({
         session: null,

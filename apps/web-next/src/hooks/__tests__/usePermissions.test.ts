@@ -3,28 +3,34 @@ import { renderHook } from '@testing-library/react'
 import { usePermissions, useCanAccess, useCanAccessPath } from '../usePermissions'
 
 // Mock the userPermissions store
+const mockStoreState = {
+  currentUserPermissions: [],
+  accessibleMenuItems: [],
+  isLoading: false,
+  error: null,
+  loadCurrentUserPermissions: vi.fn().mockResolvedValue(undefined),
+  loadUserAccessibleMenuItems: vi.fn().mockResolvedValue(undefined),
+  checkCurrentUserMenuPermission: vi.fn(() => Promise.resolve(true)),
+  checkCurrentUserMenuPermissionByPath: vi.fn(() => Promise.resolve(true)),
+  clearError: vi.fn(),
+}
+
 vi.mock('@/stores/userPermissions.store', () => ({
   useUserPermissionsStore: () => ({
-    currentUserPermissions: [],
-    accessibleMenuItems: [],
-    isLoading: false,
-    error: null,
-    loadCurrentUserPermissions: vi.fn(),
-    loadUserAccessibleMenuItems: vi.fn(),
-    checkCurrentUserMenuPermission: vi.fn(() => Promise.resolve(true)),
-    checkCurrentUserMenuPermissionByPath: vi.fn(() => Promise.resolve(true)),
-    clearError: vi.fn()
+    ...mockStoreState,
   })
 }))
 
 // Mock AuthProvider
+const mockAuthState = {
+  user: {
+    id: 'user-1',
+    email: 'test@example.com',
+  },
+}
+
 vi.mock('@/components/auth/AuthProvider', () => ({
-  useAuth: () => ({
-    user: {
-      id: 'user-1',
-      email: 'test@example.com'
-    }
-  })
+  useAuth: () => mockAuthState,
 }))
 
 describe('usePermissions', () => {
