@@ -878,6 +878,45 @@ export type Database = {
           }
         ]
       }
+      omnia_users: {
+        Row: {
+          active: boolean | null
+          auth_user_id: string | null
+          avatar_url: string | null
+          color: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          roles: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          roles?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string | null

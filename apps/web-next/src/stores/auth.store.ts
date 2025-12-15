@@ -121,22 +121,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   fetchUserProfile: async (userId: string) => {
     try {
       // Try to fetch user from omnia_users table
-      const { data: userData, error } = await (supabase as any)
+      const { data: userData, error } = await supabase
         .from('omnia_users')
         .select('id, name, email, roles, avatar_url, color')
         .eq('auth_user_id', userId)
         .single()
 
       if (!error && userData) {
-        const row = userData as any
         set({
           userProfile: {
-            id: row.id,
-            name: row.name,
-            email: row.email,
-            roles: (row.roles ?? []) as Role[],
-            avatarUrl: row.avatar_url ?? undefined,
-            color: row.color || '#3B82F6'
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            roles: (userData.roles ?? []) as Role[],
+            avatarUrl: userData.avatar_url ?? undefined,
+            color: userData.color || '#3B82F6'
           }
         })
         return
@@ -155,7 +154,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         roles: ['USUARIO'] // Default role as string array
       }
 
-      const { data: createdUser, error: createError } = await (supabase as any)
+      const { data: createdUser, error: createError } = await supabase
         .from('omnia_users')
         .insert(newUserData)
         .select('id, name, email, roles, avatar_url, color')
@@ -177,16 +176,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return
       }
 
-      const createdRow = createdUser as any
-
       set({
         userProfile: {
-          id: createdRow.id,
-          name: createdRow.name,
-          email: createdRow.email,
-          roles: (createdRow.roles ?? []) as Role[],
-          avatarUrl: createdRow.avatar_url ?? undefined,
-          color: createdRow.color || '#3B82F6'
+          id: createdUser.id,
+          name: createdUser.name,
+          email: createdUser.email,
+          roles: (createdUser.roles ?? []) as Role[],
+          avatarUrl: createdUser.avatar_url ?? undefined,
+          color: createdUser.color || '#3B82F6'
         }
       })
     } catch (error) {
