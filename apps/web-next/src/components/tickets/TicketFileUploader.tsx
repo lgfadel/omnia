@@ -5,7 +5,7 @@ import { Upload, X, FileIcon } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 
 
@@ -52,10 +52,17 @@ export const TicketFileUploader = ({ ticketId, onFileUploaded }: TicketFileUploa
         fileInputRef.current.value = '';
       }
       onFileUploaded?.();
-      toast.success(`${uploadedAttachments.length} arquivo(s) enviado(s) com sucesso`);
+      toast({
+        title: 'Sucesso',
+        description: `${uploadedAttachments.length} arquivo(s) enviado(s) com sucesso`,
+      })
     } catch (error) {
       logger.error('Erro ao fazer upload dos arquivos:', error);
-      toast.error('Erro ao fazer upload dos arquivos');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao fazer upload dos arquivos',
+        variant: 'destructive',
+      })
     }
   };
 

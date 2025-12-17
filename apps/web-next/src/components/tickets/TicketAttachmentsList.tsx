@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { ticketAttachmentsRepoSupabase, type TicketAttachment } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 
 
@@ -28,7 +28,11 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
       setAttachments(attachmentsData);
     } catch (error) {
       logger.error('Erro ao carregar anexos:', error);
-      toast.error('Erro ao carregar anexos');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar anexos',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false);
     }
@@ -44,10 +48,17 @@ export const TicketAttachmentsList = ({ ticketId }: TicketAttachmentsListProps) 
     try {
       await ticketAttachmentsRepoSupabase.remove(attachmentId);
       await loadAttachments();
-      toast.success('Anexo excluído com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Anexo excluído com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao excluir anexo:', error);
-      toast.error('Erro ao excluir anexo');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir anexo',
+        variant: 'destructive',
+      })
     }
   };
 

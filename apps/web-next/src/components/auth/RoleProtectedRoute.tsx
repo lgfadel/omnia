@@ -15,6 +15,10 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
   const router = useRouter()
   const [showTimeout, setShowTimeout] = useState(false)
 
+  const hasPermission = !!userProfile && allowedRoles.some(role => 
+    userProfile.roles.includes(role)
+  )
+
   useEffect(() => {
     if (loading || (!user && !userProfile)) {
       // Show timeout message after 7 seconds of loading
@@ -34,6 +38,13 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
       router.push('/auth')
     }
   }, [user, loading, router])
+
+  // Redirect to access-denied if user doesn't have required roles
+  useEffect(() => {
+    if (user && userProfile && !loading && !hasPermission) {
+      router.push('/access-denied')
+    }
+  }, [user, userProfile, loading, hasPermission, router])
 
   // Show loading spinner while checking authentication
   if (loading && !showTimeout) {
@@ -82,20 +93,8 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
     )
   }
 
-  // Check if user has required roles
-  const hasPermission = allowedRoles.some(role => 
-    userProfile.roles.includes(role)
-  )
-
-  // Redirect to access-denied if user doesn't have required roles
-  useEffect(() => {
-    if (user && userProfile && !loading && !hasPermission) {
-      router.push('/access-denied')
-    }
-  }, [user, userProfile, loading, hasPermission, router])
-
   if (!hasPermission && user && userProfile && !loading) {
-    return null // Will redirect via useEffect
+    return null 
   }
 
   return <>{children}</>

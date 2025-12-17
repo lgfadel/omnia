@@ -1,6 +1,7 @@
 "use client";
 
 import { Layout } from "@/components/layout/Layout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -71,107 +72,109 @@ export default function Index() {
   const { atasMetrics, tarefasMetrics, loading, error } = useDashboardData();
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <BreadcrumbOmnia items={[{
-          label: "Dashboard",
-          isActive: true
-        }]} />
-
-        {/* Cards de Métricas - Atas */}
+    <ProtectedRoute>
+      <Layout>
         <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-4">ATAS</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <AtasMetricCard
-                title="Total de Atas Abertas"
-                value={atasMetrics.total}
-                icon={FileText}
-                loading={loading}
-              />
-              
-              <AtasMetricCard
-                title="Atas Atrasadas"
-                value={atasMetrics.atasAtrasadas}
-                total={atasMetrics.total}
-                icon={AlertTriangle}
-                iconColor="text-red-600"
-                loading={loading}
-              />
-              
-              <MetricCard
-                title="Status Mais Comum"
-                value={atasMetrics.distribuicaoPorStatus[0]?.name || "N/A"}
-                subtitle={`${atasMetrics.distribuicaoPorStatus[0]?.value || 0} atas`}
-                icon={Target}
-                loading={loading}
-              />
+          <BreadcrumbOmnia items={[{
+            label: "Dashboard",
+            isActive: true
+          }]} />
+
+          {/* Cards de Métricas - Atas */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4">ATAS</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <AtasMetricCard
+                  title="Total de Atas Abertas"
+                  value={atasMetrics.total}
+                  icon={FileText}
+                  loading={loading}
+                />
+                
+                <AtasMetricCard
+                  title="Atas Atrasadas"
+                  value={atasMetrics.atasAtrasadas}
+                  total={atasMetrics.total}
+                  icon={AlertTriangle}
+                  iconColor="text-red-600"
+                  loading={loading}
+                />
+                
+                <MetricCard
+                  title="Status Mais Comum"
+                  value={atasMetrics.distribuicaoPorStatus[0]?.name || "N/A"}
+                  subtitle={`${atasMetrics.distribuicaoPorStatus[0]?.value || 0} atas`}
+                  icon={Target}
+                  loading={loading}
+                />
+              </div>
             </div>
+            
+            {/* Cards de Métricas - Tarefas */}
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4">TAREFAS</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <TarefasMetricCard
+                  title="Tarefas Ativas"
+                  value={tarefasMetrics.totalAtivas}
+                  icon={Users}
+                  loading={loading}
+                />
+                
+                <TarefasMetricCard
+                  title="Tarefas Vencidas"
+                  value={tarefasMetrics.tarefasVencidas}
+                  total={tarefasMetrics.totalAtivas}
+                  icon={Clock}
+                  iconColor="text-red-600"
+                  loading={loading}
+                />
+                
+                <TarefasMetricCard
+                  title="Tarefas no Prazo"
+                  value={tarefasMetrics.tarefasNoPrazo}
+                  total={tarefasMetrics.totalAtivas}
+                  icon={CheckCircle}
+                  iconColor="text-green-600"
+                  loading={loading}
+                />
+                
+                <TaxaConclusaoCard
+                  taxa={tarefasMetrics.taxaConclusao}
+                  label="Taxa de Conclusão - Tarefas"
+                  icon={UserCheck}
+                  loading={loading}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Gráficos */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RechartsDonutChart
+              data={atasMetrics.distribuicaoPorStatus}
+              title="DISTRIBUIÇÃO POR STATUS"
+            />
+
+            <RechartsDonutChart
+              data={tarefasMetrics.distribuicaoPorPrioridade}
+              title="TAREFAS - PRIORIDADE"
+            />
           </div>
           
-          {/* Cards de Métricas - Tarefas */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-4">TAREFAS</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <TarefasMetricCard
-                title="Tarefas Ativas"
-                value={tarefasMetrics.totalAtivas}
-                icon={Users}
-                loading={loading}
-              />
-              
-              <TarefasMetricCard
-                title="Tarefas Vencidas"
-                value={tarefasMetrics.tarefasVencidas}
-                total={tarefasMetrics.totalAtivas}
-                icon={Clock}
-                iconColor="text-red-600"
-                loading={loading}
-              />
-              
-              <TarefasMetricCard
-                title="Tarefas no Prazo"
-                value={tarefasMetrics.tarefasNoPrazo}
-                total={tarefasMetrics.totalAtivas}
-                icon={CheckCircle}
-                iconColor="text-green-600"
-                loading={loading}
-              />
-              
-              <TaxaConclusaoCard
-                taxa={tarefasMetrics.taxaConclusao}
-                label="Taxa de Conclusão - Tarefas"
-                icon={UserCheck}
-                loading={loading}
-              />
-            </div>
+          {/* Gráfico de Barras */}
+          <div className="grid grid-cols-1 gap-6">
+            <RechartsBarChart
+              data={tarefasMetrics.distribuicaoPorResponsavel.map(item => ({ category: item.name, value: item.value }))}
+              title="TAREFAS POR RESPONSÁVEL"
+              height={300}
+              color="#10b981"
+              horizontal={true}
+            />
           </div>
         </div>
-
-        {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RechartsDonutChart
-            data={atasMetrics.distribuicaoPorStatus}
-            title="DISTRIBUIÇÃO POR STATUS"
-          />
-
-          <RechartsDonutChart
-            data={tarefasMetrics.distribuicaoPorPrioridade}
-            title="TAREFAS - PRIORIDADE"
-          />
-        </div>
-        
-        {/* Gráfico de Barras */}
-        <div className="grid grid-cols-1 gap-6">
-          <RechartsBarChart
-            data={tarefasMetrics.distribuicaoPorResponsavel.map(item => ({ category: item.name, value: item.value }))}
-            title="TAREFAS POR RESPONSÁVEL"
-            height={300}
-            color="#10b981"
-            horizontal={true}
-          />
-        </div>
-      </div>
-    </Layout>
+      </Layout>
+    </ProtectedRoute>
   );
 }

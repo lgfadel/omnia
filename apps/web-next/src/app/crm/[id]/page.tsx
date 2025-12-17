@@ -16,7 +16,7 @@ import { CrmCommentInput } from '@/components/crm/CrmCommentInput';
 import { TarefasOportunidade } from '@/components/TarefasOportunidade';
 import { useCrmLeadsStore } from '@/store/crmLeads.store';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '@/lib/logging';
 
 // Função para formatar telefone
@@ -69,13 +69,21 @@ export default function CrmLeadDetail() {
         if (updatedLead) {
           setLead(updatedLead);
         } else {
-          toast.error('Lead não encontrado');
+          toast({
+            title: 'Erro',
+            description: 'Lead não encontrado',
+            variant: 'destructive',
+          })
           router.push('/crm');
         }
       }
     } catch (error) {
       logger.error(`Erro ao carregar lead: ${error}`);
-      toast.error('Erro ao carregar lead');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar lead',
+        variant: 'destructive',
+      })
     }
   }, [id, leads, fetchLeads, router]);
 

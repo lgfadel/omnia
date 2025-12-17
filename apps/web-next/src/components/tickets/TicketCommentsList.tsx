@@ -30,7 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 
 interface TicketCommentsListProps {
@@ -114,7 +114,11 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       setComments(commentsWithAttachments);
     } catch (error) {
       logger.error('Erro ao carregar comentários:', error);
-      toast.error('Erro ao carregar comentários');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar comentários',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false);
     }
@@ -140,10 +144,17 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       await repo.remove(commentId);
       await loadComments();
       onCommentsChange?.();
-      toast.success('Comentário excluído com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário excluído com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao excluir comentário:', error);
-      toast.error('Erro ao excluir comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir comentário',
+        variant: 'destructive',
+      })
     }
   };
 
@@ -153,10 +164,17 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       await repo.update(commentId, body);
       await loadComments();
       onCommentsChange?.();
-      toast.success('Comentário atualizado com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário atualizado com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao atualizar comentário:', error);
-      toast.error('Erro ao atualizar comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atualizar comentário',
+        variant: 'destructive',
+      })
     }
   };
 
@@ -166,7 +184,11 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       if (attachment.url.startsWith('blob:')) {
         // If blob URL is from another origin, it is not retrievable — inform the user
         if (!attachment.url.includes(window.location.origin)) {
-          toast.error('Arquivo indisponível - Este anexo foi enviado em outro ambiente. Reenvie o arquivo para baixá-lo.');
+          toast({
+            title: 'Arquivo indisponível',
+            description: 'Este anexo foi enviado em outro ambiente. Reenvie o arquivo para baixá-lo.',
+            variant: 'destructive',
+          })
           return;
         }
         const a = document.createElement('a');
@@ -201,7 +223,11 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       a.remove();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      toast.error('Falha ao baixar - Não foi possível baixar o arquivo. Tente reenviar o anexo.');
+      toast({
+        title: 'Falha ao baixar',
+        description: 'Não foi possível baixar o arquivo. Tente reenviar o anexo.',
+        variant: 'destructive',
+      })
     }
   };
 

@@ -14,7 +14,7 @@ import { ataCommentsRepoSupabase, CreateAtaComment } from '@/repositories/ataCom
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
 import { usersRepoSupabase, type User as OmniaUser } from '@/repositories/usersRepo.supabase';
 import { Attachment } from '@/data/types';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 import { getMentionState, convertMentionsToIds } from '@/lib/mentions';
 
@@ -127,10 +127,17 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
       setAttachments([]);
       setMentionMap(new Map());
       onCommentAdded?.();
-      toast.success('Comentário adicionado com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário adicionado com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao adicionar comentário:', error);
-      toast.error('Erro ao adicionar comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao adicionar comentário',
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false);
     }
@@ -200,7 +207,10 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
           // Create a new File object with the proper name
           const namedFile = new File([file], filename, { type: file.type });
           
-          toast.success(`Imagem colada: ${filename}`);
+          toast({
+            title: 'Imagem colada',
+            description: filename,
+          })
           
           const uploadedAttachment = await uploadFile(namedFile);
           if (uploadedAttachment) {
@@ -256,7 +266,10 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
             // Create a new File object with the proper name
             const namedFile = new File([file], filename, { type: file.type });
             
-            toast.success(`Imagem colada: ${filename}`);
+            toast({
+              title: 'Imagem colada',
+              description: filename,
+            })
             
             const uploadedAttachment = await uploadFile(namedFile);
             if (uploadedAttachment) {

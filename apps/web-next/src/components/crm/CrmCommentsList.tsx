@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 
 interface CrmCommentsListProps {
@@ -104,7 +104,11 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
       setComments(commentsWithAttachments);
     } catch (error) {
       logger.error('Erro ao carregar comentários:', error);
-      toast.error('Erro ao carregar comentários');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar comentários',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false);
     }
@@ -129,10 +133,17 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
       await crmCommentsRepoSupabase.remove(commentId);
       await loadComments();
       onCommentsChange?.();
-      toast.success('Comentário excluído com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário excluído com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao excluir comentário:', error);
-      toast.error('Erro ao excluir comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir comentário',
+        variant: 'destructive',
+      })
     }
   };
 
@@ -141,10 +152,17 @@ export const CrmCommentsList = ({ leadId, onCommentsChange }: CrmCommentsListPro
       await crmCommentsRepoSupabase.update(commentId, { body });
       await loadComments();
       onCommentsChange?.();
-      toast.success('Comentário atualizado com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário atualizado com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao atualizar comentário:', error);
-      toast.error('Erro ao atualizar comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atualizar comentário',
+        variant: 'destructive',
+      })
     }
   };
 

@@ -11,7 +11,7 @@ import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { crmCommentsRepoSupabase } from '@/repositories/crmCommentsRepo.supabase';
 import { crmAttachmentsRepoSupabase } from '@/repositories/crmAttachmentsRepo.supabase';
 import { Attachment } from '@/data/types';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast'
 import { logger } from '../../lib/logging';
 
 
@@ -61,10 +61,17 @@ export const CrmCommentInput = ({ leadId, onCommentAdded }: CrmCommentInputProps
       setBody('');
       setAttachments([]);
       onCommentAdded?.();
-      toast.success('Comentário adicionado com sucesso');
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário adicionado com sucesso',
+      })
     } catch (error) {
       logger.error('Erro ao adicionar comentário:', error);
-      toast.error('Erro ao adicionar comentário');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao adicionar comentário',
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +119,10 @@ export const CrmCommentInput = ({ leadId, onCommentAdded }: CrmCommentInputProps
           // Create a new File object with the proper name
           const namedFile = new File([file], filename, { type: file.type });
           
-          toast.success(`Imagem colada: ${filename}`);
+          toast({
+            title: 'Imagem colada',
+            description: filename,
+          })
           
           const uploadedAttachment = await uploadFile(namedFile);
           if (uploadedAttachment) {
@@ -158,7 +168,10 @@ export const CrmCommentInput = ({ leadId, onCommentAdded }: CrmCommentInputProps
             // Create a new File object with the proper name
             const namedFile = new File([file], filename, { type: file.type });
             
-            toast.success(`Imagem colada: ${filename}`);
+            toast({
+              title: 'Imagem colada',
+              description: filename,
+            })
             
             const uploadedAttachment = await uploadFile(namedFile);
             if (uploadedAttachment) {
