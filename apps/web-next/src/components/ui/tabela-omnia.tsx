@@ -11,12 +11,13 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { PriorityBadge } from "@/components/ui/priority-badge"
 import { CommentsModal } from "@/components/ui/comments-modal"
+import { toast } from "@/components/ui/use-toast"
 import type { TarefaPrioridade } from "@/repositories/tarefasRepo.supabase"
 
 export interface TabelaOmniaColumn {
@@ -221,6 +222,34 @@ export function TabelaOmnia({
             <span className="text-xs">{count}</span>
           </div>
         </div>
+      )
+    }
+
+    if (key === "ticketOcta" && value) {
+      return (
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 text-xs font-mono text-foreground hover:opacity-80 transition-opacity"
+          onClick={async (e) => {
+            e.stopPropagation()
+            try {
+              await navigator.clipboard.writeText(String(value))
+              toast({
+                title: "Copiado",
+                description: `Ticket ${value} copiado.`,
+              })
+            } catch {
+              toast({
+                title: "Não foi possível copiar",
+                description: "Seu navegador bloqueou o acesso à área de transferência.",
+                variant: "destructive",
+              })
+            }
+          }}
+        >
+          <Copy className="w-3 h-3" />
+          <span>{value}</span>
+        </button>
       )
     }
     
