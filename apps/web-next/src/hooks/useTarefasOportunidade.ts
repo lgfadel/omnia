@@ -45,15 +45,15 @@ export function useTarefasOportunidade(oportunidadeId: string) {
 
   const fetchTarefas = useCallback(async () => {
     if (!oportunidadeId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       // Buscar tickets - usando fetch direto para evitar problemas de tipo profundo
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co';
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
-      
+
       const { data: session } = await supabase.auth.getSession();
       const authHeader = session.session?.access_token || supabaseKey;
 
@@ -85,13 +85,13 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       // Buscar usuários separadamente se necessário
       const userIds = ticketsData.map(ticket => ticket.assigned_to).filter((id): id is string => id !== null);
       const usersData: Array<{ id: string; name: string; email: string; avatar_url?: string | null; color?: string | null }> = [];
-      
+
       if (userIds.length > 0) {
         const { data: users, error: usersError } = await supabase
           .from('omnia_users')
           .select('id, name, email, avatar_url, color')
           .in('id', userIds);
-        
+
         if (usersError) throw usersError;
         usersData.push(...(users || []));
       }
@@ -99,7 +99,7 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       // Combinar dados manualmente
       const data = ticketsData.map(ticket => ({
         ...ticket,
-        assigned_to_user: ticket.assigned_to 
+        assigned_to_user: ticket.assigned_to
           ? usersData.find(user => user.id === ticket.assigned_to)
           : null
       }));
@@ -116,7 +116,10 @@ export function useTarefasOportunidade(oportunidadeId: string) {
           case 'EM_ANDAMENTO':
             return '#f59e0b'; // Laranja - Em Andamento
           case 'AGUARDANDO':
-            return '#6b7280'; // Cinza - Aguardando
+          case 'ON_HOLD':
+            return '#6b7280'; // Cinza - On-hold
+          case 'AGUARDANDO_TERCEIROS':
+            return '#a855f7'; // Roxo - Terceiros
           case 'RESOLVIDO':
           case 'CONCLUIDO':
             return '#10b981'; // Verde - Resolvido/Concluído
@@ -135,7 +138,10 @@ export function useTarefasOportunidade(oportunidadeId: string) {
           case 'EM_ANDAMENTO':
             return 'Em Andamento';
           case 'AGUARDANDO':
-            return 'Aguardando';
+          case 'ON_HOLD':
+            return 'On-hold';
+          case 'AGUARDANDO_TERCEIROS':
+            return 'Aguardando Terceiros';
           case 'RESOLVIDO':
             return 'Resolvido';
           case 'CONCLUIDO':
