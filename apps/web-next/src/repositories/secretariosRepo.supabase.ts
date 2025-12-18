@@ -7,11 +7,7 @@ const getCurrentAuthUserId = async () => {
   const { data } = await supabase.auth.getUser()
   const authUserId = data.user?.id
 
-  if (!authUserId) {
-    throw new Error('Usuário autenticado não encontrado')
-  }
-
-  return authUserId
+  return authUserId || null
 }
 
 // Transform database record to UserRef
@@ -29,60 +25,69 @@ function transformUserFromDB(dbUser: any): UserRef {
 export const secretariosRepoSupabase = {
   async list(): Promise<UserRef[]> {
     logger.debug('SecretariosRepo: Fetching all users...')
-    
+
     // Check if current user is admin to determine data access level
     const authUserId = await getCurrentAuthUserId()
-    const { data: currentUserData } = await supabase
-      .from('omnia_users')
-      .select('roles, auth_user_id')
-      .eq('auth_user_id', authUserId)
-      .single()
-    
-    const isAdmin = currentUserData?.roles?.includes('ADMIN') || false
-    
+    let isAdmin = false
+
+    if (authUserId) {
+      const { data: currentUserData } = await supabase
+        .from('omnia_users')
+        .select('roles, auth_user_id')
+        .eq('auth_user_id', authUserId)
+        .single()
+
+      isAdmin = currentUserData?.roles?.includes('ADMIN') || false
+    }
+
     // Use different select patterns based on user role
-    const selectColumns = isAdmin 
+    const selectColumns = isAdmin
       ? 'id, name, email, roles, avatar_url, color, created_at, updated_at'
       : 'id, name, roles, avatar_url, color, created_at, updated_at'
-    
+
     const { data, error } = await supabase
       .from('omnia_users')
       .select(selectColumns)
       .order('name', { ascending: true })
-    
+
     if (error) {
       logger.error('SecretariosRepo: Error fetching users:', error)
       throw new Error(`Erro ao buscar usuários: ${error.message}`)
     }
-    
+
     return data?.map(transformUserFromDB) || []
   },
 
   async getById(id: string): Promise<UserRef | null> {
     logger.debug('SecretariosRepo: Fetching user by ID:', id)
-    
+
     // Check if current user is admin or requesting their own data
     const authUserId = await getCurrentAuthUserId()
-    const { data: currentUserData } = await supabase
-      .from('omnia_users')
-      .select('roles, auth_user_id, id')
-      .eq('auth_user_id', authUserId)
-      .single()
-    
-    const isAdmin = currentUserData?.roles?.includes('ADMIN') || false
-    const isOwnRecord = currentUserData?.id === id
-    
+    let isAdmin = false
+    let isOwnRecord = false
+
+    if (authUserId) {
+      const { data: currentUserData } = await supabase
+        .from('omnia_users')
+        .select('roles, auth_user_id, id')
+        .eq('auth_user_id', authUserId)
+        .single()
+
+      isAdmin = currentUserData?.roles?.includes('ADMIN') || false
+      isOwnRecord = currentUserData?.id === id
+    }
+
     // Use different select patterns based on access level
     const selectColumns = (isAdmin || isOwnRecord)
-      ? 'id, name, email, roles, avatar_url, color, created_at, updated_at' 
+      ? 'id, name, email, roles, avatar_url, color, created_at, updated_at'
       : 'id, name, roles, avatar_url, color, created_at, updated_at'
-    
+
     const { data, error } = await supabase
       .from('omnia_users')
       .select(selectColumns)
       .eq('id', id)
       .single()
-    
+
     if (error) {
       if (error.code === 'PGRST116') {
         return null // User not found
@@ -90,13 +95,13 @@ export const secretariosRepoSupabase = {
       logger.error('SecretariosRepo: Error fetching user:', error)
       throw new Error(`Erro ao buscar usuário: ${error.message}`)
     }
-    
+
     return data ? transformUserFromDB(data) : null
   },
 
   async create(data: Omit<UserRef, 'id'> & { password?: string }): Promise<UserRef & { tempPassword?: string }> {
     logger.debug('SecretariosRepo: Creating user:', data)
-    
+
     // Call edge function to create user with auth
     const { data: result, error } = await supabase.functions.invoke('create-user', {
       body: {
@@ -108,19 +113,19 @@ export const secretariosRepoSupabase = {
         password: data.password
       }
     })
-    
+
     if (error) {
       logger.error('SecretariosRepo: Error calling create-user function:', error)
       throw new Error(`Erro ao criar usuário: ${error.message}`)
     }
-    
+
     if (!result.success) {
       logger.error('SecretariosRepo: Function returned error:', result.error)
       throw new Error(result.error)
     }
-    
+
     logger.debug('SecretariosRepo: User created successfully with temp password:', result.tempPassword)
-    
+
     const userResult: UserRef = {
       id: result.user.id,
       name: result.user.name,
@@ -129,39 +134,39 @@ export const secretariosRepoSupabase = {
       avatarUrl: result.user.avatarUrl,
       color: result.user.color
     }
-    
+
     // Add tempPassword to the result if it exists
     return result.tempPassword ? { ...userResult, tempPassword: result.tempPassword } : userResult
   },
 
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
     logger.debug(`SecretariosRepo: Updating user: ${id}`, data)
-    
+
     const updateData: any = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.email !== undefined) updateData.email = data.email
     if (data.roles !== undefined) updateData.roles = data.roles
     if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl
     if (data.color !== undefined) updateData.color = data.color
-    
+
     const { data: updatedUser, error } = await supabase
       .from('omnia_users')
       .update(updateData)
       .eq('id', id)
       .select('id, name, email, roles, avatar_url, color, created_at, updated_at')
       .single()
-    
+
     if (error) {
       logger.error('SecretariosRepo: Error updating user:', error)
       throw new Error(`Erro ao atualizar usuário: ${error.message}`)
     }
-    
+
     return updatedUser ? transformUserFromDB(updatedUser) : null
   },
 
   async remove(id: string): Promise<boolean> {
     logger.debug('SecretariosRepo: Deleting user:', id)
-    
+
     try {
       // Pre-check: verify associations to provide a friendly error before invoking the function
       const [{ data: sec }, { data: resp }] = await Promise.all([
@@ -179,7 +184,7 @@ export const secretariosRepoSupabase = {
       const { data, error } = await supabase.functions.invoke('delete-user', {
         body: { userId: id }
       })
-      
+
       if (error) {
         logger.error('SecretariosRepo: Error calling delete-user function:', error)
         // Try to extract server-provided message
@@ -201,16 +206,16 @@ export const secretariosRepoSupabase = {
         }
         throw new Error(friendly || `Erro ao excluir usuário: ${error.message}`)
       }
-      
+
       if (!data?.success) {
         const errorMessage = (data as any)?.error || 'Erro desconhecido ao excluir usuário'
         logger.error('SecretariosRepo: Delete user function returned error:', errorMessage)
         throw new Error(errorMessage)
       }
-      
+
       logger.debug('SecretariosRepo: User deleted successfully:', data.deletedUser)
       return true
-      
+
     } catch (error: any) {
       logger.error('SecretariosRepo: Error deleting user:', error)
       throw new Error(error.message || 'Erro ao excluir usuário')
