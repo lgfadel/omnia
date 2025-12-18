@@ -247,12 +247,14 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
 
   const canDeleteComment = (comment: CommentWithAttachments) => {
     if (!userProfile) return false;
-    return comment.created_by === userProfile.id || userProfile.roles?.includes('ADMIN');
+    const commentOwnerId = comment.created_by || comment.author_id;
+    return commentOwnerId === userProfile.id || userProfile.roles?.includes('ADMIN');
   };
 
   const canEditComment = (comment: CommentWithAttachments) => {
     if (!userProfile) return false;
-    if (comment.created_by !== userProfile.id) return false;
+    const commentOwnerId = comment.created_by || comment.author_id;
+    if (commentOwnerId !== userProfile.id) return false;
     
     const commentDate = new Date(comment.created_at);
     const now = new Date();

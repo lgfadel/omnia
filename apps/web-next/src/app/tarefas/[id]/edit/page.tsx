@@ -5,6 +5,7 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TicketForm } from "@/components/tickets/TicketForm";
 import { useTarefasStore } from "@/store/tarefas.store";
 import { useSecretariosStore } from "@/store/secretarios.store";
+import { ticketAttachmentsRepoSupabase } from "@/repositories/ticketAttachmentsRepo.supabase";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +85,30 @@ export default function TicketEdit() {
         isPrivate: ticketData.isPrivate,
         oportunidadeId: ticketData.oportunidadeId,
       });
+
+      // Salvar novos anexos (aqueles que não têm id no banco ainda)
+      if (ticketData.attachments && ticketData.attachments.length > 0) {
+        const existingAttachments = ticket.attachments || [];
+        const existingIds = new Set(existingAttachments.map(a => a.id));
+        
+        for (const attachment of ticketData.attachments) {
+          // Só criar anexos novos (que não existem no banco)
+          if (!existingIds.has(attachment.id)) {
+            try {
+              await ticketAttachmentsRepoSupabase.create({
+                ticket_id: ticket.id,
+                name: attachment.name,
+                url: attachment.url,
+                mime_type: attachment.mime || null,
+                size_kb: attachment.sizeKB || null,
+                uploaded_by: user?.id || null,
+              });
+            } catch (attachmentError) {
+              logger.error('Erro ao salvar anexo:', attachmentError);
+            }
+          }
+        }
+      }
 
       if (updatedTicket) {
         toast({

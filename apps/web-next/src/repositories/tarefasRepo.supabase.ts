@@ -38,6 +38,7 @@ export interface Tarefa {
   oportunidadeId?: string;
   tags: string[];
   commentCount: number;
+  attachmentCount: number;
   createdAt: Date;
   updatedAt: Date;
   attachments?: Attachment[];
@@ -73,6 +74,7 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
     oportunidadeId: dbTarefa.oportunidade_id || undefined,
     tags: dbTarefa.tags || [],
     commentCount: dbTarefa.comment_count || 0,
+    attachmentCount: dbTarefa.attachment_count || 0,
     createdAt: new Date(dbTarefa.created_at),
     updatedAt: new Date(dbTarefa.updated_at),
     isPrivate: dbTarefa.is_private || false,
@@ -155,7 +157,7 @@ export const tarefasRepoSupabase = {
   },
 
   // Create a new task
-  async create(data: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Tarefa> {
+  async create(data: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>): Promise<Tarefa> {
     logger.debug('Creating tarefa:', data)
     
     const omniaUserId = await getCurrentOmniaUserId();

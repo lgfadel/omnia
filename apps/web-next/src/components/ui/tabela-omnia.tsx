@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -179,7 +179,10 @@ export function TabelaOmnia({
       }
 
       const updatedCount = commentCounts[String(row.id)]
-      const count = updatedCount !== undefined ? updatedCount : (value || 0)
+      // Evita sobrescrever o valor vindo do backend com um override antigo
+      const count = (updatedCount !== undefined && (value == null || updatedCount === value))
+        ? updatedCount
+        : (value || 0)
       return (
         <div className="flex items-center justify-center">
           <Button
@@ -204,6 +207,19 @@ export function TabelaOmnia({
               <span className="text-xs">{count}</span>
             </div>
           </Button>
+        </div>
+      )
+    }
+
+    // Handle attachment count column
+    if (key === "attachmentCount") {
+      const count = value || 0
+      return (
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-1 text-foreground">
+            <Paperclip className="w-3 h-3" />
+            <span className="text-xs">{count}</span>
+          </div>
         </div>
       )
     }

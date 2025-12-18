@@ -11,8 +11,8 @@ interface TarefasStore {
   
   loadTarefas: () => Promise<void>;
   getTarefaById: (id: string) => Promise<Tarefa | null>;
-  createTarefa: (tarefa: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>) => Promise<Tarefa>;
-  updateTarefa: (id: string, tarefa: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>>) => Promise<Tarefa | null>;
+  createTarefa: (tarefa: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>) => Promise<Tarefa>;
+  updateTarefa: (id: string, tarefa: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>) => Promise<Tarefa | null>;
   deleteTarefa: (id: string) => Promise<boolean>;
   searchTarefas: (query: string) => Promise<Tarefa[]>;
   clearError: () => void;
@@ -61,7 +61,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
     }
   },
 
-  createTarefa: async (tarefaData: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>) => {
+  createTarefa: async (tarefaData: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>) => {
     set({ loading: true, error: null });
     try {
       const novaTarefa = await tarefasRepoSupabase.create(tarefaData);

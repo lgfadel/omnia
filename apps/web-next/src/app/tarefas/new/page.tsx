@@ -6,6 +6,7 @@ import { TicketForm } from "@/components/tickets/TicketForm";
 import { useRouter } from "next/navigation";
 import { useTarefasStore } from "@/store/tarefas.store";
 import { useSecretariosStore } from "@/store/secretarios.store";
+import { ticketAttachmentsRepoSupabase } from "@/repositories/ticketAttachmentsRepo.supabase";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +50,24 @@ export default function TicketNew() {
         isPrivate: Boolean(ticketData.isPrivate),
         oportunidadeId: ticketData.oportunidadeId
       });
+
+      // Salvar anexos após criar a tarefa
+      if (ticketData.attachments && ticketData.attachments.length > 0) {
+        for (const attachment of ticketData.attachments) {
+          try {
+            await ticketAttachmentsRepoSupabase.create({
+              ticket_id: newTicket.id,
+              name: attachment.name,
+              url: attachment.url,
+              mime_type: attachment.mime || null,
+              size_kb: attachment.sizeKB || null,
+              uploaded_by: user?.id || null,
+            });
+          } catch (attachmentError) {
+            logger.error('Erro ao salvar anexo:', attachmentError);
+          }
+        }
+      }
 
       toast({
         title: "Tarefa criada com sucesso!",

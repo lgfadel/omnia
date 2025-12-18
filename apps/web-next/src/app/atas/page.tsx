@@ -84,7 +84,7 @@ const Atas = () => {
   // All users for responsible dropdown
   const availableUsers = secretarios
 
-  // Realtime listener para atualizações de atas
+  // Realtime listener para atualizações de atas, comentários e anexos
   useEffect(() => {
     const channel = supabase
       .channel('atas-changes')
@@ -121,6 +121,32 @@ const Atas = () => {
         },
         (payload) => {
           console.log('Ata excluída:', payload)
+          loadAtas(search, statusFilter)
+        }
+      )
+      // Listen for comment changes to update counters
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'omnia_comments'
+        },
+        (payload) => {
+          console.log('Comentário de ata alterado:', payload)
+          loadAtas(search, statusFilter)
+        }
+      )
+      // Listen for attachment changes to update counters
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'omnia_attachments'
+        },
+        (payload) => {
+          console.log('Anexo de ata alterado:', payload)
           loadAtas(search, statusFilter)
         }
       )

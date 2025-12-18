@@ -66,8 +66,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
       const comments = await repo.list(ticketId);
       onCommentCountChange(comments.length);
     }
-    // Fecha o modal após adicionar comentário
-    onClose();
+    // Não fecha o modal após adicionar comentário para permitir adicionar mais
   };
 
   return (
@@ -89,6 +88,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
           {/* Lista de comentários com scroll */}
           <div className="flex-1 overflow-y-auto pr-2">
             <TicketCommentsList 
+              key={refreshKey}
               ticketId={ticketId} 
               onCommentsChange={handleCommentsChange}
               contextType={contextType}

@@ -65,7 +65,7 @@ export default function TicketDetail() {
     };
 
     loadTicket();
-  }, [id, getTarefaById]);
+  }, [id, getTarefaById, refreshKey]);
 
   const handleDelete = async () => {
     if (!ticket || !confirm('Tem certeza que deseja deletar este ticket?')) return;
@@ -163,12 +163,7 @@ export default function TicketDetail() {
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="anexos">
-              Anexos ({(() => {
-                const directAttachments = ticket.attachments?.length || 0;
-                const commentAttachments = ticket.comments?.reduce((total, comment) => 
-                  total + (comment.attachments?.length || 0), 0) || 0;
-                return directAttachments + commentAttachments;
-              })()})
+              Anexos ({ticket.attachmentCount || 0})
             </TabsTrigger>
           </TabsList>
 
@@ -198,6 +193,7 @@ export default function TicketDetail() {
                       onCommentAdded={handleRefresh}
                     />
                     <TicketCommentsList 
+                      key={refreshKey}
                       ticketId={ticket.id}
                       onCommentsChange={handleRefresh}
                     />

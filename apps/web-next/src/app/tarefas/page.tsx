@@ -55,7 +55,8 @@ const columns = [
   { key: "responsible", label: "Responsável", width: "w-[18%]" },
   { key: "ticket", label: "Ticket", width: "w-[10%]" },
   { key: "statusId", label: "Status", width: "w-[15%]" },
-  { key: "commentCount", label: "Comentários", width: "w-[10%]" }
+  { key: "commentCount", label: "Comentários", width: "w-[10%]" },
+  { key: "attachmentCount", label: "Anexos", width: "w-[8%]" }
 ];
 
 export default function Tickets() {
@@ -101,7 +102,7 @@ export default function Tickets() {
     loadTags();
   }, [loadTarefas, loadStatuses, loadSecretarios, loadTags]);
 
-  // Set up real-time listener
+  // Set up real-time listener for tickets, comments and attachments
   useEffect(() => {
     const channel = supabase
       .channel('tarefas-changes')
@@ -138,6 +139,32 @@ export default function Tickets() {
         },
         (payload) => {
           console.log('Tarefa excluída:', payload);
+          loadTarefas();
+        }
+      )
+      // Listen for comment changes to update counters
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'omnia_ticket_comments'
+        },
+        (payload) => {
+          console.log('Comentário alterado:', payload);
+          loadTarefas();
+        }
+      )
+      // Listen for attachment changes to update counters
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'omnia_ticket_attachments'
+        },
+        (payload) => {
+          console.log('Anexo alterado:', payload);
           loadTarefas();
         }
       )
@@ -312,6 +339,7 @@ export default function Tickets() {
       responsible: tarefa.assignedTo,
       ticket: tarefa.ticket || '',
       commentCount: tarefa.commentCount || 0,
+      attachmentCount: tarefa.attachmentCount || 0,
       status: mappedStatus,
       statusName: currentStatus?.name || "Status não encontrado",
       statusColor: currentStatus?.color || "#6B7280",
