@@ -135,7 +135,14 @@ export default function TicketDetail() {
         
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
+            <div className="flex items-center gap-3">
+              {ticket.ticketId != null && (
+                <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                  #{ticket.ticketId}
+                </span>
+              )}
+              <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
+            </div>
             <p className="text-muted-foreground">
               Criado em {format(ticket.createdAt, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
@@ -236,11 +243,11 @@ export default function TicketDetail() {
                       </div>
                     )}
 
-                    {ticket.ticket && (
+                    {ticket.ticketOcta && (
                       <div className="space-y-2">
                         <div className="text-sm font-medium">Ticket</div>
                         <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                          {ticket.ticket}
+                          {ticket.ticketOcta}
                         </p>
                       </div>
                     )}

@@ -42,7 +42,7 @@ export default function TicketNew() {
         description: ticketData.description,
         priority: ticketData.priority!,
         dueDate: ticketData.dueDate,
-        ticket: ticketData.ticket,
+        ticketOcta: ticketData.ticketOcta,
         statusId: ticketData.statusId!,
         assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
         tags: ticketData.tags || [],

@@ -85,7 +85,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
     }
   },
 
-  updateTarefa: async (id: string, tarefaData: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>>) => {
+  updateTarefa: async (id: string, tarefaData: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>) => {
     set({ loading: true, error: null });
     try {
       const updatedTarefa = await tarefasRepoSupabase.update(id, tarefaData);

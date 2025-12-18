@@ -26,7 +26,7 @@ const ticketSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(['URGENTE', 'ALTA', 'NORMAL', 'BAIXA']),
   dueDate: z.string().optional(),
-  ticket: z.string().optional(),
+  ticketOcta: z.string().optional(),
   statusId: z.string().min(1, 'Status é obrigatório'),
   assignedTo: z.string().optional(),
   oportunidadeId: z.string().optional(),
@@ -64,7 +64,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       description: ticket?.description || '',
       priority: ticket?.priority || 'NORMAL',
       dueDate: ticket?.dueDate ? ticket.dueDate.toISOString().split('T')[0] : '',
-      ticket: ticket?.ticket || '',
+      ticketOcta: ticket?.ticketOcta || '',
       statusId: ticket?.statusId || '',
       assignedTo: ticket?.assignedTo?.id || '',
       oportunidadeId: ticket?.oportunidadeId || '',
@@ -103,7 +103,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       description: data.description || undefined,
       priority: data.priority as TarefaPrioridade,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-      ticket: data.ticket || undefined,
+      ticketOcta: data.ticketOcta || undefined,
       statusId: data.statusId,
       assignedTo: data.assignedTo ? users.find(u => u.id === data.assignedTo) : undefined,
       oportunidadeId: data.oportunidadeId || undefined,
@@ -194,10 +194,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ticket">Ticket/Código</Label>
+                <Label htmlFor="ticketOcta">Ticket</Label>
                 <Input
-                  id="ticket"
-                  {...register('ticket')}
+                  id="ticketOcta"
+                  {...register('ticketOcta')}
                   placeholder="Ex: TCK-12345"
                 />
               </div>

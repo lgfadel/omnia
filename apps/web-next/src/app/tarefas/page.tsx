@@ -32,7 +32,7 @@ type TicketTableRow = Omit<Tarefa, 'dueDate' | 'assignedTo'> & {
   dueDateOriginal?: Date | null;
   assignedTo: string;
   responsible: UserRef | undefined;
-  ticket: string;
+  ticketIdDisplay: string;
   status: "nao-iniciado" | "em-andamento" | "concluido";
   statusName: string;
   statusColor: string;
@@ -49,11 +49,12 @@ type GroupedDataItem = {
 };
 
 const columns = [
+  { key: "ticketIdDisplay", label: "#", width: "w-[8%]" },
   { key: "title", label: "Título", width: "w-[30%]" },
   { key: "priority", label: "Prioridade", width: "w-[12%]" },
   { key: "dueDate", label: "Vencimento", width: "w-[15%]" },
   { key: "responsible", label: "Responsável", width: "w-[18%]" },
-  { key: "ticket", label: "Ticket", width: "w-[10%]" },
+  { key: "ticketOcta", label: "Ticket", width: "w-[10%]" },
   { key: "statusId", label: "Status", width: "w-[15%]" },
   { key: "commentCount", label: "Comentários", width: "w-[10%]" },
   { key: "attachmentCount", label: "Anexos", width: "w-[8%]" }
@@ -185,10 +186,12 @@ export default function Tickets() {
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
+      const normalized = query.replace(/^#/, '')
       filtered = filtered.filter(task => 
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query) ||
-        task.ticket?.toLowerCase().includes(query)
+        task.ticketOcta?.toLowerCase().includes(query) ||
+        (task.ticketId != null && String(task.ticketId).includes(normalized))
       );
     }
 
@@ -337,7 +340,8 @@ export default function Tickets() {
       dueDateOriginal: tarefa.dueDate ?? null,
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo,
-      ticket: tarefa.ticket || '',
+      ticketIdDisplay: tarefa.ticketId != null ? `#${tarefa.ticketId}` : '',
+      ticketOcta: tarefa.ticketOcta || '',
       commentCount: tarefa.commentCount || 0,
       attachmentCount: tarefa.attachmentCount || 0,
       status: mappedStatus,
@@ -452,7 +456,7 @@ export default function Tickets() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Buscar por título, descrição ou código..."
+                placeholder="Buscar por título, descrição, nº ou código..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-10"

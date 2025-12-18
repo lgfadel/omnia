@@ -31,7 +31,8 @@ export interface Tarefa {
   description?: string;
   priority: TarefaPrioridade;
   dueDate?: Date;
-  ticket?: string;
+  ticketOcta?: string;
+  ticketId?: number;
   statusId: string;
   assignedTo?: UserRef;
   createdBy?: UserRef;
@@ -46,6 +47,10 @@ export interface Tarefa {
   isPrivate: boolean;
 }
 
+const isMissingColumnError = (error: any, column: string) => {
+  return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes(`'${column}'`)
+}
+
 function transformTarefaFromDB(dbTarefa: any): Tarefa {
   return {
     id: dbTarefa.id,
@@ -53,7 +58,8 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
     description: dbTarefa.description,
     priority: dbTarefa.priority as TarefaPrioridade,
     dueDate: dbTarefa.due_date ? new Date(dbTarefa.due_date + 'T00:00:00') : undefined,
-    ticket: dbTarefa.ticket,
+    ticketOcta: dbTarefa.ticket_octa ?? dbTarefa.ticket,
+    ticketId: dbTarefa.ticket_id ?? undefined,
     statusId: dbTarefa.status_id,
     assignedTo: dbTarefa.assigned_to_user ? {
       id: dbTarefa.assigned_to_user.id,
@@ -167,7 +173,7 @@ export const tarefasRepoSupabase = {
       description: data.description,
       priority: data.priority,
       due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
-      ticket: data.ticket,
+      ticket_octa: data.ticketOcta,
       status_id: data.statusId,
       assigned_to: data.assignedTo?.id,
       created_by: omniaUserId,
@@ -176,7 +182,10 @@ export const tarefasRepoSupabase = {
       is_private: data.isPrivate,
     };
 
-    const { data: newTarefa, error } = await supabase
+    let newTarefa: any
+    let error: any
+
+    ;({ data: newTarefa, error } = await supabase
       .from('omnia_tickets' as any)
       .insert(insertData)
       .select(`
@@ -188,7 +197,27 @@ export const tarefasRepoSupabase = {
           id, name, email, roles, avatar_url, color
         )
       `)
-      .single();
+      .single())
+
+    if (error && isMissingColumnError(error, 'ticket_octa')) {
+      const legacyInsertData: any = { ...insertData }
+      delete legacyInsertData.ticket_octa
+      legacyInsertData.ticket = data.ticketOcta
+
+      ;({ data: newTarefa, error } = await supabase
+        .from('omnia_tickets' as any)
+        .insert(legacyInsertData)
+        .select(`
+          *,
+          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
+            id, name, email, roles, avatar_url, color
+          ),
+          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
+            id, name, email, roles, avatar_url, color
+          )
+        `)
+        .single())
+    }
 
     if (error) {
       logger.error('❌ Error creating tarefa:', error);
@@ -207,7 +236,7 @@ export const tarefasRepoSupabase = {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.dueDate !== undefined) updateData.due_date = data.dueDate ? data.dueDate.toISOString().split('T')[0] : null;
-    if (data.ticket !== undefined) updateData.ticket = data.ticket;
+    if (data.ticketOcta !== undefined) updateData.ticket_octa = data.ticketOcta;
     if (data.statusId !== undefined) updateData.status_id = data.statusId;
     if (data.assignedTo !== undefined) updateData.assigned_to = data.assignedTo?.id;
     // Sempre incluir oportunidade_id se estiver presente no data, mesmo que seja undefined (para permitir NULL)
@@ -215,7 +244,10 @@ export const tarefasRepoSupabase = {
     if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.isPrivate !== undefined) updateData.is_private = data.isPrivate;
 
-    const { data: updatedTarefa, error } = await supabase
+    let updatedTarefa: any
+    let error: any
+
+    ;({ data: updatedTarefa, error } = await supabase
       .from('omnia_tickets' as any)
       .update(updateData)
       .eq('id', id)
@@ -228,7 +260,28 @@ export const tarefasRepoSupabase = {
           id, name, email, roles, avatar_url, color
         )
       `)
-      .single();
+      .single())
+
+    if (error && data.ticketOcta !== undefined && isMissingColumnError(error, 'ticket_octa')) {
+      const legacyUpdateData: any = { ...updateData }
+      delete legacyUpdateData.ticket_octa
+      legacyUpdateData.ticket = data.ticketOcta
+
+      ;({ data: updatedTarefa, error } = await supabase
+        .from('omnia_tickets' as any)
+        .update(legacyUpdateData)
+        .eq('id', id)
+        .select(`
+          *,
+          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
+            id, name, email, roles, avatar_url, color
+          ),
+          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
+            id, name, email, roles, avatar_url, color
+          )
+        `)
+        .single())
+    }
 
     if (error) {
       logger.error('❌ Error updating tarefa:', error);
@@ -288,7 +341,18 @@ export const tarefasRepoSupabase = {
     
     if (!query.trim()) return [];
 
-    const { data, error } = await supabase
+    const normalizedQuery = query.trim().replace(/^#/, '')
+    const queryAsNumber = /^\d+$/.test(normalizedQuery) ? Number.parseInt(normalizedQuery, 10) : null
+
+    const searchConditions = [
+      `title.ilike.%${query}%,description.ilike.%${query}%,ticket_octa.ilike.%${query}%`,
+      queryAsNumber !== null ? `ticket_id.eq.${queryAsNumber}` : null,
+    ].filter(Boolean).join(',')
+
+    let data: any
+    let error: any
+
+    ;({ data, error } = await supabase
       .from('omnia_tickets' as any)
       .select(`
         *,
@@ -299,9 +363,27 @@ export const tarefasRepoSupabase = {
           id, name, email, roles, avatar_url, color
         )
       `)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+      .or(searchConditions)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(20))
+
+    if (error && (isMissingColumnError(error, 'ticket_octa') || isMissingColumnError(error, 'ticket_id'))) {
+      // Fallback para schema antigo (sem ticket_octa/ticket_id)
+      ;({ data, error } = await supabase
+        .from('omnia_tickets' as any)
+        .select(`
+          *,
+          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
+            id, name, email, roles, avatar_url, color
+          ),
+          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
+            id, name, email, roles, avatar_url, color
+          )
+        `)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,ticket.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(20))
+    }
 
     if (error) {
       logger.error('Error searching tarefas:', error);
