@@ -11,7 +11,6 @@ import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { TabelaOmnia } from '@/components/ui/tabela-omnia';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Badge } from '@/components/ui/badge';
 import { useTarefasStore } from '@/store/tarefas.store';
 import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
@@ -25,16 +24,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { DueDateModal } from '@/components/ui/due-date-modal';
-import { PriorityModal } from '@/components/ui/priority-modal';
 import { UserRef } from '@/data/types';
 
 // Type for table row data
-type TicketTableRow = Omit<Tarefa, 'dueDate' | 'assignedTo' | 'createdAt'> & {
+type TicketTableRow = Omit<Tarefa, 'dueDate' | 'assignedTo'> & {
   dueDate: React.ReactNode;
   dueDateOriginal?: Date | null;
   assignedTo: string;
   responsible: UserRef | undefined;
-  createdAt: string;
   ticket: string;
   status: "nao-iniciado" | "em-andamento" | "concluido";
   statusName: string;
@@ -71,9 +68,6 @@ export default function Tickets() {
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
-
-  const [priorityModalOpen, setPriorityModalOpen] = useState(false);
-  const [selectedTaskForPriority, setSelectedTaskForPriority] = useState<{ id: string; title: string; currentPriority?: TarefaPrioridade }>({ id: '', title: '' });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   
@@ -254,27 +248,13 @@ export default function Tickets() {
     }
   };
 
-  const handlePriorityClick = (id: string | number, currentPriority?: string) => {
-    const taskId = id.toString();
-    const task = tarefas.find(t => t.id === taskId);
-    if (task) {
-      const normalizedPriority = (currentPriority as TarefaPrioridade | undefined) ?? 'NORMAL';
-      setSelectedTaskForPriority({
-        id: taskId,
-        title: task.title,
-        currentPriority: normalizedPriority
-      });
-      setPriorityModalOpen(true);
-    }
-  };
-
   const handleTagClick = (tagName: string) => {
     setSelectedTagFilter(selectedTagFilter === tagName ? null : tagName);
   };
 
-  const handlePrioritySave = async (newPriority: TarefaPrioridade) => {
+  const handlePriorityChange = async (id: string | number, newPriority: string) => {
     try {
-      await updateTarefa(selectedTaskForPriority.id, { priority: newPriority });
+      await updateTarefa(id.toString(), { priority: newPriority as TarefaPrioridade });
       loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar prioridade:', error);
@@ -330,7 +310,6 @@ export default function Tickets() {
       dueDateOriginal: tarefa.dueDate ?? null,
       assignedTo: tarefa.assignedTo?.name || 'Não atribuído',
       responsible: tarefa.assignedTo,
-      createdAt: new Date(tarefa.createdAt).toLocaleDateString('pt-BR'),
       ticket: tarefa.ticket || '',
       commentCount: tarefa.commentCount || 0,
       status: mappedStatus,
@@ -579,7 +558,7 @@ export default function Tickets() {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
-              onPriorityClick={handlePriorityClick}
+              onPriorityChange={handlePriorityChange}
               onTagClick={handleTagClick}
               availableStatuses={statuses}
               availableUsers={secretarios}
@@ -589,14 +568,6 @@ export default function Tickets() {
           )}
         </div>
       </div>
-      
-      <PriorityModal
-        isOpen={priorityModalOpen}
-        onClose={() => setPriorityModalOpen(false)}
-        onSave={handlePrioritySave}
-        currentPriority={selectedTaskForPriority.currentPriority}
-        taskTitle={selectedTaskForPriority.title}
-      />
       
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>

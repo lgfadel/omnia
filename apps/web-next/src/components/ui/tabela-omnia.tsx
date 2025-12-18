@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { PriorityBadge } from "@/components/ui/priority-badge"
 import { CommentsModal } from "@/components/ui/comments-modal"
+import type { TarefaPrioridade } from "@/repositories/tarefasRepo.supabase"
 
 export interface TabelaOmniaColumn {
   key: string
@@ -50,6 +51,7 @@ interface TabelaOmniaProps {
   onSecretaryChange?: (id: string | number, userId: string) => void
 
   onPriorityClick?: (id: string | number, currentPriority?: string) => void
+  onPriorityChange?: (id: string | number, priority: string) => void
   onTagClick?: (tagName: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
   availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
@@ -74,6 +76,7 @@ export function TabelaOmnia({
   onResponsibleChange,
   onSecretaryChange,
   onPriorityClick,
+  onPriorityChange,
   onTagClick,
   availableStatuses = [],
   availableUsers = [],
@@ -114,6 +117,41 @@ export function TabelaOmnia({
   const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
     // Handle priority column
     if (key === "priority" && value) {
+      if (onPriorityChange && row) {
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <PriorityBadge priority={value as TarefaPrioridade} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[220px] rounded-[20px] border border-gray-200 bg-white p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+              {([
+                { value: 'BAIXA' },
+                { value: 'NORMAL' },
+                { value: 'ALTA' },
+                { value: 'URGENTE' }
+              ] as const).map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPriorityChange(row.id, option.value)
+                  }}
+                  className="px-4 py-2 leading-tight rounded-none cursor-pointer data-[highlighted]:bg-transparent data-[highlighted]:text-foreground focus:bg-transparent focus:text-foreground"
+                >
+                  <PriorityBadge priority={option.value as TarefaPrioridade} />
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      }
+
       return (
         <div 
           className="cursor-pointer hover:opacity-80 transition-opacity"
@@ -124,7 +162,7 @@ export function TabelaOmnia({
             }
           }}
         >
-          <PriorityBadge priority={value} />
+          <PriorityBadge priority={value as TarefaPrioridade} />
         </div>
       )
     }

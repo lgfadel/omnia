@@ -35,7 +35,7 @@ export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
       className
     )}>
       <Flag className={cn("w-4 h-4 fill-current", config.flagColor)} />
-      <span className="text-black">{config.label}</span>
+      <span className="text-foreground">{config.label}</span>
     </div>
   );
 }
