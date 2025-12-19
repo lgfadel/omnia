@@ -1,10 +1,10 @@
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -67,11 +67,11 @@ interface TabelaOmniaProps {
   updatingSecretaryId?: string | null
 }
 
-export function TabelaOmnia({ 
-  columns, 
-  data, 
-  onView, 
-  onDelete, 
+export function TabelaOmnia({
+  columns,
+  data,
+  onView,
+  onDelete,
   onCommentClick,
   onStatusChange,
   onResponsibleChange,
@@ -83,7 +83,7 @@ export function TabelaOmnia({
   availableUsers = [],
   availableSecretaries = [],
   availableTags = [],
-  sortField, 
+  sortField,
   sortDirection,
   onSort,
   className,
@@ -91,10 +91,10 @@ export function TabelaOmnia({
   contextType = 'ticket',
   updatingSecretaryId
 }: TabelaOmniaProps) {
-  const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({ 
-    isOpen: false, 
-    ticketId: '', 
-    ticketTitle: '' 
+  const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({
+    isOpen: false,
+    ticketId: '',
+    ticketTitle: ''
   })
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
@@ -154,7 +154,7 @@ export function TabelaOmnia({
       }
 
       return (
-        <div 
+        <div
           className="cursor-pointer hover:opacity-80 transition-opacity"
           onClick={(e) => {
             e.stopPropagation()
@@ -167,12 +167,12 @@ export function TabelaOmnia({
         </div>
       )
     }
-    
+
     // Handle dueDate column - now it's a React component
     if (key === "dueDate") {
       return value
     }
-    
+
     // Handle comment count column
     if (key === "commentCount") {
       if (!row) {
@@ -195,10 +195,10 @@ export function TabelaOmnia({
               if (onCommentClick) {
                 onCommentClick(row.id, row.title || row.name)
               } else {
-                setCommentsModal({ 
-                  isOpen: true, 
-                  ticketId: String(row.id), 
-                  ticketTitle: row.title || row.name 
+                setCommentsModal({
+                  isOpen: true,
+                  ticketId: String(row.id),
+                  ticketTitle: row.title || row.name
                 })
               }
             }}
@@ -252,7 +252,7 @@ export function TabelaOmnia({
         </button>
       )
     }
-    
+
     // Handle statusId column (render using statusName and statusColor)
     if (key === "statusId" && row) {
       // Use statusName and statusColor if available
@@ -267,8 +267,8 @@ export function TabelaOmnia({
                   className="h-auto p-0 hover:bg-transparent"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 rounded-md"
                     style={{ backgroundColor: row.statusColor }}
                   >
@@ -287,8 +287,8 @@ export function TabelaOmnia({
                     }}
                     className="flex items-center gap-2"
                   >
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: status.color }}
                     />
                     {status.name}
@@ -298,11 +298,11 @@ export function TabelaOmnia({
             </DropdownMenu>
           )
         }
-        
+
         // Static badge if no onStatusChange
         return (
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit rounded-md"
             style={{ backgroundColor: row.statusColor }}
           >
@@ -310,11 +310,11 @@ export function TabelaOmnia({
           </Badge>
         )
       }
-      
+
       // Fallback to value if no statusName/statusColor
       return value || "-"
     }
-    
+
     if (key === "status" && row) {
       // Use statusName and statusColor if available, otherwise fallback to mapped status
       if (row.statusName && row.statusColor) {
@@ -328,8 +328,8 @@ export function TabelaOmnia({
                   className="h-auto p-0 hover:bg-transparent"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 rounded-md"
                     style={{ backgroundColor: row.statusColor }}
                   >
@@ -348,8 +348,8 @@ export function TabelaOmnia({
                     }}
                     className="flex items-center gap-2"
                   >
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: status.color }}
                     />
                     {status.name}
@@ -359,11 +359,11 @@ export function TabelaOmnia({
             </DropdownMenu>
           )
         }
-        
+
         // Static badge if no onStatusChange
         return (
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className="text-white font-medium whitespace-nowrap text-[10px] px-2 py-1 min-w-fit rounded-md"
             style={{ backgroundColor: row.statusColor }}
           >
@@ -371,12 +371,12 @@ export function TabelaOmnia({
           </Badge>
         )
       }
-      
+
       // Fallback to mapped status logic
       if (value) {
         const statusLabels = {
           "nao-iniciado": "NÃO INICIADO",
-          "em-andamento": "EM ANDAMENTO", 
+          "em-andamento": "EM ANDAMENTO",
           "concluido": "CONCLUÍDO"
         }
         return (
@@ -386,7 +386,7 @@ export function TabelaOmnia({
         )
       }
     }
-    
+
     // Render secretary as avatar (round like responsible)
     if (key === "secretary" && row) {
       if (!value) {
@@ -397,12 +397,11 @@ export function TabelaOmnia({
             {onSecretaryChange && availableSecretaries.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild disabled={isUpdating}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={`h-8 w-8 p-0 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 ${
-                      isUpdating ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-8 w-8 p-0 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     onClick={(e) => e.stopPropagation()}
                     disabled={isUpdating}
                   >
@@ -416,7 +415,7 @@ export function TabelaOmnia({
                 <DropdownMenuContent align="center">
                   {availableSecretaries.map((user) => {
                     const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
-                      ? user.color 
+                      ? user.color
                       : generateUserColor(user.id, user.name)
                     const initials = getUserInitials(user.name)
                     return (
@@ -431,7 +430,7 @@ export function TabelaOmnia({
                       >
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
-                          <AvatarFallback 
+                          <AvatarFallback
                             className="text-xs text-white font-medium"
                             style={{ backgroundColor: userColor }}
                           >
@@ -455,28 +454,27 @@ export function TabelaOmnia({
 
       const user = value
       const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
-          ? user.color 
-          : generateUserColor(user.id, user.name)
+        ? user.color
+        : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
       const isUpdating = updatingSecretaryId === row.id.toString()
-      
+
       return (
         <div className="flex items-center justify-center">
           {onSecretaryChange && availableSecretaries.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={isUpdating}>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20 ${
-                    isUpdating ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20 ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                   disabled={isUpdating}
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback 
+                    <AvatarFallback
                       className="text-xs text-white font-medium"
                       style={{ backgroundColor: userColor }}
                     >
@@ -492,7 +490,7 @@ export function TabelaOmnia({
               <DropdownMenuContent align="center">
                 {availableSecretaries.map((availableUser) => {
                   const availableUserColor = availableUser.color && typeof availableUser.color === 'string' && availableUser.color.trim() !== ''
-                    ? availableUser.color 
+                    ? availableUser.color
                     : generateUserColor(availableUser.id, availableUser.name)
                   const availableInitials = getUserInitials(availableUser.name)
                   return (
@@ -510,7 +508,7 @@ export function TabelaOmnia({
                     >
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={availableUser.avatarUrl} alt={availableUser.name} />
-                        <AvatarFallback 
+                        <AvatarFallback
                           className="text-xs text-white font-medium"
                           style={{ backgroundColor: availableUserColor }}
                         >
@@ -527,7 +525,7 @@ export function TabelaOmnia({
           ) : (
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatarUrl} alt={user.name} />
-              <AvatarFallback 
+              <AvatarFallback
                 className="text-xs text-white font-medium"
                 style={{ backgroundColor: userColor }}
               >
@@ -538,7 +536,7 @@ export function TabelaOmnia({
         </div>
       )
     }
-    
+
     if (key === "responsible" && row) {
       if (!value) {
         // No responsible assigned - show clickable placeholder
@@ -547,9 +545,9 @@ export function TabelaOmnia({
             {onResponsibleChange && availableUsers.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -559,7 +557,7 @@ export function TabelaOmnia({
                 <DropdownMenuContent align="center">
                   {availableUsers.map((user) => {
                     const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
-                      ? user.color 
+                      ? user.color
                       : generateUserColor(user.id, user.name)
                     const initials = getUserInitials(user.name)
                     return (
@@ -573,7 +571,7 @@ export function TabelaOmnia({
                       >
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
-                          <AvatarFallback 
+                          <AvatarFallback
                             className="text-xs text-white font-medium"
                             style={{ backgroundColor: userColor }}
                           >
@@ -594,27 +592,27 @@ export function TabelaOmnia({
           </div>
         )
       }
-      
+
       const user = value
-      const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== '' 
-        ? user.color 
+      const userColor = user.color && typeof user.color === 'string' && user.color.trim() !== ''
+        ? user.color
         : generateUserColor(user.id, user.name)
       const fallbackInitials = getUserInitials(user.name)
-      
+
       return (
         <div className="flex items-center justify-center">
           {onResponsibleChange && availableUsers.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="h-8 w-8 p-0 rounded-full hover:ring-2 hover:ring-primary/20"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback 
+                    <AvatarFallback
                       className="text-xs text-white font-medium"
                       style={{ backgroundColor: userColor }}
                     >
@@ -626,7 +624,7 @@ export function TabelaOmnia({
               <DropdownMenuContent align="center">
                 {availableUsers.map((availableUser) => {
                   const availableUserColor = availableUser.color && typeof availableUser.color === 'string' && availableUser.color.trim() !== ''
-                    ? availableUser.color 
+                    ? availableUser.color
                     : generateUserColor(availableUser.id, availableUser.name)
                   const availableInitials = getUserInitials(availableUser.name)
                   return (
@@ -643,7 +641,7 @@ export function TabelaOmnia({
                     >
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={availableUser.avatarUrl} alt={availableUser.name} />
-                        <AvatarFallback 
+                        <AvatarFallback
                           className="text-xs text-white font-medium"
                           style={{ backgroundColor: availableUserColor }}
                         >
@@ -660,7 +658,7 @@ export function TabelaOmnia({
           ) : (
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatarUrl} alt={user.name} />
-              <AvatarFallback 
+              <AvatarFallback
                 className="text-xs text-white font-medium"
                 style={{ backgroundColor: userColor }}
               >
@@ -671,13 +669,13 @@ export function TabelaOmnia({
         </div>
       )
     }
-    
+
     // Handle title column
     if (key === "title" && row) {
       const taskTags = row.tags || []
       const visibleTags = taskTags.slice(0, 2)
       const remainingCount = taskTags.length - visibleTags.length
-      
+
       return (
         <div className="flex items-center gap-2">
           <span className="truncate">{value?.toString() || "-"}</span>
@@ -717,11 +715,11 @@ export function TabelaOmnia({
         </div>
       )
     }
-    
+
     if (typeof value === "string" || typeof value === "number") {
       return value
     }
-    
+
     return value?.toString() || "-"
   }
 
@@ -737,10 +735,10 @@ export function TabelaOmnia({
         <TableHeader>
           <TableRow className="border-b">
             {columns.map((column) => (
-              <TableHead 
-                key={column.key} 
+              <TableHead
+                key={column.key}
                 className={cn(
-                  "text-muted-foreground text-xs uppercase tracking-wide py-4 px-6",
+                  "text-muted-foreground text-xs uppercase tracking-wide py-4 px-2",
                   column.width,
                   column.sortable && "cursor-pointer hover:text-foreground",
                   (column.key === "secretary" || column.key === "responsible") && "text-center"
@@ -749,9 +747,15 @@ export function TabelaOmnia({
               >
                 <div className={cn(
                   "flex items-center gap-1",
-                  (column.key === "secretary" || column.key === "responsible") && "justify-center"
+                  (column.key === "secretary" || column.key === "responsible" || column.key === "commentCount" || column.key === "attachmentCount") && "justify-center"
                 )}>
-                  {column.label}
+                  {column.key === 'commentCount' ? (
+                    <MessageCircle className="w-4 h-4" />
+                  ) : column.key === 'attachmentCount' ? (
+                    <Paperclip className="w-4 h-4" />
+                  ) : (
+                    column.label
+                  )}
                   {column.sortable && sortField === column.key && (
                     sortDirection === "asc" ? (
                       <ChevronUp className="w-3 h-3" />
@@ -762,7 +766,7 @@ export function TabelaOmnia({
                 </div>
               </TableHead>
             ))}
-            <TableHead className="w-[10%] text-muted-foreground text-xs uppercase tracking-wide py-4 px-6">AÇÕES</TableHead>
+            <TableHead className="w-[10%] text-muted-foreground text-xs uppercase tracking-wide py-4 px-2">AÇÕES</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -770,14 +774,14 @@ export function TabelaOmnia({
             (data as TabelaOmniaGroupedItem[]).map((item, index) => {
               if (item.type === 'separator') {
                 return (
-                  <TableRow 
-                    key={`separator-${index}`} 
+                  <TableRow
+                    key={`separator-${index}`}
                     className="border-none bg-gray-50 hover:bg-gray-100 cursor-pointer"
                     onClick={() => toggleGroup(item.statusName)}
                   >
-                    <TableCell 
-                      colSpan={columns.length + 1} 
-                      className="py-3 px-6"
+                    <TableCell
+                      colSpan={columns.length + 1}
+                      className="py-3 px-2"
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
@@ -786,8 +790,8 @@ export function TabelaOmnia({
                           ) : (
                             <ChevronDown className="w-4 h-4 text-gray-500" />
                           )}
-                          <div 
-                            className="w-2 h-2 rounded-full" 
+                          <div
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: item.statusColor }}
                           />
                           <span className="font-medium text-sm text-gray-700">
@@ -802,22 +806,22 @@ export function TabelaOmnia({
                   </TableRow>
                 )
               }
-              
+
               const row = item.data!
               const currentStatusName = item.statusName || ''
               const isCollapsed = collapsedGroups.has(currentStatusName)
-              
+
               if (isCollapsed) {
                 return null
               }
-              
+
               return (
                 <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
                   {columns.map((column) => (
-                    <TableCell 
-                      key={`${row.id}-${column.key}`} 
+                    <TableCell
+                      key={`${row.id}-${column.key}`}
                       className={cn(
-                        "text-sm py-4 px-6",
+                        "text-sm py-4 px-2",
                         column.width,
                         (column.key === "secretary" || column.key === "responsible") && "text-center"
                       )}
@@ -835,7 +839,7 @@ export function TabelaOmnia({
                       {renderCellValue(row[column.key], column.key, row)}
                     </TableCell>
                   ))}
-                  <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-6">
+                  <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-2">
                     <div className="flex items-center gap-1">
                       {onView && (
                         <Button
@@ -866,10 +870,10 @@ export function TabelaOmnia({
             (data as TabelaOmniaRow[]).map((row) => (
               <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
                 {columns.map((column) => (
-                  <TableCell 
-                    key={`${row.id}-${column.key}`} 
+                  <TableCell
+                    key={`${row.id}-${column.key}`}
                     className={cn(
-                      "text-sm py-4 px-6",
+                      "text-sm py-4 px-2",
                       column.width,
                       (column.key === "secretary" || column.key === "responsible") && "text-center"
                     )}
@@ -887,7 +891,7 @@ export function TabelaOmnia({
                     {renderCellValue(row[column.key], column.key, row)}
                   </TableCell>
                 ))}
-                <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-6">
+                <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-2">
                   <div className="flex items-center gap-1">
                     {onView && (
                       <Button
@@ -916,7 +920,7 @@ export function TabelaOmnia({
           )}
         </TableBody>
       </Table>
-      
+
       {/* Modal de comentários */}
       <CommentsModal
         isOpen={commentsModal.isOpen}
