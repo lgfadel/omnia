@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { AuthApiError } from '@supabase/supabase-js';
 import { logger } from '../lib/logging';
 
 
@@ -43,6 +44,12 @@ export function useTarefasOportunidade(oportunidadeId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isInvalidRefreshTokenError = (error: unknown) => {
+    if (!(error instanceof AuthApiError)) return false;
+    const message = (error.message ?? '').toLowerCase();
+    return message.includes('invalid refresh token') || message.includes('refresh token not found');
+  };
+
   const fetchTarefas = useCallback(async () => {
     if (!oportunidadeId) return;
 
@@ -54,8 +61,22 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co';
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
 
-      const { data: session } = await supabase.auth.getSession();
-      const authHeader = session.session?.access_token || supabaseKey;
+      let authHeader = supabaseKey;
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        authHeader = session.session?.access_token || supabaseKey;
+      } catch (sessionError) {
+        if (isInvalidRefreshTokenError(sessionError)) {
+          logger.warn('Invalid refresh token while fetching tarefas oportunidade. Falling back to anon auth.');
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch (signOutError) {
+            logger.warn('Failed to clear local session after invalid refresh token (useTarefasOportunidade)', signOutError);
+          }
+        } else {
+          logger.warn('Failed to get session for tarefas oportunidade request. Falling back to anon auth.', sessionError);
+        }
+      }
 
       const ticketsResponse = await fetch(
         `${supabaseUrl}/rest/v1/omnia_tickets?oportunidade_id=eq.${oportunidadeId}&select=id,title,due_date,priority,status_id,created_at,assigned_to&order=created_at.desc`,
@@ -172,8 +193,8 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       }));
 
       setTarefas(transformedTarefas);
-    } catch (err) {
-      logger.error('Erro ao buscar tarefas da oportunidade:', err);
+    } catch (error) {
+      logger.error('Error fetching tarefas oportunidade:', error);
       setError('Erro ao carregar tarefas');
     } finally {
       setLoading(false);

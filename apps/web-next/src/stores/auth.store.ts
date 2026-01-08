@@ -1,8 +1,14 @@
 import { create } from 'zustand'
-import { User, Session } from '@supabase/supabase-js'
+import { User, Session, AuthApiError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { UserRef, Role } from '@/data/types'
 import { logger } from '@/lib/logging'
+
+const isInvalidRefreshTokenError = (error: unknown) => {
+  if (!(error instanceof AuthApiError)) return false
+  const message = (error.message ?? '').toLowerCase()
+  return message.includes('invalid refresh token') || message.includes('refresh token not found')
+}
 
 interface AuthStore {
   user: User | null
@@ -38,6 +44,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       logger.info('Auth state changed:', event)
       clearTimeout(safetyTimeout) // Clear timeout when auth state changes
+
+      if ((event as unknown as string) === 'TOKEN_REFRESH_FAILED') {
+        logger.warn('Token refresh failed. Clearing local auth state and storage.')
+        set({ session: null, user: null, userProfile: null, loading: false })
+        setTimeout(() => {
+          supabase.auth.signOut({ scope: 'local' }).catch((error) => {
+            logger.warn('Failed to clear local session after TOKEN_REFRESH_FAILED', error)
+          })
+          try {
+            supabase.realtime.setAuth('')
+          } catch (error) {
+            logger.warn('Failed to clear realtime auth token after TOKEN_REFRESH_FAILED', error)
+          }
+        }, 0)
+        return
+      }
 
       try {
         supabase.realtime.setAuth(session?.access_token ?? '')
@@ -94,6 +116,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ loading: false })
         logger.info('Auth initialization completed successfully')
       } catch (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          logger.warn('Invalid refresh token detected. Clearing local auth state and storage.')
+          try {
+            await supabase.auth.signOut({ scope: 'local' })
+          } catch (signOutError) {
+            logger.warn('Failed to clear local session via signOut({ scope: "local" })', signOutError)
+          }
+          try {
+            supabase.realtime.setAuth('')
+          } catch (realtimeError) {
+            logger.warn('Failed to clear realtime auth token after invalid refresh token', realtimeError)
+          }
+          clearTimeout(safetyTimeout)
+          set({ session: null, user: null, userProfile: null, loading: false })
+          return
+        }
+
         logger.error('Auth session check failed:', { error, retryCount })
         
         // Retry up to 2 times with exponential backoff
@@ -189,17 +228,41 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error) {
       logger.error('Error in fetchUserProfile:', error)
       // Minimal fallback for auth errors
-      const { data: authUser } = await supabase.auth.getUser()
-      set({
-        userProfile: {
-          id: userId,
-          name: authUser?.user?.email?.split('@')[0] || 'Usuário',
-          email: authUser?.user?.email || '',
-          roles: ['USUARIO'] as Role[],
-          avatarUrl: undefined,
-          color: '#3B82F6'
+      if (isInvalidRefreshTokenError(error)) {
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch (signOutError) {
+          logger.warn('Failed to clear local session after fetchUserProfile invalid refresh token', signOutError)
         }
-      })
+        set({ userProfile: null })
+        return
+      }
+
+      try {
+        const { data: authUser } = await supabase.auth.getUser()
+        set({
+          userProfile: {
+            id: userId,
+            name: authUser?.user?.email?.split('@')[0] || 'Usuário',
+            email: authUser?.user?.email || '',
+            roles: ['USUARIO'] as Role[],
+            avatarUrl: undefined,
+            color: '#3B82F6'
+          }
+        })
+      } catch (fallbackError) {
+        logger.warn('Failed to load auth user for fallback profile', fallbackError)
+        set({
+          userProfile: {
+            id: userId,
+            name: 'Usuário',
+            email: '',
+            roles: ['USUARIO'] as Role[],
+            avatarUrl: undefined,
+            color: '#3B82F6'
+          }
+        })
+      }
     }
   },
 
@@ -230,6 +293,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await supabase.auth.signOut()
     } catch (error) {
       logger.error('Error signing out:', error)
+      try {
+        await supabase.auth.signOut({ scope: 'local' })
+      } catch (localError) {
+        logger.warn('Failed to clear local session on sign out', localError)
+      }
     } finally {
       try {
         supabase.realtime.setAuth('')
