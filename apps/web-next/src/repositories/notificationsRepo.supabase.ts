@@ -46,7 +46,7 @@ export const notificationsRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_notifications')
-      .update({ read_at: now })
+      .update({ is_read: true })
       .eq('id', id)
       .select('*')
       .single()
@@ -60,8 +60,8 @@ export const notificationsRepoSupabase = {
 
     let query = supabase
       .from('omnia_notifications')
-      .update({ read_at: now })
-      .is('read_at', null)
+      .update({ is_read: true })
+      .eq('is_read', false)
 
     if (params?.userId) {
       query = query.eq('user_id', params.userId)

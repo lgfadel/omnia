@@ -105,7 +105,7 @@ export const crmCommentsRepoSupabase = {
       throw error
     }
 
-    return data
+    return data as unknown as CrmComment
   },
 
   async update(id: string, updates: Partial<Pick<CrmComment, 'body'>>): Promise<CrmComment | null> {

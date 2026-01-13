@@ -31,7 +31,8 @@ const formatActionLabel = (type: string) => {
   }
 }
 
-const formatNotificationMeta = (createdAt: string) => {
+const formatNotificationMeta = (createdAt: string | null) => {
+  if (!createdAt) return ''
   const d = new Date(createdAt)
   if (Number.isNaN(d.getTime())) return ''
   return new Intl.DateTimeFormat('pt-BR', {

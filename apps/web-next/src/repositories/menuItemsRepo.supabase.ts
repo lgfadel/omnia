@@ -171,7 +171,7 @@ export const menuItemsRepoSupabase = {
         throw orderError
       }
 
-      orderIndex = orderData && orderData.length > 0 
+      orderIndex = orderData && orderData.length > 0 && orderData[0]?.order_index != null
         ? orderData[0].order_index + 1 
         : 1
     }

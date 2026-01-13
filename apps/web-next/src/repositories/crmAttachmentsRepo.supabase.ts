@@ -25,36 +25,36 @@ export interface CreateCrmAttachment {
 export const crmAttachmentsRepoSupabase = {
   async list(leadId: string): Promise<CrmAttachment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .select('*')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as CrmAttachment[];
   },
 
   async listByComment(commentId: string): Promise<CrmAttachment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .select('*')
       .eq('comment_id', commentId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as CrmAttachment[];
   },
 
   async listDirectLeadAttachments(leadId: string): Promise<CrmAttachment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .select('*')
       .eq('lead_id', leadId)
       .is('comment_id', null)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as CrmAttachment[];
   },
 
   async create(attachment: CreateCrmAttachment): Promise<CrmAttachment> {
@@ -75,7 +75,7 @@ export const crmAttachmentsRepoSupabase = {
     }
 
     const { data, error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .insert({
         ...attachment,
         uploaded_by: omniaUser.id
@@ -84,12 +84,12 @@ export const crmAttachmentsRepoSupabase = {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as CrmAttachment;
   },
 
   async remove(id: string): Promise<boolean> {
     const { error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .delete()
       .eq('id', id);
 
@@ -99,7 +99,7 @@ export const crmAttachmentsRepoSupabase = {
 
   async removeByComment(commentId: string): Promise<boolean> {
     const { error } = await supabase
-      .from('omnia_crm_attachments')
+      .from('omnia_crm_attachments' as any)
       .delete()
       .eq('comment_id', commentId);
 

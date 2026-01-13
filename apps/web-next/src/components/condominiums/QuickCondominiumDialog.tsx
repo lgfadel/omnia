@@ -19,10 +19,8 @@ import { Loader2 } from "lucide-react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const quickCondominiumSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  cnpj: z.string().optional(),
+  nome: z.string().min(1, "Nome é obrigatório"),
   address: z.string().optional(),
-  phone: z.string().optional(),
 });
 
 type QuickCondominiumFormData = z.infer<typeof quickCondominiumSchema>;
@@ -47,7 +45,6 @@ export function QuickCondominiumDialog({
     reset,
     formState: { errors },
   } = useForm<QuickCondominiumFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
     resolver: zodResolver(quickCondominiumSchema as any),
   });
 
@@ -55,10 +52,8 @@ export function QuickCondominiumDialog({
     setLoading(true);
     try {
       const condominiumData = {
-        name: data.name,
-        cnpj: data.cnpj,
-        address: data.address,
-        phone: data.phone,
+        nome: data.nome,
+        address: data.address || null,
       };
       const newCondominium = await createCondominium(condominiumData);
       toast({
@@ -99,26 +94,14 @@ export function QuickCondominiumDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome *</Label>
+            <Label htmlFor="nome">Nome *</Label>
             <Input
-              id="name"
-              {...register("name")}
+              id="nome"
+              {...register("nome")}
               placeholder="Nome do condomínio"
             />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cnpj">CNPJ</Label>
-            <Input
-              id="cnpj"
-              {...register("cnpj")}
-              placeholder="00.000.000/0000-00"
-            />
-            {errors.cnpj && (
-              <p className="text-sm text-destructive">{errors.cnpj.message}</p>
+            {errors.nome && (
+              <p className="text-sm text-destructive">{errors.nome.message}</p>
             )}
           </div>
 
@@ -129,21 +112,6 @@ export function QuickCondominiumDialog({
               {...register("address")}
               placeholder="Endereço completo"
             />
-            {errors.address && (
-              <p className="text-sm text-destructive">{errors.address.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input
-              id="phone"
-              {...register("phone")}
-              placeholder="(00) 0000-0000"
-            />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
-            )}
           </div>
 
           <DialogFooter>

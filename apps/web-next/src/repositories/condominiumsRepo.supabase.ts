@@ -4,31 +4,23 @@ import { logger } from '../lib/logging';
 
 export interface Condominium {
   id: string
-  name: string
-  cnpj?: string
-  address?: string
-  phone?: string
-  whatsapp?: string
-  syndic_name?: string
-  manager_name?: string
-  created_at: string
-  updated_at: string
-  created_by?: string
+  nome: string
+  address?: string | null
+  administradora_id?: string | null
+  ativo?: boolean | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 // Transform database record to Condominium type
 const transformCondominiumFromDB = (dbCondominium: any): Condominium => ({
   id: dbCondominium.id,
-  name: dbCondominium.name,
-  cnpj: dbCondominium.cnpj,
+  nome: dbCondominium.nome,
   address: dbCondominium.address,
-  phone: dbCondominium.phone,
-  whatsapp: dbCondominium.whatsapp,
-  syndic_name: dbCondominium.syndic_name,
-  manager_name: dbCondominium.manager_name,
+  administradora_id: dbCondominium.administradora_id,
+  ativo: dbCondominium.ativo,
   created_at: dbCondominium.created_at,
-  updated_at: dbCondominium.updated_at,
-  created_by: dbCondominium.created_by
+  updated_at: dbCondominium.updated_at
 })
 
 export const condominiumsRepoSupabase = {
@@ -38,7 +30,7 @@ export const condominiumsRepoSupabase = {
     const { data, error } = await supabase
       .from('omnia_condominiums')
       .select('*')
-      .order('name')
+      .order('nome')
 
     if (error) {
       logger.error('Error loading condominiums:', error)
@@ -55,14 +47,10 @@ export const condominiumsRepoSupabase = {
     const { data: newCondominium, error } = await supabase
       .from('omnia_condominiums')
       .insert({
-        name: data.name,
-        cnpj: data.cnpj,
+        nome: data.nome,
         address: data.address,
-        phone: data.phone,
-        whatsapp: data.whatsapp,
-        syndic_name: data.syndic_name,
-        manager_name: data.manager_name,
-        created_by: data.created_by
+        administradora_id: data.administradora_id,
+        ativo: data.ativo
       })
       .select('*')
       .single()
@@ -79,17 +67,15 @@ export const condominiumsRepoSupabase = {
   async update(id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at'>>): Promise<Condominium | null> {
     logger.debug(`Updating condominium: ${id}`, data)
     
+    const updateData: Record<string, any> = {}
+    if (data.nome !== undefined) updateData.nome = data.nome
+    if (data.address !== undefined) updateData.address = data.address
+    if (data.administradora_id !== undefined) updateData.administradora_id = data.administradora_id
+    if (data.ativo !== undefined) updateData.ativo = data.ativo
+    
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')
-      .update({
-        name: data.name,
-        cnpj: data.cnpj,
-        address: data.address,
-        phone: data.phone,
-        whatsapp: data.whatsapp,
-        syndic_name: data.syndic_name,
-        manager_name: data.manager_name
-      })
+      .update(updateData)
       .eq('id', id)
       .select('*')
       .single()
@@ -138,25 +124,4 @@ export const condominiumsRepoSupabase = {
     return data ? transformCondominiumFromDB(data) : null
   },
 
-  async checkCnpjExists(cnpj: string, excludeId?: string): Promise<boolean> {
-    logger.debug('Checking if CNPJ exists:', cnpj)
-    
-    let query = supabase
-      .from('omnia_condominiums')
-      .select('id')
-      .eq('cnpj', cnpj)
-
-    if (excludeId) {
-      query = query.neq('id', excludeId)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      logger.error('Error checking CNPJ:', error)
-      throw error
-    }
-
-    return (data?.length || 0) > 0
-  }
 }

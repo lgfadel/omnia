@@ -22,7 +22,6 @@ interface CondominiumSelectProps {
   disabled?: boolean;
 }
 
-// Helper to make search accent-insensitive and case-insensitive
 function normalize(text: string) {
   return (text || "")
     .normalize("NFD")
@@ -49,7 +48,7 @@ export function CondominiumSelect({
   const filteredCondominiums = useMemo(() => {
     if (!searchTerm.trim()) return condominiums;
     const query = normalize(searchTerm);
-    return condominiums.filter((c) => normalize(c.name).includes(query));
+    return condominiums.filter((c) => normalize(c.nome).includes(query));
   }, [condominiums, searchTerm]);
 
   return (
@@ -67,7 +66,7 @@ export function CondominiumSelect({
           )}
         >
           <span className="truncate">
-            {selectedCondominium ? selectedCondominium.name : placeholder}
+            {selectedCondominium ? selectedCondominium.nome : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -86,7 +85,7 @@ export function CondominiumSelect({
               {filteredCondominiums.map((condominium) => (
                 <CommandItem
                   key={condominium.id}
-                  value={condominium.name}
+                  value={condominium.nome}
                   onSelect={() => {
                     onValueChange(condominium.id);
                     setOpen(false);
@@ -99,7 +98,7 @@ export function CondominiumSelect({
                       value === condominium.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span className="truncate">{condominium.name}</span>
+                  <span className="truncate">{condominium.nome}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -109,4 +108,3 @@ export function CondominiumSelect({
     </Popover>
   );
 }
-

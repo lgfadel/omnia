@@ -11,11 +11,10 @@ interface CondominiumStore {
   
   // Actions
   loadCondominiums: () => Promise<void>
-  createCondominium: (data: Omit<Condominium, 'id' | 'created_at' | 'updated_at' | 'syndic' | 'manager'>) => Promise<Condominium>
-  updateCondominium: (id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at' | 'syndic' | 'manager'>>) => Promise<Condominium | null>
+  createCondominium: (data: Omit<Condominium, 'id' | 'created_at' | 'updated_at'>) => Promise<Condominium>
+  updateCondominium: (id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at'>>) => Promise<Condominium | null>
   deleteCondominium: (id: string) => Promise<boolean>
   getCondominiumById: (id: string) => Promise<Condominium | null>
-  checkCnpjExists: (cnpj: string, excludeId?: string) => Promise<boolean>
   clearError: () => void
 }
 
@@ -49,7 +48,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
     try {
       const newCondominium = await condominiumsRepoSupabase.create(data)
       const { condominiums } = get()
-      const updatedCondominiums = [...condominiums, newCondominium].sort((a, b) => a.name.localeCompare(b.name))
+      const updatedCondominiums = [...condominiums, newCondominium].sort((a, b) => a.nome.localeCompare(b.nome))
       set({ condominiums: updatedCondominiums, loading: false })
       logger.debug('CondominiumStore: Created condominium successfully')
       return newCondominium
@@ -74,7 +73,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
         const { condominiums } = get()
         const updatedCondominiums = condominiums.map(condominium => 
           condominium.id === id ? updatedCondominium : condominium
-        ).sort((a, b) => a.name.localeCompare(b.name))
+        ).sort((a, b) => a.nome.localeCompare(b.nome))
         set({ condominiums: updatedCondominiums, loading: false })
         logger.debug('CondominiumStore: Updated condominium successfully')
         return updatedCondominium
@@ -130,19 +129,6 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
     } catch (error) {
       logger.error('CondominiumStore: Error getting condominium:', error)
       set({ error: 'Erro ao buscar condomínio', loading: false })
-      throw error
-    }
-  },
-
-  checkCnpjExists: async (cnpj: string, excludeId?: string) => {
-    logger.debug('CondominiumStore: Checking CNPJ exists:', cnpj)
-    
-    try {
-      const exists = await condominiumsRepoSupabase.checkCnpjExists(cnpj, excludeId)
-      logger.debug('CondominiumStore: CNPJ exists:', exists)
-      return exists
-    } catch (error) {
-      logger.error('CondominiumStore: Error checking CNPJ:', error)
       throw error
     }
   },

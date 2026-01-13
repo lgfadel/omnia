@@ -58,13 +58,10 @@ const ConfigCondominiums = () => {
   };
 
   const handleFormSubmit = async (data: {
-    name: string;
-    cnpj?: string;
-    address?: string;
-    phone?: string;
-    whatsapp?: string;
-    syndic_id?: string;
-    manager_id?: string;
+    nome: string;
+    address?: string | null;
+    administradora_id?: string | null;
+    ativo?: boolean | null;
   }) => {
     logger.debug('ConfigCondominiums: Submitting form')
     
@@ -73,13 +70,13 @@ const ConfigCondominiums = () => {
         await updateCondominium(editingCondominium.id, data);
         toast({
           title: "Condomínio atualizado!",
-          description: `O condomínio "${data.name}" foi atualizado com sucesso.`
+          description: `O condomínio "${data.nome}" foi atualizado com sucesso.`
         });
       } else {
         await createCondominium(data);
         toast({
           title: "Condomínio criado!",
-          description: `O condomínio "${data.name}" foi criado com sucesso.`
+          description: `O condomínio "${data.nome}" foi criado com sucesso.`
         });
       }
       setIsFormOpen(false);
