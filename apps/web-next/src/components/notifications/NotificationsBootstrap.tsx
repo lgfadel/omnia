@@ -22,15 +22,18 @@ const formatToastTitle = (type: string) => {
 }
 
 const resolveNotificationContext = async (n: {
-  ticket_id: string | null
-  ata_id: string | null
-  comment_id: string | null
+  related_entity_id: string | null
+  related_entity_type: string | null
 }): Promise<{ label: string; title: string } | null> => {
-  if (n.ticket_id) {
+  const ticket_id = n.related_entity_type === 'ticket' ? n.related_entity_id : null
+  const ata_id = n.related_entity_type === 'ata' ? n.related_entity_id : null
+  const comment_id = n.related_entity_type === 'comment' ? n.related_entity_id : null
+  
+  if (ticket_id) {
     const { data } = await supabase
       .from('omnia_tickets')
       .select('id, title')
-      .eq('id', n.ticket_id)
+      .eq('id', ticket_id)
       .maybeSingle()
 
     const title = (data as { title: string | null } | null)?.title
@@ -38,15 +41,15 @@ const resolveNotificationContext = async (n: {
   }
 
   const ataId =
-    n.ata_id ||
+    ata_id ||
     (
-      n.comment_id
+      comment_id
         ? (
             (
               await supabase
                 .from('omnia_comments')
                 .select('ata_id')
-                .eq('id', n.comment_id)
+                .eq('id', comment_id)
                 .maybeSingle()
             ).data as { ata_id: string | null } | null
           )?.ata_id
@@ -127,13 +130,9 @@ export function NotificationsBootstrap() {
 
     if (incoming.length === 1) {
       const n = incoming[0]
-      const cacheKey = n.ticket_id
-        ? `ticket:${n.ticket_id}`
-        : n.ata_id
-          ? `ata:${n.ata_id}`
-          : n.comment_id
-            ? `comment:${n.comment_id}`
-            : null
+      const cacheKey = n.related_entity_type && n.related_entity_id
+        ? `${n.related_entity_type}:${n.related_entity_id}`
+        : null
 
       const showToast = (context: { label: string; title: string } | null) => {
         toast({
