@@ -23,7 +23,7 @@ export interface CreateTicketAttachment {
 }
 
 export const ticketAttachmentsRepoSupabase = {
-  async list(ticketId: string) {
+  async list(ticketId: string): Promise<TicketAttachment[]> {
     const { data, error } = await supabase
       .from('omnia_ticket_attachments')
       .select('*')
@@ -31,7 +31,7 @@ export const ticketAttachmentsRepoSupabase = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as TicketAttachment[];
   },
 
   async listByComment(commentId: string) {
