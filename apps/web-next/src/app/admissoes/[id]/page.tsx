@@ -297,19 +297,7 @@ export default function AdmissaoDetail() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Adicionar Anexos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AdmissaoAttachmentsList 
-                    admissaoId={admissao.id} 
-                    onFileUploaded={handleRefresh}
-                  />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Anexos da Admissao</CardTitle>
+                  <CardTitle>Anexos</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <AdmissaoAttachmentsList admissaoId={admissao.id} />
