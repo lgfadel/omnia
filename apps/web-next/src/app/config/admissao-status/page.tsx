@@ -1,0 +1,140 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Plus, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AdmissaoStatusList } from '@/components/admissoes/AdmissaoStatusList';
+import { AdmissaoStatusForm } from '@/components/admissoes/AdmissaoStatusForm';
+import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
+import { useToast } from '@/hooks/use-toast';
+import type { AdmissaoStatus } from '@/repositories/admissaoStatusRepo.supabase';
+
+export default function ConfigAdmissaoStatusPage() {
+  const { 
+    statuses, 
+    loading, 
+    loadStatuses, 
+    createStatus, 
+    updateStatus, 
+    deleteStatus, 
+    reorderStatuses 
+  } = useAdmissaoStatusStore();
+  const { toast } = useToast();
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingStatus, setEditingStatus] = useState<AdmissaoStatus | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadStatuses();
+  }, [loadStatuses]);
+
+  const handleCreate = () => {
+    setEditingStatus(null);
+    setFormOpen(true);
+  };
+
+  const handleEdit = (status: AdmissaoStatus) => {
+    setEditingStatus(status);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async (data: Omit<AdmissaoStatus, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      setSubmitting(true);
+      if (editingStatus) {
+        await updateStatus(editingStatus.id, data);
+        toast({ title: 'Status atualizado com sucesso!' });
+      } else {
+        await createStatus(data);
+        toast({ title: 'Status criado com sucesso!' });
+      }
+      setFormOpen(false);
+      setEditingStatus(null);
+    } catch (error) {
+      toast({ 
+        title: 'Erro', 
+        description: error instanceof Error ? error.message : 'Ocorreu um erro',
+        variant: 'destructive' 
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteStatus(id);
+      toast({ title: 'Status excluído com sucesso!' });
+    } catch (error) {
+      toast({ 
+        title: 'Erro', 
+        description: error instanceof Error ? error.message : 'Ocorreu um erro',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const handleReorder = async (reorderedStatuses: AdmissaoStatus[]) => {
+    try {
+      await reorderStatuses(reorderedStatuses);
+    } catch (error) {
+      toast({ 
+        title: 'Erro', 
+        description: 'Erro ao reordenar status',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  if (loading && statuses.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-6 max-w-2xl">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Status de Admissão</CardTitle>
+            <CardDescription>
+              Gerencie os status disponíveis para o fluxo de admissões.
+              Arraste para reordenar.
+            </CardDescription>
+          </div>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Status
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {statuses.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum status cadastrado ainda.
+            </div>
+          ) : (
+            <AdmissaoStatusList
+              statuses={statuses}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onReorder={handleReorder}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <AdmissaoStatusForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        status={editingStatus}
+        onSubmit={handleSubmit}
+        isLoading={submitting}
+      />
+    </div>
+  );
+}
