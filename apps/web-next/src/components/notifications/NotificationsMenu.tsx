@@ -268,11 +268,11 @@ export function NotificationsMenu() {
           visibleNotifications.map((n) => {
             const title =
               entityTitleByNotificationId[n.id] ||
-              (n.ticket_id ? 'Tarefa' : n.ata_id || n.comment_id ? 'Ata' : 'Notificação')
+              (n.related_entity_type === 'ticket' ? 'Tarefa' : n.related_entity_type === 'ata' || n.related_entity_type === 'comment' ? 'Ata' : 'Notificação')
 
             const action = formatActionLabel(n.type)
             const meta = formatNotificationMeta(n.created_at)
-            const isUnread = !n.read_at
+            const isUnread = !n.is_read
 
             return (
               <DropdownMenuItem
