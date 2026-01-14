@@ -78,6 +78,11 @@ export function AdmissaoCommentsList({ admissaoId }: AdmissaoCommentsListProps) 
     }
   };
 
+  const canDeleteComment = (comment: AdmissaoComment) => {
+    if (!userProfile) return false;
+    return comment.authorId === userProfile.id || userProfile.roles?.includes('ADMIN');
+  };
+
   const handleDeleteClick = (comment: AdmissaoComment) => {
     setCommentToDelete(comment);
     setDeleteDialogOpen(true);
@@ -142,7 +147,7 @@ export function AdmissaoCommentsList({ admissaoId }: AdmissaoCommentsListProps) 
                           {format(comment.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </span>
                       </div>
-                      {userProfile?.id === comment.authorId && (
+                      {canDeleteComment(comment) && (
                         <Button
                           variant="ghost"
                           size="icon"
