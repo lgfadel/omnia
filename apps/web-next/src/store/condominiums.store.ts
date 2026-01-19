@@ -48,7 +48,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
     try {
       const newCondominium = await condominiumsRepoSupabase.create(data)
       const { condominiums } = get()
-      const updatedCondominiums = [...condominiums, newCondominium].sort((a, b) => a.nome.localeCompare(b.nome))
+      const updatedCondominiums = [...condominiums, newCondominium].sort((a, b) => a.name.localeCompare(b.name))
       set({ condominiums: updatedCondominiums, loading: false })
       logger.debug('CondominiumStore: Created condominium successfully')
       return newCondominium
@@ -73,7 +73,7 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
         const { condominiums } = get()
         const updatedCondominiums = condominiums.map(condominium => 
           condominium.id === id ? updatedCondominium : condominium
-        ).sort((a, b) => a.nome.localeCompare(b.nome))
+        ).sort((a, b) => a.name.localeCompare(b.name))
         set({ condominiums: updatedCondominiums, loading: false })
         logger.debug('CondominiumStore: Updated condominium successfully')
         return updatedCondominium

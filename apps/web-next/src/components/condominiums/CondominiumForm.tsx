@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 
 const condominiumSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
+  name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   address: z.string().optional().nullable(),
 })
 
@@ -17,7 +17,7 @@ type CondominiumFormData = z.infer<typeof condominiumSchema>
 
 interface CondominiumFormProps {
   condominium?: Condominium
-  onSubmit: (data: { nome: string; address?: string | null }) => Promise<void>
+  onSubmit: (data: { name: string; address?: string | null }) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
 }
@@ -30,14 +30,14 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
   } = useForm<CondominiumFormData>({
     resolver: zodResolver(condominiumSchema as any),
     defaultValues: {
-      nome: condominium?.nome || "",
+      name: condominium?.name || "",
       address: condominium?.address || "",
     }
   })
 
   const onFormSubmit = async (data: CondominiumFormData) => {
     await onSubmit({
-      nome: data.nome,
+      name: data.name,
       address: data.address || null,
     })
   }
@@ -55,12 +55,12 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
             <Label htmlFor="nome">Nome do Condomínio *</Label>
             <Input
               id="nome"
-              {...register("nome")}
+              {...register("name")}
               placeholder="Ex: Residencial Jardim das Flores"
               disabled={isLoading}
             />
-            {errors.nome && (
-              <p className="text-sm text-red-500">{errors.nome.message}</p>
+            {errors.name && (
+              <p className="text-sm text-red-500">{errors.name.message}</p>
             )}
           </div>
 

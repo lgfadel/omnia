@@ -1,10 +1,11 @@
+import { AuthApiError } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client"
 import { logger } from '../lib/logging';
 
 
 export interface Condominium {
   id: string
-  nome: string
+  name: string
   address?: string | null
   administradora_id?: string | null
   ativo?: boolean | null
@@ -15,7 +16,7 @@ export interface Condominium {
 // Transform database record to Condominium type
 const transformCondominiumFromDB = (dbCondominium: any): Condominium => ({
   id: dbCondominium.id,
-  nome: dbCondominium.nome,
+  name: dbCondominium.name,
   address: dbCondominium.address,
   administradora_id: dbCondominium.administradora_id,
   ativo: dbCondominium.ativo,
@@ -26,19 +27,55 @@ const transformCondominiumFromDB = (dbCondominium: any): Condominium => ({
 export const condominiumsRepoSupabase = {
   async list(): Promise<Condominium[]> {
     logger.debug('Loading condominiums...')
-    
-    const { data, error } = await supabase
-      .from('omnia_condominiums')
-      .select('*')
-      .order('nome')
 
-    if (error) {
-      logger.error('Error loading condominiums:', error)
-      throw error
+    const fetchCondominiums = async () => {
+      const { data, error } = await supabase
+        .from('omnia_condominiums')
+        .select('*')
+        .order('name')
+
+      if (error) {
+        throw error
+      }
+
+      return data
     }
 
-    logger.debug('Loaded condominiums:', data)
-    return data?.map(transformCondominiumFromDB) || []
+    try {
+      const data = await fetchCondominiums()
+      logger.debug('Loaded condominiums:', data)
+      return data?.map(transformCondominiumFromDB) || []
+    } catch (error) {
+      // Enhanced error logging to capture Supabase error details
+      const errorDetails = {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        hint: (error as any)?.hint,
+        details: (error as any)?.details,
+        status: (error as any)?.status,
+        statusCode: (error as any)?.statusCode,
+      }
+      logger.error('Error loading condominiums:', errorDetails)
+
+      const isInvalidRefreshToken =
+        error instanceof AuthApiError &&
+        (error.message ?? '').toLowerCase().includes('refresh token')
+
+      if (isInvalidRefreshToken) {
+        logger.warn('Invalid refresh token while loading condominiums. Clearing local session and retrying.')
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch (signOutError) {
+          logger.warn('Failed to clear local session after invalid refresh token (condominiums list)', signOutError)
+        }
+
+        const data = await fetchCondominiums()
+        logger.debug('Loaded condominiums after clearing session:', data)
+        return data?.map(transformCondominiumFromDB) || []
+      }
+
+      throw error
+    }
   },
 
   async create(data: Omit<Condominium, 'id' | 'created_at' | 'updated_at'>): Promise<Condominium> {
@@ -47,7 +84,7 @@ export const condominiumsRepoSupabase = {
     const { data: newCondominium, error } = await supabase
       .from('omnia_condominiums')
       .insert({
-        nome: data.nome,
+        name: data.name,
         address: data.address,
         administradora_id: data.administradora_id,
         ativo: data.ativo
@@ -68,7 +105,7 @@ export const condominiumsRepoSupabase = {
     logger.debug(`Updating condominium: ${id}`, data)
     
     const updateData: Record<string, any> = {}
-    if (data.nome !== undefined) updateData.nome = data.nome
+    if (data.name !== undefined) updateData.name = data.name
     if (data.address !== undefined) updateData.address = data.address
     if (data.administradora_id !== undefined) updateData.administradora_id = data.administradora_id
     if (data.ativo !== undefined) updateData.ativo = data.ativo

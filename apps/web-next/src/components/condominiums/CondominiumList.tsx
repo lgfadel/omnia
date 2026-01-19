@@ -91,7 +91,7 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <div>
-                        <h3 className="font-medium text-gray-900">{condominium.nome}</h3>
+                        <h3 className="font-medium text-gray-900">{condominium.name}</h3>
                         <div className="text-sm text-gray-500">
                           {condominium.address && (
                             <div>{condominium.address}</div>
@@ -130,7 +130,7 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o condomínio "{condominiumToDelete?.nome}"?
+              Tem certeza que deseja excluir o condomínio "{condominiumToDelete?.name}"?
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

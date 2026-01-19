@@ -431,7 +431,7 @@ export type Database = {
           ativo: boolean | null
           created_at: string | null
           id: string
-          nome: string
+          name: string
           updated_at: string | null
         }
         Insert: {
@@ -440,7 +440,7 @@ export type Database = {
           ativo?: boolean | null
           created_at?: string | null
           id?: string
-          nome: string
+          name: string
           updated_at?: string | null
         }
         Update: {
@@ -449,7 +449,7 @@ export type Database = {
           ativo?: boolean | null
           created_at?: string | null
           id?: string
-          nome?: string
+          name?: string
           updated_at?: string | null
         }
         Relationships: [

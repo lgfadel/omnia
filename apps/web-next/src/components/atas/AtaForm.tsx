@@ -21,6 +21,7 @@ import { TagInput } from "./TagInput";
 import { QuickCondominiumDialog } from "@/components/condominiums/QuickCondominiumDialog";
 import { CondominiumSelect } from "@/components/condominiums/CondominiumSelect";
 import { logger } from '../../lib/logging';
+import { useToast } from "@/hooks/use-toast";
 
 const ataSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
@@ -52,26 +53,46 @@ export function AtaForm({
     statuses
   } = useAtasStore();
   const { loadTags } = useTagsStore();
-  const { condominiums, loadCondominiums } = useCondominiumStore();
+  const {
+    condominiums,
+    loadCondominiums,
+    error: condominiumsError,
+    clearError: clearCondominiumsError,
+  } = useCondominiumStore();
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserRef[]>([]);
   const [tags, setTags] = useState<string[]>(ata?.tags || []);
   const [showQuickCondominiumDialog, setShowQuickCondominiumDialog] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
-      try {
-        const [userData] = await Promise.all([
-          atasRepoSupabase.getUsers(),
-          loadTags(),
-          loadCondominiums()
-        ]);
-        setUsers(userData);
-      } catch (error) {
-        logger.error('Erro ao carregar dados:', error);
+      const results = await Promise.allSettled([
+        atasRepoSupabase.getUsers(),
+        loadTags(),
+      ]);
+
+      const usersResult = results[0];
+      if (usersResult.status === "fulfilled") {
+        setUsers(usersResult.value);
+      } else {
+        logger.error("Erro ao carregar usuários:", usersResult.reason);
       }
     };
+
     loadData();
+    loadCondominiums();
   }, [loadTags, loadCondominiums]);
+
+  useEffect(() => {
+    if (!condominiumsError) return;
+
+    toast({
+      title: "Erro ao carregar condomínios",
+      description: condominiumsError,
+      variant: "destructive",
+    });
+    clearCondominiumsError();
+  }, [condominiumsError, toast, clearCondominiumsError]);
   const {
     register,
     handleSubmit,

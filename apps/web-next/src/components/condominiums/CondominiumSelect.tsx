@@ -48,7 +48,7 @@ export function CondominiumSelect({
   const filteredCondominiums = useMemo(() => {
     if (!searchTerm.trim()) return condominiums;
     const query = normalize(searchTerm);
-    return condominiums.filter((c) => normalize(c.nome).includes(query));
+    return condominiums.filter((c) => normalize(c.name).includes(query));
   }, [condominiums, searchTerm]);
 
   return (
@@ -66,7 +66,7 @@ export function CondominiumSelect({
           )}
         >
           <span className="truncate">
-            {selectedCondominium ? selectedCondominium.nome : placeholder}
+            {selectedCondominium ? selectedCondominium.name : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -85,7 +85,7 @@ export function CondominiumSelect({
               {filteredCondominiums.map((condominium) => (
                 <CommandItem
                   key={condominium.id}
-                  value={condominium.nome}
+                  value={condominium.name}
                   onSelect={() => {
                     onValueChange(condominium.id);
                     setOpen(false);
@@ -98,7 +98,7 @@ export function CondominiumSelect({
                       value === condominium.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span className="truncate">{condominium.nome}</span>
+                  <span className="truncate">{condominium.name}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

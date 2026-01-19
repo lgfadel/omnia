@@ -19,7 +19,7 @@ import { Loader2 } from "lucide-react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 
 const quickCondominiumSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  name: z.string().min(1, "Nome é obrigatório"),
   address: z.string().optional(),
 });
 
@@ -52,7 +52,7 @@ export function QuickCondominiumDialog({
     setLoading(true);
     try {
       const condominiumData = {
-        nome: data.nome,
+        name: data.name,
         address: data.address || null,
       };
       const newCondominium = await createCondominium(condominiumData);
@@ -97,11 +97,11 @@ export function QuickCondominiumDialog({
             <Label htmlFor="nome">Nome *</Label>
             <Input
               id="nome"
-              {...register("nome")}
+              {...register("name")}
               placeholder="Nome do condomínio"
             />
-            {errors.nome && (
-              <p className="text-sm text-destructive">{errors.nome.message}</p>
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
             )}
           </div>
 
