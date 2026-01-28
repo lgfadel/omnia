@@ -151,6 +151,174 @@ export type Database = {
         }
         Relationships: []
       }
+      omnia_rescisao_statuses: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          order_position: number
+          updated_at: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          order_position: number
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          order_position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      omnia_rescisoes: {
+        Row: {
+          assigned_to: string | null
+          attachment_count: number | null
+          comment_count: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          is_private: boolean | null
+          priority: string
+          status_id: string
+          tags: string[] | null
+          ticket_id: number
+          ticket_octa: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachment_count?: number | null
+          comment_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string
+          status_id: string
+          tags?: string[] | null
+          ticket_id?: number
+          ticket_octa?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachment_count?: number | null
+          comment_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string
+          status_id?: string
+          tags?: string[] | null
+          ticket_id?: number
+          ticket_octa?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_rescisoes_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisao_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_rescisao_comments: {
+        Row: {
+          rescisao_id: string
+          author_id: string
+          body: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          rescisao_id: string
+          author_id: string
+          body: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          rescisao_id?: string
+          author_id?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_rescisao_comments_rescisao_id_fkey"
+            columns: ["rescisao_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_rescisao_attachments: {
+        Row: {
+          rescisao_id: string
+          created_at: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          size_kb: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          rescisao_id: string
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          rescisao_id?: string
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_rescisao_attachments_rescisao_id_fkey"
+            columns: ["rescisao_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omnia_admissoes: {
         Row: {
           assigned_to: string | null

@@ -5,13 +5,13 @@ import { Plus, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AdmissaoStatusList } from '@/components/admissoes/AdmissaoStatusList';
-import { AdmissaoStatusForm } from '@/components/admissoes/AdmissaoStatusForm';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
+import { RescisaoStatusList } from '@/components/rescisoes/RescisaoStatusList';
+import { RescisaoStatusForm } from '@/components/rescisoes/RescisaoStatusForm';
+import { useRescisaoStatusStore } from '@/store/rescisaoStatus.store';
 import { useToast } from '@/hooks/use-toast';
-import type { AdmissaoStatus } from '@/repositories/admissaoStatusRepo.supabase';
+import type { RescisaoStatus } from '@/repositories/rescisaoStatusRepo.supabase';
 
-export default function ConfigAdmissaoStatusPage() {
+export default function ConfigRescisaoStatusPage() {
   const { 
     statuses, 
     loading, 
@@ -20,11 +20,11 @@ export default function ConfigAdmissaoStatusPage() {
     updateStatus, 
     deleteStatus, 
     reorderStatuses 
-  } = useAdmissaoStatusStore();
+  } = useRescisaoStatusStore();
   const { toast } = useToast();
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingStatus, setEditingStatus] = useState<AdmissaoStatus | null>(null);
+  const [editingStatus, setEditingStatus] = useState<RescisaoStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -36,12 +36,12 @@ export default function ConfigAdmissaoStatusPage() {
     setFormOpen(true);
   };
 
-  const handleEdit = (status: AdmissaoStatus) => {
+  const handleEdit = (status: RescisaoStatus) => {
     setEditingStatus(status);
     setFormOpen(true);
   };
 
-  const handleSubmit = async (data: Omit<AdmissaoStatus, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmit = async (data: Omit<RescisaoStatus, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setSubmitting(true);
       if (editingStatus) {
@@ -77,7 +77,7 @@ export default function ConfigAdmissaoStatusPage() {
     }
   };
 
-  const handleReorder = async (reorderedStatuses: AdmissaoStatus[]) => {
+  const handleReorder = async (reorderedStatuses: RescisaoStatus[]) => {
     try {
       await reorderStatuses(reorderedStatuses);
     } catch (error) {
@@ -102,43 +102,43 @@ export default function ConfigAdmissaoStatusPage() {
   return (
     <Layout>
       <div className="container mx-auto py-6 max-w-2xl">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Status de Admissão</CardTitle>
-            <CardDescription>
-              Gerencie os status disponíveis para o fluxo de admissões.
-              Arraste para reordenar.
-            </CardDescription>
-          </div>
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Status
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {statuses.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum status cadastrado ainda.
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Status de Rescisão</CardTitle>
+              <CardDescription>
+                Gerencie os status disponíveis para o fluxo de rescisões.
+                Arraste para reordenar.
+              </CardDescription>
             </div>
-          ) : (
-            <AdmissaoStatusList
-              statuses={statuses}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onReorder={handleReorder}
-            />
-          )}
-        </CardContent>
-      </Card>
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Status
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {statuses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum status cadastrado ainda.
+              </div>
+            ) : (
+              <RescisaoStatusList
+                statuses={statuses}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onReorder={handleReorder}
+              />
+            )}
+          </CardContent>
+        </Card>
 
-      <AdmissaoStatusForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        status={editingStatus}
-        onSubmit={handleSubmit}
-        isLoading={submitting}
-      />
+        <RescisaoStatusForm
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          status={editingStatus}
+          onSubmit={handleSubmit}
+          isLoading={submitting}
+        />
       </div>
     </Layout>
   );
