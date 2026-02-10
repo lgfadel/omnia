@@ -21,7 +21,7 @@ interface NotificationsStore {
 }
 
 const computeUnreadCount = (notifications: OmniaNotification[]) =>
-  notifications.reduce((acc, n) => (n.is_read ? acc : acc + 1), 0)
+  notifications.reduce((acc, n) => (n.read_at ? acc : acc + 1), 0)
 
 export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
   notifications: [],
@@ -167,7 +167,7 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
       set((state) => {
         const now = new Date().toISOString()
         const nextNotifications = state.notifications.map((n) =>
-          n.is_read ? n : { ...n, is_read: true }
+          n.read_at ? n : { ...n, read_at: now }
         )
 
         return {

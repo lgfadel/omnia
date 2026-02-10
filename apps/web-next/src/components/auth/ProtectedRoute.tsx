@@ -3,7 +3,7 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -43,13 +43,12 @@ function DiagnosticPanel() {
 
       // Test 2: Supabase Auth Health (with apikey)
       try {
-        const healthUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co'}/auth/v1/health`
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI"
+        const healthUrl = `${SUPABASE_URL}/auth/v1/health`
         const response = await fetch(healthUrl, { 
           method: 'GET',
           headers: {
-            apikey: anonKey,
-            Authorization: `Bearer ${anonKey}`,
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           }
         })
         setDiagnostics(prev => prev.map(d => 

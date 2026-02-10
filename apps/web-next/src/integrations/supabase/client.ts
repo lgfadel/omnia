@@ -47,9 +47,21 @@ const createSafeStorage = () => {
   };
 };
 
-// Supabase project configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://elmxwvimjxcswjbrzznq.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI";
+// Supabase project configuration — values come from .env.local (dev) or Vercel env vars (prod)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error(
+    'Missing Supabase environment variables. ' +
+    'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local (dev) or Vercel dashboard (prod).'
+  );
+}
+
+export const SUPABASE_ANON_KEY: string = SUPABASE_PUBLISHABLE_KEY!;
+// Re-export as typed string (validated above)
+const _SUPABASE_URL: string = SUPABASE_URL!;
+export { _SUPABASE_URL as SUPABASE_URL };
 
 if (isBrowser) {
   logger.info('[SUPABASE] Initializing client with URL:', SUPABASE_URL);
@@ -58,7 +70,7 @@ if (isBrowser) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
   auth: {
     storage: createSafeStorage(),
     persistSession: true,

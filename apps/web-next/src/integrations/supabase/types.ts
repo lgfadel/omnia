@@ -790,8 +790,8 @@ export type Database = {
           created_at: string | null
           data: Json | null
           id: string
-          is_read: boolean | null
           message: string
+          read_at: string | null
           related_entity_id: string | null
           related_entity_type: string | null
           type: string
@@ -801,7 +801,7 @@ export type Database = {
           created_at?: string | null
           data?: Json | null
           id?: string
-          is_read?: boolean | null
+          read_at?: string | null
           message: string
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -812,7 +812,7 @@ export type Database = {
           created_at?: string | null
           data?: Json | null
           id?: string
-          is_read?: boolean | null
+          read_at?: string | null
           message?: string
           related_entity_id?: string | null
           related_entity_type?: string | null

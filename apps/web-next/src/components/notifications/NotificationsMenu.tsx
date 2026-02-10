@@ -273,7 +273,7 @@ export function NotificationsMenu() {
 
             const action = formatActionLabel(n.type)
             const meta = formatNotificationMeta(n.created_at)
-            const isUnread = !n.is_read
+            const isUnread = !n.read_at
 
             return (
               <DropdownMenuItem

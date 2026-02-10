@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { AuthApiError } from '@supabase/supabase-js';
 import { logger } from '../lib/logging';
 
@@ -58,13 +58,10 @@ export function useTarefasOportunidade(oportunidadeId: string) {
 
     try {
       // Buscar tickets - usando fetch direto para evitar problemas de tipo profundo
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://elmxwvimjxcswjbrzznq.supabase.co';
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbXh3dmltanhjc3dqYnJ6em5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMDQ1NjIsImV4cCI6MjA3MDc4MDU2Mn0.nkapAcvAok4QNPSlLwkfTEbbj90nXJf3gRvBZauMfqI';
-
-      let authHeader = supabaseKey;
+      let authHeader = SUPABASE_ANON_KEY;
       try {
         const { data: session } = await supabase.auth.getSession();
-        authHeader = session.session?.access_token || supabaseKey;
+        authHeader = session.session?.access_token || SUPABASE_ANON_KEY;
       } catch (sessionError) {
         if (isInvalidRefreshTokenError(sessionError)) {
           logger.warn('Invalid refresh token while fetching tarefas oportunidade. Falling back to anon auth.');
@@ -79,10 +76,10 @@ export function useTarefasOportunidade(oportunidadeId: string) {
       }
 
       const ticketsResponse = await fetch(
-        `${supabaseUrl}/rest/v1/omnia_tickets?oportunidade_id=eq.${oportunidadeId}&select=id,title,due_date,priority,status_id,created_at,assigned_to&order=created_at.desc`,
+        `${SUPABASE_URL}/rest/v1/omnia_tickets?oportunidade_id=eq.${oportunidadeId}&select=id,title,due_date,priority,status_id,created_at,assigned_to&order=created_at.desc`,
         {
           headers: {
-            'apikey': supabaseKey,
+            'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${authHeader}`,
             'Content-Type': 'application/json'
           }
