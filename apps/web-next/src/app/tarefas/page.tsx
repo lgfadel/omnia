@@ -12,10 +12,10 @@ import { TabelaOmnia } from '@/components/ui/tabela-omnia';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { useTarefasStore } from '@/store/tarefas.store';
-import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
-import { useSecretariosStore } from '@/store/secretarios.store';
-import { useTagsStore } from '@/store/tags.store';
+import { useTarefasStore } from '@/stores/tarefas.store';
+import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
+import { useSecretariosStore } from '@/stores/secretarios.store';
+import { useTagsStore } from '@/stores/tags.store';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -115,7 +115,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          console.log('Nova tarefa criada:', payload);
+          logger.debug('Nova tarefa criada:', payload);
           loadTarefas();
         }
       )
@@ -127,7 +127,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          console.log('Tarefa atualizada:', payload);
+          logger.debug('Tarefa atualizada:', payload);
           loadTarefas();
         }
       )
@@ -139,7 +139,7 @@ export default function Tickets() {
           table: 'omnia_tickets'
         },
         (payload) => {
-          console.log('Tarefa excluída:', payload);
+          logger.debug('Tarefa excluída:', payload);
           loadTarefas();
         }
       )
@@ -152,7 +152,7 @@ export default function Tickets() {
           table: 'omnia_ticket_comments'
         },
         (payload) => {
-          console.log('Comentário alterado:', payload);
+          logger.debug('Comentário alterado:', payload);
           loadTarefas();
         }
       )
@@ -165,7 +165,7 @@ export default function Tickets() {
           table: 'omnia_ticket_attachments'
         },
         (payload) => {
-          console.log('Anexo alterado:', payload);
+          logger.debug('Anexo alterado:', payload);
           loadTarefas();
         }
       )

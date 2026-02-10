@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { CrmStatusList } from "@/components/crm-status/CrmStatusList";
 import { CrmStatusForm } from "@/components/crm-status/CrmStatusForm";
-import { useCrmStatusStore } from "@/store/crmStatus.store";
+import { useCrmStatusStore } from "@/stores/crmStatus.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Status } from "@/data/types";

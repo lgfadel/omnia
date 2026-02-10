@@ -4,7 +4,7 @@ import { Layout } from '@/components/layout/Layout';
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia';
 import { TicketStatusList } from '@/components/tickets/TicketStatusList';
 import { TicketStatusForm } from '@/components/tickets/TicketStatusForm';
-import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TagList } from "@/components/tags/TagList";
-import { useTagsStore } from "@/store/tags.store";
+import { useTagsStore } from "@/stores/tags.store";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ConfigTags() {

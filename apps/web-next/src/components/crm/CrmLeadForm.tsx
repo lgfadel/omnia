@@ -15,11 +15,11 @@ import {
 } from '@/components/ui/form'
 import { logger } from '../../lib/logging';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase'
-import { useCrmLeadsStore } from '@/store/crmLeads.store'
-import { useAdministradorasStore } from '@/store/administradoras.store'
-import { useCrmStatusStore } from '@/store/crmStatus.store'
-import { useCrmOrigensStore } from '@/store/crmOrigens.store'
-import { useUsersStore } from '@/store/users.store'
+import { useCrmLeadsStore } from '@/stores/crmLeads.store'
+import { useAdministradorasStore } from '@/stores/administradoras.store'
+import { useCrmStatusStore } from '@/stores/crmStatus.store'
+import { useCrmOrigensStore } from '@/stores/crmOrigens.store'
+import { useUsersStore } from '@/stores/users.store'
 
 import { Search } from 'lucide-react'
 import { useState, useEffect } from 'react'

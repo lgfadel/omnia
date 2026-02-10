@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { CrmOrigemList } from "@/components/crm-origem/CrmOrigemList";
 import { CrmOrigemForm } from "@/components/crm-origem/CrmOrigemForm";
-import { useCrmOrigensStore } from "@/store/crmOrigens.store";
+import { useCrmOrigensStore } from "@/stores/crmOrigens.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { CrmOrigem } from "@/repositories/crmOrigensRepo.supabase";

@@ -64,7 +64,7 @@ const _SUPABASE_URL: string = SUPABASE_URL!;
 export { _SUPABASE_URL as SUPABASE_URL };
 
 if (isBrowser) {
-  logger.info('[SUPABASE] Initializing client with URL:', SUPABASE_URL);
+  logger.debug('[SUPABASE] Initializing client with URL:', SUPABASE_URL);
 }
 
 // Import the supabase client like this:

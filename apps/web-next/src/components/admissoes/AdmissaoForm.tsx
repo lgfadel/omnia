@@ -16,9 +16,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { AdmissaoStatusSelect } from './AdmissaoStatusSelect';
-import { useAdmissoesStore } from '@/store/admissoes.store';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
-import { useSecretariosStore } from '@/store/secretarios.store';
+import { useAdmissoesStore } from '@/stores/admissoes.store';
+import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store';
+import { useSecretariosStore } from '@/stores/secretarios.store';
 import { useToast } from '@/hooks/use-toast';
 import type { Admissao, AdmissaoPrioridade } from '@/repositories/admissoesRepo.supabase';
 

@@ -12,7 +12,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x]
     
     steps:
     - name: Checkout code
@@ -30,13 +30,16 @@ jobs:
     - name: Run linting
       run: npm run lint
     
+    - name: Type check
+      run: npm run type-check
+    
     - name: Run unit tests
       run: npm test -- --run --coverage
     
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
-        file: ./coverage/lcov.info
+        file: ./apps/web-next/coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
     
@@ -46,18 +49,8 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
     
-    - name: Start development server
-      run: |
-        npm run dev &
-        sleep 10
-        curl -f http://localhost:8080 || exit 1
-    
     - name: Run E2E tests
-      run: npx playwright test --reporter=html
-    
-    - name: Run Visual Regression Tests
-      run: |
-        npm run test:visual
+      run: npm run test:e2e
     
     - name: Upload Playwright report
       uses: actions/upload-artifact@v4
@@ -74,16 +67,6 @@ jobs:
         name: test-results-${{ matrix.node-version }}
         path: test-results/
         retention-days: 30
-        
-    - name: Upload Visual Test Results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: visual-test-results-${{ matrix.node-version }}
-        path: |
-          playwright-report-visual/
-          test-results-visual/
-        retention-days: 30
 
   security:
     runs-on: ubuntu-latest
@@ -95,7 +78,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
     
     - name: Install dependencies
@@ -120,7 +103,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
     
     - name: Install dependencies
@@ -128,6 +111,9 @@ jobs:
     
     - name: Build for production
       run: npm run build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     
     - name: Deploy to staging
       run: |

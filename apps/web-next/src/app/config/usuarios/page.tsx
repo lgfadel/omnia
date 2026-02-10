@@ -7,7 +7,7 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { SecretarioForm } from "@/components/secretarios/SecretarioForm"
 import { SecretarioList } from "@/components/secretarios/SecretarioList"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useSecretariosStore } from "@/store/secretarios.store"
+import { useSecretariosStore } from "@/stores/secretarios.store"
 import { UserRef, Role } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 

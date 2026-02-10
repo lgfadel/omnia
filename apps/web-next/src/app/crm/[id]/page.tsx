@@ -14,7 +14,7 @@ import { CrmStatusBadge } from '@/components/ui/badge-crm-status';
 import { CrmCommentsList } from '@/components/crm/CrmCommentsList';
 import { CrmCommentInput } from '@/components/crm/CrmCommentInput';
 import { TarefasOportunidade } from '@/components/TarefasOportunidade';
-import { useCrmLeadsStore } from '@/store/crmLeads.store';
+import { useCrmLeadsStore } from '@/stores/crmLeads.store';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase';
 import { toast } from '@/hooks/use-toast'
 import { logger } from '@/lib/logging';

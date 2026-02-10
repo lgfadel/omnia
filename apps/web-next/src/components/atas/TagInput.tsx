@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
-import { useTagsStore } from "@/store/tags.store";
+import { useTagsStore } from "@/stores/tags.store";
 import { Tag } from "@/repositories/tagsRepo.supabase";
+import { logger } from "@/lib/logging";
 
 interface TagInputProps {
   tags: string[];
@@ -54,10 +55,10 @@ export function TagInput({ tags, onTagsChange }: TagInputProps) {
     }
 
     try {
-      console.log('TagInput: Creating tag with name:', nameToAdd);
+      logger.debug('TagInput: Creating tag with name:', nameToAdd);
       // Create tag in database if it doesn't exist
       const createdTag = await getOrCreateTag(nameToAdd);
-      console.log('TagInput: Tag created/retrieved:', createdTag);
+      logger.debug('TagInput: Tag created/retrieved:', createdTag);
       
       // Add to local tags list
       onTagsChange([...tags, nameToAdd]);

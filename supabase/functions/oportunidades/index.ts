@@ -1,8 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from '@supabase/supabase-js'
+
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://omnia.vercel.app'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 }
@@ -64,12 +66,12 @@ function validateOportunidadeData(data: Record<string, unknown>): { isValid: boo
   }
   
   // Validação de email
-  if (data.sindico_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.sindico_email)) {
+  if (data.sindico_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.sindico_email as string)) {
     errors.push('Campo "sindico_email" deve ter um formato de email válido')
   }
   
   // Validação de CEP
-  if (data.cep && !/^\d{5}-?\d{3}$/.test(data.cep)) {
+  if (data.cep && !/^\d{5}-?\d{3}$/.test(data.cep as string)) {
     errors.push('Campo "cep" deve ter o formato 00000-000 ou 00000000')
   }
   
@@ -79,19 +81,9 @@ function validateOportunidadeData(data: Record<string, unknown>): { isValid: boo
   }
 }
 
-// Interface para o cliente Supabase
-interface SupabaseClient {
-  from: (table: string) => {
-    select: (columns?: string) => {
-      eq: (column: string, value: string) => {
-        single: () => Promise<{ data: any; error: any }>
-      }
-    }
-  }
-}
-
 // Função para resolver status ID (converte nome para UUID se necessário)
-async function resolveStatusId(statusInput: string, supabaseClient: SupabaseClient): Promise<string | null> {
+// deno-lint-ignore no-explicit-any
+async function resolveStatusId(statusInput: string, supabaseClient: any): Promise<string | null> {
   try {
     // Verificar se já é um UUID válido
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -127,30 +119,46 @@ async function resolveStatusId(statusInput: string, supabaseClient: SupabaseClie
   }
 }
 
-// Função para verificar permissões do token de API
-async function checkApiPermissions(authHeader: string): Promise<{ authorized: boolean }> {
+// Autentica o usuário via JWT e verifica se possui role adequada
+async function authenticateUser(authHeader: string): Promise<{ authorized: boolean; userId?: string }> {
   try {
-    // Verificar se o token está presente
     if (!authHeader) {
       return { authorized: false }
     }
 
-    // Extrair o token do header Authorization
     const token = authHeader.replace('Bearer ', '').replace('bearer ', '')
-    
-    // Verificar se é um dos tokens válidos do Supabase
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    
-    // Aceitar tanto ANON_KEY quanto SERVICE_ROLE_KEY para flexibilidade
-    if (token === supabaseAnonKey || token === supabaseServiceKey) {
-      return { authorized: true }
+
+    const supabaseAnon = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+
+    const { data: authData, error: authError } = await supabaseAnon.auth.getUser(token)
+    if (authError || !authData.user) {
+      return { authorized: false }
     }
 
-    // Token inválido
-    return { authorized: false }
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('omnia_users')
+      .select('id, roles')
+      .eq('auth_user_id', authData.user.id)
+      .single()
+
+    if (profileError || !profile) {
+      return { authorized: false }
+    }
+
+    const roles: string[] = profile.roles ?? []
+    const hasAccess = roles.includes('ADMIN') || roles.includes('SECRETARIO') || roles.includes('USUARIO')
+    return { authorized: hasAccess, userId: profile.id }
   } catch (error) {
-    console.error('Erro na verificação de token:', error)
+    console.error('Erro na autenticação:', error)
     return { authorized: false }
   }
 }
@@ -188,14 +196,14 @@ function handleError(error: Error & { code?: string }, operation: string): Respo
   )
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Verificar autenticação via token de API primeiro
+    // Verificar autenticação via JWT do usuário
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -204,19 +212,18 @@ serve(async (req) => {
       )
     }
 
-    const { authorized } = await checkApiPermissions(authHeader)
+    const { authorized } = await authenticateUser(authHeader)
     if (!authorized) {
       return new Response(
-        JSON.stringify({ error: 'Acesso negado. Token de API inválido.' }),
+        JSON.stringify({ error: 'Acesso negado. Token inválido ou usuário sem permissão.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Usar sempre SERVICE_ROLE_KEY para bypasser RLS policies
+    // Usar SERVICE_ROLE_KEY para queries internas (usuário já autenticado acima)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     
-    // Criar cliente com SERVICE_ROLE_KEY para acesso completo aos dados
     const supabaseClient = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -376,7 +383,7 @@ serve(async (req) => {
           .from('omnia_crm_leads')
           .insert({
             ...oportunidadeData,
-            created_by: oportunidadeData.created_by || null
+            created_by: (oportunidadeData as Record<string, unknown>).created_by || null
           })
           .select()
           .single()
@@ -424,7 +431,7 @@ serve(async (req) => {
         }
 
         // Verificar se a oportunidade existe
-        const { data: existingOportunidade, error: checkError } = await supabaseClient
+        const { data: _existingOportunidade, error: checkError } = await supabaseClient
           .from('omnia_crm_leads')
           .select('id, created_by')
           .eq('id', oportunidadeId)
@@ -513,7 +520,7 @@ serve(async (req) => {
         }
 
         // Verificar se a oportunidade existe
-        const { data: existingOportunidade, error: checkError } = await supabaseClient
+        const { data: _existingOportunidade, error: checkError } = await supabaseClient
           .from('omnia_crm_leads')
           .select('id, created_by')
           .eq('id', oportunidadeId)

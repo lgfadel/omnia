@@ -3,8 +3,8 @@
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TicketForm } from "@/components/tickets/TicketForm";
-import { useTarefasStore } from "@/store/tarefas.store";
-import { useSecretariosStore } from "@/store/secretarios.store";
+import { useTarefasStore } from "@/stores/tarefas.store";
+import { useSecretariosStore } from "@/stores/secretarios.store";
 import { ticketAttachmentsRepoSupabase } from "@/repositories/ticketAttachmentsRepo.supabase";
 import { Tarefa } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";

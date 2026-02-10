@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
+import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store';
 
 interface AdmissaoStatusBadgeProps {
   statusId: string;

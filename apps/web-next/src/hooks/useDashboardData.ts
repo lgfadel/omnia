@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useAtasStore } from '@/store/atas.store'
-import { useTarefasStore } from '@/store/tarefas.store'
+import { useAtasStore } from '@/stores/atas.store'
+import { useTarefasStore } from '@/stores/tarefas.store'
 import { calculateAtasMetrics, calculateTarefasMetrics, type AtasMetrics, type TarefasMetrics } from '@/utils/dashboardCalculations'
 import { logger } from '../lib/logging';
 

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRescisaoStatusStore } from '@/store/rescisaoStatus.store';
+import { useRescisaoStatusStore } from '@/stores/rescisaoStatus.store';
 
 interface RescisaoStatusSelectProps {
   value: string;

@@ -14,8 +14,19 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { NotificationsBootstrap } from "@/components/notifications/NotificationsBootstrap";
 
 export function Providers({ children }: { children: ReactNode }) {
-  // Create QueryClient once per app shell
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1000 * 60 * 2, // 2 minutes
+            gcTime: 1000 * 60 * 10, // 10 minutes
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
+import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store';
 
 interface AdmissaoStatusSelectProps {
   value: string;

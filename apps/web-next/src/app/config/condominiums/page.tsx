@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { CondominiumList } from "@/components/condominiums/CondominiumList";
 import { CondominiumForm } from "@/components/condominiums/CondominiumForm";
-import { useCondominiumStore } from "@/store/condominiums.store";
+import { useCondominiumStore } from "@/stores/condominiums.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Condominium } from "@/repositories/condominiumsRepo.supabase";

@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { UserRef, Attachment } from '@/data/types';
-import { useTarefaStatusStore } from '@/store/tarefaStatus.store';
+import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 const ticketSchema = z.object({

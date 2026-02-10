@@ -12,9 +12,9 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Plus, ChevronDown, User, Filter } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAtasStore } from "@/store/atas.store"
-import { useSecretariosStore } from "@/store/secretarios.store"
-import { useTagsStore } from "@/store/tags.store"
+import { useAtasStore } from "@/stores/atas.store"
+import { useSecretariosStore } from "@/stores/secretarios.store"
+import { useTagsStore } from "@/stores/tags.store"
 import { useAuth } from '@/components/auth/AuthProvider'
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { supabase } from "@/integrations/supabase/client"
@@ -96,7 +96,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Nova ata criada:', payload)
+          logger.debug('Nova ata criada:', payload)
           loadAtas(search, statusFilter)
         }
       )
@@ -108,7 +108,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Ata atualizada:', payload)
+          logger.debug('Ata atualizada:', payload)
           loadAtas(search, statusFilter)
         }
       )
@@ -120,7 +120,7 @@ const Atas = () => {
           table: 'omnia_atas'
         },
         (payload) => {
-          console.log('Ata excluída:', payload)
+          logger.debug('Ata excluída:', payload)
           loadAtas(search, statusFilter)
         }
       )
@@ -133,7 +133,7 @@ const Atas = () => {
           table: 'omnia_comments'
         },
         (payload) => {
-          console.log('Comentário de ata alterado:', payload)
+          logger.debug('Comentário de ata alterado:', payload)
           loadAtas(search, statusFilter)
         }
       )
@@ -146,7 +146,7 @@ const Atas = () => {
           table: 'omnia_attachments'
         },
         (payload) => {
-          console.log('Anexo de ata alterado:', payload)
+          logger.debug('Anexo de ata alterado:', payload)
           loadAtas(search, statusFilter)
         }
       )

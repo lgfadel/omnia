@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdmissaoStatusList } from '@/components/admissoes/AdmissaoStatusList';
 import { AdmissaoStatusForm } from '@/components/admissoes/AdmissaoStatusForm';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
+import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store';
 import { useToast } from '@/hooks/use-toast';
 import type { AdmissaoStatus } from '@/repositories/admissaoStatusRepo.supabase';
 

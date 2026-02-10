@@ -5,7 +5,7 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia"
 import { AtaForm } from "@/components/atas/AtaForm"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
-import { useAtasStore } from "@/store/atas.store"
+import { useAtasStore } from "@/stores/atas.store"
 import { useEffect, useState, useCallback } from "react"
 import { Ata } from "@/data/types"
 

@@ -3,7 +3,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { AdmissaoForm } from "@/components/admissoes/AdmissaoForm";
-import { useAdmissoesStore } from "@/store/admissoes.store";
+import { useAdmissoesStore } from "@/stores/admissoes.store";
 import { Admissao } from "@/repositories/admissoesRepo.supabase";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";

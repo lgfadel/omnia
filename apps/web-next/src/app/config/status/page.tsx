@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { StatusList } from "@/components/status/StatusList";
 import { StatusForm } from "@/components/status/StatusForm";
-import { useStatusStore } from "@/store/status.store";
+import { useStatusStore } from "@/stores/status.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Status } from "@/data/types";

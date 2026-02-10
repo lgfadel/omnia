@@ -3,7 +3,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { CrmLeadForm } from "@/components/crm/CrmLeadForm";
-import { useCrmLeadsStore } from "@/store/crmLeads.store";
+import { useCrmLeadsStore } from "@/stores/crmLeads.store";
 import { CrmLead } from "@/repositories/crmLeadsRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/components/auth/AuthProvider';

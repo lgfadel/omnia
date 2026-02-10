@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCondominiumStore } from "@/store/condominiums.store";
+import { useCondominiumStore } from "@/stores/condominiums.store";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";

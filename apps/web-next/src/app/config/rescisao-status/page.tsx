@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RescisaoStatusList } from '@/components/rescisoes/RescisaoStatusList';
 import { RescisaoStatusForm } from '@/components/rescisoes/RescisaoStatusForm';
-import { useRescisaoStatusStore } from '@/store/rescisaoStatus.store';
+import { useRescisaoStatusStore } from '@/stores/rescisaoStatus.store';
 import { useToast } from '@/hooks/use-toast';
 import type { RescisaoStatus } from '@/repositories/rescisaoStatusRepo.supabase';
 

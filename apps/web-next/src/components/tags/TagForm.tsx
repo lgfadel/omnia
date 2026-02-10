@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Palette } from "lucide-react";
 import { Tag } from "@/repositories/tagsRepo.supabase";
 import { generateUniqueTagColor } from "@/utils/tagColors";
-import { useTagsStore } from "@/store/tags.store";
+import { useTagsStore } from "@/stores/tags.store";
 import { logger } from '../../lib/logging';
 
 

@@ -12,10 +12,10 @@ import { TabelaOmnia } from '@/components/ui/tabela-omnia';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { useAdmissoesStore } from '@/store/admissoes.store';
-import { useAdmissaoStatusStore } from '@/store/admissaoStatus.store';
-import { useSecretariosStore } from '@/store/secretarios.store';
-import { useTagsStore } from '@/store/tags.store';
+import { useAdmissoesStore } from '@/stores/admissoes.store';
+import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store';
+import { useSecretariosStore } from '@/stores/secretarios.store';
+import { useTagsStore } from '@/stores/tags.store';
 import { Admissao, AdmissaoPrioridade } from '@/repositories/admissoesRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -115,7 +115,7 @@ export default function Admissoes() {
           table: 'omnia_admissoes'
         },
         (payload) => {
-          console.log('Nova admissão criada:', payload);
+          logger.debug('Nova admissão criada:', payload);
           loadAdmissoes();
         }
       )
@@ -127,7 +127,7 @@ export default function Admissoes() {
           table: 'omnia_admissoes'
         },
         (payload) => {
-          console.log('Admissão atualizada:', payload);
+          logger.debug('Admissão atualizada:', payload);
           loadAdmissoes();
         }
       )
@@ -139,7 +139,7 @@ export default function Admissoes() {
           table: 'omnia_admissoes'
         },
         (payload) => {
-          console.log('Admissão excluída:', payload);
+          logger.debug('Admissão excluída:', payload);
           loadAdmissoes();
         }
       )
@@ -152,7 +152,7 @@ export default function Admissoes() {
           table: 'omnia_admissao_comments'
         },
         (payload) => {
-          console.log('Comentário alterado:', payload);
+          logger.debug('Comentário alterado:', payload);
           loadAdmissoes();
         }
       )
@@ -165,7 +165,7 @@ export default function Admissoes() {
           table: 'omnia_admissao_attachments'
         },
         (payload) => {
-          console.log('Anexo alterado:', payload);
+          logger.debug('Anexo alterado:', payload);
           loadAdmissoes();
         }
       )

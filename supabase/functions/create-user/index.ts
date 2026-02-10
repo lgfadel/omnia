@@ -1,12 +1,13 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://omnia.vercel.app'
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -73,7 +74,10 @@ serve(async (req) => {
     console.log('Creating user:', { name, email, roles })
 
     // Use provided password or generate temporary one
-    const userPassword = password && password.trim() ? password : Math.random().toString(36).slice(-12) + 'A1!'
+    const randomBytes = new Uint8Array(16)
+    crypto.getRandomValues(randomBytes)
+    const generatedPassword = Array.from(randomBytes, b => b.toString(36)).join('').slice(0, 14) + 'A1!'
+    const userPassword = password && password.trim() ? password : generatedPassword
     const isTemporaryPassword = !password || !password.trim()
 
     // Create user in auth.users using admin client

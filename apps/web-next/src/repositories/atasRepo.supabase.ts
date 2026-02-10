@@ -458,7 +458,7 @@ export const atasRepoSupabase = {
       return null
     }
 
-    console.log('AtasRepo: Creating comment with data:', {
+    logger.debug('AtasRepo: Creating comment with data:', {
       ata_id: ataId,
       author_id: omniaUser.id,
       body: comment.body,
@@ -485,12 +485,12 @@ export const atasRepoSupabase = {
       throw error
     }
 
-    console.log('AtasRepo: Comment created successfully:', newComment)
+    logger.debug('AtasRepo: Comment created successfully:', newComment)
 
     // Save attachments if any
     let savedAttachments: Attachment[] = []
     if (comment.attachments && comment.attachments.length > 0) {
-      console.log('AtasRepo: Saving attachments:', comment.attachments)
+      logger.debug('AtasRepo: Saving attachments:', comment.attachments)
       
       const attachmentsToInsert = comment.attachments.map(att => ({
         ata_id: ataId,
@@ -502,7 +502,7 @@ export const atasRepoSupabase = {
         uploaded_by: user.user.id
       }))
 
-      console.log('AtasRepo: Inserting attachments:', attachmentsToInsert)
+      logger.debug('AtasRepo: Inserting attachments:', attachmentsToInsert)
 
       const { data: insertedAttachments, error: attachError } = await supabaseUntyped
         .from('omnia_attachments')
@@ -512,7 +512,7 @@ export const atasRepoSupabase = {
       if (attachError) {
         console.error('AtasRepo: Error saving attachments:', attachError)
       } else {
-        console.log('AtasRepo: Attachments saved successfully:', insertedAttachments)
+        logger.debug('AtasRepo: Attachments saved successfully:', insertedAttachments)
         savedAttachments = insertedAttachments?.map((att: DbAttachment) => mapDbAttachment(att)) || []
       }
     }
