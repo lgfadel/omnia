@@ -37,7 +37,7 @@ export function CrmOrigemForm({ origem, onSubmit, onCancel, isLoading }: CrmOrig
     setValue,
     formState: { errors }
   } = useForm<CrmOrigemFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(crmOrigemSchema as any),
     defaultValues: {
       name: origem?.name || "",

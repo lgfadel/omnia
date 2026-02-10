@@ -34,7 +34,7 @@ export function SecretarioForm({ secretario, onSubmit, onCancel, isLoading }: Se
     watch,
     formState: { errors }
   } = useForm<SecretarioFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(secretarioSchema as any),
     defaultValues: {
       name: secretario?.name || "",

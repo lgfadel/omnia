@@ -201,7 +201,7 @@ export const menuItemsRepoSupabase = {
   async update(id: string, data: UpdateMenuItemData): Promise<MenuItem | null> {
     logger.debug(`Updating menu item: ${id}`, data)
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.path !== undefined) updateData.path = data.path

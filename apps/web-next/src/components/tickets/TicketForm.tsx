@@ -57,7 +57,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
     watch,
     formState: { errors },
   } = useForm<TicketFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(ticketSchema as any),
     defaultValues: {
       title: ticket?.title || '',

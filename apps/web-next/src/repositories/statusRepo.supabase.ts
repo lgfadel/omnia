@@ -67,7 +67,7 @@ export const statusRepoSupabase = {
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
     logger.debug(`Updating status: ${id}`, data)
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.color !== undefined) updateData.color = data.color

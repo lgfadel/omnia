@@ -230,7 +230,7 @@ export const tarefasRepoSupabase = {
 
   // Update an existing task
   async update(id: string, data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>): Promise<Tarefa | null> {
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;

@@ -46,7 +46,7 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
     reset,
     formState: { errors },
   } = useForm<TicketStatusFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(ticketStatusSchema as any),
     defaultValues: {
       name: status?.name || "",

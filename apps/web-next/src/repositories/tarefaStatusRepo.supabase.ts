@@ -75,7 +75,7 @@ export const tarefaStatusRepoSupabase = {
   async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
     logger.debug(`Updating tarefa status: ${id}`, data)
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     
     if (data.name !== undefined) updateData.name = data.name;
     if (data.color !== undefined) updateData.color = data.color;

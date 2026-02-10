@@ -61,7 +61,7 @@ export const crmOrigensRepoSupabase = {
   async update(id: string, data: Partial<Omit<CrmOrigem, 'id'>>): Promise<CrmOrigem | null> {
     logger.debug(`Updating CRM origem: ${id}`, data)
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.color !== undefined) updateData.color = data.color

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { User, Session, AuthApiError } from '@supabase/supabase-js'
+import { User, Session, AuthApiError, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { UserRef, Role } from '@/data/types'
 import { logger } from '@/lib/logging'
@@ -17,10 +17,10 @@ interface AuthStore {
   loading: boolean
   
   // Actions
-  signUp: (email: string, password: string, name?: string) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string, name?: string) => Promise<{ error: AuthError | null }>
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: any }>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   initAuth: () => () => void
   fetchUserProfile: (userId: string) => Promise<void>
 }

@@ -132,7 +132,7 @@ export const admissoesRepoSupabase = {
     
     const createdById = await getCurrentOmniaUserId();
 
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       title: admissaoData.title,
       description: admissaoData.description || null,
       priority: admissaoData.priority,
@@ -166,7 +166,7 @@ export const admissoesRepoSupabase = {
   async update(id: string, admissaoData: Partial<Omit<Admissao, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>): Promise<Admissao | null> {
     logger.debug(`Updating admissão: ${id}`, admissaoData)
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (admissaoData.title !== undefined) updateData.title = admissaoData.title;
     if (admissaoData.description !== undefined) updateData.description = admissaoData.description || null;

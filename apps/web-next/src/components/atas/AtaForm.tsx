@@ -102,7 +102,7 @@ export function AtaForm({
       errors
     }
   } = useForm<AtaFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(ataSchema as any),
     defaultValues: {
       title: ata?.title || "",

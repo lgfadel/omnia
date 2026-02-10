@@ -135,8 +135,9 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
         unreadCount: computeUnreadCount(data),
         loading: false,
       })
-    } catch (error: any) {
-      set({ loading: false, error: error?.message ?? 'Erro ao carregar notificações' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar notificações'
+      set({ loading: false, error: message })
     }
   },
 
@@ -152,8 +153,9 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
           unreadCount: computeUnreadCount(nextNotifications),
         }
       })
-    } catch (error: any) {
-      set({ error: error?.message ?? 'Erro ao marcar como lida' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao marcar como lida'
+      set({ error: message })
     }
   },
 
@@ -175,8 +177,9 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
           unreadCount: 0,
         }
       })
-    } catch (error: any) {
-      set({ error: error?.message ?? 'Erro ao marcar todas como lidas' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao marcar todas como lidas'
+      set({ error: message })
     }
   },
 }))

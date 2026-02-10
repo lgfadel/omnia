@@ -127,7 +127,7 @@ export function CrmLeadForm({ lead, onSuccess, onCancel }: CrmLeadFormProps) {
   const defaultOrigem = origens.find(origem => origem.isDefault) || origens[0]
   
   const form = useForm<CrmLeadFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(crmLeadSchema as any),
     defaultValues: {
       cliente: lead?.cliente || '',

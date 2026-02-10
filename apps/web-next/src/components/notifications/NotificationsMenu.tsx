@@ -99,7 +99,7 @@ export function NotificationsMenu() {
             .select('id, title')
             .in('id', ticketIds)
 
-          ;(data ?? []).forEach((t: any) => {
+          ;(data ?? []).forEach((t: { id?: string; title?: string }) => {
             if (t?.id && t?.title) ticketTitleById[t.id] = t.title
           })
         }
@@ -110,8 +110,8 @@ export function NotificationsMenu() {
             .select('id, ata_id')
             .in('id', commentIds)
 
-          ;(data ?? []).forEach((c: any) => {
-            if (c?.id && c?.ata_id) commentToAtaId[c.id] = c.ata_id
+          ;(data ?? []).forEach((c: { id: string; ata_id: string | null }) => {
+            if (c.id && c.ata_id) commentToAtaId[c.id] = c.ata_id
           })
         }
 
@@ -124,7 +124,7 @@ export function NotificationsMenu() {
             .select('id, code, title')
             .in('id', ataIds)
 
-          ;(data ?? []).forEach((a: any) => {
+          ;(data ?? []).forEach((a: { id?: string; code?: string; title?: string }) => {
             if (!a?.id) return
             const label = a.title
             if (label) ataTitleById[a.id] = label

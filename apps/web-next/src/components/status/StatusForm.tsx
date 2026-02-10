@@ -45,7 +45,7 @@ export function StatusForm({ status, onSubmit, onCancel, isLoading }: StatusForm
     setValue,
     formState: { errors }
   } = useForm<StatusFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(statusSchema as any),
     defaultValues: {
       name: status?.name || "",

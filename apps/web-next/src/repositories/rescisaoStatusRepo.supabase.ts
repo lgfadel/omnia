@@ -73,7 +73,7 @@ export const rescisaoStatusRepoSupabase = {
   async update(id: string, data: Partial<Omit<RescisaoStatus, 'id'>>): Promise<RescisaoStatus | null> {
     logger.debug(`Updating rescisão status: ${id}`, data)
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     
     if (data.name !== undefined) updateData.name = data.name;
     if (data.color !== undefined) updateData.color = data.color;

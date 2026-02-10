@@ -37,7 +37,7 @@ export function TagForm({ tag, onSubmit, onCancel, loading }: TagFormProps) {
     handleSubmit,
     formState: { errors }
   } = useForm<TagFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(tagSchema as any),
     defaultValues: {
       name: tag?.name || "",

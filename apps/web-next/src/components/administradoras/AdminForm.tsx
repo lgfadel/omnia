@@ -27,7 +27,7 @@ interface AdminFormProps {
 
 export function AdminForm({ administradora, onSubmit, onCancel, isLoading }: AdminFormProps) {
   const form = useForm<z.infer<typeof adminSchema>>({
-    // TODO: remover cast quando @hookform/resolvers suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(adminSchema as any),
     defaultValues: {
       nome: administradora?.nome || "",

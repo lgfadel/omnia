@@ -73,7 +73,7 @@ export const admissaoStatusRepoSupabase = {
   async update(id: string, data: Partial<Omit<AdmissaoStatus, 'id'>>): Promise<AdmissaoStatus | null> {
     logger.debug(`Updating admissão status: ${id}`, data)
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     
     if (data.name !== undefined) updateData.name = data.name;
     if (data.color !== undefined) updateData.color = data.color;

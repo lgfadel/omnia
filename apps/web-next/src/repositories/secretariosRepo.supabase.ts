@@ -142,7 +142,7 @@ export const secretariosRepoSupabase = {
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
     logger.debug(`SecretariosRepo: Updating user: ${id}`, data)
 
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.email !== undefined) updateData.email = data.email
     if (data.roles !== undefined) updateData.roles = data.roles
@@ -188,9 +188,11 @@ export const secretariosRepoSupabase = {
       if (error) {
         logger.error('SecretariosRepo: Error calling delete-user function:', error)
         // Try to extract server-provided message
-        const context: any = (error as any).context
-        const serverMsg = (context && (context.error || context.message || context.response?.error)) || (data as any)?.error
-        let friendly = serverMsg
+        const errWithContext = error as { context?: Record<string, unknown> }
+        const context = errWithContext.context
+        const dataWithError = data as Record<string, unknown> | null
+        const serverMsg = (context && (context.error || context.message || (context.response as Record<string, unknown> | undefined)?.error)) || dataWithError?.error
+        let friendly = typeof serverMsg === 'string' ? serverMsg : ''
         if (serverMsg === 'Cannot delete user with associated records') {
           friendly = 'Não é possível excluir este usuário: ele possui vínculos com registros (atas, comentários, etc.). Remova os vínculos antes de excluir.'
         } else if (serverMsg === 'Missing request body') {
@@ -208,7 +210,8 @@ export const secretariosRepoSupabase = {
       }
 
       if (!data?.success) {
-        const errorMessage = (data as any)?.error || 'Erro desconhecido ao excluir usuário'
+        const rawError = (data as Record<string, unknown>)?.error
+        const errorMessage = typeof rawError === 'string' ? rawError : 'Erro desconhecido ao excluir usuário'
         logger.error('SecretariosRepo: Delete user function returned error:', errorMessage)
         throw new Error(errorMessage)
       }
@@ -216,9 +219,9 @@ export const secretariosRepoSupabase = {
       logger.debug('SecretariosRepo: User deleted successfully:', data.deletedUser)
       return true
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('SecretariosRepo: Error deleting user:', error)
-      throw new Error(error.message || 'Erro ao excluir usuário')
+      throw new Error(error instanceof Error ? error.message : 'Erro ao excluir usuário')
     }
   }
 }

@@ -70,7 +70,7 @@ function DiagnosticPanel() {
         const sessionResult = await Promise.race([
           supabase.auth.getSession(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs))
-        ]) as { data: { session: any }, error: any } | Error
+        ]) as { data: { session: unknown }, error: { message: string } | null } | Error
         const error = (sessionResult && 'error' in sessionResult) ? sessionResult.error : null
         setDiagnostics(prev => prev.map(d => 
           d.test === 'Auth Session' 

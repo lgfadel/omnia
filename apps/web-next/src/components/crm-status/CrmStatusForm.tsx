@@ -45,7 +45,7 @@ export function CrmStatusForm({ status, onSubmit, onCancel, isLoading }: CrmStat
     setValue,
     formState: { errors }
   } = useForm<CrmStatusFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(crmStatusSchema as any),
     defaultValues: {
       name: status?.name || "",

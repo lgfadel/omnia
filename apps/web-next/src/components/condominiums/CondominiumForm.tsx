@@ -28,6 +28,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
     handleSubmit,
     formState: { errors }
   } = useForm<CondominiumFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(condominiumSchema as any),
     defaultValues: {
       name: condominium?.name || "",

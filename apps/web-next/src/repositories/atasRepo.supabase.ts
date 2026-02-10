@@ -72,12 +72,15 @@ interface DbAtaUpdate {
   tags?: string[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseQueryBuilder = any
+
 interface SupabaseUntyped {
   from: (table: string) => {
-    select: (columns?: string) => any;
-    insert: (data: any) => any;
-    update: (data: any) => any;
-    delete: () => any;
+    select: (columns?: string) => SupabaseQueryBuilder;
+    insert: (data: Record<string, unknown> | Record<string, unknown>[]) => SupabaseQueryBuilder;
+    update: (data: Record<string, unknown>) => SupabaseQueryBuilder;
+    delete: () => SupabaseQueryBuilder;
   };
 }
 

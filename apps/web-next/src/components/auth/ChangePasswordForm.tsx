@@ -38,7 +38,7 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
     formState: { errors },
     reset
   } = useForm<ChangePasswordFormData>({
-    // TODO: remover cast quando resolver suportar Zod 3.24
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(changePasswordSchema as any)
   })
 

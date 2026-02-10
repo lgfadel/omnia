@@ -45,6 +45,7 @@ export function QuickCondominiumDialog({
     reset,
     formState: { errors },
   } = useForm<QuickCondominiumFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(quickCondominiumSchema as any),
   });
 

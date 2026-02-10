@@ -198,6 +198,7 @@ export const rolePermissionsRepoSupabase = {
     // Transform to matrix format: { role: { menuPath: canAccess } }
     const matrix: Record<string, Record<string, boolean>> = {}
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data?.forEach((permission: any) => {
       const roleName = permission.role_name
       const menuPath = permission.menu_items.path
@@ -247,7 +248,7 @@ export const rolePermissionsRepoSupabase = {
   async update(id: string, data: UpdateRolePermissionData): Promise<RolePermission | null> {
     logger.debug(`Updating role permission: ${id}`, data)
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (data.can_access !== undefined) updateData.can_access = data.can_access
 
