@@ -30,7 +30,7 @@ export const admissaoAttachmentsRepoSupabase = {
     logger.debug(`Loading attachments for admissão: ${admissaoId}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissao_attachments' as any)
+      .from('omnia_admissao_attachments')
       .select('*')
       .eq('admissao_id', admissaoId)
       .order('created_at', { ascending: false });
@@ -47,7 +47,7 @@ export const admissaoAttachmentsRepoSupabase = {
     logger.debug(`Creating attachment for admissão: ${attachment.admissaoId}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissao_attachments' as any)
+      .from('omnia_admissao_attachments')
       .insert({
         admissao_id: attachment.admissaoId,
         name: attachment.name,
@@ -72,7 +72,7 @@ export const admissaoAttachmentsRepoSupabase = {
     
     // First get the attachment to delete from storage
     const { data: attachment } = await supabase
-      .from('omnia_admissao_attachments' as any)
+      .from('omnia_admissao_attachments')
       .select('url')
       .eq('id', id)
       .single() as { data: { url: string } | null };
@@ -92,7 +92,7 @@ export const admissaoAttachmentsRepoSupabase = {
     }
 
     const { error } = await supabase
-      .from('omnia_admissao_attachments' as any)
+      .from('omnia_admissao_attachments')
       .delete()
       .eq('id', id);
 

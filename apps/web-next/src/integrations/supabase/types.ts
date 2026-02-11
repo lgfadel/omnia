@@ -151,174 +151,6 @@ export type Database = {
         }
         Relationships: []
       }
-      omnia_rescisao_statuses: {
-        Row: {
-          color: string
-          created_at: string | null
-          id: string
-          is_default: boolean | null
-          name: string
-          order_position: number
-          updated_at: string | null
-        }
-        Insert: {
-          color: string
-          created_at?: string | null
-          id?: string
-          is_default?: boolean | null
-          name: string
-          order_position: number
-          updated_at?: string | null
-        }
-        Update: {
-          color?: string
-          created_at?: string | null
-          id?: string
-          is_default?: boolean | null
-          name?: string
-          order_position?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      omnia_rescisoes: {
-        Row: {
-          assigned_to: string | null
-          attachment_count: number | null
-          comment_count: number | null
-          created_at: string | null
-          created_by: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          is_private: boolean | null
-          priority: string
-          status_id: string
-          tags: string[] | null
-          ticket_id: number
-          ticket_octa: string | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          attachment_count?: number | null
-          comment_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          is_private?: boolean | null
-          priority?: string
-          status_id: string
-          tags?: string[] | null
-          ticket_id?: number
-          ticket_octa?: string | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          attachment_count?: number | null
-          comment_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          is_private?: boolean | null
-          priority?: string
-          status_id?: string
-          tags?: string[] | null
-          ticket_id?: number
-          ticket_octa?: string | null
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "omnia_rescisoes_status_id_fkey"
-            columns: ["status_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_rescisao_statuses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      omnia_rescisao_comments: {
-        Row: {
-          rescisao_id: string
-          author_id: string
-          body: string
-          created_at: string | null
-          id: string
-        }
-        Insert: {
-          rescisao_id: string
-          author_id: string
-          body: string
-          created_at?: string | null
-          id?: string
-        }
-        Update: {
-          rescisao_id?: string
-          author_id?: string
-          body?: string
-          created_at?: string | null
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "omnia_rescisao_comments_rescisao_id_fkey"
-            columns: ["rescisao_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_rescisoes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      omnia_rescisao_attachments: {
-        Row: {
-          rescisao_id: string
-          created_at: string | null
-          id: string
-          mime_type: string | null
-          name: string
-          size_kb: number | null
-          uploaded_by: string | null
-          url: string
-        }
-        Insert: {
-          rescisao_id: string
-          created_at?: string | null
-          id?: string
-          mime_type?: string | null
-          name: string
-          size_kb?: number | null
-          uploaded_by?: string | null
-          url: string
-        }
-        Update: {
-          rescisao_id?: string
-          created_at?: string | null
-          id?: string
-          mime_type?: string | null
-          name?: string
-          size_kb?: number | null
-          uploaded_by?: string | null
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "omnia_rescisao_attachments_rescisao_id_fkey"
-            columns: ["rescisao_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_rescisoes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       omnia_admissoes: {
         Row: {
           assigned_to: string | null
@@ -531,51 +363,68 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "omnia_attachments_ata_id_fkey"
+            foreignKeyName: "fk_attachments_ata"
             columns: ["ata_id"]
             isOneToOne: false
             referencedRelation: "omnia_atas"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "omnia_attachments_comment_id_fkey"
+            foreignKeyName: "fk_attachments_comment"
             columns: ["comment_id"]
             isOneToOne: false
             referencedRelation: "omnia_comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "omnia_attachments_uploaded_by_fkey"
-            columns: ["uploaded_by"]
+            foreignKeyName: "omnia_attachments_ata_id_fkey"
+            columns: ["ata_id"]
             isOneToOne: false
-            referencedRelation: "omnia_users"
+            referencedRelation: "omnia_atas"
             referencedColumns: ["id"]
           },
         ]
       }
       omnia_comments: {
         Row: {
-          ata_id: string | null
+          ata_id: string
           author_id: string
           body: string
           created_at: string
+          created_by: string | null
           id: string
         }
         Insert: {
-          ata_id?: string | null
+          ata_id: string
           author_id: string
           body: string
           created_at?: string
+          created_by?: string | null
           id?: string
         }
         Update: {
-          ata_id?: string | null
+          ata_id?: string
           author_id?: string
           body?: string
           created_at?: string
+          created_by?: string | null
           id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_comments_ata"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_comments_author"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omnia_comments_ata_id_fkey"
             columns: ["ata_id"]
@@ -590,42 +439,104 @@ export type Database = {
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "omnia_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       omnia_condominiums: {
         Row: {
           address: string | null
-          administradora_id: string | null
-          ativo: boolean | null
+          cnpj: string | null
           created_at: string | null
+          created_by: string | null
           id: string
+          manager_name: string | null
           name: string
+          phone: string | null
+          syndic_name: string | null
           updated_at: string | null
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
-          administradora_id?: string | null
-          ativo?: boolean | null
+          cnpj?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          manager_name?: string | null
           name: string
+          phone?: string | null
+          syndic_name?: string | null
           updated_at?: string | null
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
-          administradora_id?: string | null
-          ativo?: boolean | null
+          cnpj?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          manager_name?: string | null
           name?: string
+          phone?: string | null
+          syndic_name?: string | null
           updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      omnia_crm_attachments: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          mime_type: string | null
+          name: string
+          size_kb: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          mime_type?: string | null
+          name: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          mime_type?: string | null
+          name?: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url?: string
         }
         Relationships: [
           {
-            foreignKeyName: "omnia_condominiums_administradora_id_fkey"
-            columns: ["administradora_id"]
+            foreignKeyName: "omnia_crm_attachments_comment_id_fkey"
+            columns: ["comment_id"]
             isOneToOne: false
-            referencedRelation: "omnia_administradoras"
+            referencedRelation: "omnia_crm_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_crm_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_crm_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -634,32 +545,28 @@ export type Database = {
         Row: {
           author_id: string
           body: string
-          created_at: string | null
+          created_at: string
+          created_by: string | null
           id: string
           lead_id: string
         }
         Insert: {
           author_id: string
           body: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           lead_id: string
         }
         Update: {
           author_id?: string
           body?: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           lead_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "omnia_crm_comments_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "omnia_crm_comments_lead_id_fkey"
             columns: ["lead_id"]
@@ -671,109 +578,206 @@ export type Database = {
       }
       omnia_crm_leads: {
         Row: {
+          administradora_atual: string | null
           assigned_to: string | null
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cliente: string
           comment_count: number | null
-          company_name: string | null
-          contact_email: string | null
-          contact_name: string | null
-          contact_phone: string | null
-          created_at: string | null
+          complemento: string | null
+          created_at: string
           created_by: string | null
-          description: string | null
-          estimated_value: number | null
+          estado: string | null
           id: string
-          last_contact_date: string | null
-          negotiation_status: Database["public"]["Enums"]["crm_negotiation_status"]
-          next_followup_date: string | null
-          source: string | null
-          tags: string[] | null
-          title: string
-          updated_at: string | null
+          logradouro: string | null
+          numero: string | null
+          numero_funcionarios_proprios: number | null
+          numero_funcionarios_terceirizados: number | null
+          numero_unidades: number | null
+          observacoes: string | null
+          origem_id: string | null
+          responsavel_negociacao: string | null
+          sindico_email: string | null
+          sindico_nome: string | null
+          sindico_telefone: string | null
+          sindico_whatsapp: string | null
+          status: string
+          updated_at: string
+          valor_proposta: number | null
         }
         Insert: {
+          administradora_atual?: string | null
           assigned_to?: string | null
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cliente: string
           comment_count?: number | null
-          company_name?: string | null
-          contact_email?: string | null
-          contact_name?: string | null
-          contact_phone?: string | null
-          created_at?: string | null
+          complemento?: string | null
+          created_at?: string
           created_by?: string | null
-          description?: string | null
-          estimated_value?: number | null
+          estado?: string | null
           id?: string
-          last_contact_date?: string | null
-          negotiation_status?: Database["public"]["Enums"]["crm_negotiation_status"]
-          next_followup_date?: string | null
-          source?: string | null
-          tags?: string[] | null
-          title: string
-          updated_at?: string | null
+          logradouro?: string | null
+          numero?: string | null
+          numero_funcionarios_proprios?: number | null
+          numero_funcionarios_terceirizados?: number | null
+          numero_unidades?: number | null
+          observacoes?: string | null
+          origem_id?: string | null
+          responsavel_negociacao?: string | null
+          sindico_email?: string | null
+          sindico_nome?: string | null
+          sindico_telefone?: string | null
+          sindico_whatsapp?: string | null
+          status: string
+          updated_at?: string
+          valor_proposta?: number | null
         }
         Update: {
+          administradora_atual?: string | null
           assigned_to?: string | null
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cliente?: string
           comment_count?: number | null
-          company_name?: string | null
-          contact_email?: string | null
-          contact_name?: string | null
-          contact_phone?: string | null
-          created_at?: string | null
+          complemento?: string | null
+          created_at?: string
           created_by?: string | null
-          description?: string | null
-          estimated_value?: number | null
+          estado?: string | null
           id?: string
-          last_contact_date?: string | null
-          negotiation_status?: Database["public"]["Enums"]["crm_negotiation_status"]
-          next_followup_date?: string | null
-          source?: string | null
-          tags?: string[] | null
-          title?: string
-          updated_at?: string | null
+          logradouro?: string | null
+          numero?: string | null
+          numero_funcionarios_proprios?: number | null
+          numero_funcionarios_terceirizados?: number | null
+          numero_unidades?: number | null
+          observacoes?: string | null
+          origem_id?: string | null
+          responsavel_negociacao?: string | null
+          sindico_email?: string | null
+          sindico_nome?: string | null
+          sindico_telefone?: string | null
+          sindico_whatsapp?: string | null
+          status?: string
+          updated_at?: string
+          valor_proposta?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "omnia_crm_leads_assigned_to_fkey"
-            columns: ["assigned_to"]
+            foreignKeyName: "fk_responsavel_negociacao"
+            columns: ["responsavel_negociacao"]
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "omnia_crm_leads_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "omnia_crm_leads_origem_id_fkey"
+            columns: ["origem_id"]
             isOneToOne: false
-            referencedRelation: "omnia_users"
+            referencedRelation: "omnia_crm_origens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_crm_leads_status_id_fkey"
+            columns: ["status"]
+            isOneToOne: false
+            referencedRelation: "omnia_crm_statuses"
             referencedColumns: ["id"]
           },
         ]
       }
+      omnia_crm_origens: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      omnia_crm_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          order_position: number
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          order_position: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omnia_menu_items: {
         Row: {
+          created_at: string | null
           icon: string | null
           id: string
           is_active: boolean | null
           name: string
-          order_index: number | null
+          order_index: number
           parent_id: string | null
           path: string
+          updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean | null
           name: string
-          order_index?: number | null
+          order_index?: number
           parent_id?: string | null
           path: string
+          updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
-          order_index?: number | null
+          order_index?: number
           parent_id?: string | null
           path?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -787,44 +791,278 @@ export type Database = {
       }
       omnia_notifications: {
         Row: {
-          created_at: string | null
-          data: Json | null
+          ata_id: string | null
+          comment_id: string | null
+          created_at: string
+          created_by: string | null
           id: string
-          message: string
           read_at: string | null
-          related_entity_id: string | null
-          related_entity_type: string | null
+          ticket_comment_id: string | null
+          ticket_id: string | null
           type: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          data?: Json | null
+          ata_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           read_at?: string | null
-          message: string
-          related_entity_id?: string | null
-          related_entity_type?: string | null
+          ticket_comment_id?: string | null
+          ticket_id?: string | null
           type: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          data?: Json | null
+          ata_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           read_at?: string | null
-          message?: string
-          related_entity_id?: string | null
-          related_entity_type?: string | null
+          ticket_comment_id?: string | null
+          ticket_id?: string | null
           type?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "omnia_notifications_ata_id_fkey"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_atas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_ticket_comment_id_fkey"
+            columns: ["ticket_comment_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_tickets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omnia_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_rescisao_attachments: {
+        Row: {
+          created_at: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          rescisao_id: string
+          size_kb: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          rescisao_id: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          rescisao_id?: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_demissao_attachments_demissao_id_fkey"
+            columns: ["rescisao_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_demissao_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_rescisao_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string | null
+          id: string
+          rescisao_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string | null
+          id?: string
+          rescisao_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+          rescisao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_demissao_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_demissao_comments_demissao_id_fkey"
+            columns: ["rescisao_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_rescisao_statuses: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          order_position: number
+          updated_at: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          order_position: number
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          order_position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      omnia_rescisoes: {
+        Row: {
+          assigned_to: string | null
+          attachment_count: number | null
+          comment_count: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          is_private: boolean | null
+          priority: string
+          status_id: string
+          tags: string[] | null
+          ticket_id: number
+          ticket_octa: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachment_count?: number | null
+          comment_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string
+          status_id: string
+          tags?: string[] | null
+          ticket_id?: number
+          ticket_octa?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachment_count?: number | null
+          comment_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string
+          status_id?: string
+          tags?: string[] | null
+          ticket_id?: number
+          ticket_octa?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_demissoes_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_demissoes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_demissoes_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_rescisao_statuses"
             referencedColumns: ["id"]
           },
         ]
@@ -898,54 +1136,68 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          created_by: string | null
           id: string
           name: string
+          updated_at: string
         }
         Insert: {
-          color: string
+          color?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
+          updated_at?: string
         }
         Update: {
           color?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "omnia_tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       omnia_ticket_attachments: {
         Row: {
           comment_id: string | null
-          created_at: string | null
+          created_at: string
           id: string
           mime_type: string | null
           name: string
           size_kb: number | null
-          ticket_id: string | null
+          ticket_id: string
           uploaded_by: string | null
           url: string
         }
         Insert: {
           comment_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           mime_type?: string | null
           name: string
           size_kb?: number | null
-          ticket_id?: string | null
+          ticket_id: string
           uploaded_by?: string | null
           url: string
         }
         Update: {
           comment_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           mime_type?: string | null
           name?: string
           size_kb?: number | null
-          ticket_id?: string | null
+          ticket_id?: string
           uploaded_by?: string | null
           url?: string
         }
@@ -957,97 +1209,71 @@ export type Database = {
             referencedRelation: "omnia_ticket_comments"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "omnia_ticket_attachments_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_tickets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "omnia_ticket_attachments_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "omnia_users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       omnia_ticket_comments: {
         Row: {
           author_id: string
           body: string
-          created_at: string | null
+          created_at: string
+          created_by: string | null
           id: string
           ticket_id: string
         }
         Insert: {
           author_id: string
           body: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           ticket_id: string
         }
         Update: {
           author_id?: string
           body?: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           id?: string
           ticket_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "omnia_ticket_comments_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "omnia_ticket_comments_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       omnia_ticket_statuses: {
         Row: {
           color: string
-          created_at: string | null
+          created_at: string
           id: string
           is_default: boolean | null
           name: string
           order_position: number
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           color: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           is_default?: boolean | null
           name: string
           order_position: number
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
           color?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           is_default?: boolean | null
           name?: string
           order_position?: number
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
       omnia_tickets: {
         Row: {
           assigned_to: string | null
-          attachment_count: number | null
+          attachment_count: number
           comment_count: number | null
-          created_at: string | null
+          created_at: string
           created_by: string | null
           description: string | null
           due_date: string | null
@@ -1060,13 +1286,13 @@ export type Database = {
           ticket_id: number
           ticket_octa: string | null
           title: string
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           assigned_to?: string | null
-          attachment_count?: number | null
+          attachment_count?: number
           comment_count?: number | null
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
@@ -1076,16 +1302,16 @@ export type Database = {
           priority?: Database["public"]["Enums"]["ticket_priority"]
           status_id: string
           tags?: string[] | null
-          ticket_id?: number
+          ticket_id: number
           ticket_octa?: string | null
           title: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
           assigned_to?: string | null
-          attachment_count?: number | null
+          attachment_count?: number
           comment_count?: number | null
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
@@ -1098,9 +1324,16 @@ export type Database = {
           ticket_id?: number
           ticket_octa?: string | null
           title?: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_omnia_tickets_oportunidade_id"
+            columns: ["oportunidade_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_crm_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omnia_tickets_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -1113,13 +1346,6 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "omnia_tickets_oportunidade_id_fkey"
-            columns: ["oportunidade_id"]
-            isOneToOne: false
-            referencedRelation: "omnia_crm_leads"
             referencedColumns: ["id"]
           },
           {
@@ -1253,8 +1479,8 @@ export type Database = {
         Returns: boolean
       }
       generate_user_color: { Args: { user_id: string }; Returns: string }
-      get_current_user_role: { Args: Record<PropertyKey, never>; Returns: string }
-      get_current_user_roles: { Args: Record<PropertyKey, never>; Returns: string[] }
+      get_current_user_role: { Args: never; Returns: string }
+      get_current_user_roles: { Args: never; Returns: string[] }
       get_user_accessible_menu_items: {
         Args: { p_user_id: string }
         Returns: {
@@ -1280,7 +1506,7 @@ export type Database = {
         }[]
       }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
-      is_current_user_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_current_user_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       crm_negotiation_status:

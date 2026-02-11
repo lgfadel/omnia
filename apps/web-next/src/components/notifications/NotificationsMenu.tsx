@@ -67,24 +67,21 @@ export function NotificationsMenu() {
         const ticketIds = Array.from(
           new Set(
             missing
-              .filter((n) => n.related_entity_type === 'ticket')
-              .map((n) => n.related_entity_id)
+              .map((n) => n.ticket_id)
               .filter(Boolean) as string[]
           )
         )
         const ataIdsDirect = Array.from(
           new Set(
             missing
-              .filter((n) => n.related_entity_type === 'ata')
-              .map((n) => n.related_entity_id)
+              .map((n) => n.ata_id)
               .filter(Boolean) as string[]
           )
         )
         const commentIds = Array.from(
           new Set(
             missing
-              .filter((n) => n.related_entity_type === 'comment')
-              .map((n) => n.related_entity_id)
+              .map((n) => n.comment_id)
               .filter(Boolean) as string[]
           )
         )
@@ -134,21 +131,18 @@ export function NotificationsMenu() {
         setEntityTitleByNotificationId((prev) => {
           const next = { ...prev }
           for (const n of missing) {
-            const entityId = n.related_entity_id
-            const entityType = n.related_entity_type
-            
             const title =
-              (entityType === 'ticket' && entityId ? ticketTitleById[entityId] : null) ||
-              (entityType === 'ata' && entityId ? ataTitleById[entityId] : null) ||
-              (entityType === 'comment' && entityId ? ataTitleById[commentToAtaId[entityId]] : null)
+              (n.ticket_id ? ticketTitleById[n.ticket_id] : null) ||
+              (n.ata_id ? ataTitleById[n.ata_id] : null) ||
+              (n.comment_id ? ataTitleById[commentToAtaId[n.comment_id]] : null)
 
             if (title) {
               next[n.id] = title
               continue
             }
 
-            if (entityType === 'ticket') next[n.id] = 'Tarefa removida'
-            else if (entityType === 'ata' || entityType === 'comment') next[n.id] = 'Ata removida'
+            if (n.ticket_id) next[n.id] = 'Tarefa removida'
+            else if (n.ata_id || n.comment_id) next[n.id] = 'Ata removida'
             else next[n.id] = 'Notificação'
           }
           return next
@@ -157,8 +151,8 @@ export function NotificationsMenu() {
         setEntityTitleByNotificationId((prev) => {
           const next = { ...prev }
           for (const n of missing) {
-            if (n.related_entity_type === 'ticket') next[n.id] = 'Tarefa'
-            else if (n.related_entity_type === 'ata' || n.related_entity_type === 'comment') next[n.id] = 'Ata'
+            if (n.ticket_id) next[n.id] = 'Tarefa'
+            else if (n.ata_id || n.comment_id) next[n.id] = 'Ata'
             else next[n.id] = 'Notificação'
           }
           return next
@@ -170,27 +164,26 @@ export function NotificationsMenu() {
   }, [visibleNotifications, entityTitleByNotificationId])
 
   const navigateFromNotification = useCallback(
-    async (n: { related_entity_id: string | null; related_entity_type: string | null }) => {
-      if (n.related_entity_type === 'ticket' && n.related_entity_id) {
-        router.push(`/tarefas/${n.related_entity_id}`)
+    async (n: { ticket_id: string | null; ata_id: string | null; comment_id: string | null }) => {
+      if (n.ticket_id) {
+        router.push(`/tarefas/${n.ticket_id}`)
         return
       }
 
-      if (n.related_entity_type === 'ata' && n.related_entity_id) {
-        router.push(`/atas/${n.related_entity_id}`)
+      if (n.ata_id) {
+        router.push(`/atas/${n.ata_id}`)
         return
       }
 
-      if (n.related_entity_type === 'comment' && n.related_entity_id) {
+      if (n.comment_id) {
         const { data } = await supabase
           .from('omnia_comments')
           .select('ata_id')
-          .eq('id', n.related_entity_id)
+          .eq('id', n.comment_id)
           .maybeSingle()
 
-        const ataId = (data as { ata_id: string | null } | null)?.ata_id
-        if (ataId) {
-          router.push(`/atas/${ataId}`)
+        if (data?.ata_id) {
+          router.push(`/atas/${data.ata_id}`)
         }
       }
     },
@@ -269,7 +262,7 @@ export function NotificationsMenu() {
           visibleNotifications.map((n) => {
             const title =
               entityTitleByNotificationId[n.id] ||
-              (n.related_entity_type === 'ticket' ? 'Tarefa' : n.related_entity_type === 'ata' || n.related_entity_type === 'comment' ? 'Ata' : 'Notificação')
+              (n.ticket_id ? 'Tarefa' : n.ata_id || n.comment_id ? 'Ata' : 'Notificação')
 
             const action = formatActionLabel(n.type)
             const meta = formatNotificationMeta(n.created_at)

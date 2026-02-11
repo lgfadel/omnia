@@ -21,7 +21,7 @@ export const ataCommentsRepoSupabase = {
     logger.debug(`Loading ata comments from database: ${ataId}`)
     
     const { data, error } = await supabase
-      .from('omnia_comments' as any)
+      .from('omnia_comments')
       .select('*')
       .eq('ata_id', ataId)
       .order('created_at', { ascending: false });
@@ -63,7 +63,7 @@ export const ataCommentsRepoSupabase = {
     });
 
     const { data, error } = await supabase
-      .from('omnia_comments' as any)
+      .from('omnia_comments')
       .insert({
         ...comment,
         author_id: omniaUser.id,
@@ -84,7 +84,7 @@ export const ataCommentsRepoSupabase = {
     logger.debug(`Updating ata comment: ${id}`, { body })
     
     const { data, error } = await supabase
-      .from('omnia_comments' as any)
+      .from('omnia_comments')
       .update({ body })
       .eq('id', id)
       .select()
@@ -102,7 +102,7 @@ export const ataCommentsRepoSupabase = {
     logger.debug(`Removing ata comment: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_comments' as any)
+      .from('omnia_comments')
       .delete()
       .eq('id', id);
 

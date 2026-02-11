@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -23,7 +24,7 @@ export const crmOrigensRepoSupabase = {
     logger.debug('Loading CRM origens from database...')
     
     const { data, error } = await supabase
-      .from('omnia_crm_origens' as any)
+      .from('omnia_crm_origens')
       .select('*')
       .order('name')
 
@@ -40,7 +41,7 @@ export const crmOrigensRepoSupabase = {
     logger.debug('Creating CRM origem:', origemData)
     
     const { data: newOrigem, error: createError } = await supabase
-      .from('omnia_crm_origens' as any)
+      .from('omnia_crm_origens')
       .insert({
         name: origemData.name,
         color: origemData.color,
@@ -61,14 +62,14 @@ export const crmOrigensRepoSupabase = {
   async update(id: string, data: Partial<Omit<CrmOrigem, 'id'>>): Promise<CrmOrigem | null> {
     logger.debug(`Updating CRM origem: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {}
+    const updateData: TablesUpdate<'omnia_crm_origens'> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.color !== undefined) updateData.color = data.color
     if (data.isDefault !== undefined) updateData.is_default = data.isDefault
 
     const { data: updatedOrigem, error } = await supabase
-      .from('omnia_crm_origens' as any)
+      .from('omnia_crm_origens')
       .update(updateData)
       .eq('id', id)
       .select('*')
@@ -88,7 +89,7 @@ export const crmOrigensRepoSupabase = {
     logger.debug(`Removing CRM origem: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_crm_origens' as any)
+      .from('omnia_crm_origens')
       .delete()
       .eq('id', id)
 
@@ -105,7 +106,7 @@ export const crmOrigensRepoSupabase = {
     logger.debug('Getting default CRM origem...')
     
     const { data, error } = await supabase
-      .from('omnia_crm_origens' as any)
+      .from('omnia_crm_origens')
       .select('*')
       .eq('is_default', true)
       .single()

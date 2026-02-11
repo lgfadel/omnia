@@ -1,6 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from '@/integrations/supabase/db-types';
 import { generateUniqueTagColor } from "@/utils/tagColors";
 import { logger } from '../lib/logging';
+
+type DbTag = Tables<'omnia_tags'>
+
+const transformTagFromDB = (tag: DbTag): Tag => ({
+  id: tag.id,
+  name: tag.name,
+  color: tag.color,
+  createdAt: tag.created_at,
+  createdBy: tag.created_by ?? undefined,
+  updatedAt: tag.updated_at ?? tag.created_at,
+});
 
 const getCurrentOmniaUserId = async () => {
   const { data } = await supabase.auth.getUser();
@@ -38,7 +50,7 @@ export const tagsRepoSupabase = {
     logger.debug('Loading tags from database...')
     
     const { data, error } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .select('*')
       .order('name');
 
@@ -47,14 +59,7 @@ export const tagsRepoSupabase = {
       throw error;
     }
 
-    return (data as any).map((tag: any) => ({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      createdAt: tag.created_at,
-      createdBy: tag.created_by,
-      updatedAt: tag.updated_at
-    }));
+    return (data ?? []).map(transformTagFromDB);
   },
 
   // Create a new tag
@@ -73,7 +78,7 @@ export const tagsRepoSupabase = {
     logger.debug('💾 TagsRepo: Inserting data:', insertData);
     
     const { data: newTag, error } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .insert(insertData)
       .select()
       .single();
@@ -85,14 +90,7 @@ export const tagsRepoSupabase = {
 
     logger.debug('✅ TagsRepo: Tag created successfully:', newTag);
 
-    return {
-      id: (newTag as any).id,
-      name: (newTag as any).name,
-      color: (newTag as any).color,
-      createdAt: (newTag as any).created_at,
-      createdBy: (newTag as any).created_by,
-      updatedAt: (newTag as any).updated_at
-    };
+    return transformTagFromDB(newTag);
   },
 
   // Update a tag
@@ -100,7 +98,7 @@ export const tagsRepoSupabase = {
     logger.debug(`Updating tag: ${id}`, data)
     
     const { data: updatedTag, error } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .update(data)
       .eq('id', id)
       .select()
@@ -111,14 +109,7 @@ export const tagsRepoSupabase = {
       throw error;
     }
 
-    return updatedTag ? {
-      id: (updatedTag as any).id,
-      name: (updatedTag as any).name,
-      color: (updatedTag as any).color,
-      createdAt: (updatedTag as any).created_at,
-      createdBy: (updatedTag as any).created_by,
-      updatedAt: (updatedTag as any).updated_at
-    } : null;
+    return updatedTag ? transformTagFromDB(updatedTag) : null;
   },
 
   // Delete a tag
@@ -126,7 +117,7 @@ export const tagsRepoSupabase = {
     logger.debug(`Removing tag: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .delete()
       .eq('id', id);
 
@@ -147,7 +138,7 @@ export const tagsRepoSupabase = {
     logger.debug(`Searching tags: ${query}`)
 
     const { data, error } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .select('*')
       .ilike('name', `%${query}%`)
       .order('name')
@@ -158,14 +149,7 @@ export const tagsRepoSupabase = {
       throw error;
     }
 
-    return (data as any).map((tag: any) => ({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      createdAt: tag.created_at,
-      createdBy: tag.created_by,
-      updatedAt: tag.updated_at
-    }));
+    return (data ?? []).map(transformTagFromDB);
   },
 
   // Get or create a tag by name (for dynamic creation)
@@ -174,7 +158,7 @@ export const tagsRepoSupabase = {
     
     // First try to find existing tag
     const { data: existingTag, error: findError } = await supabase
-      .from('omnia_tags' as any)
+      .from('omnia_tags')
       .select('*')
       .eq('name', name)
       .single();
@@ -186,14 +170,7 @@ export const tagsRepoSupabase = {
 
     if (existingTag) {
       logger.debug('✅ TagsRepo: Found existing tag:', existingTag);
-      return {
-        id: (existingTag as any).id,
-        name: (existingTag as any).name,
-        color: (existingTag as any).color,
-        createdAt: (existingTag as any).created_at,
-        createdBy: (existingTag as any).created_by,
-        updatedAt: (existingTag as any).updated_at
-      };
+      return transformTagFromDB(existingTag);
     }
 
     // If no color provided, generate a unique one

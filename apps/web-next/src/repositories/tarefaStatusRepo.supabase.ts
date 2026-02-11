@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
-
 
 export interface TarefaStatus {
   id: string;
@@ -29,7 +29,7 @@ export const tarefaStatusRepoSupabase = {
     logger.debug('Loading tarefa statuses from database...')
     
     const { data, error } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .select('*')
       .order('order_position');
 
@@ -46,7 +46,7 @@ export const tarefaStatusRepoSupabase = {
     
     // Get the next order position
     const { data: lastStatus } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
       .limit(1) as any;
@@ -54,7 +54,7 @@ export const tarefaStatusRepoSupabase = {
     const nextOrder = lastStatus && lastStatus.length > 0 ? lastStatus[0].order_position + 1 : 1;
 
     const { data: newStatus, error } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .insert({
         name: data.name,
         color: data.color,
@@ -75,7 +75,7 @@ export const tarefaStatusRepoSupabase = {
   async update(id: string, data: Partial<Omit<TarefaStatus, 'id'>>): Promise<TarefaStatus | null> {
     logger.debug(`Updating tarefa status: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {};
+    const updateData: TablesUpdate<'omnia_ticket_statuses'> = {};
     
     if (data.name !== undefined) updateData.name = data.name;
     if (data.color !== undefined) updateData.color = data.color;
@@ -83,7 +83,7 @@ export const tarefaStatusRepoSupabase = {
     if (data.isDefault !== undefined) updateData.is_default = data.isDefault;
 
     const { data: updatedStatus, error } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -102,7 +102,7 @@ export const tarefaStatusRepoSupabase = {
     
     // Check if it's a default status
     const { data: status } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .select('is_default')
       .eq('id', id)
       .maybeSingle();
@@ -112,7 +112,7 @@ export const tarefaStatusRepoSupabase = {
     }
 
     const { error } = await supabase
-      .from('omnia_ticket_statuses' as any)
+      .from('omnia_ticket_statuses')
       .delete()
       .eq('id', id);
 
@@ -134,7 +134,7 @@ export const tarefaStatusRepoSupabase = {
 
     for (const update of updates) {
       const { error } = await supabase
-        .from('omnia_ticket_statuses' as any)
+        .from('omnia_ticket_statuses')
         .update({ order_position: update.order_position })
         .eq('id', update.id);
 

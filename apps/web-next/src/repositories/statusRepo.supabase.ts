@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
 import { Status } from "@/data/types"
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -17,7 +18,7 @@ export const statusRepoSupabase = {
     logger.debug('Loading statuses from database...')
     
     const { data, error } = await supabase
-      .from('omnia_statuses' as any)
+      .from('omnia_statuses')
       .select('*')
       .order('order_position')
 
@@ -35,7 +36,7 @@ export const statusRepoSupabase = {
     
     // Get the next order position
     const { data: orderData, error: orderError } = await supabase
-      .from('omnia_statuses' as any)
+      .from('omnia_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
       .limit(1) as any
@@ -45,7 +46,7 @@ export const statusRepoSupabase = {
       : 1
 
     const { data: newStatus, error: createError } = await supabase
-      .from('omnia_statuses' as any)
+      .from('omnia_statuses')
       .insert({
         name: statusData.name,
         color: statusData.color,
@@ -67,7 +68,7 @@ export const statusRepoSupabase = {
   async update(id: string, data: Partial<Omit<Status, 'id'>>): Promise<Status | null> {
     logger.debug(`Updating status: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {}
+    const updateData: TablesUpdate<'omnia_statuses'> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.color !== undefined) updateData.color = data.color
@@ -75,7 +76,7 @@ export const statusRepoSupabase = {
     if (data.isDefault !== undefined) updateData.is_default = data.isDefault
 
     const { data: updatedStatus, error } = await supabase
-      .from('omnia_statuses' as any)
+      .from('omnia_statuses')
       .update(updateData)
       .eq('id', id)
       .select('*')
@@ -95,7 +96,7 @@ export const statusRepoSupabase = {
     logger.debug(`Removing status: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_statuses' as any)
+      .from('omnia_statuses')
       .delete()
       .eq('id', id)
 
@@ -114,7 +115,7 @@ export const statusRepoSupabase = {
     // Update each status order individually
     for (let i = 0; i < statuses.length; i++) {
       const { error } = await supabase
-        .from('omnia_statuses' as any)
+        .from('omnia_statuses')
         .update({ order_position: i + 1 })
         .eq('id', statuses[i].id)
       

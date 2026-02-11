@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -201,7 +202,7 @@ export const menuItemsRepoSupabase = {
   async update(id: string, data: UpdateMenuItemData): Promise<MenuItem | null> {
     logger.debug(`Updating menu item: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {}
+    const updateData: TablesUpdate<'omnia_menu_items'> = {}
     
     if (data.name !== undefined) updateData.name = data.name
     if (data.path !== undefined) updateData.path = data.path

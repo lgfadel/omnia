@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 export interface AdmissaoStatus {
@@ -28,7 +29,7 @@ export const admissaoStatusRepoSupabase = {
     logger.debug('Loading admissão statuses from database...')
     
     const { data, error } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .select('*')
       .order('order_position');
 
@@ -44,7 +45,7 @@ export const admissaoStatusRepoSupabase = {
     logger.debug('Creating admissão status:', data)
     
     const { data: lastStatus } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
       .limit(1) as any;
@@ -52,7 +53,7 @@ export const admissaoStatusRepoSupabase = {
     const nextOrder = lastStatus && lastStatus.length > 0 ? lastStatus[0].order_position + 1 : 1;
 
     const { data: newStatus, error } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .insert({
         name: data.name,
         color: data.color,
@@ -73,7 +74,7 @@ export const admissaoStatusRepoSupabase = {
   async update(id: string, data: Partial<Omit<AdmissaoStatus, 'id'>>): Promise<AdmissaoStatus | null> {
     logger.debug(`Updating admissão status: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {};
+    const updateData: TablesUpdate<'omnia_admissao_statuses'> = {};
     
     if (data.name !== undefined) updateData.name = data.name;
     if (data.color !== undefined) updateData.color = data.color;
@@ -81,7 +82,7 @@ export const admissaoStatusRepoSupabase = {
     if (data.isDefault !== undefined) updateData.is_default = data.isDefault;
 
     const { data: updatedStatus, error } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -99,7 +100,7 @@ export const admissaoStatusRepoSupabase = {
     logger.debug(`Removing admissão status: ${id}`)
     
     const { data: status } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .select('is_default')
       .eq('id', id)
       .maybeSingle();
@@ -109,7 +110,7 @@ export const admissaoStatusRepoSupabase = {
     }
 
     const { error } = await supabase
-      .from('omnia_admissao_statuses' as any)
+      .from('omnia_admissao_statuses')
       .delete()
       .eq('id', id);
 
@@ -131,7 +132,7 @@ export const admissaoStatusRepoSupabase = {
 
     for (const update of updates) {
       const { error } = await supabase
-        .from('omnia_admissao_statuses' as any)
+        .from('omnia_admissao_statuses')
         .update({ order_position: update.order_position })
         .eq('id', update.id);
 

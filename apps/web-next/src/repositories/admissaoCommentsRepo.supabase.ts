@@ -32,7 +32,7 @@ export const admissaoCommentsRepoSupabase = {
     logger.debug(`Loading comments for admissão: ${admissaoId}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissao_comments' as any)
+      .from('omnia_admissao_comments')
       .select(`
         *,
         author:omnia_users!omnia_admissao_comments_author_id_fkey(id, name, email, avatar_url, color)
@@ -52,7 +52,7 @@ export const admissaoCommentsRepoSupabase = {
     logger.debug(`Creating comment for admissão: ${admissaoId}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissao_comments' as any)
+      .from('omnia_admissao_comments')
       .insert({
         admissao_id: admissaoId,
         author_id: authorId,
@@ -76,7 +76,7 @@ export const admissaoCommentsRepoSupabase = {
     logger.debug(`Removing comment: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_admissao_comments' as any)
+      .from('omnia_admissao_comments')
       .delete()
       .eq('id', id);
 

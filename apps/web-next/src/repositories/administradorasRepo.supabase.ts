@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import type { Tables } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -24,19 +25,19 @@ export interface UpdateAdministradoraData {
 }
 
 // Transform database record to Administradora type
-const transformAdministradoraFromDB = (dbAdmin: any): Administradora => ({
+const transformAdministradoraFromDB = (dbAdmin: Tables<'omnia_administradoras'>): Administradora => ({
   id: dbAdmin.id,
   nome: dbAdmin.nome,
-  tipo: dbAdmin.tipo,
-  ativo: dbAdmin.ativo,
-  created_at: dbAdmin.created_at,
-  updated_at: dbAdmin.updated_at
+  tipo: dbAdmin.tipo as Administradora['tipo'],
+  ativo: dbAdmin.ativo ?? true,
+  created_at: dbAdmin.created_at ?? '',
+  updated_at: dbAdmin.updated_at ?? '',
 })
 
 export const administradorasRepoSupabase = {
   async list(): Promise<Administradora[]> {
     const { data, error } = await supabase
-      .from('omnia_administradoras' as any)
+      .from('omnia_administradoras')
       .select('*')
       .order('nome')
 
@@ -49,14 +50,14 @@ export const administradorasRepoSupabase = {
 
   async create(adminData: CreateAdministradoraData): Promise<Administradora> {
     const { data: newAdmin, error: createError } = await supabase
-      .from('omnia_administradoras' as any)
+      .from('omnia_administradoras')
       .insert({
         nome: adminData.nome,
         tipo: adminData.tipo,
         ativo: adminData.ativo ?? true
       })
       .select()
-      .single() as any
+      .single()
 
     if (createError) {
       throw createError
@@ -67,7 +68,7 @@ export const administradorasRepoSupabase = {
 
   async update(id: string, data: UpdateAdministradoraData): Promise<Administradora | null> {
     const { data: updatedAdmin, error } = await supabase
-      .from('omnia_administradoras' as any)
+      .from('omnia_administradoras')
       .update({
         nome: data.nome,
         tipo: data.tipo,
@@ -75,7 +76,7 @@ export const administradorasRepoSupabase = {
       })
       .eq('id', id)
       .select()
-      .single() as any
+      .single()
 
     if (error) {
       throw error
@@ -86,7 +87,7 @@ export const administradorasRepoSupabase = {
 
   async remove(id: string): Promise<boolean> {
     const { error } = await supabase
-      .from('omnia_administradoras' as any)
+      .from('omnia_administradoras')
       .delete()
       .eq('id', id)
 
@@ -100,10 +101,10 @@ export const administradorasRepoSupabase = {
   async getById(id: string): Promise<Administradora | null> {
     
     const { data, error } = await supabase
-      .from('omnia_administradoras' as any)
+      .from('omnia_administradoras')
       .select('*')
       .eq('id', id)
-      .single() as any
+      .single()
 
     if (error) {
       logger.error('Error getting administradora:', error)

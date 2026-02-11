@@ -60,8 +60,6 @@ const ConfigCondominiums = () => {
   const handleFormSubmit = async (data: {
     name: string;
     address?: string | null;
-    administradora_id?: string | null;
-    ativo?: boolean | null;
   }) => {
     logger.debug('ConfigCondominiums: Submitting form')
     

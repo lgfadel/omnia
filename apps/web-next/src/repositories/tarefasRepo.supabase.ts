@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { UserRef, Attachment, Comment } from '@/data/types';
+import type { TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 const getCurrentOmniaUserId = async () => {
@@ -230,7 +231,7 @@ export const tarefasRepoSupabase = {
 
   // Update an existing task
   async update(id: string, data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>): Promise<Tarefa | null> {
-    const updateData: Record<string, unknown> = {};
+    const updateData: TablesUpdate<'omnia_tickets'> = {};
     
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;

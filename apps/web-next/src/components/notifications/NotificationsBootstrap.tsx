@@ -22,37 +22,32 @@ const formatToastTitle = (type: string) => {
 }
 
 const resolveNotificationContext = async (n: {
-  related_entity_id: string | null
-  related_entity_type: string | null
+  ticket_id: string | null
+  ata_id: string | null
+  comment_id: string | null
+  ticket_comment_id: string | null
 }): Promise<{ label: string; title: string } | null> => {
-  const ticket_id = n.related_entity_type === 'ticket' ? n.related_entity_id : null
-  const ata_id = n.related_entity_type === 'ata' ? n.related_entity_id : null
-  const comment_id = n.related_entity_type === 'comment' ? n.related_entity_id : null
-  
-  if (ticket_id) {
+  if (n.ticket_id) {
     const { data } = await supabase
       .from('omnia_tickets')
       .select('id, title')
-      .eq('id', ticket_id)
+      .eq('id', n.ticket_id)
       .maybeSingle()
 
-    const title = (data as { title: string | null } | null)?.title
-    return title ? { label: 'Tarefa', title } : null
+    return data?.title ? { label: 'Tarefa', title: data.title } : null
   }
 
   const ataId =
-    ata_id ||
+    n.ata_id ||
     (
-      comment_id
+      n.comment_id
         ? (
-            (
-              await supabase
-                .from('omnia_comments')
-                .select('ata_id')
-                .eq('id', comment_id)
-                .maybeSingle()
-            ).data as { ata_id: string | null } | null
-          )?.ata_id
+            await supabase
+              .from('omnia_comments')
+              .select('ata_id')
+              .eq('id', n.comment_id)
+              .maybeSingle()
+          ).data?.ata_id
         : null
     )
 
@@ -64,8 +59,7 @@ const resolveNotificationContext = async (n: {
     .eq('id', ataId)
     .maybeSingle()
 
-  const title = (data as { title: string | null } | null)?.title
-  return title ? { label: 'Ata', title } : null
+  return data?.title ? { label: 'Ata', title: data.title } : null
 }
 
 export function NotificationsBootstrap() {
@@ -130,8 +124,10 @@ export function NotificationsBootstrap() {
 
     if (incoming.length === 1) {
       const n = incoming[0]
-      const cacheKey = n.related_entity_type && n.related_entity_id
-        ? `${n.related_entity_type}:${n.related_entity_id}`
+      const entityId = n.ticket_id || n.ata_id || n.comment_id || n.ticket_comment_id
+      const entityType = n.ticket_id ? 'ticket' : n.ata_id ? 'ata' : n.comment_id ? 'comment' : null
+      const cacheKey = entityType && entityId
+        ? `${entityType}:${entityId}`
         : null
 
       const showToast = (context: { label: string; title: string } | null) => {

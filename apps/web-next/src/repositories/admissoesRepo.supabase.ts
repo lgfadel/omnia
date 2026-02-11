@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { UserRef } from '@/data/types';
+import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 const getCurrentOmniaUserId = async () => {
@@ -90,7 +91,7 @@ export const admissoesRepoSupabase = {
     logger.debug('Loading admissões from database...')
     
     const { data, error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .select(`
         *,
         assigned_to_user:omnia_users!omnia_admissoes_assigned_to_fkey(id, name, email, roles, avatar_url, color),
@@ -110,7 +111,7 @@ export const admissoesRepoSupabase = {
     logger.debug(`Getting admissão: ${id}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .select(`
         *,
         assigned_to_user:omnia_users!omnia_admissoes_assigned_to_fkey(id, name, email, roles, avatar_url, color),
@@ -132,7 +133,7 @@ export const admissoesRepoSupabase = {
     
     const createdById = await getCurrentOmniaUserId();
 
-    const insertData: Record<string, unknown> = {
+    const insertData: TablesInsert<'omnia_admissoes'> = {
       title: admissaoData.title,
       description: admissaoData.description || null,
       priority: admissaoData.priority,
@@ -146,7 +147,7 @@ export const admissoesRepoSupabase = {
     };
 
     const { data, error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .insert(insertData)
       .select(`
         *,
@@ -166,7 +167,7 @@ export const admissoesRepoSupabase = {
   async update(id: string, admissaoData: Partial<Omit<Admissao, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>): Promise<Admissao | null> {
     logger.debug(`Updating admissão: ${id}`, admissaoData)
     
-    const updateData: Record<string, unknown> = {};
+    const updateData: TablesUpdate<'omnia_admissoes'> = {};
 
     if (admissaoData.title !== undefined) updateData.title = admissaoData.title;
     if (admissaoData.description !== undefined) updateData.description = admissaoData.description || null;
@@ -179,7 +180,7 @@ export const admissoesRepoSupabase = {
     if (admissaoData.isPrivate !== undefined) updateData.is_private = admissaoData.isPrivate;
 
     const { data, error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .update(updateData)
       .eq('id', id)
       .select(`
@@ -201,7 +202,7 @@ export const admissoesRepoSupabase = {
     logger.debug(`Removing admissão: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .delete()
       .eq('id', id);
 
@@ -217,7 +218,7 @@ export const admissoesRepoSupabase = {
     logger.debug(`Searching admissões: ${query}`)
     
     const { data, error } = await supabase
-      .from('omnia_admissoes' as any)
+      .from('omnia_admissoes')
       .select(`
         *,
         assigned_to_user:omnia_users!omnia_admissoes_assigned_to_fkey(id, name, email, roles, avatar_url, color),

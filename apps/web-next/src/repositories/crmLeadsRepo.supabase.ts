@@ -224,7 +224,7 @@ class CrmLeadsRepository {
 
   async getAttachments(leadId: string): Promise<CrmAttachment[]> {
     const { data, error } = await supabase
-      .from('omnia_crm_attachments' as any)
+      .from('omnia_crm_attachments')
       .select('*')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false})

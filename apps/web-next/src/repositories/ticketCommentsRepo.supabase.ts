@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 const getCurrentOmniaUserId = async () => {
@@ -37,7 +38,7 @@ export const ticketCommentsRepoSupabase = {
     logger.debug(`Loading ticket comments from database: ${ticketId}`)
     
     const { data, error } = await supabase
-      .from('omnia_ticket_comments' as any)
+      .from('omnia_ticket_comments')
       .select('*')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: false });
@@ -47,7 +48,7 @@ export const ticketCommentsRepoSupabase = {
       throw error;
     }
     
-    return (data as any) || [];
+    return (data ?? []) as TicketComment[];
   },
 
   async create(comment: Omit<TicketComment, 'id' | 'created_at'>): Promise<TicketComment> {
@@ -57,11 +58,11 @@ export const ticketCommentsRepoSupabase = {
     const omniaUserId = await getCurrentOmniaUserId()
     
     const { data, error } = await supabase
-      .from('omnia_ticket_comments' as any)
+      .from('omnia_ticket_comments')
       .insert({
-        ...comment,
+        ticket_id: comment.ticket_id,
+        body: comment.body,
         author_id: omniaUserId,
-        created_by: omniaUserId
       })
       .select()
       .single();
@@ -71,14 +72,14 @@ export const ticketCommentsRepoSupabase = {
       throw error;
     }
 
-    return data as any;
+    return data as TicketComment;
   },
 
   async update(id: string, body: string): Promise<TicketComment | null> {
     logger.debug(`Updating ticket comment: ${id}`, body)
     
     const { data, error } = await supabase
-      .from('omnia_ticket_comments' as any)
+      .from('omnia_ticket_comments')
       .update({ body })
       .eq('id', id)
       .select()
@@ -89,14 +90,14 @@ export const ticketCommentsRepoSupabase = {
       throw error;
     }
 
-    return data as any;
+    return data as TicketComment;
   },
 
   async remove(id: string): Promise<boolean> {
     logger.debug(`Deleting ticket comment: ${id}`)
     
     const { error } = await supabase
-      .from('omnia_ticket_comments' as any)
+      .from('omnia_ticket_comments')
       .delete()
       .eq('id', id);
 

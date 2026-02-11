@@ -1,5 +1,6 @@
-import { AuthApiError } from '@supabase/supabase-js';
+import { AuthApiError, type PostgrestError } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client"
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -7,19 +8,27 @@ export interface Condominium {
   id: string
   name: string
   address?: string | null
-  administradora_id?: string | null
-  ativo?: boolean | null
+  cnpj?: string | null
+  manager_name?: string | null
+  phone?: string | null
+  syndic_name?: string | null
+  whatsapp?: string | null
+  created_by?: string | null
   created_at: string | null
   updated_at: string | null
 }
 
 // Transform database record to Condominium type
-const transformCondominiumFromDB = (dbCondominium: any): Condominium => ({
+const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>): Condominium => ({
   id: dbCondominium.id,
   name: dbCondominium.name,
   address: dbCondominium.address,
-  administradora_id: dbCondominium.administradora_id,
-  ativo: dbCondominium.ativo,
+  cnpj: dbCondominium.cnpj,
+  manager_name: dbCondominium.manager_name,
+  phone: dbCondominium.phone,
+  syndic_name: dbCondominium.syndic_name,
+  whatsapp: dbCondominium.whatsapp,
+  created_by: dbCondominium.created_by,
   created_at: dbCondominium.created_at,
   updated_at: dbCondominium.updated_at
 })
@@ -47,13 +56,12 @@ export const condominiumsRepoSupabase = {
       return data?.map(transformCondominiumFromDB) || []
     } catch (error) {
       // Enhanced error logging to capture Supabase error details
+      const pgError = error as PostgrestError
       const errorDetails = {
         message: error instanceof Error ? error.message : String(error),
-        code: (error as any)?.code,
-        hint: (error as any)?.hint,
-        details: (error as any)?.details,
-        status: (error as any)?.status,
-        statusCode: (error as any)?.statusCode,
+        code: pgError?.code,
+        hint: pgError?.hint,
+        details: pgError?.details,
       }
       logger.error('Error loading condominiums:', errorDetails)
 
@@ -86,8 +94,6 @@ export const condominiumsRepoSupabase = {
       .insert({
         name: data.name,
         address: data.address,
-        administradora_id: data.administradora_id,
-        ativo: data.ativo
       })
       .select('*')
       .single()
@@ -104,11 +110,14 @@ export const condominiumsRepoSupabase = {
   async update(id: string, data: Partial<Omit<Condominium, 'id' | 'created_at' | 'updated_at'>>): Promise<Condominium | null> {
     logger.debug(`Updating condominium: ${id}`, data)
     
-    const updateData: Record<string, any> = {}
+    const updateData: TablesUpdate<'omnia_condominiums'> = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.address !== undefined) updateData.address = data.address
-    if (data.administradora_id !== undefined) updateData.administradora_id = data.administradora_id
-    if (data.ativo !== undefined) updateData.ativo = data.ativo
+    if (data.cnpj !== undefined) updateData.cnpj = data.cnpj
+    if (data.manager_name !== undefined) updateData.manager_name = data.manager_name
+    if (data.phone !== undefined) updateData.phone = data.phone
+    if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
+    if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
     
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')

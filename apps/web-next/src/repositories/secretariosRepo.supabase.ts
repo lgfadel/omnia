@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
-import { UserRef, Role } from "@/data/types"
+import type { UserRef, Role } from '@/data/types'
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -142,7 +143,7 @@ export const secretariosRepoSupabase = {
   async update(id: string, data: Partial<Omit<UserRef, 'id'>>): Promise<UserRef | null> {
     logger.debug(`SecretariosRepo: Updating user: ${id}`, data)
 
-    const updateData: Record<string, unknown> = {}
+    const updateData: TablesUpdate<'omnia_users'> = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.email !== undefined) updateData.email = data.email
     if (data.roles !== undefined) updateData.roles = data.roles

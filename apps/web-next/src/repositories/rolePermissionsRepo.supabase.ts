@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -248,7 +249,7 @@ export const rolePermissionsRepoSupabase = {
   async update(id: string, data: UpdateRolePermissionData): Promise<RolePermission | null> {
     logger.debug(`Updating role permission: ${id}`, data)
     
-    const updateData: Record<string, unknown> = {}
+    const updateData: TablesUpdate<'omnia_role_permissions'> = {}
     
     if (data.can_access !== undefined) updateData.can_access = data.can_access
 
