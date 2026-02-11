@@ -152,9 +152,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, router])
 
+  const debugInfo = `loading=${String(loading)} | user=${user ? 'YES' : 'NULL'} | showTimeout=${String(showTimeout)}`
+
   if (loading && !showTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'orange', color: 'black', padding: '8px', fontSize: '12px' }}>
+          PR: LOADING | {debugInfo}
+        </div>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <div className="text-sm text-muted-foreground">Carregando aplicação...</div>
@@ -164,12 +169,30 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (loading && showTimeout) {
-    return <DiagnosticPanel />
+    return (
+      <>
+        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'purple', color: 'white', padding: '8px', fontSize: '12px' }}>
+          PR: TIMEOUT | {debugInfo}
+        </div>
+        <DiagnosticPanel />
+      </>
+    )
   }
 
   if (!user && !loading) {
-    return null // Will redirect via useEffect
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'red', color: 'white', padding: '8px', fontSize: '12px' }}>
+        PR: NO USER - REDIRECTING | {debugInfo}
+      </div>
+    )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'green', color: 'white', padding: '8px', fontSize: '12px' }}>
+        PR: RENDERING CHILDREN | {debugInfo}
+      </div>
+      {children}
+    </>
+  )
 }
