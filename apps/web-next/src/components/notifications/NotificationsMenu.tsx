@@ -272,9 +272,9 @@ export function NotificationsMenu() {
               <DropdownMenuItem
                 key={n.id}
                 className="flex flex-col items-start gap-1"
-                onSelect={async () => {
-                  if (isUnread) await markAsRead(n.id)
-                  await navigateFromNotification(n)
+                onSelect={() => {
+                  if (isUnread) markAsRead(n.id)
+                  navigateFromNotification(n)
                 }}
               >
                 <div className="flex w-full items-center justify-between gap-2">
