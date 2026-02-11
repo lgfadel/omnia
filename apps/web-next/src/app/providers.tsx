@@ -32,9 +32,6 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <div style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 99999, background: 'blue', color: 'white', padding: '8px', fontSize: '12px' }}>
-          PROVIDERS OK
-        </div>
         <AuthProvider>
           <NotificationsBootstrap />
           <ErrorBoundary>{children}</ErrorBoundary>

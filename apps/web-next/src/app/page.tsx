@@ -74,9 +74,6 @@ export default function Index() {
   return (
     <ProtectedRoute>
       <Layout>
-        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'red', color: 'white', padding: '10px', fontSize: '16px' }}>
-          DEBUG: Page rendered | loading: {String(loading)} | error: {String(error)}
-        </div>
         <div className="space-y-6">
           <BreadcrumbOmnia items={[{
             label: "Dashboard",
