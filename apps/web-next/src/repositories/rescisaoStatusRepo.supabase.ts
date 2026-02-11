@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { TablesUpdate } from '@/integrations/supabase/db-types';
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 export interface RescisaoStatus {
@@ -12,13 +12,13 @@ export interface RescisaoStatus {
   updatedAt?: Date;
 }
 
-function transformRescisaoStatusFromDB(dbStatus: any): RescisaoStatus {
+function transformRescisaoStatusFromDB(dbStatus: Tables<'omnia_rescisao_statuses'>): RescisaoStatus {
   return {
     id: dbStatus.id,
     name: dbStatus.name,
     color: dbStatus.color,
     order: dbStatus.order_position,
-    isDefault: dbStatus.is_default,
+    isDefault: dbStatus.is_default ?? undefined,
     createdAt: dbStatus.created_at ? new Date(dbStatus.created_at) : undefined,
     updatedAt: dbStatus.updated_at ? new Date(dbStatus.updated_at) : undefined,
   };
@@ -48,7 +48,7 @@ export const rescisaoStatusRepoSupabase = {
       .from('omnia_rescisao_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
-      .limit(1) as any;
+      .limit(1);
 
     const nextOrder = lastStatus && lastStatus.length > 0 ? lastStatus[0].order_position + 1 : 1;
 
@@ -105,7 +105,7 @@ export const rescisaoStatusRepoSupabase = {
       .eq('id', id)
       .maybeSingle();
 
-    if ((status as any)?.is_default) {
+    if (status?.is_default) {
       throw new Error('Não é possível deletar um status padrão');
     }
 

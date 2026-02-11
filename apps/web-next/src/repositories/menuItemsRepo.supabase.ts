@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import type { TablesUpdate } from '@/integrations/supabase/db-types'
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -34,16 +34,16 @@ export interface UpdateMenuItemData {
 }
 
 // Transform database record to MenuItem type
-const transformMenuItemFromDB = (dbMenuItem: any): MenuItem => ({
+const transformMenuItemFromDB = (dbMenuItem: Tables<'omnia_menu_items'>): MenuItem => ({
   id: dbMenuItem.id,
   name: dbMenuItem.name,
   path: dbMenuItem.path,
-  icon: dbMenuItem.icon,
+  icon: dbMenuItem.icon ?? undefined,
   parent_id: dbMenuItem.parent_id,
-  order_index: dbMenuItem.order_index,
-  is_active: dbMenuItem.is_active,
-  created_at: dbMenuItem.created_at,
-  updated_at: dbMenuItem.updated_at
+  order_index: dbMenuItem.order_index ?? 0,
+  is_active: dbMenuItem.is_active ?? true,
+  created_at: dbMenuItem.created_at ?? '',
+  updated_at: dbMenuItem.updated_at ?? '',
 })
 
 export const menuItemsRepoSupabase = {

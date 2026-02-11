@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import type { TablesUpdate } from '@/integrations/supabase/db-types'
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -12,7 +12,7 @@ export interface CrmOrigem {
 }
 
 // Transform database record to CrmOrigem type
-const transformCrmOrigemFromDB = (dbOrigem: any): CrmOrigem => ({
+const transformCrmOrigemFromDB = (dbOrigem: Tables<'omnia_crm_origens'>): CrmOrigem => ({
   id: dbOrigem.id,
   name: dbOrigem.name,
   color: dbOrigem.color,

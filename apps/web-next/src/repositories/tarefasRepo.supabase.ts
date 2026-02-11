@@ -48,10 +48,12 @@ export interface Tarefa {
   isPrivate: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- error from untyped query
 const isMissingColumnError = (error: any, column: string) => {
   return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes(`'${column}'`)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- from('omnia_tickets' as any) + JOIN select
 function transformTarefaFromDB(dbTarefa: any): Tarefa {
   return {
     id: dbTarefa.id,

@@ -32,6 +32,7 @@ export interface UpdateRolePermissionData {
 export type RoleName = 'ADMIN' | 'SECRETARIO' | 'USUARIO'
 
 // Transform database record to RolePermission type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JOIN select returns nested relations, not flat Row
 const transformRolePermissionFromDB = (dbRolePermission: any): RolePermission => ({
   id: dbRolePermission.id,
   role_name: dbRolePermission.role_name,

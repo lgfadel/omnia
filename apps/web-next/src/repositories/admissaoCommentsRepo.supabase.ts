@@ -13,6 +13,7 @@ export interface AdmissaoComment {
   createdAt: Date;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JOIN select returns nested relations, not flat Row
 function transformCommentFromDB(dbComment: any): AdmissaoComment {
   return {
     id: dbComment.id,

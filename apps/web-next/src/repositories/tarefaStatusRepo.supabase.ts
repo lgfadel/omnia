@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { TablesUpdate } from '@/integrations/supabase/db-types';
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 export interface TarefaStatus {
@@ -12,13 +12,13 @@ export interface TarefaStatus {
   updatedAt?: Date;
 }
 
-function transformTarefaStatusFromDB(dbTarefaStatus: any): TarefaStatus {
+function transformTarefaStatusFromDB(dbTarefaStatus: Tables<'omnia_ticket_statuses'>): TarefaStatus {
   return {
     id: dbTarefaStatus.id,
     name: dbTarefaStatus.name,
     color: dbTarefaStatus.color,
     order: dbTarefaStatus.order_position,
-    isDefault: dbTarefaStatus.is_default,
+    isDefault: dbTarefaStatus.is_default ?? undefined,
     createdAt: dbTarefaStatus.created_at ? new Date(dbTarefaStatus.created_at) : undefined,
     updatedAt: dbTarefaStatus.updated_at ? new Date(dbTarefaStatus.updated_at) : undefined,
   };
@@ -49,7 +49,7 @@ export const tarefaStatusRepoSupabase = {
       .from('omnia_ticket_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
-      .limit(1) as any;
+      .limit(1);
 
     const nextOrder = lastStatus && lastStatus.length > 0 ? lastStatus[0].order_position + 1 : 1;
 
@@ -107,7 +107,7 @@ export const tarefaStatusRepoSupabase = {
       .eq('id', id)
       .maybeSingle();
 
-    if ((status as any)?.is_default) {
+    if (status?.is_default) {
       throw new Error('Não é possível deletar um status padrão');
     }
 

@@ -45,12 +45,14 @@ export interface Admissao {
   isPrivate: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- error from untyped query
 const isMissingColumnError = (error: any, column: string) => {
   if (!error?.message) return false;
   const msg = error.message.toLowerCase();
   return msg.includes('column') && msg.includes(column) && (msg.includes('does not exist') || msg.includes('not found'));
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JOIN select returns nested relations, not flat Row
 function transformAdmissaoFromDB(dbAdmissao: any): Admissao {
   return {
     id: dbAdmissao.id,

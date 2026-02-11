@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
 import type { UserRef, Role } from '@/data/types'
-import type { TablesUpdate } from '@/integrations/supabase/db-types'
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
@@ -12,11 +12,12 @@ const getCurrentAuthUserId = async () => {
 }
 
 // Transform database record to UserRef
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- select() returns partial columns, not full Row
 function transformUserFromDB(dbUser: any): UserRef {
   return {
     id: dbUser.id,
     name: dbUser.name,
-    email: dbUser.email || '', // Default to empty string if email not accessible
+    email: dbUser.email || '',
     roles: (dbUser.roles || []) as Role[],
     avatarUrl: dbUser.avatar_url,
     color: dbUser.color

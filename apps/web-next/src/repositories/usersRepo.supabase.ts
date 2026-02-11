@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { Tables } from '@/integrations/supabase/db-types'
 
 export interface User {
   id: string
@@ -22,7 +23,7 @@ export interface CreateUser {
   color?: string
 }
 
-const mapDbUser = (user: any): User => ({
+const mapDbUser = (user: Tables<'omnia_users'>): User => ({
   id: user.id,
   auth_user_id: user.auth_user_id ?? null,
   name: user.name,

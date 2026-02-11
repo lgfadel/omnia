@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/db-types';
 import { logger } from '../lib/logging';
 
 export interface AdmissaoAttachment {
@@ -12,7 +13,7 @@ export interface AdmissaoAttachment {
   createdAt: Date;
 }
 
-function transformAttachmentFromDB(dbAttachment: any): AdmissaoAttachment {
+function transformAttachmentFromDB(dbAttachment: Tables<'omnia_admissao_attachments'>): AdmissaoAttachment {
   return {
     id: dbAttachment.id,
     admissaoId: dbAttachment.admissao_id,
@@ -21,7 +22,7 @@ function transformAttachmentFromDB(dbAttachment: any): AdmissaoAttachment {
     sizeKb: dbAttachment.size_kb || undefined,
     mimeType: dbAttachment.mime_type || undefined,
     uploadedBy: dbAttachment.uploaded_by || undefined,
-    createdAt: new Date(dbAttachment.created_at),
+    createdAt: dbAttachment.created_at ? new Date(dbAttachment.created_at) : new Date(),
   };
 }
 
@@ -77,10 +78,10 @@ export const admissaoAttachmentsRepoSupabase = {
       .eq('id', id)
       .single() as { data: { url: string } | null };
 
-    if ((attachment as any)?.url) {
+    if (attachment?.url) {
       // Extract the path from the URL and delete from storage
       try {
-        const url = new URL((attachment as any).url);
+        const url = new URL(attachment.url);
         const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/admissoes\/(.+)/);
         if (pathMatch) {
           const filePath = decodeURIComponent(pathMatch[1]);

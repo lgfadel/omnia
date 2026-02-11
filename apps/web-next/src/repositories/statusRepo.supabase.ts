@@ -1,16 +1,16 @@
 import { supabase } from "@/integrations/supabase/client"
 import { Status } from "@/data/types"
-import type { TablesUpdate } from '@/integrations/supabase/db-types'
+import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
 
 // Transform database record to Status type
-const transformStatusFromDB = (dbStatus: any): Status => ({
+const transformStatusFromDB = (dbStatus: Tables<'omnia_statuses'>): Status => ({
   id: dbStatus.id,
   name: dbStatus.name,
   color: dbStatus.color,
   order: dbStatus.order_position,
-  isDefault: dbStatus.is_default
+  isDefault: dbStatus.is_default ?? undefined
 })
 
 export const statusRepoSupabase = {
@@ -39,7 +39,7 @@ export const statusRepoSupabase = {
       .from('omnia_statuses')
       .select('order_position')
       .order('order_position', { ascending: false })
-      .limit(1) as any
+      .limit(1)
 
     const nextOrder = orderData && orderData.length > 0 
       ? orderData[0].order_position + 1 

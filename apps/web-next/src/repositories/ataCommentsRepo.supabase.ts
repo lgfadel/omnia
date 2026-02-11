@@ -31,7 +31,7 @@ export const ataCommentsRepoSupabase = {
       throw error;
     }
     
-    return (data as any) || [];
+    return (data ?? []) as AtaComment[];
   },
 
   async create(comment: CreateAtaComment): Promise<AtaComment> {

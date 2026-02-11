@@ -50,6 +50,7 @@ export interface UserPermissionSummary {
 }
 
 // Transform database record to UserPermission type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JOIN select returns nested relations, not flat Row
 const transformUserPermissionFromDB = (dbUserPermission: any): UserPermission => ({
   id: dbUserPermission.id,
   user_id: dbUserPermission.user_id,
