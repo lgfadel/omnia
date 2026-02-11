@@ -52,14 +52,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback component
-      if (this.props.fallback) {
-        const FallbackComponent = this.props.fallback
-        return <FallbackComponent error={this.state.error!} retry={this.handleRetry} />
-      }
-
-      // Default error UI
-      return <DefaultErrorFallback error={this.state.error!} retry={this.handleRetry} />
+      return (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999, background: 'darkred', color: 'white', padding: '20px', fontSize: '14px' }}>
+          <strong>ErrorBoundary caught:</strong> {this.state.error?.message || 'Unknown error'}
+          <pre style={{ marginTop: '10px', fontSize: '11px', whiteSpace: 'pre-wrap' }}>{this.state.error?.stack}</pre>
+        </div>
+      )
     }
 
     return this.props.children

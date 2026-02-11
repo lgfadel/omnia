@@ -70,11 +70,18 @@ export default function Auth() {
   }
 
   if (user) {
-    return null // Will redirect via useEffect
+    return (
+      <div style={{ position: 'fixed', top: 40, left: 0, zIndex: 99999, background: 'magenta', color: 'white', padding: '8px', fontSize: '12px' }}>
+        AUTH PAGE: user exists, redirecting to /
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+      <div style={{ position: 'fixed', top: 40, left: 0, zIndex: 99999, background: 'teal', color: 'white', padding: '8px', fontSize: '12px' }}>
+        AUTH PAGE: rendering login form
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
