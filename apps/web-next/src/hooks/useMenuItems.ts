@@ -155,17 +155,21 @@ export function useMenuItems(): MenuItemsData {
 
   // Função para construir árvore de menu acessível
   const buildAccessibleMenuTree = useCallback((): MenuItem[] => {
-    const accessibleIds = new Set(accessibleMenuItems.map(item => item.id))
+    // Paths de menu temporariamente ocultos
+    const hiddenPaths = ['/crm']
+    const filteredItems = accessibleMenuItems.filter(item => !hiddenPaths.includes(item.path))
+
+    const accessibleIds = new Set(filteredItems.map(item => item.id))
     const itemsMap = new Map<string, MenuItem & { children?: MenuItem[] }>()
     const rootItems: (MenuItem & { children?: MenuItem[] })[] = []
 
     // Criar mapa apenas dos itens acessíveis
-    accessibleMenuItems.forEach(item => {
+    filteredItems.forEach(item => {
       itemsMap.set(item.id, { ...item, children: [] })
     })
 
-    // Construir árvore apenas com itens acessíveis
-    accessibleMenuItems.forEach(item => {
+    // Construir árvore apenas com itens acessíveis (filtrados)
+    filteredItems.forEach(item => {
       const menuItem = itemsMap.get(item.id)!
       
       if (item.parent_id && accessibleIds.has(item.parent_id)) {

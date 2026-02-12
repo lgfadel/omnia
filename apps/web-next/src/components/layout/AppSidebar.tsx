@@ -114,12 +114,16 @@ export function AppSidebar() {
     setExpandedItems(newExpanded)
   }
 
+  // Paths de menu temporariamente ocultos
+  const hiddenPaths = ['/crm']
+
   // Separar itens principais dos de configuração
   const { mainMenuItems, configMenuItems } = useMemo(() => {
     const main: MenuItem[] = []
     const config: MenuItem[] = []
     
     menuTree.forEach(item => {
+      if (hiddenPaths.includes(item.path)) return
       if (item.path.startsWith('/config')) {
         config.push(item)
       } else {

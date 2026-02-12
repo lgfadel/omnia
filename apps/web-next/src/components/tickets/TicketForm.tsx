@@ -12,7 +12,6 @@ import { TagInput } from '@/components/atas/TagInput';
 import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
 import { TicketStatusSelect } from './TicketStatusSelect';
-import { OportunidadeSelect } from './OportunidadeSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
@@ -248,18 +247,6 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Oportunidade (CRM)</Label>
-              <OportunidadeSelect
-                value={watch('oportunidadeId')}
-                onValueChange={(value) => {
-                  setValue('oportunidadeId', value);
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Vincule esta tarefa a uma oportunidade do CRM (opcional)
-              </p>
-            </div>
             
             <div className="flex items-center space-x-2">
               <Checkbox

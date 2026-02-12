@@ -236,31 +236,26 @@ export const userPermissionsRepoSupabase = {
             is_active: true,
             order_index: 3,
             can_access: true
-          },
-          {
-            id: 'crm',
-            name: 'Oportunidades',
-            path: '/crm',
-            icon: 'Users',
-            parent_id: null,
-            is_active: true,
-            order_index: 4,
-            can_access: true
           }
         ]
       }
 
+      // Hidden menu paths (temporarily disabled)
+      const hiddenPaths = ['/crm']
+
       // Transform the data to match the expected format
-      return (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        path: item.path,
-        icon: item.icon,
-        parent_id: item.parent_id,
-        is_active: item.is_active,
-        order_index: item.order_index,
-        can_access: true // For now, assume all active items are accessible
-      }))
+      return (data || [])
+        .filter(item => !hiddenPaths.includes(item.path))
+        .map(item => ({
+          id: item.id,
+          name: item.name,
+          path: item.path,
+          icon: item.icon,
+          parent_id: item.parent_id,
+          is_active: item.is_active,
+          order_index: item.order_index,
+          can_access: true // For now, assume all active items are accessible
+        }))
     } catch (error) {
       logger.error('Error in userPermissionsRepoSupabase.getUserAccessibleMenuItems:', error)
       // Return default menu items as fallback
@@ -293,16 +288,6 @@ export const userPermissionsRepoSupabase = {
           parent_id: null,
           is_active: true,
           order_index: 3,
-          can_access: true
-        },
-        {
-          id: 'crm',
-          name: 'Oportunidades',
-          path: '/crm',
-          icon: 'Users',
-          parent_id: null,
-          is_active: true,
-          order_index: 4,
           can_access: true
         }
       ]

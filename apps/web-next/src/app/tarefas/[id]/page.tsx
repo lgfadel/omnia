@@ -18,11 +18,10 @@ import { useTarefasStore } from '@/stores/tarefas.store';
 import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
-import { Edit, Trash2, Calendar, User, Tag, Building2 } from 'lucide-react';
+import { Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useCrmLead } from '@/hooks/useCrmLead';
 import { logger } from '@/lib/logging';
 
 export default function TicketDetail() {
@@ -37,7 +36,6 @@ export default function TicketDetail() {
   const { statuses, loadStatuses } = useTarefaStatusStore();
   const { tags, loadTags } = useTagsStore();
   
-  const { lead: oportunidade, loading: loadingOportunidade } = useCrmLead(ticket?.oportunidadeId);
 
   useEffect(() => {
     loadStatuses();
@@ -270,40 +268,6 @@ export default function TicketDetail() {
                       </div>
                     )}
 
-                    {ticket.oportunidadeId && (
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Oportunidade
-                        </div>
-                        {loadingOportunidade ? (
-                          <div className="text-sm text-muted-foreground">Carregando...</div>
-                        ) : oportunidade ? (
-                          <div className="p-3 bg-muted/50 rounded-lg border">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Link 
-                                  href={`/crm/${oportunidade.id}`}
-                                  className="font-medium text-sm text-primary hover:underline"
-                                >
-                                  {oportunidade.cliente}
-                                </Link>
-                                {oportunidade.valor_proposta && (
-                                  <p className="text-xs text-green-600 font-medium mt-1">
-                                    {new Intl.NumberFormat('pt-BR', {
-                                      style: 'currency',
-                                      currency: 'BRL'
-                                    }).format(oportunidade.valor_proposta)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">Oportunidade não encontrada</div>
-                        )}
-                      </div>
-                    )}
 
                     {ticket.tags && ticket.tags.length > 0 && (
                       <div className="space-y-2">
