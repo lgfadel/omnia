@@ -180,10 +180,7 @@ export function TabelaOmnia({
       }
 
       const updatedCount = commentCounts[String(row.id)]
-      // Evita sobrescrever o valor vindo do backend com um override antigo
-      const count = (updatedCount !== undefined && (value == null || updatedCount === value))
-        ? updatedCount
-        : (value || 0)
+      const count = updatedCount !== undefined ? updatedCount : (value || 0)
       return (
         <div className="flex items-center justify-center">
           <Button
