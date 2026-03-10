@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
@@ -16,6 +17,7 @@ const condominiumSchema = z.object({
   cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos").max(14, "CNPJ deve ter 14 dígitos").regex(/^\d{14}$/, "CNPJ deve conter apenas números"),
   syndic_name: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  active: z.boolean().default(true),
   zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(8, "CEP deve ter 8 dígitos").regex(/^\d{8}$/, "CEP deve conter apenas números"),
   street: z.string().min(1, "Rua é obrigatória"),
   number: z.string().min(1, "Número é obrigatório"),
@@ -34,6 +36,7 @@ interface CondominiumFormProps {
     cnpj: string
     syndic_name?: string | null
     phone?: string | null
+    active: boolean
     street: string
     number: string
     complement?: string | null
@@ -64,6 +67,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       cnpj: condominium?.cnpj || "",
       syndic_name: condominium?.syndic_name || "",
       phone: condominium?.phone || "",
+      active: condominium?.active ?? true,
       zip_code: condominium?.zip_code || "",
       street: condominium?.street || "",
       number: condominium?.number || "",
@@ -114,6 +118,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       cnpj: data.cnpj,
       syndic_name: data.syndic_name || null,
       phone: data.phone || null,
+      active: data.active,
       street: data.street,
       number: data.number,
       complement: data.complement || null,
@@ -218,6 +223,21 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   id="syndic_name"
                   {...register("syndic_name")}
                   placeholder="Nome completo do síndico"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="active" className="text-base">Status do Condomínio</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {watch("active") ? "Condomínio ativo" : "Condomínio inativo"}
+                  </p>
+                </div>
+                <Switch
+                  id="active"
+                  checked={watch("active")}
+                  onCheckedChange={(checked) => setValue("active", checked)}
                   disabled={isLoading}
                 />
               </div>

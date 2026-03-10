@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { Pencil, Trash2, Plus } from "lucide-react"
+import { Pencil, Trash2, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,8 +28,13 @@ interface CondominiumListProps {
 export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLoading }: CondominiumListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [condominiumToDelete, setCondominiumToDelete] = useState<Condominium | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEscapeKeyForAlert(() => setDeleteDialogOpen(false), deleteDialogOpen)
+
+  const filteredCondominiums = condominiums.filter(condominium =>
+    condominium.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   const handleDeleteClick = (condominium: Condominium) => {
     setCondominiumToDelete(condominium)
@@ -50,18 +56,26 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Condomínios</h2>
-          <p className="text-sm text-gray-600">
-            {condominiums.length} condomínio{condominiums.length !== 1 ? 's' : ''} cadastrado{condominiums.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <Button onClick={onCreate} disabled={isLoading}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Condomínio
         </Button>
       </div>
+
+      {condominiums.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Buscar condomínio por nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+            disabled={isLoading}
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -83,9 +97,21 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
             </div>
           </CardContent>
         </Card>
+      ) : filteredCondominiums.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="text-gray-500">
+              <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Nenhum condomínio encontrado</h3>
+              <p className="text-sm">
+                Nenhum condomínio corresponde à sua busca "{searchTerm}".
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div>
-          {condominiums.map((condominium) => (
+          {filteredCondominiums.map((condominium) => (
             <Card key={condominium.id} className="mb-3">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">

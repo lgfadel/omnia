@@ -20,6 +20,7 @@ export interface Condominium {
   phone?: string | null
   syndic_name?: string | null
   whatsapp?: string | null
+  active?: boolean | null
   created_by?: string | null
   created_at: string | null
   updated_at: string | null
@@ -42,6 +43,7 @@ const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>)
   phone: dbCondominium.phone,
   syndic_name: dbCondominium.syndic_name,
   whatsapp: dbCondominium.whatsapp,
+  active: dbCondominium.active,
   created_by: dbCondominium.created_by,
   created_at: dbCondominium.created_at,
   updated_at: dbCondominium.updated_at
@@ -119,6 +121,7 @@ export const condominiumsRepoSupabase = {
         phone: data.phone,
         syndic_name: data.syndic_name,
         whatsapp: data.whatsapp,
+        active: data.active ?? true,
       })
       .select('*')
       .single()
@@ -149,6 +152,7 @@ export const condominiumsRepoSupabase = {
     if (data.phone !== undefined) updateData.phone = data.phone
     if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
+    if (data.active !== undefined) updateData.active = data.active
     
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')
