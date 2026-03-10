@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
+import { formatAddress } from "@/lib/formatAddress"
 
 interface CondominiumListProps {
   condominiums: Condominium[]
@@ -93,8 +94,8 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
                       <div>
                         <h3 className="font-medium text-gray-900">{condominium.name}</h3>
                         <div className="text-sm text-gray-500">
-                          {condominium.address && (
-                            <div>{condominium.address}</div>
+                          {formatAddress(condominium) && (
+                            <div>{formatAddress(condominium)}</div>
                           )}
                         </div>
                       </div>

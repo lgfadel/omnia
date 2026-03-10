@@ -7,6 +7,13 @@ import { logger } from '../lib/logging';
 export interface Condominium {
   id: string
   name: string
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  zip_code?: string | null
+  city?: string | null
+  state?: string | null
   address?: string | null
   cnpj?: string | null
   manager_name?: string | null
@@ -22,6 +29,13 @@ export interface Condominium {
 const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>): Condominium => ({
   id: dbCondominium.id,
   name: dbCondominium.name,
+  street: dbCondominium.street,
+  number: dbCondominium.number,
+  complement: dbCondominium.complement,
+  neighborhood: dbCondominium.neighborhood,
+  zip_code: dbCondominium.zip_code,
+  city: dbCondominium.city,
+  state: dbCondominium.state,
   address: dbCondominium.address,
   cnpj: dbCondominium.cnpj,
   manager_name: dbCondominium.manager_name,
@@ -93,7 +107,18 @@ export const condominiumsRepoSupabase = {
       .from('omnia_condominiums')
       .insert({
         name: data.name,
-        address: data.address,
+        street: data.street,
+        number: data.number,
+        complement: data.complement,
+        neighborhood: data.neighborhood,
+        zip_code: data.zip_code,
+        city: data.city,
+        state: data.state,
+        cnpj: data.cnpj,
+        manager_name: data.manager_name,
+        phone: data.phone,
+        syndic_name: data.syndic_name,
+        whatsapp: data.whatsapp,
       })
       .select('*')
       .single()
@@ -112,7 +137,13 @@ export const condominiumsRepoSupabase = {
     
     const updateData: TablesUpdate<'omnia_condominiums'> = {}
     if (data.name !== undefined) updateData.name = data.name
-    if (data.address !== undefined) updateData.address = data.address
+    if (data.street !== undefined) updateData.street = data.street
+    if (data.number !== undefined) updateData.number = data.number
+    if (data.complement !== undefined) updateData.complement = data.complement
+    if (data.neighborhood !== undefined) updateData.neighborhood = data.neighborhood
+    if (data.zip_code !== undefined) updateData.zip_code = data.zip_code
+    if (data.city !== undefined) updateData.city = data.city
+    if (data.state !== undefined) updateData.state = data.state
     if (data.cnpj !== undefined) updateData.cnpj = data.cnpj
     if (data.manager_name !== undefined) updateData.manager_name = data.manager_name
     if (data.phone !== undefined) updateData.phone = data.phone
