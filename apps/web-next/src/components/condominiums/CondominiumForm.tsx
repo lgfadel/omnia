@@ -6,12 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { cepService, CEPServiceError } from "@/services/cep.service"
 import { Loader2 } from "lucide-react"
 
 const condominiumSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
+  cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos").max(14, "CNPJ deve ter 14 dígitos").regex(/^\d{14}$/, "CNPJ deve conter apenas números"),
+  syndic_name: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
   zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(8, "CEP deve ter 8 dígitos").regex(/^\d{8}$/, "CEP deve conter apenas números"),
   street: z.string().min(1, "Rua é obrigatória"),
   number: z.string().min(1, "Número é obrigatório"),
@@ -27,6 +31,9 @@ interface CondominiumFormProps {
   condominium?: Condominium
   onSubmit: (data: { 
     name: string
+    cnpj: string
+    syndic_name?: string | null
+    phone?: string | null
     street: string
     number: string
     complement?: string | null
@@ -54,6 +61,9 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
     resolver: zodResolver(condominiumSchema as any),
     defaultValues: {
       name: condominium?.name || "",
+      cnpj: condominium?.cnpj || "",
+      syndic_name: condominium?.syndic_name || "",
+      phone: condominium?.phone || "",
       zip_code: condominium?.zip_code || "",
       street: condominium?.street || "",
       number: condominium?.number || "",
@@ -101,6 +111,9 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
   const onFormSubmit = async (data: CondominiumFormData) => {
     await onSubmit({
       name: data.name,
+      cnpj: data.cnpj,
+      syndic_name: data.syndic_name || null,
+      phone: data.phone || null,
       street: data.street,
       number: data.number,
       complement: data.complement || null,
@@ -113,25 +126,104 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>
-          {condominium ? "Editar Condomínio" : "Novo Condomínio"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome do Condomínio *</Label>
-            <Input
-              id="nome"
-              {...register("name")}
-              placeholder="Ex: Residencial Jardim das Flores"
-              disabled={isLoading}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="info">Informações</TabsTrigger>
+              <TabsTrigger value="address">Endereço</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="space-y-4 mt-4 min-h-[520px]">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome do Condomínio *</Label>
+                <Input
+                  id="nome"
+                  {...register("name")}
+                  placeholder="Ex: Residencial Jardim das Flores"
+                  disabled={isLoading}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj">CNPJ *</Label>
+                  <Input
+                    id="cnpj"
+                    {...register("cnpj")}
+                    placeholder="00.000.000/0000-00"
+                    disabled={isLoading}
+                    maxLength={18}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      if (value.length <= 14) {
+                        // Format: XX.XXX.XXX/XXXX-XX
+                        let formatted = value
+                        if (value.length > 2) {
+                          formatted = value.slice(0, 2) + '.' + value.slice(2)
+                        }
+                        if (value.length > 5) {
+                          formatted = formatted.slice(0, 6) + '.' + formatted.slice(6)
+                        }
+                        if (value.length > 8) {
+                          formatted = formatted.slice(0, 10) + '/' + formatted.slice(10)
+                        }
+                        if (value.length > 12) {
+                          formatted = formatted.slice(0, 15) + '-' + formatted.slice(15)
+                        }
+                        setValue("cnpj", value)
+                        e.target.value = formatted
+                      }
+                    }}
+                    value={watch("cnpj") ? (() => {
+                      const value = watch("cnpj")
+                      let formatted = value
+                      if (value.length > 2) {
+                        formatted = value.slice(0, 2) + '.' + value.slice(2)
+                      }
+                      if (value.length > 5) {
+                        formatted = formatted.slice(0, 6) + '.' + formatted.slice(6)
+                      }
+                      if (value.length > 8) {
+                        formatted = formatted.slice(0, 10) + '/' + formatted.slice(10)
+                      }
+                      if (value.length > 12) {
+                        formatted = formatted.slice(0, 15) + '-' + formatted.slice(15)
+                      }
+                      return formatted
+                    })() : ''}
+                  />
+                  {errors.cnpj && (
+                    <p className="text-sm text-red-500">{errors.cnpj.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    {...register("phone")}
+                    placeholder="(00) 00000-0000"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="syndic_name">Nome do Síndico</Label>
+                <Input
+                  id="syndic_name"
+                  {...register("syndic_name")}
+                  placeholder="Nome completo do síndico"
+                  disabled={isLoading}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="address" className="space-y-4 mt-4 min-h-[520px]">
 
           <div className="space-y-2">
             <Label htmlFor="zip_code">CEP *</Label>
@@ -246,6 +338,9 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               )}
             </div>
           </div>
+
+            </TabsContent>
+          </Tabs>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
