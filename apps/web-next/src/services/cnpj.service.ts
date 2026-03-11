@@ -60,7 +60,7 @@ export const cnpjService = {
   },
 
   /**
-   * Fetches company data from ReceitaWS API (free public API)
+   * Fetches company data from BrasilAPI (primary) with ReceitaWS as fallback
    */
   async fetchDataByCNPJ(cnpj: string): Promise<CNPJData> {
     const cleanCNPJ = this.cleanCNPJ(cnpj)
@@ -68,6 +68,34 @@ export const cnpjService = {
       throw new CNPJServiceError('CNPJ deve conter 14 dígitos', 'INVALID_FORMAT')
     }
 
+    // Try BrasilAPI first (more reliable)
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCNPJ}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        const isActive = data.descricao_situacao_cadastral?.toLowerCase().includes('ativa')
+        
+        return {
+          name: data.nome_fantasia || data.razao_social,
+          fantasyName: data.nome_fantasia,
+          street: data.logradouro,
+          number: data.numero,
+          complement: data.complemento,
+          neighborhood: data.bairro,
+          city: data.municipio,
+          state: data.uf,
+          zipCode: data.cep?.replace(/\D/g, '') || '',
+          phone: data.ddd_telefone_1 || '',
+          active: isActive,
+        }
+      }
+    } catch (error) {
+      console.warn('BrasilAPI failed, trying ReceitaWS...', error)
+    }
+
+    // Fallback to ReceitaWS
     try {
       const response = await fetch(`https://receitaws.com.br/v1/cnpj/${cleanCNPJ}`)
       
@@ -103,7 +131,7 @@ export const cnpjService = {
       if (error instanceof CNPJServiceError) {
         throw error
       }
-      throw new CNPJServiceError('Erro ao buscar CNPJ. Verifique sua conexão.', 'API_ERROR')
+      throw new CNPJServiceError('Erro ao buscar CNPJ. Verifique sua conexão ou tente novamente.', 'API_ERROR')
     }
   },
 }
