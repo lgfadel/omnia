@@ -187,7 +187,6 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 <div className="relative">
                   <Input
                     id="cnpj"
-                    {...register("cnpj")}
                     placeholder="00.000.000/0000-00"
                     disabled={isLoading || searchingCNPJ}
                     maxLength={18}
@@ -199,8 +198,9 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                       }
                     }}
                     onBlur={handleCNPJBlur}
-                    value={watch("cnpj") ? (() => {
-                      const value = watch("cnpj")
+                    value={(() => {
+                      const value = watch("cnpj") || ''
+                      if (!value) return ''
                       let formatted = value
                       if (value.length > 2) {
                         formatted = value.slice(0, 2) + '.' + value.slice(2)
@@ -215,7 +215,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                         formatted = formatted.slice(0, 15) + '-' + formatted.slice(15)
                       }
                       return formatted
-                    })() : ''}
+                    })()}
                   />
                   {searchingCNPJ && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -252,7 +252,6 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
                     id="phone"
-                    {...register("phone")}
                     placeholder="(00) 00000-0000"
                     disabled={isLoading}
                     maxLength={15}
@@ -262,26 +261,26 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                         setValue("phone", value)
                       }
                     }}
-                    value={watch("phone") ? (() => {
+                    value={(() => {
                       const value = watch("phone") || ''
                       if (!value) return ''
                       
-                      let formatted = value
-                      if (value.length > 2) {
-                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2)
-                      }
-                      
                       // 8 dígitos: (43) 3333-3333
                       if (value.length === 10) {
-                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6)
+                        return '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6)
                       }
                       // 9 dígitos: (43) 99999-9999
-                      else if (value.length === 11) {
-                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
+                      if (value.length === 11) {
+                        return '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
                       }
                       
-                      return formatted
-                    })() : ''}
+                      // Parcial
+                      if (value.length > 2) {
+                        return '(' + value.slice(0, 2) + ') ' + value.slice(2)
+                      }
+                      
+                      return value
+                    })()}
                   />
                 </div>
 
@@ -319,7 +318,6 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
             <div className="relative">
               <Input
                 id="zip_code"
-                {...register("zip_code")}
                 placeholder="00000-000"
                 disabled={isLoading || searchingCEP}
                 maxLength={9}
@@ -331,14 +329,14 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   }
                 }}
                 onBlur={handleCEPBlur}
-                value={watch("zip_code") ? (() => {
+                value={(() => {
                   const value = watch("zip_code") || ''
                   if (!value) return ''
                   if (value.length > 5) {
                     return value.slice(0, 5) + '-' + value.slice(5)
                   }
                   return value
-                })() : ''}
+                })()}
               />
               {searchingCEP && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">

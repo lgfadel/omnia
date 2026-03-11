@@ -128,6 +128,7 @@ export const condominiumsRepoSupabase = {
 
     if (error) {
       logger.error('Error creating condominium:', error)
+      logger.error('Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint })
       throw error
     }
 
