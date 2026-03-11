@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { cepService, CEPServiceError } from "@/services/cep.service"
+import { cnpjService, CNPJServiceError } from "@/services/cnpj.service"
 import { Loader2 } from "lucide-react"
 
 const condominiumSchema = z.object({
@@ -52,6 +53,8 @@ interface CondominiumFormProps {
 export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: CondominiumFormProps) {
   const [searchingCEP, setSearchingCEP] = useState(false)
   const [cepError, setCepError] = useState<string | null>(null)
+  const [searchingCNPJ, setSearchingCNPJ] = useState(false)
+  const [cnpjError, setCnpjError] = useState<string | null>(null)
 
   const {
     register,
@@ -79,6 +82,45 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
   })
 
   const zipCode = watch("zip_code")
+  const cnpj = watch("cnpj")
+
+  const handleCNPJBlur = async () => {
+    const cleanCNPJ = cnpjService.cleanCNPJ(cnpj)
+    
+    if (!cleanCNPJ || cleanCNPJ.length !== 14) {
+      return
+    }
+
+    if (!cnpjService.validateFormat(cleanCNPJ)) {
+      setCnpjError("CNPJ deve ter 14 dígitos")
+      return
+    }
+
+    setSearchingCNPJ(true)
+    setCnpjError(null)
+
+    try {
+      const companyData = await cnpjService.fetchDataByCNPJ(cleanCNPJ)
+      setValue("name", companyData.name)
+      setValue("phone", companyData.phone)
+      setValue("zip_code", companyData.zipCode)
+      setValue("street", companyData.street)
+      setValue("number", companyData.number)
+      setValue("complement", companyData.complement || "")
+      setValue("neighborhood", companyData.neighborhood)
+      setValue("city", companyData.city)
+      setValue("state", companyData.state)
+      setValue("active", companyData.active)
+    } catch (error) {
+      if (error instanceof CNPJServiceError) {
+        setCnpjError(error.message)
+      } else {
+        setCnpjError("Erro ao buscar CNPJ")
+      }
+    } finally {
+      setSearchingCNPJ(false)
+    }
+  }
 
   const handleCEPBlur = async () => {
     const cleanCEP = cepService.cleanCEP(zipCode)
@@ -141,48 +183,22 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
 
             <TabsContent value="info" className="space-y-4 mt-4 min-h-[520px]">
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome do Condomínio *</Label>
-                <Input
-                  id="nome"
-                  {...register("name")}
-                  placeholder="Ex: Residencial Jardim das Flores"
-                  disabled={isLoading}
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ *</Label>
+                <Label htmlFor="cnpj">CNPJ *</Label>
+                <div className="relative">
                   <Input
                     id="cnpj"
                     {...register("cnpj")}
                     placeholder="00.000.000/0000-00"
-                    disabled={isLoading}
+                    disabled={isLoading || searchingCNPJ}
                     maxLength={18}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, '')
                       if (value.length <= 14) {
-                        // Format: XX.XXX.XXX/XXXX-XX
-                        let formatted = value
-                        if (value.length > 2) {
-                          formatted = value.slice(0, 2) + '.' + value.slice(2)
-                        }
-                        if (value.length > 5) {
-                          formatted = formatted.slice(0, 6) + '.' + formatted.slice(6)
-                        }
-                        if (value.length > 8) {
-                          formatted = formatted.slice(0, 10) + '/' + formatted.slice(10)
-                        }
-                        if (value.length > 12) {
-                          formatted = formatted.slice(0, 15) + '-' + formatted.slice(15)
-                        }
                         setValue("cnpj", value)
-                        e.target.value = formatted
+                        setCnpjError(null)
                       }
                     }}
+                    onBlur={handleCNPJBlur}
                     value={watch("cnpj") ? (() => {
                       const value = watch("cnpj")
                       let formatted = value
@@ -201,11 +217,37 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                       return formatted
                     })() : ''}
                   />
-                  {errors.cnpj && (
-                    <p className="text-sm text-red-500">{errors.cnpj.message}</p>
+                  {searchingCNPJ && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    </div>
                   )}
                 </div>
+                {errors.cnpj && (
+                  <p className="text-sm text-red-500">{errors.cnpj.message}</p>
+                )}
+                {cnpjError && (
+                  <p className="text-sm text-red-500">{cnpjError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Os dados serão preenchidos automaticamente ao sair do campo
+                </p>
+              </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome do Condomínio *</Label>
+                <Input
+                  id="nome"
+                  {...register("name")}
+                  placeholder="Ex: Residencial Jardim das Flores"
+                  disabled={isLoading}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
@@ -215,16 +257,16 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     disabled={isLoading}
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="syndic_name">Nome do Síndico</Label>
-                <Input
-                  id="syndic_name"
-                  {...register("syndic_name")}
-                  placeholder="Nome completo do síndico"
-                  disabled={isLoading}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="syndic_name">Nome do Síndico</Label>
+                  <Input
+                    id="syndic_name"
+                    {...register("syndic_name")}
+                    placeholder="Nome do síndico"
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">

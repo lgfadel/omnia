@@ -450,43 +450,67 @@ export type Database = {
       }
       omnia_condominiums: {
         Row: {
+          active: boolean
           address: string | null
+          city: string | null
           cnpj: string | null
+          complement: string | null
           created_at: string | null
           created_by: string | null
           id: string
           manager_name: string | null
           name: string
+          neighborhood: string | null
+          number: string | null
           phone: string | null
+          state: string | null
+          street: string | null
           syndic_name: string | null
           updated_at: string | null
           whatsapp: string | null
+          zip_code: string | null
         }
         Insert: {
+          active?: boolean
           address?: string | null
+          city?: string | null
           cnpj?: string | null
+          complement?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           manager_name?: string | null
           name: string
+          neighborhood?: string | null
+          number?: string | null
           phone?: string | null
+          state?: string | null
+          street?: string | null
           syndic_name?: string | null
           updated_at?: string | null
           whatsapp?: string | null
+          zip_code?: string | null
         }
         Update: {
+          active?: boolean
           address?: string | null
+          city?: string | null
           cnpj?: string | null
+          complement?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           manager_name?: string | null
           name?: string
+          neighborhood?: string | null
+          number?: string | null
           phone?: string | null
+          state?: string | null
+          street?: string | null
           syndic_name?: string | null
           updated_at?: string | null
           whatsapp?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }

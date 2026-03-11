@@ -450,6 +450,7 @@ export type Database = {
       }
       omnia_condominiums: {
         Row: {
+          active: boolean
           address: string | null
           city: string | null
           cnpj: string | null
@@ -470,6 +471,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          active?: boolean
           address?: string | null
           city?: string | null
           cnpj?: string | null
@@ -490,6 +492,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          active?: boolean
           address?: string | null
           city?: string | null
           cnpj?: string | null
