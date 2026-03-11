@@ -259,26 +259,27 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, '')
                       if (value.length <= 11) {
-                        let formatted = value
-                        if (value.length > 2) {
-                          formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2)
-                        }
-                        if (value.length > 7) {
-                          formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
-                        }
                         setValue("phone", value)
-                        e.target.value = formatted
                       }
                     }}
                     value={watch("phone") ? (() => {
                       const value = watch("phone") || ''
+                      if (!value) return ''
+                      
                       let formatted = value
                       if (value.length > 2) {
                         formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2)
                       }
-                      if (value.length > 7) {
+                      
+                      // 8 dígitos: (43) 3333-3333
+                      if (value.length === 10) {
+                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6)
+                      }
+                      // 9 dígitos: (43) 99999-9999
+                      else if (value.length === 11) {
                         formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
                       }
+                      
                       return formatted
                     })() : ''}
                   />
@@ -331,7 +332,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 }}
                 onBlur={handleCEPBlur}
                 value={watch("zip_code") ? (() => {
-                  const value = watch("zip_code")
+                  const value = watch("zip_code") || ''
+                  if (!value) return ''
                   if (value.length > 5) {
                     return value.slice(0, 5) + '-' + value.slice(5)
                   }
