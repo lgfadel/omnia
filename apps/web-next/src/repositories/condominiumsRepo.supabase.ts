@@ -152,7 +152,9 @@ export const condominiumsRepoSupabase = {
     if (data.phone !== undefined) updateData.phone = data.phone
     if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
-    if (data.active !== undefined) updateData.active = data.active ?? undefined
+    if (data.active !== undefined && data.active !== null) updateData.active = data.active
+    
+    logger.debug('Update data being sent to Supabase:', updateData)
     
     const { data: updatedCondominium, error } = await supabase
       .from('omnia_condominiums')
