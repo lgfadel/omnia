@@ -152,7 +152,7 @@ const ConfigCondominiums = () => {
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editingCondominium ? "Editar Condomínio" : "Novo Condomínio"}
