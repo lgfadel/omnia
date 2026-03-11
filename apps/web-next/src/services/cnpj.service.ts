@@ -80,7 +80,9 @@ export const cnpjService = {
         return {
           name: data.nome_fantasia || data.razao_social,
           fantasyName: data.nome_fantasia,
-          street: data.logradouro,
+          street: data.descricao_tipo_de_logradouro 
+            ? `${data.descricao_tipo_de_logradouro} ${data.logradouro}` 
+            : data.logradouro,
           number: data.numero,
           complement: data.complemento,
           neighborhood: data.bairro,
