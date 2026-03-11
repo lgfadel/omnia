@@ -181,7 +181,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               <TabsTrigger value="address">Endereço</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="space-y-4 mt-4 min-h-[520px]">
+            <TabsContent value="info" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="cnpj">CNPJ *</Label>
                 <div className="relative">
@@ -255,6 +255,32 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     {...register("phone")}
                     placeholder="(00) 00000-0000"
                     disabled={isLoading}
+                    maxLength={15}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      if (value.length <= 11) {
+                        let formatted = value
+                        if (value.length > 2) {
+                          formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2)
+                        }
+                        if (value.length > 7) {
+                          formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
+                        }
+                        setValue("phone", value)
+                        e.target.value = formatted
+                      }
+                    }}
+                    value={watch("phone") ? (() => {
+                      const value = watch("phone") || ''
+                      let formatted = value
+                      if (value.length > 2) {
+                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2)
+                      }
+                      if (value.length > 7) {
+                        formatted = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
+                      }
+                      return formatted
+                    })() : ''}
                   />
                 </div>
 
@@ -285,7 +311,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               </div>
             </TabsContent>
 
-            <TabsContent value="address" className="space-y-4 mt-4 min-h-[520px]">
+            <TabsContent value="address" className="space-y-4 mt-4">
 
           <div className="space-y-2">
             <Label htmlFor="zip_code">CEP *</Label>
@@ -293,15 +319,24 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               <Input
                 id="zip_code"
                 {...register("zip_code")}
-                placeholder="12345678"
+                placeholder="00000-000"
                 disabled={isLoading || searchingCEP}
-                maxLength={8}
+                maxLength={9}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, '')
-                  setValue("zip_code", value)
-                  setCepError(null)
+                  if (value.length <= 8) {
+                    setValue("zip_code", value)
+                    setCepError(null)
+                  }
                 }}
                 onBlur={handleCEPBlur}
+                value={watch("zip_code") ? (() => {
+                  const value = watch("zip_code")
+                  if (value.length > 5) {
+                    return value.slice(0, 5) + '-' + value.slice(5)
+                  }
+                  return value
+                })() : ''}
               />
               {searchingCEP && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
