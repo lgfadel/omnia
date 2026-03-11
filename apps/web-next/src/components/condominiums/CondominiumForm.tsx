@@ -157,7 +157,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
   const onFormSubmit = async (data: CondominiumFormData) => {
     await onSubmit({
       name: data.name,
-      cnpj: data.cnpj,
+      cnpj: cnpjService.cleanCNPJ(data.cnpj),
       syndic_name: data.syndic_name || null,
       phone: data.phone || null,
       active: data.active,
