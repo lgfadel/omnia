@@ -21,6 +21,8 @@ export interface Condominium {
   syndic_name?: string | null
   whatsapp?: string | null
   active?: boolean | null
+  balancete_digital?: boolean | null
+  boleto_impresso?: boolean | null
   created_by?: string | null
   created_at: string | null
   updated_at: string | null
@@ -44,6 +46,8 @@ const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>)
   syndic_name: dbCondominium.syndic_name,
   whatsapp: dbCondominium.whatsapp,
   active: dbCondominium.active,
+  balancete_digital: dbCondominium.balancete_digital,
+  boleto_impresso: dbCondominium.boleto_impresso,
   created_by: dbCondominium.created_by,
   created_at: dbCondominium.created_at,
   updated_at: dbCondominium.updated_at
@@ -122,6 +126,8 @@ export const condominiumsRepoSupabase = {
         syndic_name: data.syndic_name,
         whatsapp: data.whatsapp,
         active: data.active ?? true,
+        balancete_digital: data.balancete_digital ?? false,
+        boleto_impresso: data.boleto_impresso ?? false,
       })
       .select('*')
       .single()
@@ -154,6 +160,8 @@ export const condominiumsRepoSupabase = {
     if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
     if (data.active !== undefined && data.active !== null) updateData.active = data.active
+    if (data.balancete_digital !== undefined) updateData.balancete_digital = data.balancete_digital ?? false
+    if (data.boleto_impresso !== undefined) updateData.boleto_impresso = data.boleto_impresso ?? false
     
     logger.debug('Update data being sent to Supabase:', updateData)
     

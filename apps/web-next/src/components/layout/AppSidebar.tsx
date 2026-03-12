@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Ticket,
   Building2,
-  Menu
+  Menu,
+  BookOpen
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -58,6 +59,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'users': Users,
   'condominiums': Building2,
   'condominios': Building2,
+  'balancetes': BookOpen,
+  'bookopen': BookOpen,
   'administradoras': Building2,
   'tags': Tags,
   'settings': Settings,

@@ -19,6 +19,8 @@ const condominiumSchema = z.object({
   syndic_name: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   active: z.boolean().default(true),
+  balancete_digital: z.boolean().default(false),
+  boleto_impresso: z.boolean().default(false),
   zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(8, "CEP deve ter 8 dígitos").regex(/^\d{8}$/, "CEP deve conter apenas números"),
   street: z.string().min(1, "Rua é obrigatória"),
   number: z.string().min(1, "Número é obrigatório"),
@@ -38,6 +40,8 @@ interface CondominiumFormProps {
     syndic_name?: string | null
     phone?: string | null
     active: boolean
+    balancete_digital: boolean
+    boleto_impresso: boolean
     street: string
     number: string
     complement?: string | null
@@ -71,6 +75,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       syndic_name: condominium?.syndic_name || "",
       phone: condominium?.phone || "",
       active: condominium?.active ?? true,
+      balancete_digital: condominium?.balancete_digital ?? false,
+      boleto_impresso: condominium?.boleto_impresso ?? false,
       zip_code: condominium?.zip_code || "",
       street: condominium?.street || "",
       number: condominium?.number || "",
@@ -161,6 +167,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       syndic_name: data.syndic_name || null,
       phone: data.phone || null,
       active: data.active,
+      balancete_digital: data.balancete_digital,
+      boleto_impresso: data.boleto_impresso,
       street: data.street,
       number: data.number,
       complement: data.complement || null,
@@ -306,6 +314,36 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   id="active"
                   checked={watch("active")}
                   onCheckedChange={(checked) => setValue("active", checked)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="balancete_digital" className="text-base">Balancete Digital</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {watch("balancete_digital") ? "Recebe balancete digital" : "Não recebe balancete digital"}
+                  </p>
+                </div>
+                <Switch
+                  id="balancete_digital"
+                  checked={watch("balancete_digital")}
+                  onCheckedChange={(checked) => setValue("balancete_digital", checked)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="boleto_impresso" className="text-base">Boleto Impresso</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {watch("boleto_impresso") ? "Recebe boleto impresso" : "Não recebe boleto impresso"}
+                  </p>
+                </div>
+                <Switch
+                  id="boleto_impresso"
+                  checked={watch("boleto_impresso")}
+                  onCheckedChange={(checked) => setValue("boleto_impresso", checked)}
                   disabled={isLoading}
                 />
               </div>

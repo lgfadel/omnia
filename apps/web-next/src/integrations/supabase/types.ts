@@ -385,6 +385,63 @@ export type Database = {
           },
         ]
       }
+      omnia_balancetes: {
+        Row: {
+          competencia: string
+          condominium_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          observations: string | null
+          received_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string | null
+          volumes: number
+        }
+        Insert: {
+          competencia: string
+          condominium_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          observations?: string | null
+          received_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string | null
+          volumes?: number
+        }
+        Update: {
+          competencia?: string
+          condominium_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          observations?: string | null
+          received_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string | null
+          volumes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_balancetes_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_balancetes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omnia_comments: {
         Row: {
           ata_id: string
@@ -452,6 +509,8 @@ export type Database = {
         Row: {
           active: boolean
           address: string | null
+          balancete_digital: boolean
+          boleto_impresso: boolean
           city: string | null
           cnpj: string | null
           complement: string | null
@@ -473,6 +532,8 @@ export type Database = {
         Insert: {
           active?: boolean
           address?: string | null
+          balancete_digital?: boolean
+          boleto_impresso?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
@@ -494,6 +555,8 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string | null
+          balancete_digital?: boolean
+          boleto_impresso?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
