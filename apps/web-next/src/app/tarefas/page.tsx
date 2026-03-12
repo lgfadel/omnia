@@ -51,8 +51,8 @@ type GroupedDataItem = {
 const columns = [
   { key: "ticketIdDisplay", label: "#", width: "w-[8%]" },
   { key: "title", label: "Título", width: "w-[30%]" },
-  { key: "priority", label: "Prioridade", width: "w-[12%]" },
-  { key: "dueDate", label: "Vencimento", width: "w-[15%]" },
+  { key: "priority", label: "Prioridade", width: "w-[12%]", sortable: true },
+  { key: "dueDate", label: "Vencimento", width: "w-[15%]", sortable: true },
   { key: "responsible", label: "Responsável", width: "w-[18%]" },
   { key: "ticketOcta", label: "Ticket", width: "w-[10%]" },
   { key: "statusId", label: "Status", width: "w-[15%]" },
@@ -69,6 +69,8 @@ export default function Tickets() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
@@ -351,64 +353,122 @@ export default function Tickets() {
     };
   });
 
-  // Sort data
+  // Handle sort toggle
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // If clicking the same field, toggle direction
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        // If already desc, clear sorting (back to default)
+        setSortField(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort data based on sortField and sortDirection
   const sortedData = [...tableData].sort((a, b) => {
-    const aStatus = statuses.find(s => s.id === a.statusId);
-    const bStatus = statuses.find(s => s.id === b.statusId);
-    
-    const aOrder = aStatus?.order || 999;
-    const bOrder = bStatus?.order || 999;
-    
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-    
-    const priorityOrder = { 'alta': 1, 'media': 2, 'baixa': 3 };
-    const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 4;
-    const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 4;
-    
-    if (aPriority !== bPriority) {
-      return aPriority - bPriority;
-    }
+    const priorityOrder: Record<string, number> = { 'URGENTE': 1, 'ALTA': 2, 'NORMAL': 3, 'BAIXA': 4 };
+    const aPriority = priorityOrder[a.priority] || 5;
+    const bPriority = priorityOrder[b.priority] || 5;
     
     const aOriginalTask = filteredTickets.find(t => t.id === a.id);
     const bOriginalTask = filteredTickets.find(t => t.id === b.id);
     const aDate = aOriginalTask?.dueDate ? new Date(aOriginalTask.dueDate) : null;
     const bDate = bOriginalTask?.dueDate ? new Date(bOriginalTask.dueDate) : null;
     
+    const aStatus = statuses.find(s => s.id === a.statusId);
+    const bStatus = statuses.find(s => s.id === b.statusId);
+    const aOrder = aStatus?.order || 999;
+    const bOrder = bStatus?.order || 999;
+
+    const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
+
+    if (sortField === 'dueDate') {
+      // Primary: due date (nulls last regardless of direction)
+      if (aDate && bDate) {
+        const dateDiff = aDate.getTime() - bDate.getTime();
+        if (dateDiff !== 0) return dateDiff * directionMultiplier;
+      }
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      // Secondary: priority
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      // Tertiary: status order
+      return aOrder - bOrder;
+    }
+    
+    if (sortField === 'priority') {
+      // Primary: priority
+      if (aPriority !== bPriority) return (aPriority - bPriority) * directionMultiplier;
+      // Secondary: due date (nulls last)
+      if (aDate && bDate) {
+        const dateDiff = aDate.getTime() - bDate.getTime();
+        if (dateDiff !== 0) return dateDiff;
+      }
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      // Tertiary: status order
+      return aOrder - bOrder;
+    }
+    
+    // Default: no sortField selected - sort by status
+    // Primary: status order
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    // Secondary: due date DECRESCENTE (mais distante primeiro, nulls last)
     if (aDate && bDate) {
-      return aDate.getTime() - bDate.getTime();
+      const dateDiff = bDate.getTime() - aDate.getTime(); // Inverted for descending
+      if (dateDiff !== 0) return dateDiff;
     }
     if (aDate && !bDate) return -1;
     if (!aDate && bDate) return 1;
+    // Tertiary: priority
+    if (aPriority !== bPriority) return aPriority - bPriority;
     
+    // Final fallback: creation date (newest first)
     const aCreated = new Date(a.createdAt);
     const bCreated = new Date(b.createdAt);
     return bCreated.getTime() - aCreated.getTime();
   });
 
-  // Group data by status for separators
+  // Group data by status for separators (only when not sorting by a specific field)
   const groupedData: GroupedDataItem[] = [];
-  let currentStatus = '';
-  let currentStatusCount = 0;
   
-  sortedData.forEach((row, index) => {
-    if (row.statusName !== currentStatus) {
-      currentStatus = row.statusName;
-      currentStatusCount = sortedData.filter(r => r.statusName === currentStatus).length;
+  if (!sortField) {
+    let currentStatusName = '';
+    let currentStatusCount = 0;
+    
+    sortedData.forEach((row) => {
+      if (row.statusName !== currentStatusName) {
+        currentStatusName = row.statusName;
+        currentStatusCount = sortedData.filter(r => r.statusName === currentStatusName).length;
+        groupedData.push({
+          type: 'separator',
+          statusName: row.statusName,
+          statusColor: row.statusColor,
+          count: currentStatusCount
+        });
+      }
       groupedData.push({
-        type: 'separator',
+        type: 'data',
         statusName: row.statusName,
-        statusColor: row.statusColor,
-        count: currentStatusCount
+        data: row
       });
-    }
-    groupedData.push({
-      type: 'data',
-      statusName: row.statusName,
-      data: row
     });
-  });
+  } else {
+    // When sorting by dueDate or priority, don't group - just show flat list
+    sortedData.forEach((row) => {
+      groupedData.push({
+        type: 'data',
+        statusName: row.statusName,
+        data: row
+      });
+    });
+  }
 
   if (error) {
     return (
@@ -585,7 +645,7 @@ export default function Tickets() {
           ) : (
             <TabelaOmnia
               columns={columns}
-              data={groupedData}
+              data={!sortField ? groupedData : sortedData}
               onView={handleView}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
@@ -595,7 +655,10 @@ export default function Tickets() {
               availableStatuses={statuses}
               availableUsers={secretarios}
               availableTags={tags}
-              grouped={true}
+              grouped={!sortField}
+              sortField={sortField ?? undefined}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
           )}
         </div>
