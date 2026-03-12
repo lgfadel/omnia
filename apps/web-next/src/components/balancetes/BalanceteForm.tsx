@@ -83,6 +83,10 @@ export function BalanceteForm({
   const condominiumId = watch("condominium_id");
   const competencia = watch("competencia");
 
+  // Encontrar o condomínio selecionado para verificar se é digital
+  const selectedCondominium = condominiums.find(c => c.id === condominiumId);
+  const isDigital = selectedCondominium?.balancete_digital ?? false;
+
   useEffect(() => {
     if (open) {
       if (balancete) {
@@ -104,6 +108,13 @@ export function BalanceteForm({
       }
     }
   }, [open, balancete, reset]);
+
+  // Quando o condomínio mudar para digital, ajustar volumes para 1
+  useEffect(() => {
+    if (isDigital && !isEditing) {
+      setValue("volumes", 1);
+    }
+  }, [isDigital, isEditing, setValue]);
 
   const onFormSubmit = async (data: BalanceteFormData) => {
     await onSubmit(data);
@@ -143,11 +154,20 @@ export function BalanceteForm({
                 {errors.condominium_id.message}
               </p>
             )}
+            {isDigital && condominiumId && (
+              <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                <span className="text-xs text-blue-700 dark:text-blue-300">
+                  ℹ️ Este condomínio recebe balancete digital
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="received_at">Data de Recebimento *</Label>
+              <Label htmlFor="received_at">
+                {isDigital ? "Data de Publicação *" : "Data de Recebimento *"}
+              </Label>
               <Input
                 id="received_at"
                 type="date"
@@ -156,6 +176,11 @@ export function BalanceteForm({
               {errors.received_at && (
                 <p className="text-sm text-destructive">
                   {errors.received_at.message}
+                </p>
+              )}
+              {isDigital && (
+                <p className="text-xs text-muted-foreground">
+                  Para balancetes digitais, informe a data de publicação
                 </p>
               )}
             </div>
@@ -183,11 +208,23 @@ export function BalanceteForm({
               id="volumes"
               type="number"
               min={1}
-              {...register("volumes", { valueAsNumber: true })}
+              disabled={isDigital}
+              value={isDigital ? 1 : watch("volumes") || ""}
+              onChange={(e) => {
+                if (!isDigital) {
+                  const value = e.target.value ? parseInt(e.target.value, 10) : 1;
+                  setValue("volumes", value, { shouldValidate: true });
+                }
+              }}
             />
             {errors.volumes && (
               <p className="text-sm text-destructive">
                 {errors.volumes.message}
+              </p>
+            )}
+            {isDigital && (
+              <p className="text-xs text-muted-foreground">
+                Balancetes digitais sempre possuem 1 volume
               </p>
             )}
           </div>

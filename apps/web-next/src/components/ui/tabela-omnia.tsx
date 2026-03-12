@@ -168,6 +168,15 @@ export function TabelaOmnia({
       )
     }
 
+    // Handle active column (boolean status)
+    if (key === "active" && typeof value === "boolean") {
+      return (
+        <Badge className={value ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-gray-100 text-gray-800 hover:bg-gray-100"}>
+          {value ? "Ativo" : "Inativo"}
+        </Badge>
+      )
+    }
+
     // Handle dueDate column - now it's a React component
     if (key === "dueDate") {
       return value
@@ -711,6 +720,11 @@ export function TabelaOmnia({
           )}
         </div>
       )
+    }
+
+    // Handle React elements (JSX)
+    if (value && typeof value === 'object' && 'type' in value) {
+      return value
     }
 
     if (typeof value === "string" || typeof value === "number") {

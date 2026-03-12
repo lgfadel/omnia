@@ -29,9 +29,8 @@ export const useCondominiumStore = create<CondominiumStore>((set, get) => ({
     
     try {
       const allCondominiums = await condominiumsRepoSupabase.list()
-      const activeCondominiums = allCondominiums.filter(c => c.active !== false)
-      logger.debug('CondominiumStore: Loaded condominiums:', activeCondominiums)
-      set({ condominiums: activeCondominiums, loading: false })
+      logger.debug('CondominiumStore: Loaded condominiums:', allCondominiums)
+      set({ condominiums: allCondominiums, loading: false })
     } catch (error) {
       logger.error('CondominiumStore: Error loading condominiums:', error)
       const treatedError = handleSupabaseError(
