@@ -189,7 +189,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               <TabsTrigger value="address">Endereço</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="space-y-4 mt-4">
+            <TabsContent value="info" className="space-y-4 mt-4 min-h-[500px]">
               <div className="space-y-2">
                 <Label htmlFor="cnpj">CNPJ *</Label>
                 <div className="relative">
@@ -303,13 +303,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 </div>
               </div>
 
-              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
-                <div className="space-y-0.5">
-                  <Label htmlFor="active" className="text-base">Status do Condomínio</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {watch("active") ? "Condomínio ativo" : "Condomínio inativo"}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="active">Status do Condomínio</Label>
                 <Switch
                   id="active"
                   checked={watch("active")}
@@ -318,13 +313,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 />
               </div>
 
-              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
-                <div className="space-y-0.5">
-                  <Label htmlFor="balancete_digital" className="text-base">Balancete Digital</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {watch("balancete_digital") ? "Recebe balancete digital" : "Não recebe balancete digital"}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="balancete_digital">Balancete Digital</Label>
                 <Switch
                   id="balancete_digital"
                   checked={watch("balancete_digital")}
@@ -333,13 +323,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 />
               </div>
 
-              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
-                <div className="space-y-0.5">
-                  <Label htmlFor="boleto_impresso" className="text-base">Boleto Impresso</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {watch("boleto_impresso") ? "Recebe boleto impresso" : "Não recebe boleto impresso"}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="boleto_impresso">Boleto Impresso</Label>
                 <Switch
                   id="boleto_impresso"
                   checked={watch("boleto_impresso")}
@@ -349,7 +334,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               </div>
             </TabsContent>
 
-            <TabsContent value="address" className="space-y-4 mt-4">
+            <TabsContent value="address" className="space-y-4 mt-4 min-h-[500px]">
 
           <div className="space-y-2">
             <Label htmlFor="zip_code">CEP *</Label>
