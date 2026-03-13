@@ -141,6 +141,42 @@ Para ações além de View/Delete, seguir o padrão:
 </div>
 ```
 
+### Botão Toggle Ativo/Inativo (para filtros binários)
+Use este padrão para filtros de status ativo/inativo ou similar:
+
+```tsx
+const [showOnlyActive, setShowOnlyActive] = useState(true);
+
+// No JSX:
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => setShowOnlyActive(!showOnlyActive)}
+  className={`rounded-full w-10 h-10 p-0 flex items-center justify-center text-xs font-semibold transition-all duration-200 ${
+    showOnlyActive 
+      ? 'bg-green-500 border-green-500 text-white hover:bg-green-600 shadow-lg ring-2 ring-green-200 ring-offset-1' 
+      : 'bg-gray-200 border-gray-300 text-gray-600 hover:bg-gray-300 shadow-sm'
+  }`}
+  title={showOnlyActive ? "Mostrando apenas ativos" : "Mostrando apenas inativos"}
+>
+  {showOnlyActive ? "A" : "I"}
+</Button>
+
+// Na lógica de filtro:
+filtered = filtered.filter(item => {
+  const isActive = item.active === true;
+  const isInactive = item.active === false || item.active === null || item.active === undefined;
+  return showOnlyActive ? isActive : isInactive;
+});
+```
+
+**Características:**
+- Botão redondo 10×10 (w-10 h-10)
+- Verde quando ativo (padrão), cinza quando inativo
+- Letra "A" ou "I" indicando o estado
+- Shadow e ring quando ativo
+- Transições suaves
+
 ### Dropdown de Status (se aplicável)
 ```tsx
 <DropdownMenu>
@@ -164,6 +200,134 @@ Para ações além de View/Delete, seguir o padrão:
     ))}
   </DropdownMenuContent>
 </DropdownMenu>
+```
+
+## Edição Inline de Células (Fast Edit)
+
+Para permitir edição rápida de campos diretamente na tabela sem abrir modal:
+
+### Implementação
+
+```tsx
+// Estados necessários
+const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+const [editValue, setEditValue] = useState("");
+
+// Handlers
+const handleCellClick = (id: string, field: string, currentValue: string) => {
+  setEditingCell({ id, field });
+  setEditValue(currentValue === '-' ? '' : currentValue);
+};
+
+const handleCellBlur = async () => {
+  if (!editingCell) return;
+  
+  const item = items.find(i => i.id === editingCell.id);
+  if (!item) {
+    setEditingCell(null);
+    return;
+  }
+  
+  const currentValue = item[editingCell.field];
+  
+  // Only update if value changed
+  if (editValue !== currentValue && editValue !== (currentValue || '')) {
+    try {
+      await updateItem(editingCell.id, {
+        [editingCell.field]: editValue || null
+      });
+      toast({
+        title: "Sucesso",
+        description: "Campo atualizado com sucesso.",
+      });
+    } catch (error) {
+      logger.error('Error updating field:', error);
+    }
+  }
+  
+  setEditingCell(null);
+  setEditValue('');
+};
+
+const handleCellKeyDown = (e: React.KeyboardEvent) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleCellBlur();
+  } else if (e.key === 'Escape') {
+    setEditingCell(null);
+    setEditValue('');
+  }
+};
+
+// No tableData (dentro do useMemo):
+const isEditingField = editingCell?.id === item.id && editingCell?.field === 'fieldName';
+
+fieldName: isEditingField ? (
+  <input
+    type="text"
+    value={editValue}
+    onChange={(e) => setEditValue(e.target.value)}
+    onBlur={handleCellBlur}
+    onKeyDown={handleCellKeyDown}
+    onClick={(e) => e.stopPropagation()}
+    autoFocus
+    className="w-full px-2 py-1 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
+    placeholder="Digite o valor"
+  />
+) : (
+  <div
+    onClick={(e) => {
+      e.stopPropagation();
+      handleCellClick(item.id, 'fieldName', item.fieldName || '-');
+    }}
+    className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
+    title="Clique para editar"
+  >
+    {item.fieldName || "-"}
+  </div>
+)
+
+// Adicionar editingCell e editValue às dependências do useMemo
+}, [items, searchQuery, otherDeps, editingCell, editValue]);
+```
+
+### Formatação de Telefone (exemplo)
+
+```tsx
+const formatPhoneInput = (value: string) => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 10) {
+    return numbers.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+  }
+  return numbers.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+};
+
+// No input de telefone:
+onChange={(e) => setEditValue(formatPhoneInput(e.target.value))}
+maxLength={15}
+```
+
+### Características Importantes
+
+- **stopPropagation**: Essencial para evitar abrir modal ao clicar na célula
+- **autoFocus**: Input recebe foco automaticamente ao abrir
+- **Enter**: Salva e fecha
+- **Escape**: Cancela e fecha
+- **Blur**: Salva automaticamente ao sair do campo
+- **Hover visual**: `hover:bg-gray-50` indica que é clicável
+- **Border azul**: `border-primary` quando em edição
+- **Validação**: Só atualiza se valor mudou
+- **Toast**: Feedback visual após salvar
+
+### Suporte no TabelaOmnia
+
+O componente `TabelaOmnia` já suporta renderização de React elements (JSX). A verificação está implementada em:
+
+```tsx
+// Handle React elements (JSX)
+if (value && typeof value === 'object' && 'type' in value) {
+  return value
+}
 ```
 
 ## Agrupamento por Status (Opcional)
@@ -210,14 +374,18 @@ const handleDeleteConfirm = async () => {
 - [ ] Header com `h1 text-3xl font-bold` + botão Plus 12×12
 - [ ] Filtros em `bg-white rounded-lg border p-6`
 - [ ] Search com ícone integrado
+- [ ] Botão toggle redondo (se filtro binário) com padrão verde/cinza
 - [ ] Tabela em `bg-white rounded-lg border overflow-hidden`
 - [ ] Usa `<TabelaOmnia>` — **nunca HTML table**
 - [ ] Colunas definidas para o contexto específico
+- [ ] Edição inline implementada (se necessário) com stopPropagation
 - [ ] Ações adaptadas (View/Delete + outras se necessário)
 - [ ] Loading state com spinner
+- [ ] Empty state com mensagem contextual
 - [ ] AlertDialog de confirmação de exclusão
 - [ ] `"use client"` no topo
 - [ ] Ações customizadas seguem padrão: `variant="ghost" size="icon" h-8 w-8`
+- [ ] Toast feedback para operações (criar/editar/deletar)
 
 ## Componentes Principais
 
