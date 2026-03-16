@@ -325,7 +325,7 @@ function drawFooter(page: PDFPage, ctx: PageContext): void {
   })
   
   // Texto de rodapé
-  page.drawText('Este documento comprova o envio dos balancetes listados acima.', {
+  page.drawText('Declaro ter recebido os balancetes listados acima.', {
     x: MARGIN,
     y: footerY - 5,
     size: 8,
