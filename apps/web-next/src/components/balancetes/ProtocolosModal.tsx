@@ -20,13 +20,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight, X } from "lucide-react"
+import { ChevronDown, ChevronRight, X, Printer } from "lucide-react"
 import { useProtocolosStore } from "@/stores/protocolos.store"
 import { useBalancetesStore } from "@/stores/balancetes.store"
 import { useAuthStore } from "@/stores/auth.store"
 import type { Protocolo } from "@/repositories/protocolosRepo.supabase"
 import type { Balancete } from "@/repositories/balancetesRepo.supabase"
 import { useToast } from "@/hooks/use-toast"
+import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF"
 
 interface ProtocolosModalProps {
   open: boolean
@@ -88,6 +89,44 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
     setProtocoloToCancel(protocolo)
     setMotivoCancelamento("")
     setCancelDialogOpen(true)
+  }
+
+  const handleReimprimir = async (protocolo: Protocolo) => {
+    try {
+      // Buscar balancetes do protocolo
+      const balancetes = await getBalancetesDoProtocolo(protocolo.id)
+      
+      if (balancetes.length === 0) {
+        toast({
+          title: "Erro ao reimprimir",
+          description: "Nenhum balancete encontrado para este protocolo.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      // Gerar PDF
+      const pdfBytes = await generateProtocoloPDF({
+        numeroProtocolo: protocolo.numero,
+        balancetes: balancetes,
+        dataEnvio: protocolo.data_envio,
+      })
+      
+      // Download do PDF
+      const protocoloNumero = String(protocolo.numero).padStart(3, '0')
+      const filename = `protocolo-${protocoloNumero}-${protocolo.data_envio}.pdf`
+      downloadPDF(pdfBytes, filename)
+      
+      toast({
+        title: "Protocolo reimpresso",
+        description: `Protocolo #${protocoloNumero} foi baixado novamente.`,
+      })
+    } catch {
+      toast({
+        title: "Erro ao reimprimir protocolo",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleConfirmCancel = async () => {
@@ -193,17 +232,29 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
                           </div>
                         </div>
 
-                        {!protocolo.cancelado && (
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleCancelClick(protocolo)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleReimprimir(protocolo)}
                           >
-                            <X className="w-4 h-4 mr-1" />
-                            Cancelar
+                            <Printer className="w-4 h-4 mr-1" />
+                            Reimprimir
                           </Button>
-                        )}
+                          
+                          {!protocolo.cancelado && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleCancelClick(protocolo)}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
 

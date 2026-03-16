@@ -10,6 +10,7 @@ import { Plus, Search, Send, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProtocolosModal } from "@/components/balancetes/ProtocolosModal";
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +40,9 @@ const columns = [
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
-  const [year, month, day] = dateStr.split("-");
+  // Extrair apenas a parte da data (YYYY-MM-DD) se vier com timestamp
+  const datePart = dateStr.split("T")[0];
+  const [year, month, day] = datePart.split("-");
   return `${day}/${month}/${year}`;
 }
 
@@ -67,6 +70,8 @@ export default function BalancetesPage() {
   const [selectedBalancetes, setSelectedBalancetes] = useState<Set<string>>(new Set());
   const [sendingBalancetes, setSendingBalancetes] = useState(false);
   const [protocolosModalOpen, setProtocolosModalOpen] = useState(false);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [dataEnvio, setDataEnvio] = useState("");
 
   useEffect(() => {
     loadBalancetes();
@@ -129,24 +134,42 @@ export default function BalancetesPage() {
     setFormOpen(true);
   };
 
-  const handleEnviar = async () => {
+  const handleEnviarClick = () => {
     if (selectedBalancetes.size === 0) return;
+    
+    // Definir data padrão como hoje
+    const hoje = new Date().toISOString().split('T')[0];
+    setDataEnvio(hoje);
+    setSendDialogOpen(true);
+  };
+
+  const handleConfirmEnviar = async () => {
+    if (!dataEnvio) {
+      toast({
+        title: "Data obrigatória",
+        description: "Por favor, informe a data de envio.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSendingBalancetes(true);
+    setSendDialogOpen(false);
+    
     try {
       const ids = Array.from(selectedBalancetes);
       const result = await markAsSent(ids, userProfile?.id);
       
-      // Gerar PDF do protocolo
+      // Gerar PDF do protocolo com a data selecionada
       const pdfBytes = await generateProtocoloPDF({
         numeroProtocolo: result.protocolo.numero,
         balancetes: result.balancetes,
-        dataEnvio: result.protocolo.data_envio,
+        dataEnvio: dataEnvio,
       });
       
       // Download do PDF
       const protocoloNumero = String(result.protocolo.numero).padStart(3, '0');
-      const filename = `protocolo-${protocoloNumero}-${result.protocolo.data_envio}.pdf`;
+      const filename = `protocolo-${protocoloNumero}-${dataEnvio}.pdf`;
       downloadPDF(pdfBytes, filename);
       
       // Limpar seleção
@@ -258,7 +281,7 @@ export default function BalancetesPage() {
             <Button
               variant="outline"
               className="h-12 px-4 gap-2"
-              onClick={handleEnviar}
+              onClick={handleEnviarClick}
               disabled={selectedBalancetes.size === 0 || sendingBalancetes}
             >
               <Send className="w-4 h-4" />
@@ -355,6 +378,37 @@ export default function BalancetesPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Data de Envio</AlertDialogTitle>
+            <AlertDialogDescription>
+              Informe a data de envio dos balancetes selecionados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <Label htmlFor="dataEnvio" className="text-sm font-medium">
+              Data de Envio
+            </Label>
+            <Input
+              id="dataEnvio"
+              type="date"
+              value={dataEnvio}
+              onChange={(e) => setDataEnvio(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmEnviar}>
+              Confirmar Envio
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
