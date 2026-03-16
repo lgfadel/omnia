@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { Balancete, CreateBalanceteData, UpdateBalanceteData, balancetesRepoSupabase } from '@/repositories/balancetesRepo.supabase'
 import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler'
-import { logger } from '../lib/logging';
+import { logger } from '../lib/logging'
+import type { Protocolo } from '@/repositories/protocolosRepo.supabase'
 
 interface BalancetesStore {
   balancetes: Balancete[]
@@ -12,6 +13,7 @@ interface BalancetesStore {
   createBalancete: (data: CreateBalanceteData) => Promise<Balancete>
   updateBalancete: (id: string, data: UpdateBalanceteData) => Promise<Balancete | null>
   deleteBalancete: (id: string) => Promise<boolean>
+  markAsSent: (ids: string[], createdBy?: string) => Promise<{ protocolo: Protocolo; balancetes: Balancete[] }>
   clearError: () => void
 }
 
@@ -106,6 +108,34 @@ export const useBalancetesStore = create<BalancetesStore>((set, get) => ({
       const treatedError = handleSupabaseError(
         error,
         createErrorContext('delete', 'balancete', 'omnia_balancetes')
+      )
+      set({ error: treatedError.message, loading: false })
+      throw error
+    }
+  },
+
+  markAsSent: async (ids: string[], createdBy?: string) => {
+    logger.debug('BalancetesStore: Marking balancetes as sent:', ids)
+    set({ loading: true, error: null })
+
+    try {
+      const result = await balancetesRepoSupabase.markAsSent(ids, createdBy)
+      const { balancetes } = get()
+      
+      // Atualiza os balancetes no estado local
+      const updatedList = balancetes.map(b => {
+        const updated = result.balancetes.find(u => u.id === b.id)
+        return updated || b
+      })
+      
+      set({ balancetes: updatedList, loading: false })
+      logger.debug('BalancetesStore: Marked balancetes as sent successfully')
+      return result
+    } catch (error) {
+      logger.error('BalancetesStore: Error marking balancetes as sent:', error)
+      const treatedError = handleSupabaseError(
+        error,
+        createErrorContext('update', 'balancetes', 'omnia_balancetes')
       )
       set({ error: treatedError.message, loading: false })
       throw error

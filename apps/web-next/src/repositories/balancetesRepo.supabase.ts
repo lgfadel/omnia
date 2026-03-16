@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
-import { logger } from '../lib/logging';
+import { logger } from '../lib/logging'
+import { protocolosRepoSupabase, type Protocolo } from './protocolosRepo.supabase'
 
 export interface Balancete {
   id: string
@@ -11,6 +12,7 @@ export interface Balancete {
   observations?: string | null
   status: string
   sent_at?: string | null
+  protocolo_id?: string | null
   created_by?: string | null
   created_at: string | null
   updated_at: string | null
@@ -200,5 +202,83 @@ export const balancetesRepoSupabase = {
       created_at: row.created_at,
       updated_at: row.updated_at,
     }
+  },
+
+  async markAsSent(ids: string[], createdBy?: string): Promise<{ protocolo: Protocolo; balancetes: Balancete[] }> {
+    logger.debug('Marking balancetes as sent:', ids)
+
+    const sentAt = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+
+    // 1. Criar protocolo
+    const protocolo = await protocolosRepoSupabase.create({
+      data_envio: sentAt,
+      quantidade_balancetes: ids.length,
+      created_by: createdBy,
+    })
+
+    // 2. Atualizar balancetes com sent_at e protocolo_id
+    const { data, error } = await supabase
+      .from('omnia_balancetes')
+      .update({ 
+        sent_at: sentAt,
+        protocolo_id: protocolo.id,
+      } as any)
+      .in('id', ids)
+      .select('*, omnia_condominiums(name)')
+
+    if (error) {
+      logger.error('Error marking balancetes as sent:', error)
+      throw error
+    }
+
+    logger.debug('Marked balancetes as sent:', data)
+    const balancetes = (data || []).map((row: any) => ({
+      id: row.id,
+      condominium_id: row.condominium_id,
+      condominium_name: row.omnia_condominiums?.name || '',
+      received_at: row.received_at,
+      competencia: row.competencia,
+      volumes: row.volumes,
+      observations: row.observations,
+      status: row.status,
+      sent_at: row.sent_at,
+      protocolo_id: row.protocolo_id,
+      created_by: row.created_by,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }))
+
+    return { protocolo, balancetes }
+  },
+
+  async getByProtocoloId(protocoloId: string): Promise<Balancete[]> {
+    logger.debug('Getting balancetes by protocolo_id:', protocoloId)
+
+    const { data, error } = await supabase
+      .from('omnia_balancetes')
+      .select('*, omnia_condominiums(name)')
+      .eq('protocolo_id', protocoloId)
+      .order('condominium_id')
+
+    if (error) {
+      logger.error('Error getting balancetes by protocolo_id:', error)
+      throw error
+    }
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      condominium_id: row.condominium_id,
+      condominium_name: row.omnia_condominiums?.name || '',
+      received_at: row.received_at,
+      competencia: row.competencia,
+      volumes: row.volumes,
+      observations: row.observations,
+      status: row.status,
+      sent_at: row.sent_at,
+      protocolo_id: row.protocolo_id,
+      created_by: row.created_by,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }))
   },
 }

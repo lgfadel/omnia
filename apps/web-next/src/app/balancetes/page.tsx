@@ -6,7 +6,10 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TabelaOmnia } from "@/components/ui/tabela-omnia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Send, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ProtocolosModal } from "@/components/balancetes/ProtocolosModal";
+import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,11 +29,12 @@ import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
 
 const columns = [
-  { key: "condominium_name", label: "Condomínio", width: "w-[28%]" },
-  { key: "competencia", label: "Competência", width: "w-[14%]", sortable: true },
-  { key: "received_at", label: "Dt Recebimento", width: "w-[14%]", sortable: true },
-  { key: "volumes", label: "Volumes", width: "w-[10%]" },
-  { key: "observations", label: "Observações", width: "w-[24%]" },
+  { key: "condominium_name", label: "Condomínio", width: "w-[25%]" },
+  { key: "competencia", label: "Competência", width: "w-[12%]", sortable: true },
+  { key: "received_at", label: "Dt Recebimento", width: "w-[12%]", sortable: true },
+  { key: "volumes", label: "Volumes", width: "w-[8%]" },
+  { key: "sent_status", label: "Enviado", width: "w-[10%]" },
+  { key: "observations", label: "Observações", width: "w-[23%]" },
 ];
 
 function formatDate(dateStr: string): string {
@@ -48,6 +52,7 @@ export default function BalancetesPage() {
     createBalancete,
     updateBalancete,
     deleteBalancete,
+    markAsSent,
   } = useBalancetesStore();
   const { condominiums, loadCondominiums } = useCondominiumStore();
   const { userProfile } = useAuthStore();
@@ -59,6 +64,9 @@ export default function BalancetesPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [balanceteToDelete, setBalanceteToDelete] = useState<Balancete | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [selectedBalancetes, setSelectedBalancetes] = useState<Set<string>>(new Set());
+  const [sendingBalancetes, setSendingBalancetes] = useState(false);
+  const [protocolosModalOpen, setProtocolosModalOpen] = useState(false);
 
   useEffect(() => {
     loadBalancetes();
@@ -93,14 +101,71 @@ export default function BalancetesPage() {
           ...rest,
           received_at: formatDate(b.received_at),
           _raw_received_at: b.received_at,
+          sent_status: b.sent_at ? (
+            <span className="text-sm text-green-700 font-medium">
+              {formatDate(b.sent_at)}
+            </span>
+          ) : (
+            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+              Pendente
+            </Badge>
+          ),
         };
       }),
     [filteredData]
   );
 
+  // IDs dos balancetes já enviados (não podem ser selecionados)
+  const disabledIds = useMemo(() => {
+    return new Set(
+      balancetes
+        .filter((b) => b.sent_at)
+        .map((b) => b.id)
+    );
+  }, [balancetes]);
+
   const handleNew = () => {
     setEditingBalancete(null);
     setFormOpen(true);
+  };
+
+  const handleEnviar = async () => {
+    if (selectedBalancetes.size === 0) return;
+
+    setSendingBalancetes(true);
+    try {
+      const ids = Array.from(selectedBalancetes);
+      const result = await markAsSent(ids, userProfile?.id);
+      
+      // Gerar PDF do protocolo
+      const pdfBytes = await generateProtocoloPDF({
+        numeroProtocolo: result.protocolo.numero,
+        balancetes: result.balancetes,
+        dataEnvio: result.protocolo.data_envio,
+      });
+      
+      // Download do PDF
+      const protocoloNumero = String(result.protocolo.numero).padStart(3, '0');
+      const filename = `protocolo-${protocoloNumero}-${result.protocolo.data_envio}.pdf`;
+      downloadPDF(pdfBytes, filename);
+      
+      // Limpar seleção
+      setSelectedBalancetes(new Set());
+      
+      toast({
+        title: "Balancetes enviados com sucesso!",
+        description: `Protocolo #${protocoloNumero} criado com ${result.balancetes.length} balancete(s). O PDF foi baixado.`,
+      });
+    } catch (error) {
+      console.error('Erro ao enviar balancetes:', error);
+      toast({
+        title: "Erro ao enviar balancetes",
+        description: "Ocorreu um erro ao marcar os balancetes como enviados.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingBalancetes(false);
+    }
   };
 
   const handleView = (id: string | number) => {
@@ -181,12 +246,31 @@ export default function BalancetesPage() {
 
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Balancetes</h1>
-          <Button
-            className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg"
-            onClick={handleNew}
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-12 px-4 gap-2"
+              onClick={() => setProtocolosModalOpen(true)}
+            >
+              <FileText className="w-4 h-4" />
+              Protocolos
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 px-4 gap-2"
+              onClick={handleEnviar}
+              disabled={selectedBalancetes.size === 0 || sendingBalancetes}
+            >
+              <Send className="w-4 h-4" />
+              {sendingBalancetes ? "Enviando..." : `Enviar${selectedBalancetes.size > 0 ? ` (${selectedBalancetes.size})` : ""}`}
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg"
+              onClick={handleNew}
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border p-6 mb-6">
@@ -229,6 +313,10 @@ export default function BalancetesPage() {
               data={tableData}
               onView={handleView}
               onDelete={handleDelete}
+              selectable
+              selectedIds={selectedBalancetes}
+              onSelectionChange={setSelectedBalancetes}
+              disabledIds={disabledIds}
             />
           )}
         </div>
@@ -271,6 +359,11 @@ export default function BalancetesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProtocolosModal
+        open={protocolosModalOpen}
+        onOpenChange={setProtocolosModalOpen}
+      />
     </Layout>
   );
 }

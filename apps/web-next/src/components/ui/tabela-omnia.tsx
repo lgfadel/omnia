@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -65,6 +66,10 @@ interface TabelaOmniaProps {
   grouped?: boolean
   contextType?: 'ticket' | 'ata'
   updatingSecretaryId?: string | null
+  selectable?: boolean
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
+  disabledIds?: Set<string>
 }
 
 export function TabelaOmnia({
@@ -89,7 +94,11 @@ export function TabelaOmnia({
   className,
   grouped = false,
   contextType = 'ticket',
-  updatingSecretaryId
+  updatingSecretaryId,
+  selectable = false,
+  selectedIds = new Set(),
+  onSelectionChange,
+  disabledIds = new Set()
 }: TabelaOmniaProps) {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({
     isOpen: false,
@@ -105,6 +114,49 @@ export function TabelaOmnia({
       [ticketId]: newCount
     }))
   }
+
+  // Funções de seleção
+  const getSelectableRows = (): TabelaOmniaRow[] => {
+    if (grouped) {
+      return (data as TabelaOmniaGroupedItem[])
+        .filter(item => item.type === 'data' && item.data)
+        .map(item => item.data!)
+        .filter(row => !disabledIds.has(String(row.id)))
+    }
+    return (data as TabelaOmniaRow[]).filter(row => !disabledIds.has(String(row.id)))
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (!onSelectionChange) return
+    
+    if (checked) {
+      const selectableRows = getSelectableRows()
+      const newSelection = new Set(selectableRows.map(row => String(row.id)))
+      onSelectionChange(newSelection)
+    } else {
+      onSelectionChange(new Set())
+    }
+  }
+
+  const handleSelectRow = (id: string | number, checked: boolean) => {
+    if (!onSelectionChange) return
+    
+    const newSelection = new Set(selectedIds)
+    const stringId = String(id)
+    
+    if (checked) {
+      newSelection.add(stringId)
+    } else {
+      newSelection.delete(stringId)
+    }
+    
+    onSelectionChange(newSelection)
+  }
+
+  const selectableRows = selectable ? getSelectableRows() : []
+  const allSelectableSelected = selectable && selectableRows.length > 0 && 
+    selectableRows.every(row => selectedIds.has(String(row.id)))
+  const someSelected = selectable && selectedIds.size > 0 && !allSelectableSelected
 
   const toggleGroup = (statusName: string) => {
     const newCollapsed = new Set(collapsedGroups)
@@ -745,6 +797,20 @@ export function TabelaOmnia({
       <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow className="border-b">
+            {selectable && (
+              <TableHead className="w-[40px] text-muted-foreground text-xs uppercase tracking-wide py-4 px-2">
+                <div className="flex items-center justify-center">
+                  <Checkbox
+                    checked={allSelectableSelected}
+                    onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                    disabled={selectableRows.length === 0}
+                    className={cn(
+                      someSelected && "data-[state=unchecked]:bg-primary/20"
+                    )}
+                  />
+                </div>
+              </TableHead>
+            )}
             {columns.map((column) => (
               <TableHead
                 key={column.key}
@@ -791,7 +857,7 @@ export function TabelaOmnia({
                     onClick={() => toggleGroup(item.statusName)}
                   >
                     <TableCell
-                      colSpan={columns.length + 1}
+                      colSpan={columns.length + (selectable ? 2 : 1)}
                       className="py-3 px-2"
                     >
                       <div className="flex items-center gap-3">
@@ -826,8 +892,22 @@ export function TabelaOmnia({
                 return null
               }
 
+              const isRowDisabled = disabledIds.has(String(row.id))
+              const isRowSelected = selectedIds.has(String(row.id))
+
               return (
                 <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+                  {selectable && (
+                    <TableCell className="w-[40px] py-4 px-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={isRowSelected}
+                          onCheckedChange={(checked) => handleSelectRow(row.id, checked === true)}
+                          disabled={isRowDisabled}
+                        />
+                      </div>
+                    </TableCell>
+                  )}
                   {columns.map((column) => (
                     <TableCell
                       key={`${row.id}-${column.key}`}
@@ -878,8 +958,23 @@ export function TabelaOmnia({
               )
             })
           ) : (
-            (data as TabelaOmniaRow[]).map((row) => (
+            (data as TabelaOmniaRow[]).map((row) => {
+              const isRowDisabled = disabledIds.has(String(row.id))
+              const isRowSelected = selectedIds.has(String(row.id))
+
+              return (
               <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+                {selectable && (
+                  <TableCell className="w-[40px] py-4 px-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={isRowSelected}
+                        onCheckedChange={(checked) => handleSelectRow(row.id, checked === true)}
+                        disabled={isRowDisabled}
+                      />
+                    </div>
+                  </TableCell>
+                )}
                 {columns.map((column) => (
                   <TableCell
                     key={`${row.id}-${column.key}`}
@@ -927,7 +1022,8 @@ export function TabelaOmnia({
                   </div>
                 </TableCell>
               </TableRow>
-            ))
+              )
+            })
           )}
         </TableBody>
       </Table>
