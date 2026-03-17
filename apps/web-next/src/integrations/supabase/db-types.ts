@@ -390,9 +390,10 @@ export type Database = {
           competencia: string
           condominium_id: string
           created_at: string | null
-          created_by: string | null
+          created_by: string
           id: string
           observations: string | null
+          protocolo_id: string | null
           received_at: string
           sent_at: string | null
           status: string
@@ -403,9 +404,10 @@ export type Database = {
           competencia: string
           condominium_id: string
           created_at?: string | null
-          created_by?: string | null
+          created_by: string
           id?: string
           observations?: string | null
+          protocolo_id?: string | null
           received_at?: string
           sent_at?: string | null
           status?: string
@@ -416,9 +418,10 @@ export type Database = {
           competencia?: string
           condominium_id?: string
           created_at?: string | null
-          created_by?: string | null
+          created_by?: string
           id?: string
           observations?: string | null
+          protocolo_id?: string | null
           received_at?: string
           sent_at?: string | null
           status?: string
@@ -438,6 +441,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_balancetes_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_protocolos"
             referencedColumns: ["id"]
           },
         ]
@@ -952,6 +962,111 @@ export type Database = {
           {
             foreignKeyName: "omnia_notifications_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_protocolo_attachments: {
+        Row: {
+          created_at: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          protocolo_id: string
+          size_kb: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          protocolo_id: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          protocolo_id?: string
+          size_kb?: number | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_protocolo_attachments_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_protocolos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_protocolo_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omnia_protocolos: {
+        Row: {
+          cancelado: boolean | null
+          cancelado_em: string | null
+          cancelado_por: string | null
+          created_at: string | null
+          created_by: string | null
+          data_envio: string
+          id: string
+          motivo_cancelamento: string | null
+          numero: number
+          quantidade_balancetes: number
+          updated_at: string | null
+        }
+        Insert: {
+          cancelado?: boolean | null
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_envio?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          numero?: number
+          quantidade_balancetes?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cancelado?: boolean | null
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_envio?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          numero?: number
+          quantidade_balancetes?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_protocolos_cancelado_por_fkey"
+            columns: ["cancelado_por"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_protocolos_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
             referencedColumns: ["id"]
@@ -1745,3 +1860,4 @@ export const Constants = {
     },
   },
 } as const
+

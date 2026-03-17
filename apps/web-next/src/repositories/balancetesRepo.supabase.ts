@@ -60,6 +60,7 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      protocolo_id: row.protocolo_id,
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,

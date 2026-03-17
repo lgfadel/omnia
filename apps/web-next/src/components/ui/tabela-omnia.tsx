@@ -47,6 +47,7 @@ interface TabelaOmniaProps {
   data: TabelaOmniaRow[] | TabelaOmniaGroupedItem[]
   onView?: (id: string | number) => void
   onDelete?: (id: string | number) => void
+  onAttachmentClick?: (id: string | number) => void
   onCommentClick?: (id: string | number, title?: string) => void
   onStatusChange?: (id: string | number, statusId: string) => void
   onResponsibleChange?: (id: string | number, userId: string) => void
@@ -77,6 +78,7 @@ export function TabelaOmnia({
   data,
   onView,
   onDelete,
+  onAttachmentClick,
   onCommentClick,
   onStatusChange,
   onResponsibleChange,
@@ -942,6 +944,22 @@ export function TabelaOmnia({
                           <Eye className="w-4 h-4" />
                         </Button>
                       )}
+                      {onAttachmentClick && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100 disabled:opacity-40 disabled:hover:text-muted-foreground disabled:hover:bg-transparent"
+                          onClick={() => onAttachmentClick(row.id)}
+                          disabled={!row.sent_at}
+                        >
+                          <div className="flex items-center gap-1">
+                            <Paperclip className="w-4 h-4" />
+                            {row._attachmentCount > 0 && (
+                              <span className="text-[10px] font-medium">{row._attachmentCount}</span>
+                            )}
+                          </div>
+                        </Button>
+                      )}
                       {onDelete && (
                         <Button
                           variant="ghost"
@@ -1007,6 +1025,22 @@ export function TabelaOmnia({
                         onClick={() => onView(row.id)}
                       >
                         <Eye className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {onAttachmentClick && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 !text-foreground hover:!text-foreground hover:bg-gray-100 disabled:opacity-40 disabled:hover:!text-foreground disabled:hover:bg-transparent"
+                        onClick={() => onAttachmentClick(row.id)}
+                        disabled={!row.sent_at}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Paperclip className="w-4 h-4" />
+                          {row._attachmentCount > 0 && (
+                            <span className="text-[10px] font-medium">{row._attachmentCount}</span>
+                          )}
+                        </div>
                       </Button>
                     )}
                     {onDelete && (
