@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Send, FileText, Filter, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ProtocolosModal } from "@/components/balancetes/ProtocolosModal";
 import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAttachmentUpload";
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
@@ -30,7 +30,6 @@ import { useProtocolosStore } from "@/stores/protocolos.store";
 import { protocolosRepoSupabase } from "@/repositories/protocolosRepo.supabase";
 import { protocoloAttachmentsRepoSupabase } from "@/repositories/protocoloAttachmentsRepo.supabase";
 import { BalanceteForm } from "@/components/balancetes/BalanceteForm";
-import { CondominiumSelect } from "@/components/condominiums/CondominiumSelect";
 import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,7 +66,6 @@ export default function BalancetesPage() {
   const { protocolos, loadProtocolos } = useProtocolosStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [condominiumFilter, setCondominiumFilter] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingBalancete, setEditingBalancete] = useState<Balancete | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -135,10 +133,6 @@ export default function BalancetesPage() {
       data = data.filter((b) => !b.protocolo_id || !attachmentCounts[b.protocolo_id] || attachmentCounts[b.protocolo_id] === 0);
     }
 
-    if (condominiumFilter) {
-      data = data.filter((b) => b.condominium_id === condominiumFilter);
-    }
-
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       data = data.filter(
@@ -150,7 +144,7 @@ export default function BalancetesPage() {
     }
 
     return data;
-  }, [balancetes, condominiumFilter, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts]);
+  }, [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts]);
 
   const tableData = useMemo(
     () =>
@@ -440,20 +434,10 @@ export default function BalancetesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Buscar por condomínio, competência ou observações..."
+                placeholder="Buscar balancetes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10"
-              />
-            </div>
-            <div className="w-full lg:w-[300px]">
-              <CondominiumSelect
-                condominiums={condominiums}
-                value={condominiumFilter}
-                onValueChange={(val) =>
-                  setCondominiumFilter(val === condominiumFilter ? "" : val)
-                }
-                placeholder="Filtrar por condomínio..."
+                className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
               />
             </div>
             <DropdownMenu>
@@ -465,33 +449,20 @@ export default function BalancetesPage() {
                 >
                   <Filter className="w-4 h-4" />
                   <span className="text-xs font-medium">
-                    {statusEnvioFilter === 'todos' ? 'Todos' : statusEnvioFilter === 'enviados' ? 'Enviados' : 'Pendentes'}
+                    Filtros
                   </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-40">
+              <DropdownMenuContent className="w-52">
+                <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as 'todos' | 'enviados' | 'pendentes')}>
                   <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="enviados">Enviados</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="pendentes">Pendentes</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="h-10 px-3 flex items-center gap-2 transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-                >
-                  <Paperclip className="w-4 h-4" />
-                  <span className="text-xs font-medium">
-                    {anexoFilter === 'todos' ? 'Todos' : anexoFilter === 'com-anexo' ? 'Com Anexo' : 'Sem Anexo'}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-40">
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Anexos</DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
                   <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
