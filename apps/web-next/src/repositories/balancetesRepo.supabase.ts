@@ -205,14 +205,12 @@ export const balancetesRepoSupabase = {
     }
   },
 
-  async markAsSent(ids: string[], createdBy?: string): Promise<{ protocolo: Protocolo; balancetes: Balancete[] }> {
+  async markAsSent(ids: string[], dataEnvio: string, createdBy?: string): Promise<{ protocolo: Protocolo; balancetes: Balancete[] }> {
     logger.debug('Marking balancetes as sent:', ids)
-
-    const sentAt = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
 
     // 1. Criar protocolo
     const protocolo = await protocolosRepoSupabase.create({
-      data_envio: sentAt,
+      data_envio: dataEnvio,
       quantidade_balancetes: ids.length,
       created_by: createdBy,
     })
@@ -221,7 +219,7 @@ export const balancetesRepoSupabase = {
     const { data, error } = await supabase
       .from('omnia_balancetes')
       .update({ 
-        sent_at: sentAt,
+        sent_at: dataEnvio,
         protocolo_id: protocolo.id,
       } as any)
       .in('id', ids)

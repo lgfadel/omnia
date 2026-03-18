@@ -151,7 +151,7 @@ export default function BalancetesPage() {
       filteredData.map((b) => {
         const { status: _status, ...rest } = b;
         const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
-        const dataEnvio = protocolo?.data_envio || b.sent_at;
+        const dataEnvio = protocolo?.data_envio ?? null;
         const attachmentCount = b.protocolo_id ? (attachmentCounts[b.protocolo_id] || 0) : 0;
         
         return {
@@ -248,18 +248,18 @@ export default function BalancetesPage() {
     
     try {
       const ids = Array.from(selectedBalancetes);
-      const result = await markAsSent(ids, userProfile?.id);
+      const result = await markAsSent(ids, dataEnvio, userProfile?.id);
       
       // Gerar PDF do protocolo com a data selecionada
       const pdfBytes = await generateProtocoloPDF({
         numeroProtocolo: result.protocolo.numero,
         balancetes: result.balancetes,
-        dataEnvio: dataEnvio,
+        dataEnvio: result.protocolo.data_envio,
       });
       
       // Download do PDF
       const protocoloNumero = String(result.protocolo.numero).padStart(3, '0');
-      const filename = `protocolo-${protocoloNumero}-${dataEnvio}.pdf`;
+      const filename = `protocolo-${protocoloNumero}-${result.protocolo.data_envio}.pdf`;
       downloadPDF(pdfBytes, filename);
       
       // Limpar seleção

@@ -13,7 +13,7 @@ interface BalancetesStore {
   createBalancete: (data: CreateBalanceteData) => Promise<Balancete>
   updateBalancete: (id: string, data: UpdateBalanceteData) => Promise<Balancete | null>
   deleteBalancete: (id: string) => Promise<boolean>
-  markAsSent: (ids: string[], createdBy?: string) => Promise<{ protocolo: Protocolo; balancetes: Balancete[] }>
+  markAsSent: (ids: string[], dataEnvio: string, createdBy?: string) => Promise<{ protocolo: Protocolo; balancetes: Balancete[] }>
   clearError: () => void
 }
 
@@ -114,12 +114,12 @@ export const useBalancetesStore = create<BalancetesStore>((set, get) => ({
     }
   },
 
-  markAsSent: async (ids: string[], createdBy?: string) => {
+  markAsSent: async (ids: string[], dataEnvio: string, createdBy?: string) => {
     logger.debug('BalancetesStore: Marking balancetes as sent:', ids)
     set({ loading: true, error: null })
 
     try {
-      const result = await balancetesRepoSupabase.markAsSent(ids, createdBy)
+      const result = await balancetesRepoSupabase.markAsSent(ids, dataEnvio, createdBy)
       const { balancetes } = get()
       
       // Atualiza os balancetes no estado local
