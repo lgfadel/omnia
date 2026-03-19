@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState } from "react"
+import React, { useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { PriorityBadge } from "@/components/ui/priority-badge"
@@ -32,6 +32,15 @@ export interface TabelaOmniaRow {
   id: string | number
   [key: string]: any
   status?: "nao-iniciado" | "em-andamento" | "concluido"
+}
+
+export interface TabelaOmniaCustomAction {
+  icon: React.ReactNode
+  label: string
+  onClick: (id: string | number, row: TabelaOmniaRow) => void
+  className?: string
+  hidden?: (row: TabelaOmniaRow) => boolean
+  disabled?: (row: TabelaOmniaRow) => boolean
 }
 
 export interface TabelaOmniaGroupedItem {
@@ -71,6 +80,10 @@ interface TabelaOmniaProps {
   selectedIds?: Set<string>
   onSelectionChange?: (ids: Set<string>) => void
   disabledIds?: Set<string>
+  customActions?: TabelaOmniaCustomAction[]
+  expandedRowId?: string | number | null
+  onRowExpand?: (id: string | number) => void
+  renderExpandedRow?: (row: TabelaOmniaRow) => React.ReactNode
 }
 
 export function TabelaOmnia({
@@ -100,7 +113,11 @@ export function TabelaOmnia({
   selectable = false,
   selectedIds = new Set(),
   onSelectionChange,
-  disabledIds = new Set()
+  disabledIds = new Set(),
+  customActions,
+  expandedRowId,
+  onRowExpand,
+  renderExpandedRow
 }: TabelaOmniaProps) {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; ticketId: string; ticketTitle?: string }>({
     isOpen: false,
@@ -799,6 +816,9 @@ export function TabelaOmnia({
       <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow className="border-b">
+            {onRowExpand && (
+              <TableHead className="w-[40px] text-muted-foreground text-xs uppercase tracking-wide py-4 px-1" />
+            )}
             {selectable && (
               <TableHead className="w-[40px] text-muted-foreground text-xs uppercase tracking-wide py-4 px-2">
                 <div className="flex items-center justify-center">
@@ -896,9 +916,35 @@ export function TabelaOmnia({
 
               const isRowDisabled = disabledIds.has(String(row.id))
               const isRowSelected = selectedIds.has(String(row.id))
+              const isExpanded = expandedRowId != null && String(expandedRowId) === String(row.id)
+              const totalColSpan = columns.length + (selectable ? 1 : 0) + (onRowExpand ? 1 : 0) + 1
 
               return (
-                <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+                <React.Fragment key={row.id}>
+                <TableRow
+                  className={cn(
+                    "hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100",
+                    isExpanded && "bg-gray-50"
+                  )}
+                  onClick={() => {
+                    if (onRowExpand) {
+                      onRowExpand(row.id)
+                    } else if (onView) {
+                      onView(row.id)
+                    }
+                  }}
+                >
+                  {onRowExpand && (
+                    <TableCell className="w-[40px] py-4 px-1">
+                      <div className="flex items-center justify-center">
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                   {selectable && (
                     <TableCell className="w-[40px] py-4 px-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center">
@@ -934,6 +980,26 @@ export function TabelaOmnia({
                   ))}
                   <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-2">
                     <div className="flex items-center gap-1">
+                      {customActions && customActions.map((action, actionIdx) => {
+                        if (action.hidden && action.hidden(row)) return null
+                        const isActionDisabled = action.disabled ? action.disabled(row) : false
+                        return (
+                          <Button
+                            key={actionIdx}
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 text-muted-foreground hover:bg-gray-100",
+                              action.className
+                            )}
+                            onClick={() => action.onClick(row.id, row)}
+                            disabled={isActionDisabled}
+                            title={action.label}
+                          >
+                            {action.icon}
+                          </Button>
+                        )
+                      })}
                       {onView && (
                         <Button
                           variant="ghost"
@@ -973,15 +1039,49 @@ export function TabelaOmnia({
                     </div>
                   </TableCell>
                 </TableRow>
+                {isExpanded && renderExpandedRow && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={totalColSpan} className="p-0">
+                      {renderExpandedRow(row)}
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
               )
             })
           ) : (
             (data as TabelaOmniaRow[]).map((row) => {
               const isRowDisabled = disabledIds.has(String(row.id))
               const isRowSelected = selectedIds.has(String(row.id))
+              const isExpanded = expandedRowId != null && String(expandedRowId) === String(row.id)
+              const totalColSpan = columns.length + (selectable ? 1 : 0) + (onRowExpand ? 1 : 0) + 1
 
               return (
-              <TableRow key={row.id} className="hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100" onClick={() => onView && onView(row.id)}>
+              <React.Fragment key={row.id}>
+              <TableRow
+                className={cn(
+                  "hover:bg-gray-50 cursor-pointer h-12 border-b border-gray-100",
+                  isExpanded && "bg-gray-50"
+                )}
+                onClick={() => {
+                  if (onRowExpand) {
+                    onRowExpand(row.id)
+                  } else if (onView) {
+                    onView(row.id)
+                  }
+                }}
+              >
+                {onRowExpand && (
+                  <TableCell className="w-[40px] py-4 px-1">
+                    <div className="flex items-center justify-center">
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableCell>
+                )}
                 {selectable && (
                   <TableCell className="w-[40px] py-4 px-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center">
@@ -1017,6 +1117,26 @@ export function TabelaOmnia({
                 ))}
                 <TableCell onClick={(e) => e.stopPropagation()} className="py-4 px-2">
                   <div className="flex items-center gap-1">
+                    {customActions && customActions.map((action, actionIdx) => {
+                      if (action.hidden && action.hidden(row)) return null
+                      const isActionDisabled = action.disabled ? action.disabled(row) : false
+                      return (
+                        <Button
+                          key={actionIdx}
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8 text-muted-foreground hover:bg-gray-100",
+                            action.className
+                          )}
+                          onClick={() => action.onClick(row.id, row)}
+                          disabled={isActionDisabled}
+                          title={action.label}
+                        >
+                          {action.icon}
+                        </Button>
+                      )
+                    })}
                     {onView && (
                       <Button
                         variant="ghost"
@@ -1056,6 +1176,14 @@ export function TabelaOmnia({
                   </div>
                 </TableCell>
               </TableRow>
+              {isExpanded && renderExpandedRow && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={totalColSpan} className="p-0">
+                    {renderExpandedRow(row)}
+                  </TableCell>
+                </TableRow>
+              )}
+              </React.Fragment>
               )
             })
           )}

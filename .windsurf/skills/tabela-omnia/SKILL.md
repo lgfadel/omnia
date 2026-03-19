@@ -114,22 +114,154 @@ Use estas keys quando o contexto tiver dados equivalentes:
 | `ticketOcta` | Código mono + Copy |
 | `title` | Texto + tags + Lock se privado |
 
-## Ações Customizadas
+## Ações Customizadas (via prop `customActions`)
 
-Para ações além de View/Delete, seguir o padrão:
+A TabelaOmnia suporta ações customizadas por linha via a prop `customActions`. As ações são renderizadas **antes** dos botões padrão (View, Attachment, Delete) na coluna de ações.
+
+### Interface
 
 ```tsx
-<Button
-  variant="ghost"
-  size="icon"
-  className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
-  onClick={(e) => { e.stopPropagation(); handleAction(row.id); }}
->
-  <IconeLucide className="w-4 h-4" />
-</Button>
+import type { TabelaOmniaCustomAction, TabelaOmniaRow } from "@/components/ui/tabela-omnia";
+
+export interface TabelaOmniaCustomAction {
+  icon: React.ReactNode          // Ícone Lucide ou qualquer JSX
+  label: string                  // Tooltip (title do botão)
+  onClick: (id: string | number, row: TabelaOmniaRow) => void
+  className?: string             // Classes extras para o botão (ex: hover colors)
+  hidden?: (row: TabelaOmniaRow) => boolean   // Ocultar condicionalmente
+  disabled?: (row: TabelaOmniaRow) => boolean // Desabilitar condicionalmente
+}
 ```
 
-**Ícones comuns:** Printer (imprimir), Download (exportar), Copy (duplicar), Archive (arquivar), Pencil (editar), Mail (email), Share2 (compartilhar)
+### Uso
+
+```tsx
+const customActions: TabelaOmniaCustomAction[] = useMemo(() => [
+  {
+    icon: <Printer className="w-4 h-4" />,
+    label: "Reimprimir",
+    className: "hover:text-blue-600 hover:bg-blue-50",
+    onClick: (_id, row) => handleReimprimir(row._raw),
+  },
+  {
+    icon: <Ban className="w-4 h-4" />,
+    label: "Cancelar",
+    className: "hover:text-red-600 hover:bg-red-50",
+    onClick: (_id, row) => handleCancel(row._raw),
+    hidden: (row) => row._raw.cancelado === true,  // Oculta se já cancelado
+  },
+], []);
+
+<TabelaOmnia
+  columns={columns}
+  data={data}
+  customActions={customActions}
+/>
+```
+
+**Ícones comuns:** Printer (imprimir), Download (exportar), Copy (duplicar), Archive (arquivar), Pencil (editar), Mail (email), Share2 (compartilhar), Ban (cancelar)
+
+### Dica: Dados auxiliares via `_raw`
+
+Passe o objeto original completo como `_raw` nos dados da tabela para acessar dentro das ações:
+
+```tsx
+const tableData = items.map(item => ({
+  id: item.id,
+  _raw: item,  // Objeto original completo
+  // ... colunas formatadas
+}));
+```
+
+## Linhas Expansíveis (Expandable Rows)
+
+A TabelaOmnia suporta expansão inline de linhas com conteúdo customizado via as props `expandedRowId`, `onRowExpand` e `renderExpandedRow`.
+
+### Props
+
+| Prop | Tipo | Descrição |
+|---|---|---|
+| `expandedRowId` | `string \| number \| null` | ID da linha atualmente expandida |
+| `onRowExpand` | `(id: string \| number) => void` | Handler chamado ao clicar na linha (toggle) |
+| `renderExpandedRow` | `(row: TabelaOmniaRow) => React.ReactNode` | Função que renderiza o conteúdo expandido |
+
+### Comportamento
+
+- Quando `onRowExpand` é fornecido, um ícone **chevron** (▶/▼) aparece automaticamente como primeira coluna
+- Clicar em qualquer lugar da linha expande/colapsa (ao invés de chamar `onView`)
+- A linha expandida recebe `bg-gray-50` para destaque visual
+- O conteúdo expandido é renderizado em um `<TableRow>` com `colSpan` total, sem padding (`p-0`)
+- Apenas uma linha pode estar expandida por vez
+
+### Uso
+
+```tsx
+const [expandedId, setExpandedId] = useState<string | number | null>(null);
+const [detailsMap, setDetailsMap] = useState<Record<string, DetailType[]>>({});
+
+const handleRowExpand = useCallback(async (id: string | number) => {
+  const strId = String(id);
+
+  // Toggle: colapsa se já expandido
+  if (String(expandedId) === strId) {
+    setExpandedId(null);
+    return;
+  }
+
+  setExpandedId(id);
+
+  // Lazy load: carrega detalhes sob demanda
+  if (!detailsMap[strId]) {
+    const details = await fetchDetails(strId);
+    setDetailsMap(prev => ({ ...prev, [strId]: details }));
+  }
+}, [expandedId, detailsMap]);
+
+const renderExpandedRow = useCallback((row: TabelaOmniaRow) => {
+  const item = row._raw;
+  const details = detailsMap[String(item.id)];
+
+  return (
+    <div className="bg-muted/10 border-t px-6 py-4">
+      {!details ? (
+        <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando...
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="text-xs h-9">Campo 1</TableHead>
+              <TableHead className="text-xs h-9">Campo 2</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {details.map(d => (
+              <TableRow key={d.id} className="hover:bg-gray-50">
+                <TableCell className="text-sm py-2.5">{d.campo1}</TableCell>
+                <TableCell className="text-sm py-2.5">{d.campo2}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}, [detailsMap]);
+
+<TabelaOmnia
+  columns={columns}
+  data={data}
+  expandedRowId={expandedId}
+  onRowExpand={handleRowExpand}
+  renderExpandedRow={renderExpandedRow}
+/>
+```
+
+### Referência de Implementação
+
+- **Página:** `apps/web-next/src/app/protocolos/page.tsx` — usa `customActions` (reimprimir/cancelar) + expandable rows (balancetes do protocolo)
 
 ## Padrão de Filtros
 

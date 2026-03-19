@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -17,10 +18,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight, X, Printer } from "lucide-react"
+import { ChevronDown, ChevronRight, Printer, Ban, FileText, Calendar, Building2, Loader2 } from "lucide-react"
 import { useProtocolosStore } from "@/stores/protocolos.store"
 import { useBalancetesStore } from "@/stores/balancetes.store"
 import { useAuthStore } from "@/stores/auth.store"
@@ -36,8 +45,21 @@ interface ProtocolosModalProps {
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ""
-  const [year, month, day] = dateStr.split("-")
+  const datePart = dateStr.split("T")[0]
+  const [year, month, day] = datePart.split("-")
   return `${day}/${month}/${year}`
+}
+
+function formatDateTime(dateStr: string): string {
+  if (!dateStr) return ""
+  const date = new Date(dateStr)
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
@@ -60,6 +82,13 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
       loadProtocolos()
     }
   }, [open, loadProtocolos])
+
+  const stats = useMemo(() => {
+    const ativos = protocolos.filter(p => !p.cancelado).length
+    const cancelados = protocolos.filter(p => p.cancelado).length
+    const totalBalancetes = protocolos.filter(p => !p.cancelado).reduce((sum, p) => sum + p.quantidade_balancetes, 0)
+    return { ativos, cancelados, totalBalancetes }
+  }, [protocolos])
 
   const handleToggleExpand = async (protocolo: Protocolo) => {
     if (expandedProtocolo === protocolo.id) {
@@ -93,7 +122,6 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
 
   const handleReimprimir = async (protocolo: Protocolo) => {
     try {
-      // Buscar balancetes do protocolo
       const balancetes = await getBalancetesDoProtocolo(protocolo.id)
       
       if (balancetes.length === 0) {
@@ -105,14 +133,12 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
         return
       }
       
-      // Gerar PDF
       const pdfBytes = await generateProtocoloPDF({
         numeroProtocolo: protocolo.numero,
         balancetes: balancetes,
         dataEnvio: protocolo.data_envio,
       })
       
-      // Download do PDF
       const protocoloNumero = String(protocolo.numero).padStart(3, '0')
       const filename = `protocolo-${protocoloNumero}-${protocolo.data_envio}.pdf`
       downloadPDF(pdfBytes, filename)
@@ -140,10 +166,8 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
         motivoCancelamento || undefined
       )
       
-      // Recarregar balancetes para atualizar a lista principal
       await loadBalancetes()
       
-      // Limpar balancetes do mapa local
       setBalancetesMap(prev => {
         const newMap = { ...prev }
         delete newMap[protocoloToCancel.id]
@@ -170,127 +194,217 @@ export function ProtocolosModal({ open, onOpenChange }: ProtocolosModalProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Protocolos de Envio</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <div className="px-6 pt-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Protocolos de Envio
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                Gerencie os protocolos de envio de balancetes.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!loading && protocolos.length > 0 && (
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-muted-foreground">{stats.ativos} ativo{stats.ativos !== 1 ? 's' : ''}</span>
+                </div>
+                {stats.cancelados > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-muted-foreground">{stats.cancelados} cancelado{stats.cancelados !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">{stats.totalBalancetes} balancete{stats.totalBalancetes !== 1 ? 's' : ''} enviado{stats.totalBalancetes !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                Carregando protocolos...
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin mb-3" />
+                <span className="text-sm">Carregando protocolos...</span>
               </div>
             ) : protocolos.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Nenhum protocolo encontrado.
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <FileText className="h-10 w-10 mb-3 opacity-40" />
+                <span className="text-sm font-medium">Nenhum protocolo encontrado</span>
+                <span className="text-xs mt-1">Envie balancetes para criar protocolos.</span>
               </div>
             ) : (
-              <div className="space-y-2">
-                {protocolos.map((protocolo) => (
-                  <div
-                    key={protocolo.id}
-                    className={`border rounded-lg ${protocolo.cancelado ? 'bg-gray-50 border-gray-200' : 'bg-white'}`}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleToggleExpand(protocolo)}
-                            className="p-1 hover:bg-gray-100 rounded"
-                          >
-                            {expandedProtocolo === protocolo.id ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </button>
-                          
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                Protocolo #{String(protocolo.numero).padStart(3, '0')}
-                              </span>
-                              {protocolo.cancelado ? (
-                                <Badge variant="destructive" className="text-xs">
-                                  Cancelado
-                                </Badge>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-8" />
+                    <TableHead className="w-[100px]">Nº</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data Envio</TableHead>
+                    <TableHead className="text-center">Balancetes</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {protocolos.map((protocolo) => {
+                    const isExpanded = expandedProtocolo === protocolo.id
+                    const protocoloNumero = String(protocolo.numero).padStart(3, '0')
+
+                    return (
+                      <React.Fragment key={protocolo.id}>
+                        <TableRow
+                          className={`cursor-pointer ${protocolo.cancelado ? 'bg-gray-50/50 text-muted-foreground' : 'hover:bg-muted/20'}`}
+                          onClick={() => handleToggleExpand(protocolo)}
+                        >
+                          <TableCell className="pr-0">
+                            <button className="p-0.5 hover:bg-gray-200 rounded transition-colors">
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4" />
                               ) : (
-                                <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">
-                                  Ativo
-                                </Badge>
+                                <ChevronRight className="w-4 h-4" />
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`font-mono font-semibold text-sm ${protocolo.cancelado ? 'line-through text-muted-foreground' : ''}`}>
+                              #{protocoloNumero}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {protocolo.cancelado ? (
+                              <Badge variant="destructive" className="text-[10px] px-2 py-0">
+                                Cancelado
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] px-2 py-0 border-green-200">
+                                Ativo
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className={`text-sm ${protocolo.cancelado ? '' : 'font-medium'}`}>
+                                {formatDate(protocolo.data_envio)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-sm font-medium">{protocolo.quantidade_balancetes}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDateTime(protocolo.created_at)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleReimprimir(protocolo)}
+                                title="Reimprimir protocolo"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                              
+                              {!protocolo.cancelado && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => handleCancelClick(protocolo)}
+                                  title="Cancelar protocolo"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </Button>
                               )}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatDate(protocolo.data_envio)} • {protocolo.quantidade_balancetes} balancete(s)
-                            </div>
-                            {protocolo.cancelado && protocolo.motivo_cancelamento && (
-                              <div className="text-xs text-red-600 mt-1">
-                                Motivo: {protocolo.motivo_cancelamento}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                          </TableCell>
+                        </TableRow>
 
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={() => handleReimprimir(protocolo)}
-                          >
-                            <Printer className="w-4 h-4 mr-1" />
-                            Reimprimir
-                          </Button>
-                          
-                          {!protocolo.cancelado && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleCancelClick(protocolo)}
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Cancelar
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                        {isExpanded && (
+                          <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={7} className="p-0">
+                              <div className="bg-muted/20 border-y px-6 py-4">
+                                {loadingBalancetes === protocolo.id ? (
+                                  <div className="flex items-center justify-center py-4 gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Carregando balancetes...
+                                  </div>
+                                ) : balancetesMap[protocolo.id]?.length === 0 ? (
+                                  <div className="text-center py-4 text-sm text-muted-foreground">
+                                    Nenhum balancete encontrado neste protocolo.
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                      Balancetes incluídos neste protocolo
+                                    </div>
+                                    <div className="rounded-md border overflow-hidden">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow className="bg-white/60 hover:bg-white/60">
+                                            <TableHead className="text-xs h-8">Condomínio</TableHead>
+                                            <TableHead className="text-xs h-8">Competência</TableHead>
+                                            <TableHead className="text-xs h-8">Dt Recebimento</TableHead>
+                                            <TableHead className="text-xs h-8 text-center">Volumes</TableHead>
+                                            <TableHead className="text-xs h-8">Observações</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {balancetesMap[protocolo.id]?.map((balancete) => (
+                                            <TableRow key={balancete.id} className="bg-white hover:bg-gray-50">
+                                              <TableCell className="text-sm font-medium py-2">
+                                                {balancete.condominium_name}
+                                              </TableCell>
+                                              <TableCell className="text-sm py-2">
+                                                {balancete.competencia}
+                                              </TableCell>
+                                              <TableCell className="text-sm py-2">
+                                                {formatDate(balancete.received_at)}
+                                              </TableCell>
+                                              <TableCell className="text-sm text-center py-2">
+                                                {balancete.volumes}
+                                              </TableCell>
+                                              <TableCell className="text-sm text-muted-foreground py-2 max-w-[200px] truncate">
+                                                {balancete.observations || "-"}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
 
-                    {expandedProtocolo === protocolo.id && (
-                      <div className="border-t px-4 py-3 bg-gray-50">
-                        {loadingBalancetes === protocolo.id ? (
-                          <div className="text-center py-4 text-sm text-muted-foreground">
-                            Carregando balancetes...
-                          </div>
-                        ) : balancetesMap[protocolo.id]?.length === 0 ? (
-                          <div className="text-center py-4 text-sm text-muted-foreground">
-                            Nenhum balancete encontrado.
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="text-xs font-medium text-muted-foreground uppercase mb-2">
-                              Balancetes incluídos
-                            </div>
-                            {balancetesMap[protocolo.id]?.map((balancete) => (
-                              <div
-                                key={balancete.id}
-                                className="flex items-center justify-between text-sm py-1 px-2 bg-white rounded border"
-                              >
-                                <span className="font-medium">{balancete.condominium_name}</span>
-                                <span className="text-muted-foreground">
-                                  {balancete.competencia} • {balancete.volumes} vol.
-                                </span>
+                                    {protocolo.cancelado && protocolo.motivo_cancelamento && (
+                                      <div className="mt-3 p-3 rounded-md bg-red-50 border border-red-200">
+                                        <span className="text-xs font-semibold text-red-700">Motivo do cancelamento: </span>
+                                        <span className="text-xs text-red-600">{protocolo.motivo_cancelamento}</span>
+                                        {protocolo.cancelado_em && (
+                                          <span className="text-xs text-red-400 ml-2">
+                                            ({formatDateTime(protocolo.cancelado_em)})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                          </div>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      </React.Fragment>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             )}
           </div>
         </DialogContent>

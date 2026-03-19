@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Send, FileText, Filter, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ProtocolosModal } from "@/components/balancetes/ProtocolosModal";
+import { useRouter } from "next/navigation";
 import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAttachmentUpload";
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
 import { Label } from "@/components/ui/label";
@@ -73,7 +73,7 @@ export default function BalancetesPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [selectedBalancetes, setSelectedBalancetes] = useState<Set<string>>(new Set());
   const [sendingBalancetes, setSendingBalancetes] = useState(false);
-  const [protocolosModalOpen, setProtocolosModalOpen] = useState(false);
+  const router = useRouter();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [dataEnvio, setDataEnvio] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -406,7 +406,7 @@ export default function BalancetesPage() {
             <Button
               variant="outline"
               className="h-12 px-4 gap-2"
-              onClick={() => setProtocolosModalOpen(true)}
+              onClick={() => router.push("/protocolos")}
             >
               <FileText className="w-4 h-4" />
               Protocolos
@@ -581,11 +581,6 @@ export default function BalancetesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ProtocolosModal
-        open={protocolosModalOpen}
-        onOpenChange={setProtocolosModalOpen}
-      />
 
       {selectedBalanceteForUpload && (
         <ProtocoloAttachmentUpload
