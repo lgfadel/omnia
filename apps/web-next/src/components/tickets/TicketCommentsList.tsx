@@ -491,7 +491,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       
       <ImagePreviewModal
         isOpen={!!previewImage}
-        imageUrl={previewImage || ''}
+        imageUrl={previewImage}
         imageName="Anexo"
         onClose={() => setPreviewImage(null)}
         onDownload={async () => {

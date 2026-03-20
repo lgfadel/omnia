@@ -13,7 +13,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey"
 interface ImagePreviewModalProps {
   isOpen: boolean
   onClose: () => void
-  imageUrl: string
+  imageUrl?: string | null
   imageName: string
   onDownload?: () => void
 }
@@ -25,6 +25,7 @@ export function ImagePreviewModal({
   imageName,
   onDownload
 }: ImagePreviewModalProps) {
+  const safeImageUrl = imageUrl?.trim() || null
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -58,7 +59,7 @@ export function ImagePreviewModal({
 
   const handleImageError = () => {
     // Don't show error toast if modal is closing or URL is empty
-    if (isClosing || !imageUrl || imageUrl.trim() === '') {
+    if (isClosing || !safeImageUrl) {
       return
     }
     
@@ -168,10 +169,15 @@ export function ImagePreviewModal({
                 <p>Não foi possível carregar a imagem</p>
                 <p className="text-sm mt-1">Verifique se o arquivo ainda existe</p>
               </div>
+            ) : !safeImageUrl ? (
+              <div className="text-center text-muted-foreground">
+                <div className="text-4xl mb-2">🖼️</div>
+                <p>Nenhuma imagem selecionada</p>
+              </div>
             ) : (
               <div className="relative max-w-full max-h-full overflow-auto">
                 <img
-                  src={imageUrl}
+                  src={safeImageUrl}
                   alt={imageName}
                   className="max-w-none transition-transform duration-200 ease-in-out"
                   style={{

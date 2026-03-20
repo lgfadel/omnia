@@ -227,13 +227,13 @@ export function TabelaOmnia({
     setEditingTicketValue("")
   }
 
-  const saveTicketEditing = async (row: TabelaOmniaRow) => {
+  const saveTicketEditing = async (row: TabelaOmniaRow, nextValue?: string) => {
     if (!onTicketOctaChange) return
 
     const rowId = String(row.id)
     if (isCommittingTicketRef.current || savingTicketRowId === rowId) return
 
-    const normalizedValue = editingTicketValue.trim()
+    const normalizedValue = (nextValue ?? editingTicketValue).trim()
     const currentValue = String(row.ticketOcta ?? "").trim()
 
     if (normalizedValue === currentValue) {
@@ -245,7 +245,7 @@ export function TabelaOmnia({
     setSavingTicketRowId(rowId)
 
     try {
-      await onTicketOctaChange(row.id, normalizedValue || undefined)
+      await onTicketOctaChange(row.id, normalizedValue)
       setEditingTicketRowId(null)
       setEditingTicketValue("")
     } catch {
@@ -393,16 +393,16 @@ export function TabelaOmnia({
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onChange={(e) => setEditingTicketValue(e.target.value)}
-            onBlur={() => {
+            onBlur={(e) => {
               if (!isCommittingTicketRef.current) {
-                void saveTicketEditing(row)
+                void saveTicketEditing(row, e.currentTarget.value)
               }
             }}
             onKeyDown={(e) => {
               e.stopPropagation()
               if (e.key === "Enter") {
                 e.preventDefault()
-                void saveTicketEditing(row)
+                void saveTicketEditing(row, e.currentTarget.value)
               }
               if (e.key === "Escape") {
                 e.preventDefault()
