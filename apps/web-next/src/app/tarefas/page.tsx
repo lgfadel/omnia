@@ -296,7 +296,7 @@ export default function Tickets() {
   const handleTicketOctaChange = async (id: string | number, value?: string) => {
     try {
       await updateTarefa(id.toString(), { ticketOcta: value });
-      loadTarefas();
+      await loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar ticket:', error);
       throw error;

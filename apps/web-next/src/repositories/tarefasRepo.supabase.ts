@@ -53,11 +53,6 @@ const isMissingColumnError = (error: any, column: string) => {
   return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes(`'${column}'`)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- postgrest returns this when no row is returned from single()
-const isNoRowsSingleResultError = (error: any) => {
-  return error?.code === 'PGRST116'
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- from('omnia_tickets' as any) + JOIN select
 function transformTarefaFromDB(dbTarefa: any): Tarefa {
   return {
@@ -239,6 +234,9 @@ export const tarefasRepoSupabase = {
   // Update an existing task
   async update(id: string, data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>): Promise<Tarefa | null> {
     const updateData: TablesUpdate<'omnia_tickets'> = {};
+    const expectedTicketOcta = data.ticketOcta !== undefined
+      ? (data.ticketOcta.trim() || undefined)
+      : undefined;
     
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;
@@ -255,47 +253,22 @@ export const tarefasRepoSupabase = {
     if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.isPrivate !== undefined) updateData.is_private = data.isPrivate;
 
-    let updatedTarefa: any
     let error: any
 
-    ;({ data: updatedTarefa, error } = await supabase
+    ;({ error } = await supabase
       .from('omnia_tickets' as any)
       .update(updateData)
-      .eq('id', id)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
-      .maybeSingle())
+      .eq('id', id))
 
     if (error && data.ticketOcta !== undefined && isMissingColumnError(error, 'ticket_octa')) {
       const legacyUpdateData: any = { ...updateData }
       delete legacyUpdateData.ticket_octa
       legacyUpdateData.ticket = updateData.ticket_octa
 
-      ;({ data: updatedTarefa, error } = await supabase
+      ;({ error } = await supabase
         .from('omnia_tickets' as any)
         .update(legacyUpdateData)
-        .eq('id', id)
-        .select(`
-          *,
-          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-            id, name, email, roles, avatar_url, color
-          ),
-          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-            id, name, email, roles, avatar_url, color
-          )
-        `)
-        .maybeSingle())
-    }
-
-    if (error && isNoRowsSingleResultError(error)) {
-      error = null
+        .eq('id', id))
     }
 
     if (error) {
@@ -304,11 +277,27 @@ export const tarefasRepoSupabase = {
       throw error;
     }
 
-    if (updatedTarefa) {
-      return transformTarefaFromDB(updatedTarefa);
+    const refreshedTarefa = await tarefasRepoSupabase.get(id);
+
+    if (data.ticketOcta !== undefined) {
+      const refreshedTicketOcta = refreshedTarefa?.ticketOcta?.trim() || undefined;
+      if (refreshedTicketOcta !== expectedTicketOcta) {
+        const verificationError = {
+          code: 'UPDATE_NOT_APPLIED',
+          message: 'A atualização foi enviada, mas o valor não foi persistido no banco.',
+          details: JSON.stringify({
+            id,
+            field: 'ticket_octa',
+            expected: expectedTicketOcta ?? null,
+            actual: refreshedTicketOcta ?? null,
+          }),
+        };
+        logger.error('❌ Ticket update verification failed:', verificationError);
+        throw verificationError;
+      }
     }
 
-    return this.get(id);
+    return refreshedTarefa;
   },
 
   // Delete a task

@@ -19,6 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Erros de conexão
   'PGRST301': 'Erro de conexão com o banco de dados',
   'PGRST204': 'Nenhum registro encontrado',
+  'UPDATE_NOT_APPLIED': 'A alteração não foi aplicada no banco. Verifique suas permissões para editar esta tarefa.',
   
   // Erros de validação específicos
   'duplicate_key_value': 'Este registro já existe no sistema',
