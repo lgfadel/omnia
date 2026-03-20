@@ -293,6 +293,16 @@ export default function Tickets() {
     }
   };
 
+  const handleTicketOctaChange = async (id: string | number, value?: string) => {
+    try {
+      await updateTarefa(id.toString(), { ticketOcta: value });
+      loadTarefas();
+    } catch (error) {
+      console.error('Erro ao atualizar ticket:', error);
+      throw error;
+    }
+  };
+
   const handleStatusFilterChange = (statusId: string) => {
     setStatusFilter(prev => 
       prev.includes(statusId) 
@@ -651,6 +661,7 @@ export default function Tickets() {
               onStatusChange={handleStatusChange}
               onResponsibleChange={handleResponsibleChange}
               onPriorityChange={handlePriorityChange}
+              onTicketOctaChange={handleTicketOctaChange}
               onTagClick={handleTagClick}
               availableStatuses={statuses}
               availableUsers={secretarios}

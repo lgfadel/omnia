@@ -53,6 +53,11 @@ const isMissingColumnError = (error: any, column: string) => {
   return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes(`'${column}'`)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- postgrest returns this when no row is returned from single()
+const isNoRowsSingleResultError = (error: any) => {
+  return error?.code === 'PGRST116'
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- from('omnia_tickets' as any) + JOIN select
 function transformTarefaFromDB(dbTarefa: any): Tarefa {
   return {
@@ -239,7 +244,10 @@ export const tarefasRepoSupabase = {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.dueDate !== undefined) updateData.due_date = data.dueDate ? data.dueDate.toISOString().split('T')[0] : null;
-    if (data.ticketOcta !== undefined) updateData.ticket_octa = data.ticketOcta;
+    if (data.ticketOcta !== undefined) {
+      const normalizedTicketOcta = data.ticketOcta.trim();
+      updateData.ticket_octa = normalizedTicketOcta || null;
+    }
     if (data.statusId !== undefined) updateData.status_id = data.statusId;
     if (data.assignedTo !== undefined) updateData.assigned_to = data.assignedTo?.id;
     // Sempre incluir oportunidade_id se estiver presente no data, mesmo que seja undefined (para permitir NULL)
@@ -263,12 +271,12 @@ export const tarefasRepoSupabase = {
           id, name, email, roles, avatar_url, color
         )
       `)
-      .single())
+      .maybeSingle())
 
     if (error && data.ticketOcta !== undefined && isMissingColumnError(error, 'ticket_octa')) {
       const legacyUpdateData: any = { ...updateData }
       delete legacyUpdateData.ticket_octa
-      legacyUpdateData.ticket = data.ticketOcta
+      legacyUpdateData.ticket = updateData.ticket_octa
 
       ;({ data: updatedTarefa, error } = await supabase
         .from('omnia_tickets' as any)
@@ -283,7 +291,11 @@ export const tarefasRepoSupabase = {
             id, name, email, roles, avatar_url, color
           )
         `)
-        .single())
+        .maybeSingle())
+    }
+
+    if (error && isNoRowsSingleResultError(error)) {
+      error = null
     }
 
     if (error) {
@@ -292,7 +304,11 @@ export const tarefasRepoSupabase = {
       throw error;
     }
 
-    return updatedTarefa ? transformTarefaFromDB(updatedTarefa) : null;
+    if (updatedTarefa) {
+      return transformTarefaFromDB(updatedTarefa);
+    }
+
+    return this.get(id);
   },
 
   // Delete a task

@@ -13,13 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
 import { PriorityBadge } from "@/components/ui/priority-badge"
 import { CommentsModal } from "@/components/ui/comments-modal"
 import { toast } from "@/components/ui/use-toast"
 import type { TarefaPrioridade } from "@/repositories/tarefasRepo.supabase"
+import { Input } from "@/components/ui/input"
 
 export interface TabelaOmniaColumn {
   key: string
@@ -64,6 +65,7 @@ interface TabelaOmniaProps {
 
   onPriorityClick?: (id: string | number, currentPriority?: string) => void
   onPriorityChange?: (id: string | number, priority: string) => void
+  onTicketOctaChange?: (id: string | number, value?: string) => Promise<void> | void
   onTagClick?: (tagName: string) => void
   availableStatuses?: Array<{ id: string; name: string; color: string }>
   availableUsers?: Array<{ id: string; name: string; email: string; avatarUrl?: string; color?: string }>
@@ -98,6 +100,7 @@ export function TabelaOmnia({
   onSecretaryChange,
   onPriorityClick,
   onPriorityChange,
+  onTicketOctaChange,
   onTagClick,
   availableStatuses = [],
   availableUsers = [],
@@ -126,6 +129,10 @@ export function TabelaOmnia({
   })
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [editingTicketRowId, setEditingTicketRowId] = useState<string | null>(null)
+  const [editingTicketValue, setEditingTicketValue] = useState("")
+  const [savingTicketRowId, setSavingTicketRowId] = useState<string | null>(null)
+  const isCommittingTicketRef = useRef(false)
 
   const handleCommentCountChange = (ticketId: string, newCount: number) => {
     setCommentCounts(prev => ({
@@ -186,6 +193,73 @@ export function TabelaOmnia({
     }
     setCollapsedGroups(newCollapsed)
   }
+
+  useEffect(() => {
+    if (!editingTicketRowId) return
+
+    const currentRow = grouped
+      ? (data as TabelaOmniaGroupedItem[]).find((item) => item.type === "data" && String(item.data?.id) === editingTicketRowId)?.data
+      : (data as TabelaOmniaRow[]).find((row) => String(row.id) === editingTicketRowId)
+
+    if (!currentRow) {
+      setEditingTicketRowId(null)
+      setEditingTicketValue("")
+      setSavingTicketRowId(null)
+      isCommittingTicketRef.current = false
+    }
+  }, [data, editingTicketRowId, grouped])
+
+  const startTicketEditing = (row: TabelaOmniaRow) => {
+    if (!onTicketOctaChange) return
+
+    const rowId = String(row.id)
+    if (savingTicketRowId === rowId) return
+
+    setEditingTicketRowId(rowId)
+    setEditingTicketValue(String(row.ticketOcta ?? ""))
+  }
+
+  const cancelTicketEditing = () => {
+    if (savingTicketRowId) return
+
+    isCommittingTicketRef.current = false
+    setEditingTicketRowId(null)
+    setEditingTicketValue("")
+  }
+
+  const saveTicketEditing = async (row: TabelaOmniaRow) => {
+    if (!onTicketOctaChange) return
+
+    const rowId = String(row.id)
+    if (isCommittingTicketRef.current || savingTicketRowId === rowId) return
+
+    const normalizedValue = editingTicketValue.trim()
+    const currentValue = String(row.ticketOcta ?? "").trim()
+
+    if (normalizedValue === currentValue) {
+      cancelTicketEditing()
+      return
+    }
+
+    isCommittingTicketRef.current = true
+    setSavingTicketRowId(rowId)
+
+    try {
+      await onTicketOctaChange(row.id, normalizedValue || undefined)
+      setEditingTicketRowId(null)
+      setEditingTicketValue("")
+    } catch {
+      toast({
+        title: "Não foi possível salvar",
+        description: "O ticket não foi atualizado. Revise o valor e tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingTicketRowId(null)
+      isCommittingTicketRef.current = false
+    }
+  }
+
   const renderCellValue = (value: any, key: string, row?: TabelaOmniaRow) => {
     // Handle priority column
     if (key === "priority" && value) {
@@ -302,31 +376,89 @@ export function TabelaOmnia({
       )
     }
 
-    if (key === "ticketOcta" && value) {
+    if (key === "ticketOcta" && row) {
+      const rowId = String(row.id)
+      const isEditing = editingTicketRowId === rowId
+      const isSaving = savingTicketRowId === rowId
+      const displayValue = String(value ?? "")
+
+      if (isEditing) {
+        return (
+          <Input
+            autoFocus
+            value={editingTicketValue}
+            disabled={isSaving}
+            placeholder="Sem ticket"
+            className="h-8 text-xs font-mono"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => setEditingTicketValue(e.target.value)}
+            onBlur={() => {
+              if (!isCommittingTicketRef.current) {
+                void saveTicketEditing(row)
+              }
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === "Enter") {
+                e.preventDefault()
+                void saveTicketEditing(row)
+              }
+              if (e.key === "Escape") {
+                e.preventDefault()
+                cancelTicketEditing()
+              }
+            }}
+          />
+        )
+      }
+
       return (
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 text-xs font-mono text-foreground hover:opacity-80 transition-opacity"
-          onClick={async (e) => {
+        <div
+          className={cn(
+            "flex items-center gap-2 min-h-8",
+            onTicketOctaChange && "cursor-text"
+          )}
+          onClick={(e) => {
             e.stopPropagation()
-            try {
-              await navigator.clipboard.writeText(String(value))
-              toast({
-                title: "Copiado",
-                description: `Ticket ${value} copiado.`,
-              })
-            } catch {
-              toast({
-                title: "Não foi possível copiar",
-                description: "Seu navegador bloqueou o acesso à área de transferência.",
-                variant: "destructive",
-              })
-            }
           }}
         >
-          <Copy className="w-3 h-3" />
-          <span>{value}</span>
-        </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 text-xs font-mono text-foreground hover:opacity-80 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              startTicketEditing(row)
+            }}
+          >
+            <span>{displayValue || "-"}</span>
+          </button>
+          {displayValue ? (
+            <button
+              type="button"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+              onClick={async (e) => {
+                e.stopPropagation()
+                try {
+                  await navigator.clipboard.writeText(displayValue)
+                  toast({
+                    title: "Copiado",
+                    description: `Ticket ${displayValue} copiado.`,
+                  })
+                } catch {
+                  toast({
+                    title: "Não foi possível copiar",
+                    description: "Seu navegador bloqueou o acesso à área de transferência.",
+                    variant: "destructive",
+                  })
+                }
+              }}
+              title="Copiar ticket"
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+          ) : null}
+        </div>
       )
     }
 
@@ -968,9 +1100,16 @@ export function TabelaOmnia({
                         if (column.key === "dueDate") {
                           e.stopPropagation()
                         }
+                        if (column.key === "ticketOcta" && onTicketOctaChange) {
+                          e.stopPropagation()
+                          startTicketEditing(row)
+                        }
                       }}
                       onMouseDown={(e) => {
                         if (column.key === "dueDate") {
+                          e.stopPropagation()
+                        }
+                        if (column.key === "ticketOcta" && onTicketOctaChange) {
                           e.stopPropagation()
                         }
                       }}
@@ -1105,9 +1244,16 @@ export function TabelaOmnia({
                       if (column.key === "dueDate") {
                         e.stopPropagation()
                       }
+                      if (column.key === "ticketOcta" && onTicketOctaChange) {
+                        e.stopPropagation()
+                        startTicketEditing(row)
+                      }
                     }}
                     onMouseDown={(e) => {
                       if (column.key === "dueDate") {
+                        e.stopPropagation()
+                      }
+                      if (column.key === "ticketOcta" && onTicketOctaChange) {
                         e.stopPropagation()
                       }
                     }}
