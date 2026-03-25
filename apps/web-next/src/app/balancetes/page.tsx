@@ -6,11 +6,13 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TabelaOmnia } from "@/components/ui/tabela-omnia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Send, FileText, Filter, Paperclip } from "lucide-react";
+import { Plus, Search, Send, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAttachmentUpload";
+import { BalancetesDashboard } from "@/components/balancetes/BalancetesDashboard";
+import { ProtocolosTab } from "@/components/balancetes/ProtocolosTab";
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
 import { Label } from "@/components/ui/label";
 import {
@@ -73,7 +75,6 @@ export default function BalancetesPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [selectedBalancetes, setSelectedBalancetes] = useState<Set<string>>(new Set());
   const [sendingBalancetes, setSendingBalancetes] = useState(false);
-  const router = useRouter();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [dataEnvio, setDataEnvio] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -397,120 +398,130 @@ export default function BalancetesPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <BreadcrumbOmnia items={[{ label: "Balancetes", isActive: true }]} />
 
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Balancetes</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-12 px-4 gap-2"
-              onClick={() => router.push("/protocolos")}
-            >
-              <FileText className="w-4 h-4" />
-              Protocolos
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 px-4 gap-2"
-              onClick={handleEnviarClick}
-              disabled={selectedBalancetes.size === 0 || sendingBalancetes}
-            >
-              <Send className="w-4 h-4" />
-              {sendingBalancetes ? "Enviando..." : `Enviar${selectedBalancetes.size > 0 ? ` (${selectedBalancetes.size})` : ""}`}
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg"
-              onClick={handleNew}
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
+        <h1 className="text-3xl font-bold text-foreground">Balancetes</h1>
+
+        <Tabs defaultValue="dashboard" className="w-full">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="lista">Lista</TabsTrigger>
+              <TabsTrigger value="protocolos">Protocolos</TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-10 px-4 gap-2"
+                onClick={handleEnviarClick}
+                disabled={selectedBalancetes.size === 0 || sendingBalancetes}
+              >
+                <Send className="w-4 h-4" />
+                {sendingBalancetes ? "Enviando..." : `Enviar${selectedBalancetes.size > 0 ? ` (${selectedBalancetes.size})` : ""}`}
+              </Button>
+              <Button
+                className="bg-primary hover:bg-primary/90 w-10 h-10 p-0 rounded-lg"
+                onClick={handleNew}
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg border p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Buscar balancetes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="h-10 px-3 flex items-center gap-2 transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-                >
-                  <Filter className="w-4 h-4" />
-                  <span className="text-xs font-medium">
-                    Filtros
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-52">
-                <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as 'todos' | 'enviados' | 'pendentes')}>
-                  <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="enviados">Enviados</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="pendentes">Pendentes</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
+          {/* Dashboard tab */}
+          <TabsContent value="dashboard" className="mt-4">
+            <BalancetesDashboard balancetes={balancetes} condominiums={condominiums} />
+          </TabsContent>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Anexos</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
-                  <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="sem-anexo">Sem Anexo</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+          {/* Lista tab */}
+          <TabsContent value="lista" className="mt-4 space-y-4">
+            <div className="bg-white rounded-lg border p-4">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar balancetes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
+                  />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10 px-3 flex items-center gap-2 transition-all duration-200 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                    >
+                      <Filter className="w-4 h-4" />
+                      <span className="text-xs font-medium">Filtros</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-52">
+                    <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as 'todos' | 'enviados' | 'pendentes')}>
+                      <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="enviados">Enviados</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="pendentes">Pendentes</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Anexos</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
+                      <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="sem-anexo">Sem Anexo</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
 
-        <div className="bg-white rounded-lg border overflow-hidden">
-          {loading ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              Carregando...
+            <div className="bg-white rounded-lg border overflow-hidden">
+              {loading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  Carregando...
+                </div>
+              ) : tableData.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nenhum balancete encontrado.
+                </div>
+              ) : (
+                <TabelaOmnia
+                  columns={columns}
+                  data={sortedData}
+                  onView={handleView}
+                  onAttachmentClick={handleAttachmentClick}
+                  onDelete={(id) => {
+                    const balancete = balancetes.find((b) => b.id === String(id));
+                    if (balancete?.protocolo_id) {
+                      toast({
+                        title: "Não é possível excluir",
+                        description: "Balancetes enviados com protocolo não podem ser excluídos.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    handleDelete(id);
+                  }}
+                  selectable
+                  selectedIds={selectedBalancetes}
+                  onSelectionChange={setSelectedBalancetes}
+                  disabledIds={disabledIds}
+                  sortField={sortField ?? undefined}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              )}
             </div>
-          ) : tableData.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Nenhum balancete encontrado.
-            </div>
-          ) : (
-            <TabelaOmnia
-              columns={columns}
-              data={sortedData}
-              onView={handleView}
-              onAttachmentClick={handleAttachmentClick}
-              onDelete={(id) => {
-                const balancete = balancetes.find((b) => b.id === String(id));
-                if (balancete?.protocolo_id) {
-                  toast({
-                    title: "Não é possível excluir",
-                    description: "Balancetes enviados com protocolo não podem ser excluídos.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                handleDelete(id);
-              }}
-              selectable
-              selectedIds={selectedBalancetes}
-              onSelectionChange={setSelectedBalancetes}
-              disabledIds={disabledIds}
-              sortField={sortField ?? undefined}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-          )}
-        </div>
+          </TabsContent>
+
+          {/* Protocolos tab */}
+          <TabsContent value="protocolos" className="mt-4">
+            <ProtocolosTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <BalanceteForm
@@ -559,7 +570,6 @@ export default function BalancetesPage() {
               Informe a data de envio dos balancetes selecionados.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
           <div className="py-4">
             <Label htmlFor="dataEnvio" className="text-sm font-medium">
               Data de Envio
@@ -572,7 +582,6 @@ export default function BalancetesPage() {
               className="mt-2"
             />
           </div>
-
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmEnviar}>
@@ -589,7 +598,6 @@ export default function BalancetesPage() {
           protocoloId={selectedBalanceteForUpload?.protocolo_id || ''}
           protocoloNumero={protocoloNumero}
           onUploadSuccess={async () => {
-            // Recarregar contadores de anexos
             if (selectedBalanceteForUpload?.protocolo_id) {
               const attachments = await protocoloAttachmentsRepoSupabase.listByProtocolo(selectedBalanceteForUpload.protocolo_id);
               setAttachmentCounts(prev => ({
