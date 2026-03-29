@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -10,7 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown, FileDown } from "lucide-react"
+import { generateBalancetesRelatorioPDF } from "@/lib/generateBalancetesRelatorio"
+import { downloadPDF } from "@/lib/generateProtocoloPDF"
 import type { Balancete } from "@/repositories/balancetesRepo.supabase"
 import type { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import {
@@ -97,6 +100,7 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
         statusLabel,
         status,
         monthsAgo,
+        balanceteDigital: cond.balancete_digital,
       }
     })
   }, [balancetes, condominiums])
@@ -163,9 +167,36 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
     setStatusFilter((prev) => (prev === filter ? 'all' : filter))
   }
 
+  const handleGerarRelatorio = async () => {
+    const yellowRows = rows
+      .filter((r) => r.status === 'yellow')
+      .sort((a, b) => a.condominium.localeCompare(b.condominium))
+      .map((r) => ({
+        condominium: r.condominium,
+        competencia: r.competencia,
+        defasagemLabel: r.defasagemLabel,
+        status: 'yellow' as const,
+        balanceteDigital: r.balanceteDigital,
+      }))
+    const redRows = rows
+      .filter((r) => r.status === 'red')
+      .sort((a, b) => b.monthsAgo - a.monthsAgo || a.condominium.localeCompare(b.condominium))
+      .map((r) => ({
+        condominium: r.condominium,
+        competencia: r.competencia,
+        defasagemLabel: r.defasagemLabel,
+        status: 'red' as const,
+        balanceteDigital: r.balanceteDigital,
+      }))
+    const pdfBytes = await generateBalancetesRelatorioPDF(yellowRows, redRows)
+    const today = new Date().toISOString().split('T')[0]
+    downloadPDF(pdfBytes, `relatorio-balancetes-${today}.pdf`)
+  }
+
   return (
     <div className="space-y-4">
-      {/* Summary chips */}
+      {/* Summary chips + action */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => handleFilterClick('all')}
@@ -241,6 +272,18 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
           </span>
         </button>
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-9 px-3 gap-2 shrink-0"
+        onClick={handleGerarRelatorio}
+        disabled={counts.yellow + counts.red === 0}
+      >
+        <FileDown className="w-4 h-4" />
+        Gerar Relatório
+      </Button>
+    </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg border overflow-hidden">
