@@ -26,12 +26,12 @@ vi.mock('@/components/dashboard/AtasStatusBoard', () => ({
   AtasStatusBoard: ({ totalOpen }: any) => <div>ATAS: {totalOpen}</div>,
 }))
 
-vi.mock('@/components/dashboard/ExecutiveKpi', () => ({
-  ExecutiveKpi: ({ title, value }: any) => <div>{title}: {value}</div>,
+vi.mock('@/components/dashboard/TarefasStatusBoard', () => ({
+  TarefasStatusBoard: ({ totalOpen }: any) => <div>TAREFAS: {totalOpen}</div>,
 }))
 
-vi.mock('@/components/dashboard/StatusBreakdownCard', () => ({
-  StatusBreakdownCard: ({ title, totalValue }: any) => <div>{title}: {totalValue}</div>,
+vi.mock('@/components/dashboard/ExecutiveKpi', () => ({
+  ExecutiveKpi: ({ title, value }: any) => <div>{title}: {value}</div>,
 }))
 
 vi.mock('@/components/dashboard/RechartsBarChart', () => ({
@@ -94,6 +94,7 @@ describe('dashboard page', () => {
         statusDistribution: [],
         priorityDistribution: [],
         assigneeDistribution: [{ name: 'Ana', value: 4 }],
+        openItems: [],
       },
       admissoes: { open: 3, overdue: 1, urgent: 2, completedLast30Days: 1, statusDistribution: [] },
       rescisoes: { open: 2, overdue: 1, urgent: 1, completedLast30Days: 1, statusDistribution: [] },

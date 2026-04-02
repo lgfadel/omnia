@@ -34,6 +34,7 @@ const EMPTY_DASHBOARD_METRICS: DashboardMetrics = {
     statusDistribution: [],
     priorityDistribution: [],
     assigneeDistribution: [],
+    openItems: [],
   },
   admissoes: {
     open: 0,

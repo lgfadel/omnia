@@ -3,11 +3,9 @@
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardSectionHeader } from "@/components/dashboard/DashboardSectionHeader";
-import { ExecutiveKpi } from "@/components/dashboard/ExecutiveKpi";
 import { AtasStatusBoard } from "@/components/dashboard/AtasStatusBoard";
-import RechartsBarChart from "@/components/dashboard/RechartsBarChart";
+import { TarefasStatusBoard } from "@/components/dashboard/TarefasStatusBoard";
 import { RechartsDonutChart } from "@/components/dashboard/RechartsDonutChart";
-import { StatusBreakdownCard } from "@/components/dashboard/StatusBreakdownCard";
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { Card } from "@/components/ui/card";
@@ -18,22 +16,10 @@ import {
   getTopAssignees,
   type AtasDashboardMetrics,
 } from "@/utils/dashboardCalculations";
-import {
-  AlertTriangle,
-  BriefcaseBusiness,
-  ReceiptText,
-  TimerReset,
-} from "lucide-react";
-
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
       <div className="h-64 animate-pulse rounded-[36px] bg-[hsl(var(--surface-tint))]" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="h-44 animate-pulse rounded-[28px] bg-[hsl(var(--surface-tint))]" />
-        ))}
-      </div>
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, index) => (
           <div key={index} className="h-60 animate-pulse rounded-[28px] bg-[hsl(var(--surface-tint))]" />
@@ -123,47 +109,8 @@ export default function Index() {
 
               <section className="space-y-5">
                 <DashboardSectionHeader
-                  eyebrow="Pulse"
-                  title="Panorama executivo"
-                  description="Os indicadores abaixo combinam backlog atual, criticidade e ritmo recente de entrega."
-                />
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                  <ExecutiveKpi
-                    title="Itens abertos"
-                    value={overview.totalOpenItems}
-                    description="Total consolidado de frentes que ainda exigem ação operacional."
-                    icon={BriefcaseBusiness}
-                  />
-                  <ExecutiveKpi
-                    title="Pendências críticas"
-                    value={overview.totalCriticalItems}
-                    description="Volume priorizado por urgência, atraso ou risco imediato."
-                    icon={AlertTriangle}
-                    tone="critical"
-                  />
-                  <ExecutiveKpi
-                    title="Itens vencidos"
-                    value={overview.totalOverdueItems}
-                    description="Somatório de demandas fora do prazo ou com atraso operacional."
-                    icon={TimerReset}
-                    tone="attention"
-                  />
-                  <ExecutiveKpi
-                    title="Balancetes atrasados"
-                    value={balancetes.overdue}
-                    description="Condomínios com defasagem relevante no envio de balancetes."
-                    icon={ReceiptText}
-                    tone="recent"
-                  />
-                </div>
-              </section>
-
-              <section className="space-y-5">
-                <DashboardSectionHeader
                   eyebrow="Fluxo aberto"
-                  title="Quebra por status das frentes principais"
-                  description="Aqui entram apenas atas e tarefas fora de concluído/finalizado. O objetivo é mostrar exatamente onde o volume ainda está parado."
+                  title="Abertos por status"
                 />
 
                 <div className="grid gap-4 xl:grid-cols-2">
@@ -172,12 +119,10 @@ export default function Index() {
                     totalOperationallyOverdue={atas.overdue}
                     items={atas.openItems}
                   />
-                  <StatusBreakdownCard
-                    title="TAREFAS"
-                    totalValue={tarefas.active}
-                    totalLabel="tarefas pendentes"
-                    items={tarefas.statusDistribution}
-                    emptyLabel="Nenhuma tarefa pendente fora de concluído/finalizado."
+                  <TarefasStatusBoard
+                    totalOpen={tarefas.active}
+                    totalOverdue={tarefas.overdue}
+                    items={tarefas.openItems}
                   />
                 </div>
               </section>
@@ -190,14 +135,6 @@ export default function Index() {
                 />
 
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <RechartsBarChart
-                    data={overview.openByModule.map((item) => ({
-                      category: item.name,
-                      value: item.value,
-                    }))}
-                    title="Carga operacional por módulo"
-                    color="hsl(var(--primary))"
-                  />
                   <RechartsDonutChart
                     data={tarefas.priorityDistribution}
                     title="Prioridade das tarefas ativas"

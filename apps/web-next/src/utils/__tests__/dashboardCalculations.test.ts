@@ -145,6 +145,7 @@ describe('dashboardCalculations', () => {
     expect(metrics.tarefas.overdue).toBe(1)
     expect(metrics.tarefas.completedLast30Days).toBe(1)
     expect(metrics.tarefas.statusDistribution[0]?.name).toBe('Pendente')
+    expect(metrics.tarefas.openItems[0]?.isOverdue).toBe(true)
 
     expect(metrics.admissoes.open).toBe(1)
     expect(metrics.admissoes.overdue).toBe(1)

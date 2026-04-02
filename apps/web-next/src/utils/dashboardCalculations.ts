@@ -58,6 +58,18 @@ export interface TarefasDashboardMetrics {
   statusDistribution: ChartDatum[]
   priorityDistribution: ChartDatum[]
   assigneeDistribution: Array<{ name: string; value: number }>
+  openItems: Array<{
+    id: string
+    title: string
+    priority: string
+    statusName: string
+    statusColor: string
+    responsibleName: string
+    responsibleColor?: string
+    dueDate?: string
+    isOverdue: boolean
+    overdueDays?: number
+  }>
 }
 
 export interface WorkflowDashboardMetrics {
@@ -278,6 +290,32 @@ function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): Tarefas
     .map(({ name, value }) => ({ name, value }))
     .slice(0, 8)
 
+  const openItems = activeTasks.map((tarefa) => {
+    const dueDate = tarefa.dueDate instanceof Date ? tarefa.dueDate : undefined
+    let isOverdue = false
+    let overdueDays = 0
+
+    if (dueDate && !Number.isNaN(dueDate.getTime())) {
+      const diffMs = Date.now() - dueDate.getTime()
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+      overdueDays = Math.max(diffDays, 0)
+      isOverdue = diffDays > 0
+    }
+
+    return {
+      id: tarefa.id,
+      title: tarefa.title,
+      priority: tarefa.priority || 'NORMAL',
+      statusName: statusMap.get(tarefa.statusId)?.name || 'Sem status',
+      statusColor: statusMap.get(tarefa.statusId)?.color || 'hsl(var(--muted-foreground))',
+      responsibleName: tarefa.assignedTo?.name || 'Não atribuído',
+      responsibleColor: tarefa.assignedTo?.color || undefined,
+      dueDate: dueDate?.toISOString(),
+      isOverdue,
+      overdueDays,
+    }
+  })
+
   return {
     active: activeTasks.length,
     overdue,
@@ -286,6 +324,7 @@ function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): Tarefas
     statusDistribution,
     priorityDistribution,
     assigneeDistribution,
+    openItems,
   }
 }
 
