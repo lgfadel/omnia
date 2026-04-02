@@ -5,6 +5,7 @@ import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardSectionHeader } from "@/components/dashboard/DashboardSectionHeader";
 import { AtasStatusBoard } from "@/components/dashboard/AtasStatusBoard";
 import { TarefasStatusBoard } from "@/components/dashboard/TarefasStatusBoard";
+import { TarefasPriorityCard } from "@/components/dashboard/TarefasPriorityCard";
 import { RechartsDonutChart } from "@/components/dashboard/RechartsDonutChart";
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
@@ -105,7 +106,7 @@ export default function Index() {
 
           {!loading && !error ? (
             <>
-              <DashboardHero lastUpdated={lastUpdated} highlights={highlights} />
+              <DashboardHero lastUpdated={lastUpdated} />
 
               <section className="space-y-5">
                 <DashboardSectionHeader
@@ -135,9 +136,10 @@ export default function Index() {
                 />
 
                 <div className="grid gap-4 xl:grid-cols-2">
+                  <TarefasPriorityCard items={tarefas.openItems} />
                   <RechartsDonutChart
-                    data={tarefas.priorityDistribution}
-                    title="Prioridade das tarefas ativas"
+                    data={balancetes.healthDistribution}
+                    title="Saúde dos balancetes por condomínio"
                   />
                   <RechartsDonutChart
                     data={admissoes.statusDistribution}
@@ -147,12 +149,6 @@ export default function Index() {
                     data={rescisoes.statusDistribution}
                     title="Status das rescisões em aberto"
                   />
-                  <div className="xl:col-span-2">
-                    <RechartsDonutChart
-                      data={balancetes.healthDistribution}
-                      title="Saúde dos balancetes por condomínio"
-                    />
-                  </div>
                 </div>
               </section>
 

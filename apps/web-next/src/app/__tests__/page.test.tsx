@@ -30,6 +30,10 @@ vi.mock('@/components/dashboard/TarefasStatusBoard', () => ({
   TarefasStatusBoard: ({ totalOpen }: any) => <div>TAREFAS: {totalOpen}</div>,
 }))
 
+vi.mock('@/components/dashboard/TarefasPriorityCard', () => ({
+  TarefasPriorityCard: ({ items }: any) => <div>PRIORIDADES: {items.length}</div>,
+}))
+
 vi.mock('@/components/dashboard/ExecutiveKpi', () => ({
   ExecutiveKpi: ({ title, value }: any) => <div>{title}: {value}</div>,
 }))
@@ -94,7 +98,7 @@ describe('dashboard page', () => {
         statusDistribution: [],
         priorityDistribution: [],
         assigneeDistribution: [{ name: 'Ana', value: 4 }],
-        openItems: [],
+        openItems: [{ id: 't1', title: 'Tarefa 1', priority: 'ALTA' }],
       },
       admissoes: { open: 3, overdue: 1, urgent: 2, completedLast30Days: 1, statusDistribution: [] },
       rescisoes: { open: 2, overdue: 1, urgent: 1, completedLast30Days: 1, statusDistribution: [] },
@@ -110,10 +114,11 @@ describe('dashboard page', () => {
 
     render(<Page />)
 
-    expect(screen.getByText('Panorama executivo')).toBeInTheDocument()
-    expect(screen.getByText('Itens abertos: 22')).toBeInTheDocument()
+    expect(screen.getByText('Hero 1')).toBeInTheDocument()
+    expect(screen.getByText('Abertos por status')).toBeInTheDocument()
     expect(screen.getByText('ATAS: 4')).toBeInTheDocument()
     expect(screen.getByText('TAREFAS: 8')).toBeInTheDocument()
+    expect(screen.getByText('PRIORIDADES: 1')).toBeInTheDocument()
     expect(screen.getByText('Responsáveis com maior carga')).toBeInTheDocument()
     expect(screen.getByText('Onde está o gargalo')).toBeInTheDocument()
   })

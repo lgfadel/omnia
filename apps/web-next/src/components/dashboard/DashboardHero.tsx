@@ -1,18 +1,12 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Activity, Sparkles } from 'lucide-react'
-import { InsightBanner } from './InsightBanner'
 
 interface DashboardHeroProps {
   lastUpdated: Date | null
-  highlights: Array<{
-    id: string
-    label: string
-    tone: 'critical' | 'attention' | 'healthy' | 'recent'
-  }>
 }
 
-export function DashboardHero({ lastUpdated, highlights }: DashboardHeroProps) {
+export function DashboardHero({ lastUpdated }: DashboardHeroProps) {
   const updatedLabel = lastUpdated
     ? format(lastUpdated, "dd 'de' MMMM, HH:mm", { locale: ptBR })
     : 'Aguardando sincronização'
@@ -31,7 +25,7 @@ export function DashboardHero({ lastUpdated, highlights }: DashboardHeroProps) {
               Central executiva
             </div>
             <div className="space-y-3">
-              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl md:whitespace-nowrap">
                 Operação inteira em uma leitura só.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
@@ -55,8 +49,6 @@ export function DashboardHero({ lastUpdated, highlights }: DashboardHeroProps) {
             </div>
           </div>
         </div>
-
-        <InsightBanner items={highlights} />
       </div>
     </section>
   )
