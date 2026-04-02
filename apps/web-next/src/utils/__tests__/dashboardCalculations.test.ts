@@ -1,7 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDashboardMetrics } from '../dashboardCalculations'
 
 describe('dashboardCalculations', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-02T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('consolida backlog, vencimentos, recorte de 30 dias e highlights', () => {
     const now = new Date()
     const fiveDaysAgo = new Date(now)
@@ -122,16 +131,38 @@ describe('dashboardCalculations', () => {
           id: 'bal-1',
           condominium_id: 'c1',
           received_at: twentyDaysAgo.toISOString(),
-          competencia: `${String(now.getMonth()).padStart(2, '0')}/${now.getFullYear()}`,
+          competencia: '03/2026',
           volumes: 1,
           status: 'received',
           created_at: now.toISOString(),
           updated_at: now.toISOString(),
         },
+        {
+          id: 'bal-2',
+          condominium_id: 'c2',
+          received_at: fortyDaysAgo.toISOString(),
+          competencia: '02/2026',
+          volumes: 1,
+          status: 'received',
+          created_at: fortyDaysAgo.toISOString(),
+          updated_at: fortyDaysAgo.toISOString(),
+        },
+        {
+          id: 'bal-3',
+          condominium_id: 'c3',
+          received_at: fortyDaysAgo.toISOString(),
+          competencia: '01/2026',
+          volumes: 1,
+          status: 'received',
+          created_at: fortyDaysAgo.toISOString(),
+          updated_at: fortyDaysAgo.toISOString(),
+        },
       ],
       condominiums: [
-        { id: 'c1', name: 'Condomínio em dia', active: true, created_at: null, updated_at: null },
-        { id: 'c2', name: 'Condomínio sem balancete', active: true, created_at: null, updated_at: null },
+        { id: 'c1', name: 'Condomínio competência março', active: true, created_at: null, updated_at: null },
+        { id: 'c2', name: 'Condomínio competência fevereiro', active: true, created_at: null, updated_at: null },
+        { id: 'c3', name: 'Condomínio competência janeiro', active: true, created_at: null, updated_at: null },
+        { id: 'c4', name: 'Condomínio sem balancete', active: true, created_at: null, updated_at: null },
       ],
     })
 
@@ -155,7 +186,9 @@ describe('dashboardCalculations', () => {
     expect(metrics.rescisoes.open).toBe(1)
     expect(metrics.rescisoes.overdue).toBe(1)
 
-    expect(metrics.balancetes.onTrack).toBe(1)
+    expect(metrics.balancetes.onTrack).toBe(2)
+    expect(metrics.balancetes.attention).toBe(1)
+    expect(metrics.balancetes.overdue).toBe(0)
     expect(metrics.balancetes.missing).toBe(1)
     expect(metrics.balancetes.receivedLast30Days).toBe(1)
 
