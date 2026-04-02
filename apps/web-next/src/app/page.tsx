@@ -6,6 +6,7 @@ import { DashboardSectionHeader } from "@/components/dashboard/DashboardSectionH
 import { AtasStatusBoard } from "@/components/dashboard/AtasStatusBoard";
 import { TarefasStatusBoard } from "@/components/dashboard/TarefasStatusBoard";
 import { TarefasPriorityCard } from "@/components/dashboard/TarefasPriorityCard";
+import { TarefasTagsCloud } from "@/components/dashboard/TarefasTagsCloud";
 import { RechartsDonutChart } from "@/components/dashboard/RechartsDonutChart";
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
@@ -149,6 +150,9 @@ export default function Index() {
                     data={rescisoes.statusDistribution}
                     title="Status das rescisões em aberto"
                   />
+                  <div className="xl:col-span-2">
+                    <TarefasTagsCloud items={tarefas.openItems} />
+                  </div>
                 </div>
               </section>
 

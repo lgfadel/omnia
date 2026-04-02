@@ -62,6 +62,7 @@ export interface TarefasDashboardMetrics {
     id: string
     title: string
     priority: string
+    tags: string[]
     statusName: string
     statusColor: string
     responsibleName: string
@@ -306,6 +307,7 @@ function calculateTarefasMetrics(tarefas: Tarefa[], statuses: Status[]): Tarefas
       id: tarefa.id,
       title: tarefa.title,
       priority: tarefa.priority || 'NORMAL',
+      tags: tarefa.tags || [],
       statusName: statusMap.get(tarefa.statusId)?.name || 'Sem status',
       statusColor: statusMap.get(tarefa.statusId)?.color || 'hsl(var(--muted-foreground))',
       responsibleName: tarefa.assignedTo?.name || 'Não atribuído',
