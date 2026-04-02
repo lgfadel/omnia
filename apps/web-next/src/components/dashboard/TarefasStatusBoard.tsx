@@ -88,6 +88,8 @@ export function TarefasStatusBoard({
       .sort((a, b) => b.value - a.value)
   }, [filteredItems])
 
+  const filteredOpenCount = filteredItems.length
+  const filteredOverdueCount = filteredItems.filter((item) => item.isOverdue).length
   const selectedResponsibleLabel =
     responsibleFilter === 'all' ? 'Todos os responsáveis' : responsibleFilter
   const selectedStatusMeta = selectedStatus ? statusRows.find((item) => item.name === selectedStatus) : null
@@ -110,13 +112,13 @@ export function TarefasStatusBoard({
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/70">TAREFAS</p>
               <div className="flex flex-wrap items-end gap-6">
                 <div>
-                  <div className="text-4xl font-semibold tracking-tight text-foreground">{totalOpen}</div>
+                  <div className="text-4xl font-semibold tracking-tight text-foreground">{filteredOpenCount}</div>
                   <p className="mt-1 text-sm text-muted-foreground">tarefas pendentes</p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-[hsl(var(--critical))]">
                     <AlertTriangle className="h-5 w-5" />
-                    {totalOverdue}
+                    {filteredOverdueCount}
                   </div>
                   <p className="mt-1 text-sm text-[hsl(var(--critical))]">vencidas</p>
                 </div>
