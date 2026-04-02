@@ -55,6 +55,16 @@ All colors MUST be HSL.
   --status-completed: 142 71% 45%;
   --status-completed-foreground: 0 0% 100%;
 
+  --critical: 2 84% 58%;
+  --critical-foreground: 2 70% 22%;
+  --attention: 37 95% 56%;
+  --attention-foreground: 29 74% 22%;
+  --healthy: 152 63% 38%;
+  --healthy-foreground: 153 50% 22%;
+  --recent: 210 88% 56%;
+  --recent-foreground: 214 56% 24%;
+  --surface-tint: 32 45% 96%;
+
   --radius: 0.375rem;
 
   --sidebar-background: 0 0% 98%;
@@ -119,5 +129,23 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .dashboard-shell {
+    position: relative;
+  }
+
+  .dashboard-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 16%, hsl(var(--attention) / 0.16), transparent 28%),
+      radial-gradient(circle at 84% 8%, hsl(var(--recent) / 0.14), transparent 26%),
+      radial-gradient(circle at 78% 78%, hsl(var(--healthy) / 0.1), transparent 22%);
+    z-index: -1;
   }
 }
