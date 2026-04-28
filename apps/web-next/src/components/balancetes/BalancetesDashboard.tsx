@@ -313,6 +313,9 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
                     <SortIcon field="competencia" sortField={sortField} sortDirection={sortDirection} />
                   </div>
                 </TableHead>
+                <TableHead className="w-[80px]">
+                  Tipo
+                </TableHead>
                 <TableHead
                   className="cursor-pointer select-none hover:text-foreground transition-colors w-[180px]"
                   onClick={() => handleSort('defasagem')}
@@ -344,6 +347,9 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
                   </TableCell>
                   <TableCell className="py-3 text-sm">
                     {row.competencia ?? <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm font-semibold">
+                    {row.balanceteDigital === true ? 'D' : 'I'}
                   </TableCell>
                   <TableCell className="py-3 text-sm text-muted-foreground">
                     {row.defasagemLabel}

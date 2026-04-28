@@ -36,11 +36,12 @@ import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
 
 const columns = [
-  { key: "condominium_name", label: "Condomínio", width: "w-[25%]", sortable: true },
+  { key: "condominium_name", label: "Condomínio", width: "w-[23%]", sortable: true },
   { key: "competencia", label: "Competência", width: "w-[12%]", sortable: true },
+  { key: "tipo_envio", label: "Tipo", width: "w-[6%]" },
   { key: "received_at", label: "Dt Recebimento", width: "w-[12%]", sortable: true },
   { key: "volumes", label: "Volumes", width: "w-[8%]" },
-  { key: "observations", label: "Observações", width: "w-[20%]" },
+  { key: "observations", label: "Observações", width: "w-[18%]" },
   { key: "sent_status", label: "Dt Envio", width: "w-[12%]", sortable: true },
 ];
 
@@ -157,6 +158,7 @@ export default function BalancetesPage() {
         
         return {
           ...rest,
+          tipo_envio: b.balancete_digital === true ? "D" : "I",
           received_at: formatDate(b.received_at),
           _raw_received_at: b.received_at,
           _raw_sent_at: dataEnvio,

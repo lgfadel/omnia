@@ -6,6 +6,7 @@ export interface Balancete {
   id: string
   condominium_id: string
   condominium_name?: string
+  balancete_digital?: boolean | null
   received_at: string
   competencia: string
   volumes: number
@@ -41,7 +42,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
       .order('received_at', { ascending: false })
 
     if (error) {
@@ -54,6 +55,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
@@ -83,7 +85,7 @@ export const balancetesRepoSupabase = {
     const { data: newBalancete, error } = await supabase
       .from('omnia_balancetes')
       .insert(insertData)
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
       .maybeSingle()
 
     if (error) {
@@ -102,6 +104,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
@@ -128,7 +131,7 @@ export const balancetesRepoSupabase = {
       .from('omnia_balancetes')
       .update(updateData)
       .eq('id', id)
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
       .single()
 
     if (error) {
@@ -143,6 +146,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
@@ -177,7 +181,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
       .eq('id', id)
       .single()
 
@@ -193,6 +197,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
@@ -223,7 +228,7 @@ export const balancetesRepoSupabase = {
         protocolo_id: protocolo.id,
       } as any)
       .in('id', ids)
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
 
     if (error) {
       logger.error('Error marking balancetes as sent:', error)
@@ -235,6 +240,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
@@ -255,7 +261,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name)')
+      .select('*, omnia_condominiums(name, balancete_digital)')
       .eq('protocolo_id', protocoloId)
       .order('condominium_id')
 
@@ -268,6 +274,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
       volumes: row.volumes,
