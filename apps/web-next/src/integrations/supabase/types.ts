@@ -509,6 +509,7 @@ export type Database = {
         Row: {
           active: boolean
           address: string | null
+          analista_financeiro: string | null
           balancete_digital: boolean
           boleto_impresso: boolean
           city: string | null
@@ -532,6 +533,7 @@ export type Database = {
         Insert: {
           active?: boolean
           address?: string | null
+          analista_financeiro?: string | null
           balancete_digital?: boolean
           boleto_impresso?: boolean
           city?: string | null
@@ -555,6 +557,7 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string | null
+          analista_financeiro?: string | null
           balancete_digital?: boolean
           boleto_impresso?: boolean
           city?: string | null

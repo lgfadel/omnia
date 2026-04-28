@@ -7,6 +7,7 @@ import { logger } from '../lib/logging';
 export interface Condominium {
   id: string
   name: string
+  analista_financeiro?: string | null
   street?: string | null
   number?: string | null
   complement?: string | null
@@ -32,6 +33,7 @@ export interface Condominium {
 const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>): Condominium => ({
   id: dbCondominium.id,
   name: dbCondominium.name,
+  analista_financeiro: dbCondominium.analista_financeiro,
   street: dbCondominium.street,
   number: dbCondominium.number,
   complement: dbCondominium.complement,

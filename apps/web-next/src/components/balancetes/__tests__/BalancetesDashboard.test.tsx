@@ -56,4 +56,34 @@ describe('BalancetesDashboard', () => {
     expect(screen.getByRole('cell', { name: 'D' })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: 'I' })).toBeInTheDocument()
   })
+
+  it('exibe o analista financeiro do condominio no dashboard', () => {
+    render(
+      <BalancetesDashboard
+        balancetes={[]}
+        condominiums={[
+          {
+            id: 'cond-1',
+            name: 'Condominio com Analista',
+            cnpj: null,
+            address: null,
+            number: null,
+            neighborhood: null,
+            city: null,
+            state: null,
+            zip_code: null,
+            active: true,
+            analista_financeiro: 'Marina Souza',
+            balancete_digital: true,
+            boleto_impresso: false,
+            created_at: null,
+            updated_at: null,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('columnheader', { name: 'Analista Financeiro' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'Marina Souza' })).toBeInTheDocument()
+  })
 })

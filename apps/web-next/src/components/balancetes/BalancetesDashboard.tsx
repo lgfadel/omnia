@@ -95,6 +95,7 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
       return {
         id: cond.id,
         condominium: cond.name,
+        analistaFinanceiro: cond.analista_financeiro,
         competencia: latestCompetencia,
         defasagemLabel,
         statusLabel,
@@ -304,6 +305,9 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
                     <SortIcon field="condominium" sortField={sortField} sortDirection={sortDirection} />
                   </div>
                 </TableHead>
+                <TableHead className="w-[220px]">
+                  Analista Financeiro
+                </TableHead>
                 <TableHead
                   className="cursor-pointer select-none hover:text-foreground transition-colors w-[160px]"
                   onClick={() => handleSort('competencia')}
@@ -344,6 +348,9 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
                       <div className={`w-2 h-2 rounded-full shrink-0 ${statusDotClasses[row.status]}`} />
                       {row.condominium}
                     </div>
+                  </TableCell>
+                  <TableCell className="py-3 text-sm">
+                    {row.analistaFinanceiro || <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="py-3 text-sm">
                     {row.competencia ?? <span className="text-muted-foreground">—</span>}
