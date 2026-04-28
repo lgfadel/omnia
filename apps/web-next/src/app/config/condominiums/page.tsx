@@ -19,10 +19,10 @@ import { formatAddress } from "@/lib/formatAddress";
 import { Badge } from "@/components/ui/badge";
 
 const columns = [
-  { key: "name", label: "Nome", width: "w-[35%]" },
-  { key: "cnpj", label: "CNPJ", width: "w-[20%]" },
-  { key: "syndic_name", label: "Síndico", width: "w-[20%]" },
-  { key: "phone", label: "Telefone", width: "w-[15%]" },
+  { key: "name", label: "Nome", width: "w-[28%]" },
+  { key: "cnpj", label: "CNPJ", width: "w-[18%]" },
+  { key: "syndic_name", label: "Síndico", width: "w-[18%]" },
+  { key: "analista_financeiro", label: "Analista Financeiro", width: "w-[26%]" },
   { key: "active", label: "Status", width: "w-[10%]" },
 ];
 
@@ -45,7 +45,7 @@ const ConfigCondominiums = () => {
   const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [editingCell, setEditingCell] = useState<{ id: string; field: 'syndic_name' | 'phone' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: 'syndic_name' | 'analista_financeiro' } | null>(null);
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
@@ -125,7 +125,7 @@ const ConfigCondominiums = () => {
     }
   };
 
-  const handleCellClick = (id: string, field: 'syndic_name' | 'phone', currentValue: string) => {
+  const handleCellClick = (id: string, field: 'syndic_name' | 'analista_financeiro', currentValue: string) => {
     setEditingCell({ id, field });
     setEditValue(currentValue === '-' ? '' : currentValue);
   };
@@ -139,7 +139,9 @@ const ConfigCondominiums = () => {
       return;
     }
 
-    const currentValue = editingCell.field === 'syndic_name' ? condominium.syndic_name : condominium.phone;
+    const currentValue = editingCell.field === 'syndic_name'
+      ? condominium.syndic_name
+      : condominium.analista_financeiro;
     
     // Only update if value changed
     if (editValue !== currentValue && editValue !== (currentValue || '')) {
@@ -149,7 +151,7 @@ const ConfigCondominiums = () => {
         });
         toast({
           title: "Sucesso",
-          description: `${editingCell.field === 'syndic_name' ? 'Síndico' : 'Telefone'} atualizado com sucesso.`,
+          description: `${editingCell.field === 'syndic_name' ? 'Síndico' : 'Analista financeiro'} atualizado com sucesso.`,
         });
       } catch (error) {
         logger.error('Error updating condominium field:', error);
@@ -168,14 +170,6 @@ const ConfigCondominiums = () => {
       setEditingCell(null);
       setEditValue('');
     }
-  };
-
-  const formatPhoneInput = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
-    }
-    return numbers.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
   };
 
   const handleDeleteConfirm = async () => {
@@ -227,7 +221,8 @@ const ConfigCondominiums = () => {
   const tableData = useMemo(() => {
     let filtered = condominiums.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.cnpj?.toLowerCase().includes(searchQuery.toLowerCase())
+      c.cnpj?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.analista_financeiro?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Apply status filter - show only active by default
@@ -245,7 +240,7 @@ const ConfigCondominiums = () => {
 
     return filtered.map(c => {
       const isEditingSyndic = editingCell?.id === c.id && editingCell?.field === 'syndic_name';
-      const isEditingPhone = editingCell?.id === c.id && editingCell?.field === 'phone';
+      const isEditingAnalistaFinanceiro = editingCell?.id === c.id && editingCell?.field === 'analista_financeiro';
       
       return {
         id: c.id,
@@ -275,29 +270,28 @@ const ConfigCondominiums = () => {
             {c.syndic_name || "-"}
           </div>
         ),
-        phone: isEditingPhone ? (
+        analista_financeiro: isEditingAnalistaFinanceiro ? (
           <input
             type="text"
             value={editValue}
-            onChange={(e) => setEditValue(formatPhoneInput(e.target.value))}
+            onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleCellBlur}
             onKeyDown={handleCellKeyDown}
             onClick={(e) => e.stopPropagation()}
             autoFocus
             className="w-full px-2 py-1 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="(00) 00000-0000"
-            maxLength={15}
+            placeholder="Nome do analista financeiro"
           />
         ) : (
           <div
             onClick={(e) => {
               e.stopPropagation();
-              handleCellClick(c.id, 'phone', c.phone ? c.phone.replace(/(\d{2})(\d{4,5})(\d{4})/, "($1) $2-$3") : '-');
+              handleCellClick(c.id, 'analista_financeiro', c.analista_financeiro || '-');
             }}
             className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
             title="Clique para editar"
           >
-            {c.phone ? c.phone.replace(/(\d{2})(\d{4,5})(\d{4})/, "($1) $2-$3") : "-"}
+            {c.analista_financeiro || "-"}
           </div>
         ),
         active: c.active,

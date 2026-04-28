@@ -143,7 +143,7 @@ export const protocolosRepoSupabase = {
         sent_at: null,
         protocolo_id: null,
       } as any)
-      .eq('protocolo_id', id)
+      .filter('protocolo_id', 'eq', id)
 
     if (balancetesError) {
       logger.error('Error clearing balancetes from protocolo:', balancetesError)

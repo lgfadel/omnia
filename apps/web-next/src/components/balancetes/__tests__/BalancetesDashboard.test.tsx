@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { BalancetesDashboard } from '../BalancetesDashboard'
 
@@ -85,5 +85,49 @@ describe('BalancetesDashboard', () => {
 
     expect(screen.getByRole('columnheader', { name: 'Analista Financeiro' })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: 'Marina Souza' })).toBeInTheDocument()
+  })
+
+  it('dispara callback ao clicar no nome do condominio', () => {
+    const onCondominiumClick = vi.fn()
+
+    render(
+      <BalancetesDashboard
+        balancetes={[
+          {
+            id: 'bal-1',
+            condominium_id: 'cond-1',
+            received_at: '2026-03-01',
+            competencia: '02/2026',
+            volumes: 1,
+            status: 'received',
+            created_at: null,
+            updated_at: null,
+          },
+        ]}
+        condominiums={[
+          {
+            id: 'cond-1',
+            name: 'Condominio Clicavel',
+            cnpj: null,
+            address: null,
+            number: null,
+            neighborhood: null,
+            city: null,
+            state: null,
+            zip_code: null,
+            active: true,
+            balancete_digital: true,
+            boleto_impresso: false,
+            created_at: null,
+            updated_at: null,
+          },
+        ]}
+        onCondominiumClick={onCondominiumClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Condominio Clicavel' }))
+
+    expect(onCondominiumClick).toHaveBeenCalledWith('cond-1', '02/2026')
   })
 })

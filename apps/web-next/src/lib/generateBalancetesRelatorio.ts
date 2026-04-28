@@ -21,6 +21,12 @@ const COL_WIDTHS = {
   defasagem: CONTENT_WIDTH - 28 - 248 - 90 - 28,
 }
 
+export function calculateHeaderBottomY(logoHeight: number): number {
+  const startY = PAGE_HEIGHT - MARGIN
+  const contentTopOffset = logoHeight > 0 ? logoHeight + 25 : 28
+  return startY - contentTopOffset - 20
+}
+
 function formatDateNow(): string {
   const now = new Date()
   return now.toLocaleDateString('pt-BR', {
@@ -42,20 +48,21 @@ async function drawReportHeader(
   logoImage: Awaited<ReturnType<PDFDocument['embedPng']>> | null
 ): Promise<number> {
   let yPosition = PAGE_HEIGHT - MARGIN
+  let logoHeight = 0
 
   if (logoImage) {
     const maxWidth = 100
     const maxHeight = 60
     const aspect = logoImage.width / logoImage.height
     let logoWidth = maxWidth
-    let logoHeight = logoWidth / aspect
+    logoHeight = logoWidth / aspect
     if (logoHeight > maxHeight) {
       logoHeight = maxHeight
       logoWidth = logoHeight * aspect
     }
     page.drawImage(logoImage, {
       x: PAGE_WIDTH - MARGIN - logoWidth,
-      y: yPosition - logoHeight + 22,
+      y: yPosition - logoHeight,
       width: logoWidth,
       height: logoHeight,
     })
@@ -63,12 +70,13 @@ async function drawReportHeader(
 
   page.drawText('RELATÓRIO DE SITUAÇÃO DE BALANCETES', {
     x: MARGIN,
-    y: yPosition - 10,
+    y: yPosition - (logoHeight > 0 ? (logoHeight / 2) - 7 : 10),
     size: 13,
     font: ctx.helveticaBold,
     color: rgb(0.1, 0.1, 0.1),
   })
-  yPosition -= 28
+
+  yPosition = calculateHeaderBottomY(logoHeight) + 20
 
   page.drawText(`Gerado em: ${formatDateNow()}`, {
     x: MARGIN,

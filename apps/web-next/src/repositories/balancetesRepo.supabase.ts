@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
+import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging'
 import { protocolosRepoSupabase, type Protocolo } from './protocolosRepo.supabase'
 
@@ -120,12 +121,13 @@ export const balancetesRepoSupabase = {
   async update(id: string, data: UpdateBalanceteData): Promise<Balancete | null> {
     logger.debug(`Updating balancete: ${id}`, data)
 
-    const updateData: Record<string, any> = {}
-    if (data.condominium_id !== undefined) updateData.condominium_id = data.condominium_id
-    if (data.received_at !== undefined) updateData.received_at = data.received_at
-    if (data.competencia !== undefined) updateData.competencia = data.competencia
-    if (data.volumes !== undefined) updateData.volumes = data.volumes
-    if (data.observations !== undefined) updateData.observations = data.observations
+    const updateData = {
+      ...(data.condominium_id !== undefined ? { condominium_id: data.condominium_id } : {}),
+      ...(data.received_at !== undefined ? { received_at: data.received_at } : {}),
+      ...(data.competencia !== undefined ? { competencia: data.competencia } : {}),
+      ...(data.volumes !== undefined ? { volumes: data.volumes } : {}),
+      ...(data.observations !== undefined ? { observations: data.observations } : {}),
+    } satisfies TablesUpdate<'omnia_balancetes'>
 
     const { data: updatedBalancete, error } = await supabase
       .from('omnia_balancetes')
@@ -262,7 +264,7 @@ export const balancetesRepoSupabase = {
     const { data, error } = await supabase
       .from('omnia_balancetes')
       .select('*, omnia_condominiums(name, balancete_digital)')
-      .eq('protocolo_id', protocoloId)
+      .filter('protocolo_id', 'eq', protocoloId)
       .order('condominium_id')
 
     if (error) {

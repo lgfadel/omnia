@@ -38,6 +38,9 @@ interface BalanceteFormProps {
   onOpenChange: (open: boolean) => void;
   balancete?: Balancete | null;
   condominiums: Condominium[];
+  initialCondominiumId?: string | null;
+  initialCompetencia?: string | null;
+  lockCondominium?: boolean;
   onSubmit: (data: BalanceteFormData) => Promise<void>;
   isLoading?: boolean;
 }
@@ -57,6 +60,9 @@ export function BalanceteForm({
   onOpenChange,
   balancete,
   condominiums,
+  initialCondominiumId,
+  initialCompetencia,
+  lockCondominium = false,
   onSubmit,
   isLoading = false,
 }: BalanceteFormProps) {
@@ -99,15 +105,15 @@ export function BalanceteForm({
         });
       } else {
         reset({
-          condominium_id: "",
+          condominium_id: initialCondominiumId ?? "",
           received_at: getTodayISO(),
-          competencia: "",
+          competencia: initialCompetencia ?? "",
           volumes: 1,
           observations: "",
         });
       }
     }
-  }, [open, balancete, reset]);
+  }, [open, balancete, initialCondominiumId, initialCompetencia, reset]);
 
   // Quando o condomínio mudar para digital, ajustar volumes para 1
   useEffect(() => {
@@ -145,6 +151,7 @@ export function BalanceteForm({
             <CondominiumSelect
               condominiums={condominiums}
               value={condominiumId}
+              disabled={lockCondominium}
               onValueChange={(val) =>
                 setValue("condominium_id", val, { shouldValidate: true })
               }

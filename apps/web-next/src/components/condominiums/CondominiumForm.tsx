@@ -17,6 +17,7 @@ const condominiumSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos").max(14, "CNPJ deve ter 14 dígitos").regex(/^\d{14}$/, "CNPJ deve conter apenas números"),
   syndic_name: z.string().optional().nullable(),
+  analista_financeiro: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   active: z.boolean().default(true),
   balancete_digital: z.boolean().default(false),
@@ -38,6 +39,7 @@ interface CondominiumFormProps {
     name: string
     cnpj: string
     syndic_name?: string | null
+    analista_financeiro?: string | null
     phone?: string | null
     active: boolean
     balancete_digital: boolean
@@ -73,6 +75,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       name: condominium?.name || "",
       cnpj: condominium?.cnpj || "",
       syndic_name: condominium?.syndic_name || "",
+      analista_financeiro: condominium?.analista_financeiro || "",
       phone: condominium?.phone || "",
       active: condominium?.active ?? true,
       balancete_digital: condominium?.balancete_digital ?? false,
@@ -165,6 +168,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       name: data.name,
       cnpj: cnpjService.cleanCNPJ(data.cnpj),
       syndic_name: data.syndic_name || null,
+      analista_financeiro: data.analista_financeiro || null,
       phone: data.phone || null,
       active: data.active,
       balancete_digital: data.balancete_digital,
@@ -301,6 +305,16 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     disabled={isLoading}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="analista_financeiro">Analista Financeiro</Label>
+                <Input
+                  id="analista_financeiro"
+                  {...register("analista_financeiro")}
+                  placeholder="Nome do analista financeiro"
+                  disabled={isLoading}
+                />
               </div>
 
               <div className="flex items-center justify-between space-x-2">

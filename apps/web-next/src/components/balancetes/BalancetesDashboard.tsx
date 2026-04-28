@@ -27,6 +27,7 @@ import {
 interface BalancetesDashboardProps {
   balancetes: Balancete[]
   condominiums: Condominium[]
+  onCondominiumClick?: (condominiumId: string, latestCompetencia: string | null) => void
 }
 
 type SortField = 'condominium' | 'competencia' | 'defasagem' | 'status'
@@ -59,7 +60,7 @@ function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortF
   return <ArrowDown className="w-3.5 h-3.5 ml-1 text-primary" />
 }
 
-export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDashboardProps) {
+export function BalancetesDashboard({ balancetes, condominiums, onCondominiumClick }: BalancetesDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | BalanceteStatusColor>('all')
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -346,7 +347,13 @@ export function BalancetesDashboard({ balancetes, condominiums }: BalancetesDash
                   <TableCell className="font-medium py-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${statusDotClasses[row.status]}`} />
-                      {row.condominium}
+                      <button
+                        type="button"
+                        onClick={() => onCondominiumClick?.(row.id, row.competencia)}
+                        className="text-left hover:underline focus:outline-none focus:underline"
+                      >
+                        {row.condominium}
+                      </button>
                     </div>
                   </TableCell>
                   <TableCell className="py-3 text-sm">

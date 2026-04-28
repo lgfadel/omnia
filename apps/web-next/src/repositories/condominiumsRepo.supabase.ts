@@ -126,6 +126,7 @@ export const condominiumsRepoSupabase = {
         manager_name: data.manager_name,
         phone: data.phone,
         syndic_name: data.syndic_name,
+        analista_financeiro: data.analista_financeiro,
         whatsapp: data.whatsapp,
         active: data.active ?? true,
         balancete_digital: data.balancete_digital ?? false,
@@ -160,6 +161,7 @@ export const condominiumsRepoSupabase = {
     if (data.manager_name !== undefined) updateData.manager_name = data.manager_name
     if (data.phone !== undefined) updateData.phone = data.phone
     if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
+    if (data.analista_financeiro !== undefined) updateData.analista_financeiro = data.analista_financeiro
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
     if (data.active !== undefined && data.active !== null) updateData.active = data.active
     if (data.balancete_digital !== undefined) updateData.balancete_digital = data.balancete_digital ?? false

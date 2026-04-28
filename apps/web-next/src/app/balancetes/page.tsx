@@ -53,6 +53,21 @@ function formatDate(dateStr: string): string {
   return `${day}/${month}/${year}`;
 }
 
+function getNextCompetencia(competencia: string | null): string {
+  if (!competencia) return "";
+  const [monthText, yearText] = competencia.split("/");
+  const month = Number(monthText);
+  const year = Number(yearText);
+
+  if (!Number.isInteger(month) || !Number.isInteger(year) || month < 1 || month > 12) {
+    return "";
+  }
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${String(nextMonth).padStart(2, "0")}/${nextYear}`;
+}
+
 export default function BalancetesPage() {
   const { toast } = useToast();
   const {
@@ -86,6 +101,9 @@ export default function BalancetesPage() {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [attachmentCounts, setAttachmentCounts] = useState<Record<string, number>>({});
+  const [prefilledCondominiumId, setPrefilledCondominiumId] = useState<string | null>(null);
+  const [prefilledCompetencia, setPrefilledCompetencia] = useState<string | null>(null);
+  const [lockCondominiumField, setLockCondominiumField] = useState(false);
 
   useEffect(() => {
     loadBalancetes();
@@ -224,6 +242,17 @@ export default function BalancetesPage() {
 
   const handleNew = () => {
     setEditingBalancete(null);
+    setPrefilledCondominiumId(null);
+    setPrefilledCompetencia(null);
+    setLockCondominiumField(false);
+    setFormOpen(true);
+  };
+
+  const handleDashboardCondominiumClick = (condominiumId: string, latestCompetencia: string | null) => {
+    setEditingBalancete(null);
+    setPrefilledCondominiumId(condominiumId);
+    setPrefilledCompetencia(getNextCompetencia(latestCompetencia));
+    setLockCondominiumField(true);
     setFormOpen(true);
   };
 
@@ -288,6 +317,9 @@ export default function BalancetesPage() {
     const balancete = balancetes.find((b) => b.id === String(id));
     if (balancete) {
       setEditingBalancete(balancete);
+      setPrefilledCondominiumId(null);
+      setPrefilledCompetencia(null);
+      setLockCondominiumField(false);
       setFormOpen(true);
     }
   };
@@ -391,6 +423,9 @@ export default function BalancetesPage() {
       }
       setFormOpen(false);
       setEditingBalancete(null);
+      setPrefilledCondominiumId(null);
+      setPrefilledCompetencia(null);
+      setLockCondominiumField(false);
     } catch {
       toast({ title: "Erro ao salvar balancete.", variant: "destructive" });
     } finally {
@@ -412,7 +447,11 @@ export default function BalancetesPage() {
               key: "dashboard",
               label: "Dashboard",
               panel: (
-                <BalancetesDashboard balancetes={balancetes} condominiums={condominiums} />
+                <BalancetesDashboard
+                  balancetes={balancetes}
+                  condominiums={condominiums}
+                  onCondominiumClick={handleDashboardCondominiumClick}
+                />
               ),
             },
             {
@@ -528,10 +567,18 @@ export default function BalancetesPage() {
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
-          if (!open) setEditingBalancete(null);
+          if (!open) {
+            setEditingBalancete(null);
+            setPrefilledCondominiumId(null);
+            setPrefilledCompetencia(null);
+            setLockCondominiumField(false);
+          }
         }}
         balancete={editingBalancete}
         condominiums={condominiums}
+        initialCondominiumId={prefilledCondominiumId}
+        initialCompetencia={prefilledCompetencia}
+        lockCondominium={lockCondominiumField}
         onSubmit={handleFormSubmit}
         isLoading={formLoading}
       />

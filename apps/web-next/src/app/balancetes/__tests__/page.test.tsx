@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import BalancetesPage from '../page'
 
@@ -35,7 +35,9 @@ vi.mock('@/components/ui/sliding-tabs', () => ({
 }))
 
 vi.mock('@/components/balancetes/BalancetesDashboard', () => ({
-  BalancetesDashboard: () => <div>Dashboard</div>,
+  BalancetesDashboard: ({ onCondominiumClick }: any) => (
+    <button onClick={() => onCondominiumClick?.('cond-1', '02/2026')}>Dashboard</button>
+  ),
 }))
 
 vi.mock('@/components/balancetes/ProtocolosTab', () => ({
@@ -47,7 +49,14 @@ vi.mock('@/components/balancetes/ProtocoloAttachmentUpload', () => ({
 }))
 
 vi.mock('@/components/balancetes/BalanceteForm', () => ({
-  BalanceteForm: () => null,
+  BalanceteForm: ({ open, initialCondominiumId, lockCondominium, initialCompetencia }: any) => (
+    <div>
+      <div data-testid="form-open">{String(open)}</div>
+      <div data-testid="form-condominium">{initialCondominiumId ?? ''}</div>
+      <div data-testid="form-lock">{String(lockCondominium)}</div>
+      <div data-testid="form-competencia">{initialCompetencia ?? ''}</div>
+    </div>
+  ),
 }))
 
 vi.mock('@/stores/balancetes.store', () => ({
@@ -95,7 +104,16 @@ vi.mock('@/stores/balancetes.store', () => ({
 
 vi.mock('@/stores/condominiums.store', () => ({
   useCondominiumStore: () => ({
-    condominiums: [],
+    condominiums: [
+      {
+        id: 'cond-1',
+        name: 'Condomínio Digital',
+        active: true,
+        balancete_digital: true,
+        created_at: null,
+        updated_at: null,
+      },
+    ],
     loadCondominiums: mockLoadCondominiums,
   }),
 }))
@@ -142,5 +160,16 @@ describe('BalancetesPage', () => {
 
     expect(screen.getByTestId('columns')).toHaveTextContent('Tipo')
     expect(screen.getByTestId('tipo-values')).toHaveTextContent('D|I')
+  })
+
+  it('abre novo balancete pelo clique no condominio do dashboard com condominio travado', async () => {
+    render(<BalancetesPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+
+    await waitFor(() => expect(screen.getByTestId('form-open')).toHaveTextContent('true'))
+    expect(screen.getByTestId('form-condominium')).toHaveTextContent('cond-1')
+    expect(screen.getByTestId('form-lock')).toHaveTextContent('true')
+    expect(screen.getByTestId('form-competencia')).toHaveTextContent('03/2026')
   })
 })
