@@ -19,6 +19,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Omnia",
   description: "Omnia web app (Next.js)",
+  manifest: "/assets/favicon/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/assets/favicon/favicon.ico", sizes: "any" },
+      { url: "/assets/favicon/favicon.svg", type: "image/svg+xml" },
+      { url: "/assets/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: "/assets/favicon/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
