@@ -280,6 +280,10 @@ function drawTableRow(
 }
 
 function drawFooter(page: PDFPage, ctx: PageContext): void {
+  if (ctx.via !== 'EURO') {
+    return
+  }
+
   const footerY = MARGIN + 80
   
   // Linha separadora do rodapé
