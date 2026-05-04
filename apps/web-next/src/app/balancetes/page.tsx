@@ -259,9 +259,10 @@ export default function BalancetesPage() {
   const handleEnviarClick = () => {
     if (selectedBalancetes.size === 0) return;
     
-    // Definir data padrão como hoje
-    const hoje = new Date().toISOString().split('T')[0];
-    setDataEnvio(hoje);
+    // Definir data padrão como amanhã
+    const amanha = new Date();
+    amanha.setDate(amanha.getDate() + 1);
+    setDataEnvio(amanha.toISOString().split('T')[0]);
     setSendDialogOpen(true);
   };
 

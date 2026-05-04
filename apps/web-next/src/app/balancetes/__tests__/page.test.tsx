@@ -5,10 +5,11 @@ import BalancetesPage from '../page'
 const mockLoadBalancetes = vi.fn()
 const mockLoadCondominiums = vi.fn()
 const mockLoadProtocolos = vi.fn()
-const mockTabelaOmnia = vi.fn(({ columns, data }: any) => (
+const mockTabelaOmnia = vi.fn(({ columns, data, onSelectionChange }: any) => (
   <div>
     <div data-testid="columns">{columns.map((column: any) => column.label).join('|')}</div>
     <div data-testid="tipo-values">{data.map((row: any) => row.tipo_envio).join('|')}</div>
+    <button onClick={() => onSelectionChange?.(new Set(['1']))}>Selecionar balancete</button>
   </div>
 ))
 
@@ -171,5 +172,20 @@ describe('BalancetesPage', () => {
     expect(screen.getByTestId('form-condominium')).toHaveTextContent('cond-1')
     expect(screen.getByTestId('form-lock')).toHaveTextContent('true')
     expect(screen.getByTestId('form-competencia')).toHaveTextContent('03/2026')
+  })
+
+  it('abre o popup de envio com a data padrao como amanha', async () => {
+    const amanha = new Date()
+    amanha.setDate(amanha.getDate() + 1)
+    const expectedDate = amanha.toISOString().split('T')[0]
+
+    render(<BalancetesPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar (1)' }))
+
+    await waitFor(() => {
+      expect(document.getElementById('dataEnvio')).toHaveValue(expectedDate)
+    })
   })
 })
