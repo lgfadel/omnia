@@ -84,6 +84,7 @@ export default function TicketEdit() {
         attachments: ticketData.attachments,
         isPrivate: ticketData.isPrivate,
         oportunidadeId: ticketData.oportunidadeId,
+        recurrence: ticketData.recurrence,
       });
 
       // Salvar novos anexos (aqueles que não têm id no banco ainda)

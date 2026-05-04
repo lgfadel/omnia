@@ -8,6 +8,7 @@ export interface TarefaStatus {
   color: string;
   order: number;
   isDefault?: boolean;
+  isFinal?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -19,6 +20,7 @@ function transformTarefaStatusFromDB(dbTarefaStatus: Tables<'omnia_ticket_status
     color: dbTarefaStatus.color,
     order: dbTarefaStatus.order_position,
     isDefault: dbTarefaStatus.is_default ?? undefined,
+    isFinal: dbTarefaStatus.is_final ?? undefined,
     createdAt: dbTarefaStatus.created_at ? new Date(dbTarefaStatus.created_at) : undefined,
     updatedAt: dbTarefaStatus.updated_at ? new Date(dbTarefaStatus.updated_at) : undefined,
   };
@@ -81,6 +83,7 @@ export const tarefaStatusRepoSupabase = {
     if (data.color !== undefined) updateData.color = data.color;
     if (data.order !== undefined) updateData.order_position = data.order;
     if (data.isDefault !== undefined) updateData.is_default = data.isDefault;
+    if (data.isFinal !== undefined) updateData.is_final = data.isFinal;
 
     const { data: updatedStatus, error } = await supabase
       .from('omnia_ticket_statuses')

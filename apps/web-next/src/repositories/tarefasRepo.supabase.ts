@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { UserRef, Attachment, Comment } from '@/data/types';
 import type { TablesUpdate } from '@/integrations/supabase/db-types';
+import {
+  addRecurrenceInterval,
+  canGenerateOccurrence,
+  type RecurrenceEndType,
+  type RecurrenceFrequency,
+} from '@/lib/recurrence';
 import { logger } from '../lib/logging';
 
 const getCurrentOmniaUserId = async () => {
@@ -26,6 +32,20 @@ const getCurrentOmniaUserId = async () => {
 
 export type TarefaPrioridade = 'URGENTE' | 'ALTA' | 'NORMAL' | 'BAIXA';
 
+export interface TarefaRecurrence {
+  id?: string;
+  enabled: boolean;
+  frequency: RecurrenceFrequency;
+  interval: number;
+  startDate: Date;
+  endType: RecurrenceEndType;
+  endDate?: Date;
+  occurrenceLimit?: number;
+  generatedOccurrences?: number;
+  nextOccurrenceDate?: Date;
+  isActive?: boolean;
+}
+
 export interface Tarefa {
   id: string;
   title: string;
@@ -46,11 +66,57 @@ export interface Tarefa {
   attachments?: Attachment[];
   comments?: Comment[];
   isPrivate: boolean;
+  recurrenceId?: string;
+  recurrenceOccurrence?: number;
+  recurrence?: TarefaRecurrence;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- error from untyped query
 const isMissingColumnError = (error: any, column: string) => {
   return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes(`'${column}'`)
+}
+
+const dateToDb = (date?: Date | null) => date ? date.toISOString().split('T')[0] : null
+
+const tarefaSelect = `
+  *,
+  recurrence:omnia_ticket_recurrences(
+    id,
+    frequency,
+    interval,
+    start_date,
+    end_type,
+    end_date,
+    occurrence_limit,
+    generated_occurrences,
+    next_occurrence_date,
+    is_active
+  ),
+  assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
+    id, name, email, roles, avatar_url, color
+  ),
+  created_by_user:omnia_users!omnia_tickets_created_by_fkey(
+    id, name, email, roles, avatar_url, color
+  )
+`
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase nested join result
+function transformRecurrenceFromDB(dbRecurrence: any): TarefaRecurrence | undefined {
+  if (!dbRecurrence) return undefined
+
+  return {
+    id: dbRecurrence.id,
+    enabled: Boolean(dbRecurrence.is_active),
+    frequency: dbRecurrence.frequency as RecurrenceFrequency,
+    interval: dbRecurrence.interval,
+    startDate: new Date(dbRecurrence.start_date + 'T00:00:00'),
+    endType: dbRecurrence.end_type as RecurrenceEndType,
+    endDate: dbRecurrence.end_date ? new Date(dbRecurrence.end_date + 'T00:00:00') : undefined,
+    occurrenceLimit: dbRecurrence.occurrence_limit ?? undefined,
+    generatedOccurrences: dbRecurrence.generated_occurrences,
+    nextOccurrenceDate: dbRecurrence.next_occurrence_date ? new Date(dbRecurrence.next_occurrence_date + 'T00:00:00') : undefined,
+    isActive: dbRecurrence.is_active,
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- from('omnia_tickets' as any) + JOIN select
@@ -87,7 +153,133 @@ function transformTarefaFromDB(dbTarefa: any): Tarefa {
     createdAt: new Date(dbTarefa.created_at),
     updatedAt: new Date(dbTarefa.updated_at),
     isPrivate: dbTarefa.is_private || false,
+    recurrenceId: dbTarefa.recurrence_id ?? undefined,
+    recurrenceOccurrence: dbTarefa.recurrence_occurrence ?? undefined,
+    recurrence: transformRecurrenceFromDB(dbTarefa.recurrence),
   };
+}
+
+function buildRecurrenceInsertData(
+  data: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>,
+  omniaUserId: string,
+) {
+  const recurrence = data.recurrence
+  if (!recurrence?.enabled) return null
+
+  const startDate = recurrence.startDate || data.dueDate
+  if (!startDate) {
+    throw new Error('Data inicial é obrigatória para tarefas recorrentes')
+  }
+
+  const nextOccurrenceDate = addRecurrenceInterval(startDate, recurrence.frequency, recurrence.interval)
+  const shouldGenerateNext = canGenerateOccurrence({
+    nextOccurrenceDate,
+    endType: recurrence.endType,
+    endDate: recurrence.endDate,
+    occurrenceLimit: recurrence.occurrenceLimit,
+    generatedOccurrences: 1,
+  })
+
+  return {
+    frequency: recurrence.frequency,
+    interval: Math.max(1, recurrence.interval || 1),
+    start_date: dateToDb(startDate),
+    end_type: recurrence.endType,
+    end_date: recurrence.endType === 'ON_DATE' ? dateToDb(recurrence.endDate) : null,
+    occurrence_limit: recurrence.endType === 'AFTER_COUNT' ? recurrence.occurrenceLimit : null,
+    generated_occurrences: 1,
+    next_occurrence_date: shouldGenerateNext ? dateToDb(nextOccurrenceDate) : null,
+    is_active: shouldGenerateNext,
+    title: data.title,
+    description: data.description,
+    priority: data.priority,
+    status_id: data.statusId,
+    assigned_to: data.assignedTo?.id,
+    created_by: omniaUserId,
+    oportunidade_id: data.oportunidadeId,
+    tags: data.tags,
+    is_private: data.isPrivate,
+    ticket_octa: data.ticketOcta,
+  }
+}
+
+function buildRecurrenceUpdateData(data: Partial<Omit<Tarefa, 'id' | 'createdAt'>>) {
+  const recurrence = data.recurrence
+  if (!recurrence) return null
+
+  if (!recurrence.enabled) {
+    return {
+      is_active: false,
+      next_occurrence_date: null,
+    }
+  }
+
+  const startDate = recurrence.startDate || data.dueDate
+  if (!startDate) {
+    throw new Error('Data inicial é obrigatória para tarefas recorrentes')
+  }
+
+  const generatedOccurrences = recurrence.generatedOccurrences ?? 1
+  const nextOccurrenceDate = recurrence.nextOccurrenceDate
+    ?? addRecurrenceInterval(startDate, recurrence.frequency, recurrence.interval)
+  const shouldGenerateNext = canGenerateOccurrence({
+    nextOccurrenceDate,
+    endType: recurrence.endType,
+    endDate: recurrence.endDate,
+    occurrenceLimit: recurrence.occurrenceLimit,
+    generatedOccurrences,
+  })
+
+  return {
+    frequency: recurrence.frequency,
+    interval: Math.max(1, recurrence.interval || 1),
+    start_date: dateToDb(startDate),
+    end_type: recurrence.endType,
+    end_date: recurrence.endType === 'ON_DATE' ? dateToDb(recurrence.endDate) : null,
+    occurrence_limit: recurrence.endType === 'AFTER_COUNT' ? recurrence.occurrenceLimit : null,
+    next_occurrence_date: shouldGenerateNext ? dateToDb(nextOccurrenceDate) : null,
+    is_active: shouldGenerateNext,
+    ...(data.title !== undefined ? { title: data.title } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.priority !== undefined ? { priority: data.priority } : {}),
+    ...(data.statusId !== undefined ? { status_id: data.statusId } : {}),
+    ...(data.assignedTo !== undefined ? { assigned_to: data.assignedTo?.id } : {}),
+    ...('oportunidadeId' in data ? { oportunidade_id: data.oportunidadeId || null } : {}),
+    ...(data.tags !== undefined ? { tags: data.tags } : {}),
+    ...(data.isPrivate !== undefined ? { is_private: data.isPrivate } : {}),
+    ...(data.ticketOcta !== undefined ? { ticket_octa: data.ticketOcta?.trim() || null } : {}),
+  }
+}
+
+async function isFinalStatus(statusId?: string) {
+  if (!statusId) return false
+
+  const { data, error } = await supabase
+    .from('omnia_ticket_statuses' as any)
+    .select('name,is_final')
+    .eq('id', statusId)
+    .maybeSingle()
+
+  if (error) {
+    logger.error('Erro ao verificar status final:', error)
+    return false
+  }
+
+  const statusData = data as { name?: string | null; is_final?: boolean | null } | null
+  const statusName = String(statusData?.name ?? '').toLowerCase()
+  return Boolean(statusData?.is_final) || statusName.includes('conclu') || statusName.includes('finaliz')
+}
+
+async function generateNextRecurrenceOccurrence(tarefa: Tarefa | null) {
+  if (!tarefa?.recurrence?.isActive || !tarefa.recurrence.nextOccurrenceDate) return
+
+  const { error } = await supabase.rpc('generate_omnia_ticket_recurrences' as any, {
+    p_run_date: dateToDb(tarefa.recurrence.nextOccurrenceDate),
+  })
+
+  if (error) {
+    logger.error('Erro ao gerar próxima ocorrência recorrente:', error)
+  }
 }
 
 export const tarefasRepoSupabase = {
@@ -102,15 +294,7 @@ export const tarefasRepoSupabase = {
     
     let query = supabase
       .from('omnia_tickets' as any)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
+      .select(tarefaSelect)
       .order('created_at', { ascending: false });
 
     // Apply filters if provided
@@ -145,15 +329,7 @@ export const tarefasRepoSupabase = {
     
     const { data, error } = await supabase
       .from('omnia_tickets' as any)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
+      .select(tarefaSelect)
       .eq('id', id)
       .maybeSingle();
 
@@ -171,11 +347,29 @@ export const tarefasRepoSupabase = {
     
     const omniaUserId = await getCurrentOmniaUserId();
 
+    const recurrenceInsertData = buildRecurrenceInsertData(data, omniaUserId)
+    let recurrenceId: string | undefined
+
+    if (recurrenceInsertData) {
+      const { data: recurrenceData, error: recurrenceError } = await supabase
+        .from('omnia_ticket_recurrences' as any)
+        .insert(recurrenceInsertData)
+        .select('id')
+        .single()
+
+      if (recurrenceError) {
+        logger.error('❌ Error creating tarefa recurrence:', recurrenceError);
+        throw recurrenceError;
+      }
+
+      recurrenceId = (recurrenceData as unknown as { id: string }).id
+    }
+
     const insertData = {
       title: data.title,
       description: data.description,
       priority: data.priority,
-      due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
+      due_date: recurrenceInsertData?.start_date ?? dateToDb(data.dueDate),
       ticket_octa: data.ticketOcta,
       status_id: data.statusId,
       assigned_to: data.assignedTo?.id,
@@ -183,6 +377,8 @@ export const tarefasRepoSupabase = {
       oportunidade_id: data.oportunidadeId,
       tags: data.tags,
       is_private: data.isPrivate,
+      recurrence_id: recurrenceId,
+      recurrence_occurrence: recurrenceId ? 1 : null,
     };
 
     let newTarefa: any
@@ -191,15 +387,7 @@ export const tarefasRepoSupabase = {
     ;({ data: newTarefa, error } = await supabase
       .from('omnia_tickets' as any)
       .insert(insertData)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
+      .select(tarefaSelect)
       .single())
 
     if (error && isMissingColumnError(error, 'ticket_octa')) {
@@ -210,25 +398,27 @@ export const tarefasRepoSupabase = {
       ;({ data: newTarefa, error } = await supabase
         .from('omnia_tickets' as any)
         .insert(legacyInsertData)
-        .select(`
-          *,
-          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-            id, name, email, roles, avatar_url, color
-          ),
-          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-            id, name, email, roles, avatar_url, color
-          )
-        `)
+        .select(tarefaSelect)
         .single())
     }
 
     if (error) {
+      if (recurrenceId) {
+        await supabase.from('omnia_ticket_recurrences' as any).delete().eq('id', recurrenceId)
+      }
       logger.error('❌ Error creating tarefa:', error);
       logger.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
-    return transformTarefaFromDB(newTarefa);
+    if (recurrenceId) {
+      await supabase
+        .from('omnia_ticket_recurrences' as any)
+        .update({ template_ticket_id: newTarefa.id })
+        .eq('id', recurrenceId)
+    }
+
+    return tarefasRepoSupabase.get(newTarefa.id) as Promise<Tarefa>;
   },
 
   // Update an existing task
@@ -252,6 +442,8 @@ export const tarefasRepoSupabase = {
     if ('oportunidadeId' in data) updateData.oportunidade_id = data.oportunidadeId || null;
     if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.isPrivate !== undefined) updateData.is_private = data.isPrivate;
+
+    const beforeUpdateTarefa = data.recurrence ? await tarefasRepoSupabase.get(id) : null;
 
     let error: any
 
@@ -279,8 +471,57 @@ export const tarefasRepoSupabase = {
 
     const refreshedTarefa = await tarefasRepoSupabase.get(id);
 
+    if (data.recurrence) {
+      const recurrenceUpdateData = buildRecurrenceUpdateData(data)
+      const recurrenceId = beforeUpdateTarefa?.recurrenceId || refreshedTarefa?.recurrenceId
+
+      if (recurrenceUpdateData && recurrenceId) {
+        const { error: recurrenceError } = await supabase
+          .from('omnia_ticket_recurrences' as any)
+          .update(recurrenceUpdateData)
+          .eq('id', recurrenceId)
+
+        if (recurrenceError) {
+          logger.error('❌ Error updating tarefa recurrence:', recurrenceError);
+          throw recurrenceError;
+        }
+      } else if (recurrenceUpdateData && data.recurrence.enabled && refreshedTarefa) {
+        const recurrenceInsertData = buildRecurrenceInsertData({
+          ...refreshedTarefa,
+          recurrence: data.recurrence,
+        }, refreshedTarefa.createdBy?.id || await getCurrentOmniaUserId())
+
+        if (recurrenceInsertData) {
+          const { data: newRecurrence, error: recurrenceError } = await supabase
+            .from('omnia_ticket_recurrences' as any)
+            .insert({
+              ...recurrenceInsertData,
+              template_ticket_id: id,
+            })
+            .select('id')
+            .single()
+
+          if (recurrenceError) {
+            logger.error('❌ Error creating tarefa recurrence:', recurrenceError);
+            throw recurrenceError;
+          }
+
+          await supabase
+            .from('omnia_tickets' as any)
+            .update({ recurrence_id: (newRecurrence as unknown as { id: string }).id, recurrence_occurrence: 1 })
+            .eq('id', id)
+        }
+      }
+    }
+
+    const refreshedAfterRecurrence = data.recurrence ? await tarefasRepoSupabase.get(id) : refreshedTarefa;
+
+    if (data.statusId && await isFinalStatus(data.statusId)) {
+      await generateNextRecurrenceOccurrence(refreshedAfterRecurrence);
+    }
+
     if (data.ticketOcta !== undefined) {
-      const refreshedTicketOcta = refreshedTarefa?.ticketOcta?.trim() || undefined;
+      const refreshedTicketOcta = refreshedAfterRecurrence?.ticketOcta?.trim() || undefined;
       if (refreshedTicketOcta !== expectedTicketOcta) {
         const verificationError = {
           code: 'UPDATE_NOT_APPLIED',
@@ -297,7 +538,7 @@ export const tarefasRepoSupabase = {
       }
     }
 
-    return refreshedTarefa;
+    return refreshedAfterRecurrence;
   },
 
   // Delete a task
@@ -323,15 +564,7 @@ export const tarefasRepoSupabase = {
     
     const { data, error } = await supabase
       .from('omnia_tickets' as any)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
+      .select(tarefaSelect)
       .or(`is_private.eq.false,assigned_to.eq.${userId},created_by.eq.${userId}`)
       .order('created_at', { ascending: false });
 
@@ -362,15 +595,7 @@ export const tarefasRepoSupabase = {
 
     ;({ data, error } = await supabase
       .from('omnia_tickets' as any)
-      .select(`
-        *,
-        assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-          id, name, email, roles, avatar_url, color
-        ),
-        created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-          id, name, email, roles, avatar_url, color
-        )
-      `)
+      .select(tarefaSelect)
       .or(searchConditions)
       .order('created_at', { ascending: false })
       .limit(20))
@@ -379,15 +604,7 @@ export const tarefasRepoSupabase = {
       // Fallback para schema antigo (sem ticket_octa/ticket_id)
       ;({ data, error } = await supabase
         .from('omnia_tickets' as any)
-        .select(`
-          *,
-          assigned_to_user:omnia_users!omnia_tickets_assigned_to_fkey(
-            id, name, email, roles, avatar_url, color
-          ),
-          created_by_user:omnia_users!omnia_tickets_created_by_fkey(
-            id, name, email, roles, avatar_url, color
-          )
-        `)
+        .select(tarefaSelect)
         .or(`title.ilike.%${query}%,description.ilike.%${query}%,ticket.ilike.%${query}%`)
         .order('created_at', { ascending: false })
         .limit(20))
