@@ -48,7 +48,8 @@ export default function TicketNew() {
         tags: ticketData.tags || [],
         attachments: ticketData.attachments || [],
         isPrivate: Boolean(ticketData.isPrivate),
-        oportunidadeId: ticketData.oportunidadeId
+        oportunidadeId: ticketData.oportunidadeId,
+        recurrence: ticketData.recurrence,
       });
 
       // Salvar anexos após criar a tarefa

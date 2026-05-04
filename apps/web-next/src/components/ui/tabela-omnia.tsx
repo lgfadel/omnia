@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { BadgeStatus } from "./badge-status"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus } from "lucide-react"
+import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus, Repeat } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
@@ -920,6 +920,12 @@ export function TabelaOmnia({
           )}
           {row.isPrivate && (
             <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          )}
+          {row.recurrenceId && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+              <Repeat className="w-3 h-3" />
+              {row.recurrenceOccurrence ? `#${row.recurrenceOccurrence}` : 'Recorrente'}
+            </span>
           )}
         </div>
       )

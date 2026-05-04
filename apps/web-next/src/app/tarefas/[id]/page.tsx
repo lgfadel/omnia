@@ -18,7 +18,7 @@ import { useTarefasStore } from '@/stores/tarefas.store';
 import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { Tarefa } from '@/repositories/tarefasRepo.supabase';
-import { Edit, Trash2, Calendar, User, Tag } from 'lucide-react';
+import { Edit, Trash2, Calendar, User, Tag, Repeat } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -119,6 +119,11 @@ export default function TicketDetail() {
   }
 
   const status = getStatusById(ticket.statusId);
+  const recurrenceFrequencyLabel = {
+    DAILY: 'Diária',
+    WEEKLY: 'Semanal',
+    MONTHLY: 'Mensal',
+  } as const;
 
   return (
     <Layout>
@@ -228,6 +233,31 @@ export default function TicketDetail() {
                       <div className="text-sm font-medium">Prioridade</div>
                       <PriorityBadge priority={ticket.priority} />
                     </div>
+
+                    {ticket.recurrence && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          <Repeat className="h-4 w-4" />
+                          Recorrência
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <Badge variant="outline">
+                            {recurrenceFrequencyLabel[ticket.recurrence.frequency]} a cada {ticket.recurrence.interval}
+                          </Badge>
+                          {ticket.recurrenceOccurrence && (
+                            <p className="text-muted-foreground">Ocorrência #{ticket.recurrenceOccurrence}</p>
+                          )}
+                          {ticket.recurrence.nextOccurrenceDate && ticket.recurrence.isActive && (
+                            <p className="text-muted-foreground">
+                              Próxima em {format(ticket.recurrence.nextOccurrenceDate, "dd/MM/yyyy", { locale: ptBR })}
+                            </p>
+                          )}
+                          {!ticket.recurrence.isActive && (
+                            <p className="text-muted-foreground">Série sem próximas ocorrências.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {ticket.dueDate && (
                       <div className="space-y-2">

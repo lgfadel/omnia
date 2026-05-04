@@ -206,7 +206,7 @@ export default function Tickets() {
         const currentStatus = statuses.find(s => s.id === task.statusId);
         if (!currentStatus) return true;
         const statusName = currentStatus.name.toLowerCase();
-        return !(statusName.includes('concluído') || statusName.includes('finalizado'));
+        return !(currentStatus.isFinal || statusName.includes('concluído') || statusName.includes('finalizado'));
       });
     }
 
@@ -332,7 +332,7 @@ export default function Tickets() {
       const statusName = currentStatus.name.toLowerCase();
       if (statusName.includes('andamento') || statusName.includes('progresso')) {
         mappedStatus = "em-andamento";
-      } else if (statusName.includes('concluído') || statusName.includes('finalizado')) {
+      } else if (currentStatus.isFinal || statusName.includes('concluído') || statusName.includes('finalizado')) {
         mappedStatus = "concluido";
       } else {
         mappedStatus = "nao-iniciado";

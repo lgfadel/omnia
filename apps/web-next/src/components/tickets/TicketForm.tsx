@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { TagInput } from '@/components/atas/TagInput';
 import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
@@ -30,6 +31,42 @@ const ticketSchema = z.object({
   assignedTo: z.string().optional(),
   oportunidadeId: z.string().optional(),
   isPrivate: z.boolean().default(false),
+  recurrenceEnabled: z.boolean().default(false),
+  recurrenceFrequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('WEEKLY'),
+  recurrenceInterval: z.coerce.number().min(1, 'Intervalo deve ser maior que zero').default(1),
+  recurrenceStartDate: z.string().optional(),
+  recurrenceEndType: z.enum(['NEVER', 'ON_DATE', 'AFTER_COUNT']).default('NEVER'),
+  recurrenceEndDate: z.string().optional(),
+  recurrenceOccurrenceLimit: z.preprocess(
+    value => value === '' || value === undefined ? undefined : Number(value),
+    z.number().min(1, 'Quantidade deve ser maior que zero').optional(),
+  ),
+}).superRefine((data, ctx) => {
+  if (!data.recurrenceEnabled) return
+
+  if (!data.recurrenceStartDate && !data.dueDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['recurrenceStartDate'],
+      message: 'Informe a data inicial ou a data de vencimento',
+    })
+  }
+
+  if (data.recurrenceEndType === 'ON_DATE' && !data.recurrenceEndDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['recurrenceEndDate'],
+      message: 'Data final é obrigatória',
+    })
+  }
+
+  if (data.recurrenceEndType === 'AFTER_COUNT' && !data.recurrenceOccurrenceLimit) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['recurrenceOccurrenceLimit'],
+      message: 'Quantidade é obrigatória',
+    })
+  }
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -68,6 +105,15 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       assignedTo: ticket?.assignedTo?.id || '',
       oportunidadeId: ticket?.oportunidadeId || '',
       isPrivate: ticket?.isPrivate || false,
+      recurrenceEnabled: ticket?.recurrence?.enabled || false,
+      recurrenceFrequency: ticket?.recurrence?.frequency || 'WEEKLY',
+      recurrenceInterval: ticket?.recurrence?.interval || 1,
+      recurrenceStartDate: ticket?.recurrence?.startDate
+        ? ticket.recurrence.startDate.toISOString().split('T')[0]
+        : (ticket?.dueDate ? ticket.dueDate.toISOString().split('T')[0] : ''),
+      recurrenceEndType: ticket?.recurrence?.endType || 'NEVER',
+      recurrenceEndDate: ticket?.recurrence?.endDate ? ticket.recurrence.endDate.toISOString().split('T')[0] : '',
+      recurrenceOccurrenceLimit: ticket?.recurrence?.occurrenceLimit,
     },
   });
 
@@ -95,6 +141,8 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
 
   // Force re-render when assignedTo changes
   const assignedToValue = watch('assignedTo');
+  const recurrenceEnabled = watch('recurrenceEnabled');
+  const recurrenceEndType = watch('recurrenceEndType');
 
   const handleFormSubmit = async (data: TicketFormData) => {
     const ticketData: Partial<Tarefa> = {
@@ -109,6 +157,19 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       tags,
       attachments,
       isPrivate: Boolean(data.isPrivate),
+      recurrence: data.recurrenceEnabled ? {
+        id: ticket?.recurrence?.id,
+        enabled: true,
+        frequency: data.recurrenceFrequency,
+        interval: data.recurrenceInterval,
+        startDate: new Date(data.recurrenceStartDate || data.dueDate!),
+        endType: data.recurrenceEndType,
+        endDate: data.recurrenceEndDate ? new Date(data.recurrenceEndDate) : undefined,
+        occurrenceLimit: data.recurrenceOccurrenceLimit,
+        generatedOccurrences: ticket?.recurrence?.generatedOccurrences,
+        nextOccurrenceDate: ticket?.recurrence?.nextOccurrenceDate,
+        isActive: ticket?.recurrence?.isActive,
+      } : (ticket?.recurrence ? { ...ticket.recurrence, enabled: false } : undefined),
     };
 
     await onSubmit(ticketData);
@@ -265,6 +326,116 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
               </Label>
             </div>
             
+          </div>
+
+          <Separator />
+
+          {/* Recorrência */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-medium">Recorrência</h3>
+                <p className="text-sm text-muted-foreground">
+                  Gere novas ocorrências desta tarefa em uma cadência definida.
+                </p>
+              </div>
+              <Switch
+                checked={recurrenceEnabled}
+                onCheckedChange={(checked) => setValue('recurrenceEnabled', checked)}
+              />
+            </div>
+
+            {recurrenceEnabled && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceFrequency">Frequência</Label>
+                  <Select
+                    value={watch('recurrenceFrequency')}
+                    onValueChange={(value) => setValue('recurrenceFrequency', value as TicketFormData['recurrenceFrequency'])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a frequência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DAILY">Diária</SelectItem>
+                      <SelectItem value="WEEKLY">Semanal</SelectItem>
+                      <SelectItem value="MONTHLY">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceInterval">Intervalo</Label>
+                  <Input
+                    id="recurrenceInterval"
+                    type="number"
+                    min={1}
+                    {...register('recurrenceInterval')}
+                  />
+                  {errors.recurrenceInterval && (
+                    <p className="text-sm text-destructive">{errors.recurrenceInterval.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceStartDate">Data inicial</Label>
+                  <Input
+                    id="recurrenceStartDate"
+                    type="date"
+                    {...register('recurrenceStartDate')}
+                  />
+                  {errors.recurrenceStartDate && (
+                    <p className="text-sm text-destructive">{errors.recurrenceStartDate.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceEndType">Término</Label>
+                  <Select
+                    value={recurrenceEndType}
+                    onValueChange={(value) => setValue('recurrenceEndType', value as TicketFormData['recurrenceEndType'])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o término" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NEVER">Nunca</SelectItem>
+                      <SelectItem value="ON_DATE">Em uma data</SelectItem>
+                      <SelectItem value="AFTER_COUNT">Após X ocorrências</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {recurrenceEndType === 'ON_DATE' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="recurrenceEndDate">Data final</Label>
+                    <Input
+                      id="recurrenceEndDate"
+                      type="date"
+                      {...register('recurrenceEndDate')}
+                    />
+                    {errors.recurrenceEndDate && (
+                      <p className="text-sm text-destructive">{errors.recurrenceEndDate.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {recurrenceEndType === 'AFTER_COUNT' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="recurrenceOccurrenceLimit">Quantidade de ocorrências</Label>
+                    <Input
+                      id="recurrenceOccurrenceLimit"
+                      type="number"
+                      min={1}
+                      {...register('recurrenceOccurrenceLimit')}
+                    />
+                    {errors.recurrenceOccurrenceLimit && (
+                      <p className="text-sm text-destructive">{errors.recurrenceOccurrenceLimit.message}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <Separator />

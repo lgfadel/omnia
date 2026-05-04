@@ -1449,6 +1449,7 @@ export type Database = {
           created_at: string
           id: string
           is_default: boolean | null
+          is_final: boolean
           name: string
           order_position: number
           updated_at: string
@@ -1458,6 +1459,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          is_final?: boolean
           name: string
           order_position: number
           updated_at?: string
@@ -1467,11 +1469,119 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          is_final?: boolean
           name?: string
           order_position?: number
           updated_at?: string
         }
         Relationships: []
+      }
+      omnia_ticket_recurrences: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          end_type: Database["public"]["Enums"]["ticket_recurrence_end_type"]
+          frequency: Database["public"]["Enums"]["ticket_recurrence_frequency"]
+          generated_occurrences: number
+          id: string
+          interval: number
+          is_active: boolean
+          is_private: boolean
+          next_occurrence_date: string | null
+          occurrence_limit: number | null
+          oportunidade_id: string | null
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          start_date: string
+          status_id: string
+          tags: string[]
+          template_ticket_id: string | null
+          ticket_octa: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          end_type?: Database["public"]["Enums"]["ticket_recurrence_end_type"]
+          frequency: Database["public"]["Enums"]["ticket_recurrence_frequency"]
+          generated_occurrences?: number
+          id?: string
+          interval?: number
+          is_active?: boolean
+          is_private?: boolean
+          next_occurrence_date?: string | null
+          occurrence_limit?: number | null
+          oportunidade_id?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          start_date: string
+          status_id: string
+          tags?: string[]
+          template_ticket_id?: string | null
+          ticket_octa?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          end_type?: Database["public"]["Enums"]["ticket_recurrence_end_type"]
+          frequency?: Database["public"]["Enums"]["ticket_recurrence_frequency"]
+          generated_occurrences?: number
+          id?: string
+          interval?: number
+          is_active?: boolean
+          is_private?: boolean
+          next_occurrence_date?: string | null
+          occurrence_limit?: number | null
+          oportunidade_id?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          start_date?: string
+          status_id?: string
+          tags?: string[]
+          template_ticket_id?: string | null
+          ticket_octa?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_ticket_recurrences_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_ticket_recurrences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_ticket_recurrences_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_ticket_recurrences_template_ticket_id_fkey"
+            columns: ["template_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       omnia_tickets: {
         Row: {
@@ -1486,6 +1596,8 @@ export type Database = {
           is_private: boolean | null
           oportunidade_id: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
+          recurrence_id: string | null
+          recurrence_occurrence: number | null
           status_id: string
           tags: string[] | null
           ticket_id: number
@@ -1505,6 +1617,8 @@ export type Database = {
           is_private?: boolean | null
           oportunidade_id?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          recurrence_id?: string | null
+          recurrence_occurrence?: number | null
           status_id: string
           tags?: string[] | null
           ticket_id: number
@@ -1524,6 +1638,8 @@ export type Database = {
           is_private?: boolean | null
           oportunidade_id?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          recurrence_id?: string | null
+          recurrence_occurrence?: number | null
           status_id?: string
           tags?: string[] | null
           ticket_id?: number
@@ -1551,6 +1667,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_tickets_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_ticket_recurrences"
             referencedColumns: ["id"]
           },
           {
@@ -1710,6 +1833,10 @@ export type Database = {
           permission_source: string
         }[]
       }
+      generate_omnia_ticket_recurrences: {
+        Args: { p_run_date?: string }
+        Returns: number
+      }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
     }
@@ -1723,6 +1850,8 @@ export type Database = {
         | "ganho"
         | "perdido"
       ticket_priority: "URGENTE" | "ALTA" | "NORMAL" | "BAIXA"
+      ticket_recurrence_end_type: "NEVER" | "ON_DATE" | "AFTER_COUNT"
+      ticket_recurrence_frequency: "DAILY" | "WEEKLY" | "MONTHLY"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1860,6 +1989,8 @@ export const Constants = {
         "perdido",
       ],
       ticket_priority: ["URGENTE", "ALTA", "NORMAL", "BAIXA"],
+      ticket_recurrence_end_type: ["NEVER", "ON_DATE", "AFTER_COUNT"],
+      ticket_recurrence_frequency: ["DAILY", "WEEKLY", "MONTHLY"],
     },
   },
 } as const
