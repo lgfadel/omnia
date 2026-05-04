@@ -80,7 +80,7 @@ const dateToDb = (date?: Date | null) => date ? date.toISOString().split('T')[0]
 
 const tarefaSelect = `
   *,
-  recurrence:omnia_ticket_recurrences(
+  recurrence:omnia_ticket_recurrences!omnia_tickets_recurrence_id_fkey(
     id,
     frequency,
     interval,
