@@ -6,6 +6,7 @@ import BalancetesPage from '../page'
 const mockLoadBalancetes = vi.fn()
 const mockLoadCondominiums = vi.fn()
 const mockLoadProtocolos = vi.fn()
+const mockMarkAsSent = vi.fn()
 const extractStatusValue = (value: any) => {
   if (typeof value === 'string') return value
   if (Array.isArray(value)) return value.map(extractStatusValue).join('')
@@ -13,13 +14,15 @@ const extractStatusValue = (value: any) => {
   return ''
 }
 
-const mockTabelaOmnia = vi.fn(({ columns, data, onSelectionChange }: any) => (
+const mockTabelaOmnia = vi.fn(({ columns, data, onSelectionChange, disabledIds }: any) => (
   <div>
     <div data-testid="columns">{columns.map((column: any) => column.label).join('|')}</div>
     <div data-testid="row-names">{data.map((row: any) => row.condominium_name).join('|')}</div>
     <div data-testid="tipo-values">{data.map((row: any) => row.tipo_envio).join('|')}</div>
     <div data-testid="status-values">{data.map((row: any) => extractStatusValue(row.sent_status)).join('|')}</div>
-    <button onClick={() => onSelectionChange?.(new Set(['1']))}>Selecionar balancete</button>
+    <div data-testid="disabled-ids">{Array.from(disabledIds ?? []).join('|')}</div>
+    <button onClick={() => !disabledIds?.has?.('1') && onSelectionChange?.(new Set(['1']))}>Selecionar balancete digital</button>
+    <button onClick={() => onSelectionChange?.(new Set(['2']))}>Selecionar balancete impresso</button>
   </div>
 ))
 
@@ -42,7 +45,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
   DropdownMenuRadioGroup: ({ value, onValueChange, children }: any) => (
-    <div data-testid="status-filter" data-value={value}>
+    <div data-testid="radio-filter" data-value={value}>
       {React.Children.map(children, (child: any) =>
         React.isValidElement(child)
           ? React.cloneElement(child, { onSelectValue: onValueChange })
@@ -52,6 +55,15 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
   DropdownMenuRadioItem: ({ value, children, onSelectValue }: any) => (
     <button role="menuitemradio" onClick={() => onSelectValue?.(value)}>
+      {children}
+    </button>
+  ),
+  DropdownMenuCheckboxItem: ({ checked, children, onCheckedChange }: any) => (
+    <button
+      role="menuitemcheckbox"
+      aria-checked={checked}
+      onClick={() => onCheckedChange?.(!checked)}
+    >
       {children}
     </button>
   ),
@@ -146,7 +158,7 @@ vi.mock('@/stores/balancetes.store', () => ({
     createBalancete: vi.fn(),
     updateBalancete: vi.fn(),
     deleteBalancete: vi.fn(),
-    markAsSent: vi.fn(),
+    markAsSent: mockMarkAsSent,
   }),
 }))
 
@@ -213,30 +225,56 @@ describe('BalancetesPage', () => {
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
     expect(screen.getByTestId('columns')).toHaveTextContent('Tipo')
-    expect(screen.getByTestId('tipo-values')).toHaveTextContent('D|I|I')
+    expect(screen.getByTestId('tipo-values')).toHaveTextContent('I|I')
   })
 
-  it('mostra status Digital para balancete digital nao enviado', async () => {
+  it('aplica como padrao apenas os status pendente e enviado', async () => {
     render(<BalancetesPage />)
 
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
-    expect(screen.getByTestId('status-values')).toHaveTextContent('Digital')
+    expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Digital')
+    expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Impresso')
+    expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Enviado')
+  })
+
+  it('mostra status Digital quando o filtro digital esta selecionado', async () => {
+    render(<BalancetesPage />)
+
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Digital' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status-values')).toHaveTextContent('Digital')
+    })
+
     expect(screen.getByTestId('status-values')).toHaveTextContent('Pendente')
     expect(screen.getByTestId('status-values')).toHaveTextContent('10/04/2026')
   })
 
-  it('filtra apenas balancetes digitais nao enviados no filtro Digital', async () => {
+  it('combina filtros de status ao selecionar Digital junto com os demais', async () => {
     render(<BalancetesPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: /filtros/i }))
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Digital' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Digital' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Digital')
-      expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Impresso')
-      expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Enviado')
+      expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Impresso')
+      expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Enviado')
     })
+  })
+
+  it('nao permite selecionar balancete digital para envio', async () => {
+    render(<BalancetesPage />)
+
+    await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
+
+    expect(screen.getByTestId('disabled-ids')).toHaveTextContent('1|3')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete digital' }))
+    expect(screen.getByRole('button', { name: /^Enviar$/ })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete impresso' }))
+    expect(screen.getByRole('button', { name: 'Enviar (1)' })).toBeEnabled()
   })
 
   it('abre novo balancete pelo clique no condominio do dashboard com condominio travado', async () => {
@@ -257,7 +295,7 @@ describe('BalancetesPage', () => {
 
     render(<BalancetesPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete impresso' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enviar (1)' }))
 
     await waitFor(() => {

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Send, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SlidingTabs from "@/components/ui/sliding-tabs";
 import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAttachmentUpload";
 import { BalancetesDashboard } from "@/components/balancetes/BalancetesDashboard";
@@ -68,12 +68,12 @@ function getNextCompetencia(competencia: string | null): string {
   return `${String(nextMonth).padStart(2, "0")}/${nextYear}`;
 }
 
-type StatusEnvioFilter = 'todos' | 'enviados' | 'pendentes' | 'digital';
+type StatusEnvioOption = 'enviados' | 'pendentes' | 'digital';
 
 function getBalanceteEnvioStatus(
   balancete: Balancete,
   protocoloDataEnvio: string | null | undefined
-): Exclude<StatusEnvioFilter, 'todos'> {
+): StatusEnvioOption {
   const isSent = Boolean(balancete.sent_at || protocoloDataEnvio);
 
   if (isSent) {
@@ -115,7 +115,9 @@ export default function BalancetesPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedBalanceteForUpload, setSelectedBalanceteForUpload] = useState<Balancete | null>(null);
   const [protocoloNumero, setProtocoloNumero] = useState<number>(0);
-  const [statusEnvioFilter, setStatusEnvioFilter] = useState<StatusEnvioFilter>('todos');
+  const [statusEnvioFilter, setStatusEnvioFilter] = useState<Set<StatusEnvioOption>>(
+    () => new Set<StatusEnvioOption>(['pendentes', 'enviados'])
+  );
   const [anexoFilter, setAnexoFilter] = useState<'todos' | 'com-anexo' | 'sem-anexo'>('todos');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -159,11 +161,13 @@ export default function BalancetesPage() {
     let data = balancetes;
 
     // Filtro de status de envio
-    if (statusEnvioFilter !== 'todos') {
+    if (statusEnvioFilter.size > 0) {
       data = data.filter((b) => {
         const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
-        return getBalanceteEnvioStatus(b, protocolo?.data_envio) === statusEnvioFilter;
+        return statusEnvioFilter.has(getBalanceteEnvioStatus(b, protocolo?.data_envio));
       });
+    } else {
+      data = [];
     }
 
     // Filtro de anexos
@@ -256,14 +260,32 @@ export default function BalancetesPage() {
     });
   }, [tableData, sortField, sortDirection]);
 
-  // IDs dos balancetes já enviados (não podem ser selecionados)
+  // IDs dos balancetes já enviados ou digitais (não podem ser selecionados para envio)
   const disabledIds = useMemo(() => {
     return new Set(
       balancetes
-        .filter((b) => b.sent_at)
+        .filter((b) => {
+          const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
+          const statusEnvio = getBalanceteEnvioStatus(b, protocolo?.data_envio);
+          return statusEnvio === 'enviados' || statusEnvio === 'digital';
+        })
         .map((b) => b.id)
     );
-  }, [balancetes]);
+  }, [balancetes, protocolosMap]);
+
+  const toggleStatusEnvioFilter = (status: StatusEnvioOption, checked: boolean) => {
+    setStatusEnvioFilter((current) => {
+      const next = new Set(current);
+
+      if (checked) {
+        next.add(status);
+      } else {
+        next.delete(status);
+      }
+
+      return next;
+    });
+  };
 
   const handleNew = () => {
     setEditingBalancete(null);
@@ -508,12 +530,26 @@ export default function BalancetesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-52">
                         <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as StatusEnvioFilter)}>
-                          <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="enviados">Enviados</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="pendentes">Pendentes</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="digital">Digital</DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
+                        <div className="space-y-1">
+                          <DropdownMenuCheckboxItem
+                            checked={statusEnvioFilter.has('enviados')}
+                            onCheckedChange={(checked) => toggleStatusEnvioFilter('enviados', checked === true)}
+                          >
+                            Enviados
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={statusEnvioFilter.has('pendentes')}
+                            onCheckedChange={(checked) => toggleStatusEnvioFilter('pendentes', checked === true)}
+                          >
+                            Pendentes
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={statusEnvioFilter.has('digital')}
+                            onCheckedChange={(checked) => toggleStatusEnvioFilter('digital', checked === true)}
+                          >
+                            Digital
+                          </DropdownMenuCheckboxItem>
+                        </div>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Anexos</DropdownMenuLabel>
                         <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
