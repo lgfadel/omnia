@@ -1,16 +1,22 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BalancetesPage from '../page'
 
 const mockLoadBalancetes = vi.fn()
 const mockLoadCondominiums = vi.fn()
 const mockLoadProtocolos = vi.fn()
 const mockMarkAsSent = vi.fn()
+const mockListByProtocolos = vi.fn()
+const mockListByBalancetes = vi.fn()
 const extractStatusValue = (value: any): string => {
   if (typeof value === 'string') return value
   if (Array.isArray(value)) return value.map(extractStatusValue).join('')
   if (value?.props?.children) return extractStatusValue(value.props.children)
+  return ''
+}
+const extractClassName = (value: any): string => {
+  if (typeof value?.props?.className === 'string') return value.props.className
   return ''
 }
 
@@ -20,6 +26,7 @@ const mockTabelaOmnia = vi.fn(({ columns, data, onSelectionChange, disabledIds }
     <div data-testid="row-names">{data.map((row: any) => row.condominium_name).join('|')}</div>
     <div data-testid="tipo-values">{data.map((row: any) => row.tipo_envio).join('|')}</div>
     <div data-testid="status-values">{data.map((row: any) => extractStatusValue(row.sent_status)).join('|')}</div>
+    <div data-testid="status-classes">{data.map((row: any) => extractClassName(row.sent_status)).join('|')}</div>
     <div data-testid="disabled-ids">{Array.from(disabledIds ?? []).join('|')}</div>
     <button onClick={() => !disabledIds?.has?.('1') && onSelectionChange?.(new Set(['1']))}>Selecionar balancete digital</button>
     <button onClick={() => onSelectionChange?.(new Set(['2']))}>Selecionar balancete impresso</button>
@@ -200,14 +207,14 @@ vi.mock('@/stores/protocolos.store', () => ({
 vi.mock('@/repositories/protocoloAttachmentsRepo.supabase', () => ({
   protocoloAttachmentsRepoSupabase: {
     listByProtocolo: vi.fn(),
-    listByProtocolos: vi.fn(),
+    listByProtocolos: (...args: any[]) => mockListByProtocolos(...args),
   },
 }))
 
 vi.mock('@/repositories/balanceteAttachmentsRepo.supabase', () => ({
   balanceteAttachmentsRepoSupabase: {
     listByBalancete: vi.fn(),
-    listByBalancetes: vi.fn(),
+    listByBalancetes: (...args: any[]) => mockListByBalancetes(...args),
   },
 }))
 
@@ -227,6 +234,11 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 describe('BalancetesPage', () => {
+  beforeEach(() => {
+    mockListByProtocolos.mockResolvedValue([])
+    mockListByBalancetes.mockResolvedValue([])
+  })
+
   it('inclui a coluna Tipo com D para digital e I para impresso', async () => {
     render(<BalancetesPage />)
 
@@ -309,5 +321,14 @@ describe('BalancetesPage', () => {
     await waitFor(() => {
       expect(document.getElementById('dataEnvio')).toHaveValue(expectedDate)
     })
+  })
+
+  it('marca a data de envio em vermelho quando o balancete enviado nao possui protocolo anexado', async () => {
+    render(<BalancetesPage />)
+
+    await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
+
+    expect(screen.getByTestId('status-values')).toHaveTextContent('10/04/2026')
+    expect(screen.getByTestId('status-classes')).toHaveTextContent('text-red-700')
   })
 })

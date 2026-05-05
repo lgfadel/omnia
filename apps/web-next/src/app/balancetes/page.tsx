@@ -88,6 +88,12 @@ function getBalanceteEnvioStatus(
   return 'pendentes';
 }
 
+function getSentDateClassName(hasAttachments: boolean): string {
+  return hasAttachments
+    ? "text-sm text-green-700 font-medium"
+    : "text-sm text-red-700 font-medium"
+}
+
 export default function BalancetesPage() {
   const { toast } = useToast();
   const {
@@ -228,7 +234,7 @@ export default function BalancetesPage() {
           _raw_sent_at: dataEnvio,
           _attachmentCount: attachmentCount,
           sent_status: dataEnvio ? (
-            <span className="text-sm text-green-700 font-medium">
+            <span className={getSentDateClassName(attachmentCount > 0)}>
               {formatDate(dataEnvio)}
             </span>
           ) : statusEnvio === 'digital' ? (
