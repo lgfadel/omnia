@@ -8,6 +8,7 @@ import {
 } from '@/lib/balanceteProtocolImport'
 
 type AuthenticatedOmniaUser = {
+  accessToken: string
   authUserId: string
   omniaUserId: string
 }
@@ -57,7 +58,7 @@ function getEnv(name: string): string {
 }
 
 function createAdminClient(): SupabaseClient {
-  return createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+  return createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -70,6 +71,20 @@ function createAnonClient(): SupabaseClient {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+  })
+}
+
+function createUserClient(accessToken: string): SupabaseClient {
+  return createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'), {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
   })
 }
@@ -99,6 +114,7 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
   }
 
   return {
+    accessToken: token,
     authUserId: authData.user.id,
     omniaUserId: omniaUser.id,
   }
@@ -309,7 +325,7 @@ export async function importProtocolPdfBatch(params: {
   }
 
   const authenticatedUser = await authenticateOmniaUser(authHeader)
-  const supabaseAdmin = createAdminClient()
+  const supabaseAdmin = createUserClient(authenticatedUser.accessToken)
   const fileBytes = new Uint8Array(await file.arrayBuffer())
   const pages = await splitPdfIntoPages(fileBytes)
 
@@ -608,7 +624,7 @@ export async function resolveProtocolImportItem(params: {
 }): Promise<ProtocolImportItemResult> {
   const { authHeader, balanceteId, batchId, itemId } = params
   const authenticatedUser = await authenticateOmniaUser(authHeader)
-  const supabaseAdmin = createAdminClient()
+  const supabaseAdmin = createUserClient(authenticatedUser.accessToken)
 
   const { data: item, error: itemError } = await supabaseAdmin
     .from('omnia_balancete_protocol_import_items')
