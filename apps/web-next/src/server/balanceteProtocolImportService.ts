@@ -391,6 +391,14 @@ function buildPageFileName(pageNumber: number, protocolNumber: number | null): s
   return `page-${String(pageNumber).padStart(3, '0')}.pdf`
 }
 
+function isManualResolutionStatus(status: ProtocolImportItemResult['status']): boolean {
+  return ['not_found', 'protocol_not_found', 'multiple_matches'].includes(status)
+}
+
+function isSuccessfulImportStatus(status: ProtocolImportItemResult['status']): boolean {
+  return ['matched', 'resolved', 'already_attached'].includes(status)
+}
+
 export async function importProtocolPdfBatch(params: {
   file: File
   authHeader: string | null
@@ -673,7 +681,11 @@ export async function importProtocolPdfBatch(params: {
       })
     )
 
-    pendingCount += 1
+    if (isManualResolutionStatus(mapResolutionToPendingStatus(resolution))) {
+      pendingCount += 1
+    } else if (resolution.status === 'already_attached') {
+      matchedCount += 1
+    }
   }
 
   const { error: batchUpdateError } = await supabaseAdmin
@@ -822,10 +834,8 @@ export async function resolveProtocolImportItem(params: {
     .eq('batch_id', batchId)
 
   if (refreshedBatch) {
-    const matchedCount = refreshedBatch.filter((batchItem) => batchItem.status === 'matched' || batchItem.status === 'resolved').length
-    const pendingCount = refreshedBatch.filter((batchItem) =>
-      ['not_found', 'protocol_not_found', 'multiple_matches', 'already_attached'].includes(batchItem.status)
-    ).length
+    const matchedCount = refreshedBatch.filter((batchItem) => isSuccessfulImportStatus(batchItem.status)).length
+    const pendingCount = refreshedBatch.filter((batchItem) => isManualResolutionStatus(batchItem.status)).length
     const failedCount = refreshedBatch.filter((batchItem) => batchItem.status === 'error').length
 
     await supabaseAdmin

@@ -49,9 +49,17 @@ function getStatusLabel(status: ProtocolImportItemResult['status']) {
 }
 
 function getStatusTone(status: ProtocolImportItemResult['status']) {
-  if (status === 'matched' || status === 'resolved') return 'bg-green-100 text-green-700 hover:bg-green-100'
+  if (status === 'matched' || status === 'resolved' || status === 'already_attached') return 'bg-green-100 text-green-700 hover:bg-green-100'
   if (status === 'error') return 'bg-red-100 text-red-700 hover:bg-red-100'
   return 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+}
+
+function isManualResolutionStatus(status: ProtocolImportItemResult['status']) {
+  return ['not_found', 'protocol_not_found', 'multiple_matches'].includes(status)
+}
+
+function isSuccessfulStatus(status: ProtocolImportItemResult['status']) {
+  return ['matched', 'resolved', 'already_attached'].includes(status)
 }
 
 function formatBalanceteLabel(balancete: Balancete) {
@@ -120,9 +128,7 @@ export function ProtocolImportDialog({
 
   const pendingItems = useMemo(
     () =>
-      result?.items.filter((item) =>
-        ['not_found', 'protocol_not_found', 'multiple_matches', 'already_attached'].includes(item.status)
-      ) ?? [],
+      result?.items.filter((item) => isManualResolutionStatus(item.status)) ?? [],
     [result]
   )
 
@@ -162,10 +168,8 @@ export function ProtocolImportDialog({
               ...current,
               batch: {
                 ...current.batch,
-                matchedCount: current.items.filter((entry) => entry.status === 'matched' || entry.status === 'resolved').length + (item.status === 'matched' || item.status === 'resolved' ? 0 : 1),
-                pendingCount: current.items.filter((entry) =>
-                  ['not_found', 'protocol_not_found', 'multiple_matches', 'already_attached'].includes(entry.status)
-                ).length - 1,
+                matchedCount: current.items.filter((entry) => isSuccessfulStatus(entry.status)).length + (isSuccessfulStatus(item.status) ? 0 : 1),
+                pendingCount: current.items.filter((entry) => isManualResolutionStatus(entry.status)).length - 1,
                 failedCount: current.batch.failedCount,
               },
               items: current.items.map((entry) => (entry.id === item.id ? resolved : entry)),
@@ -263,7 +267,7 @@ export function ProtocolImportDialog({
                 </div>
                 <div className="space-y-3">
                   {result.items.map((item) => {
-                    const needsManualResolution = ['not_found', 'protocol_not_found', 'multiple_matches', 'already_attached'].includes(item.status)
+                    const needsManualResolution = isManualResolutionStatus(item.status)
                     const selectedTarget = selectedTargets[item.id] ?? ''
                     const attachedBalanceteLabels = item.attachedBalanceteIds
                       .map((balanceteId) => balanceteById.get(balanceteId))
@@ -344,13 +348,17 @@ export function ProtocolImportDialog({
                               )}
                             </Button>
                           </div>
-                        ) : item.status === 'matched' || item.status === 'resolved' ? (
+                        ) : isSuccessfulStatus(item.status) ? (
                           <div className="space-y-2 rounded-md bg-green-50 p-3 text-sm text-green-800">
                             <div className="flex items-center gap-2">
                               <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              <span>Página anexada e disponível nos registros correspondentes.</span>
+                              <span>
+                                {item.status === 'already_attached'
+                                  ? 'Este protocolo já estava anexado e não foi alterado.'
+                                  : 'Página anexada e disponível nos registros correspondentes.'}
+                              </span>
                             </div>
-                            {attachedBalanceteLabels.length > 0 ? (
+                            {item.status !== 'already_attached' && attachedBalanceteLabels.length > 0 ? (
                               <p>Balancetes anexados: {attachedBalanceteLabels.join(', ')}.</p>
                             ) : null}
                           </div>
