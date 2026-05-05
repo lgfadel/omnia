@@ -31,6 +31,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useProtocolosStore } from "@/stores/protocolos.store";
 import { protocolosRepoSupabase } from "@/repositories/protocolosRepo.supabase";
 import { protocoloAttachmentsRepoSupabase } from "@/repositories/protocoloAttachmentsRepo.supabase";
+import { balanceteAttachmentsRepoSupabase } from "@/repositories/balanceteAttachmentsRepo.supabase";
 import { BalanceteForm } from "@/components/balancetes/BalanceteForm";
 import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -134,22 +135,42 @@ export default function BalancetesPage() {
 
   useEffect(() => {
     const loadAttachmentCounts = async () => {
-      const counts: Record<string, number> = {};
-      for (const protocolo of protocolos) {
-        try {
-          const attachments = await protocoloAttachmentsRepoSupabase.listByProtocolo(protocolo.id);
-          counts[protocolo.id] = attachments.length;
-        } catch {
-          counts[protocolo.id] = 0;
+      try {
+        const protocoloIds = protocolos.map((protocolo) => protocolo.id)
+        const balanceteIds = balancetes.map((balancete) => balancete.id)
+
+        const [legacyAttachments, individualAttachments] = await Promise.all([
+          protocoloAttachmentsRepoSupabase.listByProtocolos(protocoloIds),
+          balanceteAttachmentsRepoSupabase.listByBalancetes(balanceteIds),
+        ])
+
+        const legacyCountsByProtocoloId = legacyAttachments.reduce<Record<string, number>>((acc, attachment) => {
+          acc[attachment.protocoloId] = (acc[attachment.protocoloId] || 0) + 1
+          return acc
+        }, {})
+
+        const individualCountsByBalanceteId = individualAttachments.reduce<Record<string, number>>((acc, attachment) => {
+          acc[attachment.balanceteId] = (acc[attachment.balanceteId] || 0) + 1
+          return acc
+        }, {})
+
+        const counts: Record<string, number> = {}
+        for (const balancete of balancetes) {
+          const legacyCount = balancete.protocolo_id ? (legacyCountsByProtocoloId[balancete.protocolo_id] || 0) : 0
+          const individualCount = individualCountsByBalanceteId[balancete.id] || 0
+          counts[balancete.id] = legacyCount + individualCount
         }
+
+        setAttachmentCounts(counts)
+      } catch {
+        setAttachmentCounts({})
       }
-      setAttachmentCounts(counts);
     };
 
-    if (protocolos.length > 0) {
+    if (protocolos.length > 0 || balancetes.length > 0) {
       loadAttachmentCounts();
     }
-  }, [protocolos]);
+  }, [protocolos, balancetes]);
 
   const protocolosMap = useMemo(() => {
     const map = new Map();
@@ -172,9 +193,9 @@ export default function BalancetesPage() {
 
     // Filtro de anexos
     if (anexoFilter === 'com-anexo') {
-      data = data.filter((b) => b.protocolo_id && attachmentCounts[b.protocolo_id] > 0);
+      data = data.filter((b) => attachmentCounts[b.id] > 0);
     } else if (anexoFilter === 'sem-anexo') {
-      data = data.filter((b) => !b.protocolo_id || !attachmentCounts[b.protocolo_id] || attachmentCounts[b.protocolo_id] === 0);
+      data = data.filter((b) => !attachmentCounts[b.id] || attachmentCounts[b.id] === 0);
     }
 
     if (searchQuery.trim()) {
@@ -196,7 +217,7 @@ export default function BalancetesPage() {
         const { status: _status, ...rest } = b;
         const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
         const dataEnvio = protocolo?.data_envio ?? null;
-        const attachmentCount = b.protocolo_id ? (attachmentCounts[b.protocolo_id] || 0) : 0;
+        const attachmentCount = attachmentCounts[b.id] || 0;
         const statusEnvio = getBalanceteEnvioStatus(b, dataEnvio);
         
         return {
@@ -705,14 +726,20 @@ export default function BalancetesPage() {
         <ProtocoloAttachmentUpload
           open={uploadModalOpen}
           onOpenChange={setUploadModalOpen}
+          balanceteId={selectedBalanceteForUpload?.id || ''}
           protocoloId={selectedBalanceteForUpload?.protocolo_id || ''}
           protocoloNumero={protocoloNumero}
           onUploadSuccess={async () => {
-            if (selectedBalanceteForUpload?.protocolo_id) {
-              const attachments = await protocoloAttachmentsRepoSupabase.listByProtocolo(selectedBalanceteForUpload.protocolo_id);
+            if (selectedBalanceteForUpload?.id) {
+              const [legacyAttachments, individualAttachments] = await Promise.all([
+                selectedBalanceteForUpload.protocolo_id
+                  ? protocoloAttachmentsRepoSupabase.listByProtocolo(selectedBalanceteForUpload.protocolo_id)
+                  : Promise.resolve([]),
+                balanceteAttachmentsRepoSupabase.listByBalancete(selectedBalanceteForUpload.id),
+              ])
               setAttachmentCounts(prev => ({
                 ...prev,
-                [selectedBalanceteForUpload.protocolo_id!]: attachments.length
+                [selectedBalanceteForUpload.id]: legacyAttachments.length + individualAttachments.length
               }));
             }
             toast({

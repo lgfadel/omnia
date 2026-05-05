@@ -7,7 +7,7 @@ const mockLoadBalancetes = vi.fn()
 const mockLoadCondominiums = vi.fn()
 const mockLoadProtocolos = vi.fn()
 const mockMarkAsSent = vi.fn()
-const extractStatusValue = (value: any) => {
+const extractStatusValue = (value: any): string => {
   if (typeof value === 'string') return value
   if (Array.isArray(value)) return value.map(extractStatusValue).join('')
   if (value?.props?.children) return extractStatusValue(value.props.children)
@@ -48,7 +48,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     <div data-testid="radio-filter" data-value={value}>
       {React.Children.map(children, (child: any) =>
         React.isValidElement(child)
-          ? React.cloneElement(child, { onSelectValue: onValueChange })
+          ? React.cloneElement(child as React.ReactElement<any>, { onSelectValue: onValueChange })
           : child
       )}
     </div>
@@ -200,6 +200,14 @@ vi.mock('@/stores/protocolos.store', () => ({
 vi.mock('@/repositories/protocoloAttachmentsRepo.supabase', () => ({
   protocoloAttachmentsRepoSupabase: {
     listByProtocolo: vi.fn(),
+    listByProtocolos: vi.fn(),
+  },
+}))
+
+vi.mock('@/repositories/balanceteAttachmentsRepo.supabase', () => ({
+  balanceteAttachmentsRepoSupabase: {
+    listByBalancete: vi.fn(),
+    listByBalancetes: vi.fn(),
   },
 }))
 

@@ -40,6 +40,7 @@ import type { Protocolo } from "@/repositories/protocolosRepo.supabase"
 import type { Balancete } from "@/repositories/balancetesRepo.supabase"
 import { useToast } from "@/hooks/use-toast"
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF"
+import { ProtocolImportDialog } from "@/components/balancetes/ProtocolImportDialog"
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ""
@@ -78,7 +79,7 @@ export function ProtocolosTab() {
     cancelarProtocolo,
     getBalancetesDoProtocolo,
   } = useProtocolosStore()
-  const { loadBalancetes } = useBalancetesStore()
+  const { balancetes, loadBalancetes } = useBalancetesStore()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [showOnlyActive, setShowOnlyActive] = useState(true)
@@ -95,6 +96,7 @@ export function ProtocolosTab() {
 
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   useEffect(() => {
     loadProtocolos()
@@ -468,6 +470,9 @@ export function ProtocolosTab() {
             >
               {showOnlyActive ? "E" : "C"}
             </Button>
+            <Button type="button" onClick={() => setImportDialogOpen(true)} className="h-10 px-4">
+              Importar Protocolos
+            </Button>
           </div>
         </div>
 
@@ -546,6 +551,16 @@ export function ProtocolosTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProtocolImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        balancetes={balancetes}
+        protocolos={protocolos}
+        onImportSuccess={async () => {
+          await Promise.all([loadProtocolos(), loadBalancetes()])
+        }}
+      />
     </>
   )
 }

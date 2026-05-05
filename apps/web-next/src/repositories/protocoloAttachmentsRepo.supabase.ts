@@ -45,6 +45,24 @@ export const protocoloAttachmentsRepoSupabase = {
     return data?.map(transformAttachmentFromDB) || [];
   },
 
+  async listByProtocolos(protocoloIds: string[]): Promise<ProtocoloAttachment[]> {
+    if (protocoloIds.length === 0) return []
+
+    logger.debug('Loading attachments for protocolos:', protocoloIds)
+
+    const { data, error } = await protocoloAttachmentsTable()
+      .select('*')
+      .in('protocolo_id', protocoloIds)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      logger.error('Erro ao buscar anexos de protocolos:', error)
+      throw error
+    }
+
+    return (data ?? []).map(transformAttachmentFromDB)
+  },
+
   async create(attachment: Omit<ProtocoloAttachment, 'id' | 'createdAt'>): Promise<ProtocoloAttachment> {
     logger.debug(`Creating attachment for protocolo: ${attachment.protocoloId}`)
     
