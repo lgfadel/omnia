@@ -21,6 +21,7 @@ export type ImportedProtocolPageResolution =
       protocolNumber: number
       protocoloId: string
       balanceteId: string
+      attachedBalanceteIds: string[]
       confidence: ProtocolImportConfidence
     }
   | {
@@ -48,6 +49,7 @@ export type ImportedProtocolPageResolution =
       protocolNumber: number
       protocoloId: string
       balanceteId: string
+      attachedBalanceteIds: string[]
       confidence: ProtocolImportConfidence
     }
 
@@ -106,19 +108,21 @@ export function resolveImportedProtocolPage(
   const eligibleBalancetes = balancetes.filter(
     (balancete) => !attachedBalanceteIds.has(balancete.id)
   )
+  const protocoloBalanceteIds = balancetes.map((balancete) => balancete.id)
 
-  if (eligibleBalancetes.length === 0 && balancetes.length === 1) {
+  if (eligibleBalancetes.length === 0 && balancetes.length > 0) {
     return {
       status: 'already_attached',
       pageNumber,
       protocolNumber: detection.protocolNumber,
       protocoloId: protocolo.id,
       balanceteId: balancetes[0].id,
+      attachedBalanceteIds: protocoloBalanceteIds,
       confidence: detection.confidence,
     }
   }
 
-  if (eligibleBalancetes.length !== 1) {
+  if (eligibleBalancetes.length === 0) {
     return {
       status: 'multiple_matches',
       pageNumber,
@@ -137,6 +141,7 @@ export function resolveImportedProtocolPage(
     protocolNumber: detection.protocolNumber,
     protocoloId: protocolo.id,
     balanceteId: balancete.id,
+    attachedBalanceteIds: eligibleBalancetes.map((candidate) => candidate.id),
     confidence: detection.confidence,
   }
 }

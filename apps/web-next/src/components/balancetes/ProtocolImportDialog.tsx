@@ -54,6 +54,11 @@ function getStatusTone(status: ProtocolImportItemResult['status']) {
   return 'bg-amber-100 text-amber-700 hover:bg-amber-100'
 }
 
+function formatBalanceteLabel(balancete: Balancete) {
+  const parts = [balancete.condominium_name, balancete.competencia].filter(Boolean)
+  return parts.join(' • ') || balancete.id
+}
+
 export function ProtocolImportDialog({
   open,
   onOpenChange,
@@ -73,6 +78,7 @@ export function ProtocolImportDialog({
     () => new Map(protocolos.map((protocolo) => [protocolo.id, protocolo.numero])),
     [protocolos]
   )
+  const balanceteById = useMemo(() => new Map(balancetes.map((balancete) => [balancete.id, balancete])), [balancetes])
 
   const selectableBalancetes = useMemo(
     () =>
@@ -169,7 +175,7 @@ export function ProtocolImportDialog({
       await onImportSuccess?.()
       toast({
         title: 'Página resolvida',
-        description: `Página ${item.pageNumber} anexada ao balancete selecionado.`,
+        description: `Página ${item.pageNumber} anexada em ${resolved.attachedBalanceteIds.length} balancete(s).`,
       })
     } catch (error) {
       toast({
@@ -188,7 +194,7 @@ export function ProtocolImportDialog({
         <DialogHeader>
           <DialogTitle>Importar Protocolos Escaneados</DialogTitle>
           <DialogDescription>
-            Envie um PDF com várias páginas. O Omnia identifica o número do protocolo em cada página e anexa automaticamente quando houver um único balancete elegível.
+            Envie um PDF com várias páginas. O Omnia identifica o número do protocolo em cada página e anexa automaticamente em todos os balancetes elegíveis do protocolo.
           </DialogDescription>
         </DialogHeader>
 
@@ -259,6 +265,10 @@ export function ProtocolImportDialog({
                   {result.items.map((item) => {
                     const needsManualResolution = ['not_found', 'protocol_not_found', 'multiple_matches', 'already_attached'].includes(item.status)
                     const selectedTarget = selectedTargets[item.id] ?? ''
+                    const attachedBalanceteLabels = item.attachedBalanceteIds
+                      .map((balanceteId) => balanceteById.get(balanceteId))
+                      .filter((balancete): balancete is Balancete => Boolean(balancete))
+                      .map((balancete) => formatBalanceteLabel(balancete))
 
                     return (
                       <div key={item.id} className="rounded-lg border p-4 space-y-3">
@@ -334,16 +344,20 @@ export function ProtocolImportDialog({
                               )}
                             </Button>
                           </div>
+                        ) : item.status === 'matched' || item.status === 'resolved' ? (
+                          <div className="space-y-2 rounded-md bg-green-50 p-3 text-sm text-green-800">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                              <span>Página anexada e disponível nos registros correspondentes.</span>
+                            </div>
+                            {attachedBalanceteLabels.length > 0 ? (
+                              <p>Balancetes anexados: {attachedBalanceteLabels.join(', ')}.</p>
+                            ) : null}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            {item.status === 'matched' || item.status === 'resolved' ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <AlertTriangle className="w-4 h-4 text-amber-600" />
-                            )}
-                            {item.status === 'matched' || item.status === 'resolved'
-                              ? 'Página anexada e disponível no registro do balancete.'
-                              : 'Esta página exige conferência manual antes de ser anexada.'}
+                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            Esta página exige conferência manual antes de ser anexada.
                           </div>
                         )}
                       </div>

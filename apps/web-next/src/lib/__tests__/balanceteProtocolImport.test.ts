@@ -69,6 +69,7 @@ describe('balanceteProtocolImport', () => {
         protocolNumber: 45,
         protocoloId: 'prot-45',
         balanceteId: 'bal-1',
+        attachedBalanceteIds: ['bal-1'],
         confidence: 'high',
       })
     })
@@ -87,7 +88,7 @@ describe('balanceteProtocolImport', () => {
       })
     })
 
-    it('marca como multiple_matches quando ha mais de um balancete elegivel', () => {
+    it('anexa automaticamente em todos os balancetes elegiveis do mesmo protocolo', () => {
       expect(
         resolveImportedProtocolPage({
           ...baseContext,
@@ -102,11 +103,12 @@ describe('balanceteProtocolImport', () => {
           ]),
         })
       ).toEqual({
-        status: 'multiple_matches',
+        status: 'matched',
         pageNumber: 2,
         protocolNumber: 45,
         protocoloId: 'prot-45',
-        candidateBalanceteIds: ['bal-1', 'bal-2'],
+        balanceteId: 'bal-1',
+        attachedBalanceteIds: ['bal-1', 'bal-2'],
         confidence: 'high',
       })
     })
@@ -123,6 +125,7 @@ describe('balanceteProtocolImport', () => {
         protocolNumber: 45,
         protocoloId: 'prot-45',
         balanceteId: 'bal-1',
+        attachedBalanceteIds: ['bal-1'],
         confidence: 'high',
       })
     })
@@ -148,6 +151,33 @@ describe('balanceteProtocolImport', () => {
         protocolNumber: 45,
         protocoloId: 'prot-45',
         balanceteId: 'bal-2',
+        attachedBalanceteIds: ['bal-2'],
+        confidence: 'high',
+      })
+    })
+
+    it('marca como already_attached quando todos os balancetes do protocolo ja possuem anexo individual', () => {
+      expect(
+        resolveImportedProtocolPage({
+          ...baseContext,
+          balancetesByProtocoloId: new Map([
+            [
+              'prot-45',
+              [
+                { id: 'bal-1', protocolo_id: 'prot-45' },
+                { id: 'bal-2', protocolo_id: 'prot-45' },
+              ],
+            ],
+          ]),
+          attachedBalanceteIds: new Set(['bal-1', 'bal-2']),
+        })
+      ).toEqual({
+        status: 'already_attached',
+        pageNumber: 2,
+        protocolNumber: 45,
+        protocoloId: 'prot-45',
+        balanceteId: 'bal-1',
+        attachedBalanceteIds: ['bal-1', 'bal-2'],
         confidence: 'high',
       })
     })

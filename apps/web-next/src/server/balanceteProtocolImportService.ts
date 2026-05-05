@@ -21,6 +21,7 @@ export type ProtocolImportItemResult = {
   confidence: 'high' | 'medium' | 'low' | null
   protocoloId: string | null
   balanceteId: string | null
+  attachedBalanceteIds: string[]
   candidateBalanceteIds: string[]
   pageFileUrl: string | null
   errorMessage: string | null
@@ -382,6 +383,14 @@ function buildImportItemResult(params: Omit<ProtocolImportItemResult, 'id'> & { 
   return params
 }
 
+function buildPageFileName(pageNumber: number, protocolNumber: number | null): string {
+  if (typeof protocolNumber === 'number' && Number.isFinite(protocolNumber)) {
+    return `protocolo_${protocolNumber}.pdf`
+  }
+
+  return `page-${String(pageNumber).padStart(3, '0')}.pdf`
+}
+
 export async function importProtocolPdfBatch(params: {
   file: File
   authHeader: string | null
@@ -515,7 +524,7 @@ export async function importProtocolPdfBatch(params: {
       attachedBalanceteIds,
     })
 
-    const pageFileName = `page-${String(item.pageNumber).padStart(3, '0')}.pdf`
+    const pageFileName = buildPageFileName(item.pageNumber, item.detection.protocolNumber)
 
     if (item.errorMessage) {
       const importPath = `${authenticatedUser.authUserId}/${batchRow.id}/${pageFileName}`
@@ -551,6 +560,7 @@ export async function importProtocolPdfBatch(params: {
           confidence: 'low',
           protocoloId: null,
           balanceteId: null,
+          attachedBalanceteIds: [],
           candidateBalanceteIds: [],
           pageFileUrl: uploaded.url,
           errorMessage: item.errorMessage,
@@ -562,7 +572,7 @@ export async function importProtocolPdfBatch(params: {
     }
 
     if (resolution.status === 'matched') {
-      const attachmentPath = `${authenticatedUser.authUserId}/${resolution.balanceteId}/${Date.now()}-${pageFileName}`
+      const attachmentPath = `${authenticatedUser.authUserId}/protocolo-${resolution.protocolNumber}/${Date.now()}-${pageFileName}`
       const uploaded = await uploadPdfToBucket({
         supabaseAdmin,
         bucket: 'balancete-attachments',
@@ -570,20 +580,22 @@ export async function importProtocolPdfBatch(params: {
         content: item.pageBytes,
       })
 
-      await createBalanceteAttachment({
-        supabaseAdmin,
-        balanceteId: resolution.balanceteId,
-        protocoloId: resolution.protocoloId,
-        sourcePageNumber: resolution.pageNumber,
-        detectedProtocolNumber: resolution.protocolNumber,
-        ocrStatus: 'matched',
-        fileName: pageFileName,
-        fileUrl: uploaded.url,
-        fileSizeBytes: item.pageBytes.byteLength,
-        uploadedBy: authenticatedUser.omniaUserId,
-      })
+      for (const balanceteId of resolution.attachedBalanceteIds) {
+        await createBalanceteAttachment({
+          supabaseAdmin,
+          balanceteId,
+          protocoloId: resolution.protocoloId,
+          sourcePageNumber: resolution.pageNumber,
+          detectedProtocolNumber: resolution.protocolNumber,
+          ocrStatus: 'matched',
+          fileName: pageFileName,
+          fileUrl: uploaded.url,
+          fileSizeBytes: item.pageBytes.byteLength,
+          uploadedBy: authenticatedUser.omniaUserId,
+        })
 
-      attachedBalanceteIds.add(resolution.balanceteId)
+        attachedBalanceteIds.add(balanceteId)
+      }
 
       const importItemId = await insertImportItem({
         supabaseAdmin,
@@ -594,7 +606,7 @@ export async function importProtocolPdfBatch(params: {
         status: 'matched',
         protocoloId: resolution.protocoloId,
         balanceteId: resolution.balanceteId,
-        candidateBalanceteIds: [resolution.balanceteId],
+        candidateBalanceteIds: resolution.attachedBalanceteIds,
         pageFileName,
         pageFilePath: attachmentPath,
         pageFileUrl: uploaded.url,
@@ -610,7 +622,8 @@ export async function importProtocolPdfBatch(params: {
           confidence: resolution.confidence,
           protocoloId: resolution.protocoloId,
           balanceteId: resolution.balanceteId,
-          candidateBalanceteIds: [resolution.balanceteId],
+          attachedBalanceteIds: resolution.attachedBalanceteIds,
+          candidateBalanceteIds: resolution.attachedBalanceteIds,
           pageFileUrl: uploaded.url,
           errorMessage: null,
         })
@@ -653,6 +666,7 @@ export async function importProtocolPdfBatch(params: {
         confidence: resolution.confidence,
         protocoloId: 'protocoloId' in resolution ? resolution.protocoloId : null,
         balanceteId: 'balanceteId' in resolution ? resolution.balanceteId : null,
+        attachedBalanceteIds: 'attachedBalanceteIds' in resolution ? resolution.attachedBalanceteIds : [],
         candidateBalanceteIds: 'candidateBalanceteIds' in resolution ? resolution.candidateBalanceteIds : [],
         pageFileUrl: uploaded.url,
         errorMessage: null,
@@ -719,14 +733,34 @@ export async function resolveProtocolImportItem(params: {
     throw new Error('Balancete not found')
   }
 
-  const { data: existingAttachment } = await supabaseAdmin
-    .from('omnia_balancete_attachments')
-    .select('id')
-    .eq('balancete_id', balanceteId)
-    .maybeSingle()
+  let targetBalanceteIds = [balanceteId]
 
-  if (existingAttachment?.id) {
-    throw new Error('Balancete already has an individual attachment')
+  if (balancete.protocolo_id) {
+    const { data: protocoloBalancetes, error: protocoloBalancetesError } = await supabaseAdmin
+      .from('omnia_balancetes')
+      .select('id')
+      .eq('protocolo_id', balancete.protocolo_id)
+
+    if (protocoloBalancetesError) {
+      throw new Error(`Failed to load balancetes for protocolo: ${protocoloBalancetesError.message}`)
+    }
+
+    targetBalanceteIds = (protocoloBalancetes ?? []).map((entry) => entry.id)
+    if (targetBalanceteIds.length === 0) {
+      targetBalanceteIds = [balanceteId]
+    }
+  }
+
+  const { data: existingAttachments } = await supabaseAdmin
+    .from('omnia_balancete_attachments')
+    .select('balancete_id')
+    .in('balancete_id', targetBalanceteIds)
+
+  const attachedIds = new Set((existingAttachments ?? []).map((attachment) => attachment.balancete_id).filter(Boolean))
+  const eligibleBalanceteIds = targetBalanceteIds.filter((id) => !attachedIds.has(id))
+
+  if (eligibleBalanceteIds.length === 0) {
+    throw new Error('Todos os balancetes deste protocolo já possuem anexo individual')
   }
 
   const { data: downloadedPage, error: downloadError } = await supabaseAdmin.storage
@@ -738,7 +772,7 @@ export async function resolveProtocolImportItem(params: {
   }
 
   const pageBytes = new Uint8Array(await downloadedPage.arrayBuffer())
-  const attachmentPath = `${authenticatedUser.authUserId}/${balanceteId}/${Date.now()}-${item.page_file_name}`
+  const attachmentPath = `${authenticatedUser.authUserId}/${balancete.protocolo_id ?? balanceteId}/${Date.now()}-${item.page_file_name}`
   const uploaded = await uploadPdfToBucket({
     supabaseAdmin,
     bucket: 'balancete-attachments',
@@ -746,18 +780,20 @@ export async function resolveProtocolImportItem(params: {
     content: pageBytes,
   })
 
-  await createBalanceteAttachment({
-    supabaseAdmin,
-    balanceteId,
-    protocoloId: balancete.protocolo_id,
-    sourcePageNumber: item.page_number,
-    detectedProtocolNumber: item.detected_protocol_number,
-    ocrStatus: 'manual',
-    fileName: item.page_file_name,
-    fileUrl: uploaded.url,
-    fileSizeBytes: pageBytes.byteLength,
-    uploadedBy: authenticatedUser.omniaUserId,
-  })
+  for (const eligibleBalanceteId of eligibleBalanceteIds) {
+    await createBalanceteAttachment({
+      supabaseAdmin,
+      balanceteId: eligibleBalanceteId,
+      protocoloId: balancete.protocolo_id,
+      sourcePageNumber: item.page_number,
+      detectedProtocolNumber: item.detected_protocol_number,
+      ocrStatus: 'manual',
+      fileName: item.page_file_name,
+      fileUrl: uploaded.url,
+      fileSizeBytes: pageBytes.byteLength,
+      uploadedBy: authenticatedUser.omniaUserId,
+    })
+  }
 
   await supabaseAdmin.storage.from('balancete-import-pages').remove([item.page_file_path])
 
@@ -765,9 +801,9 @@ export async function resolveProtocolImportItem(params: {
     .from('omnia_balancete_protocol_import_items')
     .update({
       status: 'resolved',
-      balancete_id: balanceteId,
+      balancete_id: eligibleBalanceteIds[0],
       protocolo_id: balancete.protocolo_id,
-      candidate_balancete_ids: [balanceteId],
+      candidate_balancete_ids: eligibleBalanceteIds,
       page_file_path: attachmentPath,
       page_file_url: uploaded.url,
       resolved_by: authenticatedUser.omniaUserId,
@@ -809,8 +845,9 @@ export async function resolveProtocolImportItem(params: {
     detectedProtocolNumber: item.detected_protocol_number,
     confidence: item.confidence,
     protocoloId: balancete.protocolo_id,
-    balanceteId,
-    candidateBalanceteIds: [balanceteId],
+    balanceteId: eligibleBalanceteIds[0],
+    attachedBalanceteIds: eligibleBalanceteIds,
+    candidateBalanceteIds: eligibleBalanceteIds,
     pageFileUrl: uploaded.url,
     errorMessage: null,
   }
