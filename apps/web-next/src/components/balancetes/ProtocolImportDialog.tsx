@@ -11,10 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { balanceteProtocolImportsRepo } from '@/repositories/balanceteProtocolImports.repo'
 import type { Balancete } from '@/repositories/balancetesRepo.supabase'
 import type { Protocolo } from '@/repositories/protocolosRepo.supabase'
@@ -238,6 +238,25 @@ export function ProtocolImportDialog({
               </div>
             )}
           </div>
+
+          {uploading ? (
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-3" aria-live="polite">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Processando importação</p>
+                  <p className="text-xs text-muted-foreground">
+                    Identificando protocolos e anexando páginas. Isso pode levar alguns segundos.
+                  </p>
+                </div>
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+              <Progress
+                value={100}
+                aria-label="Progresso da importação"
+                className="h-2 animate-pulse"
+              />
+            </div>
+          ) : null}
 
           {result && (
             <div className="space-y-4">
