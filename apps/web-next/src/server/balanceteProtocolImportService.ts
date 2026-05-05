@@ -103,20 +103,49 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
     throw new Error('Invalid user token')
   }
 
+  const userClient = createUserClient(token)
+
   const { data: omniaUser, error: omniaUserError } = await admin
     .from('omnia_users')
     .select('id')
     .eq('auth_user_id', authData.user.id)
     .single()
 
-  if (omniaUserError || !omniaUser?.id) {
-    throw new Error('Omnia user not found')
+  if (omniaUser?.id) {
+    return {
+      accessToken: token,
+      authUserId: authData.user.id,
+      omniaUserId: omniaUser.id,
+    }
+  }
+
+  const fallbackName =
+    authData.user.user_metadata?.name ||
+    authData.user.user_metadata?.full_name ||
+    authData.user.email?.split('@')[0] ||
+    'Usuário'
+
+  const { data: createdUser, error: createError } = await userClient
+    .from('omnia_users')
+    .insert({
+      auth_user_id: authData.user.id,
+      name: fallbackName,
+      email: authData.user.email ?? '',
+      roles: ['USUARIO'],
+    })
+    .select('id')
+    .single()
+
+  if (createError || !createdUser?.id) {
+    throw new Error(
+      `Omnia user not found and could not be created: ${createError?.message ?? 'unknown error'}`
+    )
   }
 
   return {
     accessToken: token,
     authUserId: authData.user.id,
-    omniaUserId: omniaUser.id,
+    omniaUserId: createdUser.id,
   }
 }
 
