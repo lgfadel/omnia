@@ -58,12 +58,19 @@ function getEnv(name: string): string {
 }
 
 function createAdminClient(): SupabaseClient {
-  return createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'), {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  return createClient(
+    getEnv('NEXT_PUBLIC_SUPABASE_URL'),
+    serviceRoleKey && serviceRoleKey.trim().length > 0
+      ? serviceRoleKey
+      : getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
 }
 
 function createAnonClient(): SupabaseClient {
@@ -109,7 +116,7 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
     .from('omnia_users')
     .select('id')
     .eq('auth_user_id', authData.user.id)
-    .single()
+    .maybeSingle()
 
   if (omniaUser?.id) {
     return {
@@ -130,14 +137,14 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
       .from('omnia_users')
       .select('id, auth_user_id')
       .eq('email', authData.user.email)
-      .single()
+      .maybeSingle()
 
     if (!existingByEmailError && existingByEmail?.id) {
       if (existingByEmail.auth_user_id && existingByEmail.auth_user_id !== authData.user.id) {
         throw new Error('Existing Omnia user email is linked to a different auth user')
       }
 
-      const { data: linkedUser, error: linkError } = await userClient
+      const { data: linkedUser, error: linkError } = await admin
         .from('omnia_users')
         .update({
           auth_user_id: authData.user.id,
@@ -161,7 +168,7 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
     }
   }
 
-  const { data: createdUser, error: createError } = await userClient
+  const { data: createdUser, error: createError } = await admin
     .from('omnia_users')
     .insert({
       auth_user_id: authData.user.id,
