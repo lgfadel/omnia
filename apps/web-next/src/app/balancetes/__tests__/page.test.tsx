@@ -1,3 +1,4 @@
+import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import BalancetesPage from '../page'
@@ -5,10 +6,19 @@ import BalancetesPage from '../page'
 const mockLoadBalancetes = vi.fn()
 const mockLoadCondominiums = vi.fn()
 const mockLoadProtocolos = vi.fn()
+const extractStatusValue = (value: any) => {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map(extractStatusValue).join('')
+  if (value?.props?.children) return extractStatusValue(value.props.children)
+  return ''
+}
+
 const mockTabelaOmnia = vi.fn(({ columns, data, onSelectionChange }: any) => (
   <div>
     <div data-testid="columns">{columns.map((column: any) => column.label).join('|')}</div>
+    <div data-testid="row-names">{data.map((row: any) => row.condominium_name).join('|')}</div>
     <div data-testid="tipo-values">{data.map((row: any) => row.tipo_envio).join('|')}</div>
+    <div data-testid="status-values">{data.map((row: any) => extractStatusValue(row.sent_status)).join('|')}</div>
     <button onClick={() => onSelectionChange?.(new Set(['1']))}>Selecionar balancete</button>
   </div>
 ))
@@ -23,6 +33,28 @@ vi.mock('@/components/ui/breadcrumb-omnia', () => ({
 
 vi.mock('@/components/ui/tabela-omnia', () => ({
   TabelaOmnia: (props: any) => mockTabelaOmnia(props),
+}))
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuSeparator: () => <hr />,
+  DropdownMenuRadioGroup: ({ value, onValueChange, children }: any) => (
+    <div data-testid="status-filter" data-value={value}>
+      {React.Children.map(children, (child: any) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child, { onSelectValue: onValueChange })
+          : child
+      )}
+    </div>
+  ),
+  DropdownMenuRadioItem: ({ value, children, onSelectValue }: any) => (
+    <button role="menuitemradio" onClick={() => onSelectValue?.(value)}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock('@/components/ui/sliding-tabs', () => ({
@@ -93,6 +125,21 @@ vi.mock('@/stores/balancetes.store', () => ({
         created_at: null,
         updated_at: null,
       },
+      {
+        id: '3',
+        condominium_id: 'cond-3',
+        condominium_name: 'Condomínio Enviado',
+        balancete_digital: false,
+        received_at: '2026-04-03',
+        competencia: '03/2026',
+        volumes: 1,
+        observations: null,
+        status: 'received',
+        sent_at: '2026-04-10',
+        protocolo_id: 'proto-1',
+        created_at: null,
+        updated_at: null,
+      },
     ],
     loading: false,
     loadBalancetes: mockLoadBalancetes,
@@ -127,7 +174,13 @@ vi.mock('@/stores/auth.store', () => ({
 
 vi.mock('@/stores/protocolos.store', () => ({
   useProtocolosStore: () => ({
-    protocolos: [],
+    protocolos: [
+      {
+        id: 'proto-1',
+        numero: 123,
+        data_envio: '2026-04-10',
+      },
+    ],
     loadProtocolos: mockLoadProtocolos,
   }),
 }))
@@ -160,7 +213,30 @@ describe('BalancetesPage', () => {
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
     expect(screen.getByTestId('columns')).toHaveTextContent('Tipo')
-    expect(screen.getByTestId('tipo-values')).toHaveTextContent('D|I')
+    expect(screen.getByTestId('tipo-values')).toHaveTextContent('D|I|I')
+  })
+
+  it('mostra status Digital para balancete digital nao enviado', async () => {
+    render(<BalancetesPage />)
+
+    await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
+
+    expect(screen.getByTestId('status-values')).toHaveTextContent('Digital')
+    expect(screen.getByTestId('status-values')).toHaveTextContent('Pendente')
+    expect(screen.getByTestId('status-values')).toHaveTextContent('10/04/2026')
+  })
+
+  it('filtra apenas balancetes digitais nao enviados no filtro Digital', async () => {
+    render(<BalancetesPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /filtros/i }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Digital' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Digital')
+      expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Impresso')
+      expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Enviado')
+    })
   })
 
   it('abre novo balancete pelo clique no condominio do dashboard com condominio travado', async () => {

@@ -68,6 +68,25 @@ function getNextCompetencia(competencia: string | null): string {
   return `${String(nextMonth).padStart(2, "0")}/${nextYear}`;
 }
 
+type StatusEnvioFilter = 'todos' | 'enviados' | 'pendentes' | 'digital';
+
+function getBalanceteEnvioStatus(
+  balancete: Balancete,
+  protocoloDataEnvio: string | null | undefined
+): Exclude<StatusEnvioFilter, 'todos'> {
+  const isSent = Boolean(balancete.sent_at || protocoloDataEnvio);
+
+  if (isSent) {
+    return 'enviados';
+  }
+
+  if (balancete.balancete_digital === true) {
+    return 'digital';
+  }
+
+  return 'pendentes';
+}
+
 export default function BalancetesPage() {
   const { toast } = useToast();
   const {
@@ -96,7 +115,7 @@ export default function BalancetesPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedBalanceteForUpload, setSelectedBalanceteForUpload] = useState<Balancete | null>(null);
   const [protocoloNumero, setProtocoloNumero] = useState<number>(0);
-  const [statusEnvioFilter, setStatusEnvioFilter] = useState<'todos' | 'enviados' | 'pendentes'>('todos');
+  const [statusEnvioFilter, setStatusEnvioFilter] = useState<StatusEnvioFilter>('todos');
   const [anexoFilter, setAnexoFilter] = useState<'todos' | 'com-anexo' | 'sem-anexo'>('todos');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -140,10 +159,11 @@ export default function BalancetesPage() {
     let data = balancetes;
 
     // Filtro de status de envio
-    if (statusEnvioFilter === 'enviados') {
-      data = data.filter((b) => b.sent_at);
-    } else if (statusEnvioFilter === 'pendentes') {
-      data = data.filter((b) => !b.sent_at);
+    if (statusEnvioFilter !== 'todos') {
+      data = data.filter((b) => {
+        const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
+        return getBalanceteEnvioStatus(b, protocolo?.data_envio) === statusEnvioFilter;
+      });
     }
 
     // Filtro de anexos
@@ -164,7 +184,7 @@ export default function BalancetesPage() {
     }
 
     return data;
-  }, [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts]);
+  }, [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts, protocolosMap]);
 
   const tableData = useMemo(
     () =>
@@ -173,6 +193,7 @@ export default function BalancetesPage() {
         const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
         const dataEnvio = protocolo?.data_envio ?? null;
         const attachmentCount = b.protocolo_id ? (attachmentCounts[b.protocolo_id] || 0) : 0;
+        const statusEnvio = getBalanceteEnvioStatus(b, dataEnvio);
         
         return {
           ...rest,
@@ -185,6 +206,10 @@ export default function BalancetesPage() {
             <span className="text-sm text-green-700 font-medium">
               {formatDate(dataEnvio)}
             </span>
+          ) : statusEnvio === 'digital' ? (
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+              Digital
+            </Badge>
           ) : (
             <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">
               Pendente
@@ -483,10 +508,11 @@ export default function BalancetesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-52">
                         <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as 'todos' | 'enviados' | 'pendentes')}>
+                        <DropdownMenuRadioGroup value={statusEnvioFilter} onValueChange={(value) => setStatusEnvioFilter(value as StatusEnvioFilter)}>
                           <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
                           <DropdownMenuRadioItem value="enviados">Enviados</DropdownMenuRadioItem>
                           <DropdownMenuRadioItem value="pendentes">Pendentes</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="digital">Digital</DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Anexos</DropdownMenuLabel>
