@@ -125,6 +125,42 @@ export async function authenticateOmniaUser(authHeader: string | null): Promise<
     authData.user.email?.split('@')[0] ||
     'Usuário'
 
+  if (authData.user.email) {
+    const { data: existingByEmail, error: existingByEmailError } = await admin
+      .from('omnia_users')
+      .select('id, auth_user_id')
+      .eq('email', authData.user.email)
+      .single()
+
+    if (!existingByEmailError && existingByEmail?.id) {
+      if (existingByEmail.auth_user_id && existingByEmail.auth_user_id !== authData.user.id) {
+        throw new Error('Existing Omnia user email is linked to a different auth user')
+      }
+
+      const { data: linkedUser, error: linkError } = await userClient
+        .from('omnia_users')
+        .update({
+          auth_user_id: authData.user.id,
+          name: fallbackName,
+        })
+        .eq('id', existingByEmail.id)
+        .select('id')
+        .single()
+
+      if (linkError || !linkedUser?.id) {
+        throw new Error(
+          `Omnia user found by email but could not be linked: ${linkError?.message ?? 'unknown error'}`
+        )
+      }
+
+      return {
+        accessToken: token,
+        authUserId: authData.user.id,
+        omniaUserId: linkedUser.id,
+      }
+    }
+  }
+
   const { data: createdUser, error: createError } = await userClient
     .from('omnia_users')
     .insert({
