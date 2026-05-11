@@ -8,6 +8,7 @@ import { Tarefa } from '@/repositories/tarefasRepo.supabase'
 import {
   getBalanceteStatus,
   getBalanceteStatusLabel,
+  parseCompetencia,
   type BalanceteStatusColor,
 } from '@/lib/balanceteStatus'
 
@@ -366,7 +367,11 @@ function calculateWorkflowMetrics<T extends {
 function getLatestBalanceteByCondominium(balancetes: Balancete[], condominiumId: string) {
   return balancetes
     .filter((balancete) => balancete.condominium_id === condominiumId)
-    .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())[0] || null
+    .sort((a, b) => {
+      const competenciaDiff = parseCompetencia(b.competencia).getTime() - parseCompetencia(a.competencia).getTime()
+      if (competenciaDiff !== 0) return competenciaDiff
+      return new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+    })[0] || null
 }
 
 function calculateBalancetesMetrics(

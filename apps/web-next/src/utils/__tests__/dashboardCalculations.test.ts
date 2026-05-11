@@ -195,4 +195,47 @@ describe('dashboardCalculations', () => {
     expect(metrics.overview.completedLast30Days).toBe(3)
     expect(metrics.highlights.some((item) => item.label.includes('tarefas vencidas'))).toBe(true)
   })
+
+  it('classifica balancetes pela competência mais recente do condomínio', () => {
+    const now = new Date()
+    const metrics = buildDashboardMetrics({
+      atas: [],
+      atasStatuses: [],
+      tarefas: [],
+      tarefaStatuses: [],
+      admissoes: [],
+      admissaoStatuses: [],
+      rescisoes: [],
+      rescisaoStatuses: [],
+      balancetes: [
+        {
+          id: 'bal-current',
+          condominium_id: 'c1',
+          received_at: '2026-03-01T12:00:00.000Z',
+          competencia: '02/2026',
+          volumes: 1,
+          status: 'received',
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        },
+        {
+          id: 'bal-old-received-later',
+          condominium_id: 'c1',
+          received_at: '2026-04-01T12:00:00.000Z',
+          competencia: '01/2026',
+          volumes: 1,
+          status: 'received',
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        },
+      ],
+      condominiums: [
+        { id: 'c1', name: 'Condomínio com competência retroativa', active: true, created_at: null, updated_at: null },
+      ],
+    })
+
+    expect(metrics.balancetes.onTrack).toBe(1)
+    expect(metrics.balancetes.attention).toBe(0)
+    expect(metrics.balancetes.overdue).toBe(0)
+  })
 })
