@@ -392,9 +392,8 @@ export async function generateProtocoloPDF(data: ProtocoloData): Promise<Uint8Ar
     // Logo não encontrado, continua sem ele
   }
   
-  // Gerar duas vias
+  // Gerar apenas a via da Euro
   await generateVia(pdfDoc, data, 'EURO', logoImage)
-  await generateVia(pdfDoc, data, 'CONDOMÍNIO', logoImage)
   
   return await pdfDoc.save()
 }
