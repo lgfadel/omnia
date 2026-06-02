@@ -16,11 +16,20 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
 
 const COL_WIDTHS = {
   numero: 24,
-  condominio: 190,
-  competencia: 75,
-  tipo: 24,
-  analista: 105,
-  defasagem: CONTENT_WIDTH - 24 - 190 - 75 - 24 - 105,
+  condominio: 210,
+  competencia: 68,
+  tipo: 22,
+  analista: 98,
+  defasagem: CONTENT_WIDTH - 24 - 210 - 68 - 22 - 98,
+}
+
+function fitText(text: string, font: PDFFont, size: number, maxWidth: number): string {
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text
+  let result = text
+  while (result.length > 0 && font.widthOfTextAtSize(result + '…', size) > maxWidth) {
+    result = result.slice(0, -1)
+  }
+  return result + '…'
 }
 
 export function calculateHeaderBottomY(logoHeight: number): number {
@@ -201,7 +210,7 @@ function drawRow(
   })
   xPos += COL_WIDTHS.numero
 
-  const condText = row.condominium.substring(0, 38)
+  const condText = fitText(row.condominium, ctx.helvetica, 8, COL_WIDTHS.condominio - 6)
   page.drawText(condText, {
     x: xPos, y: yPosition, size: 8,
     font: ctx.helvetica, color: rgb(0.1, 0.1, 0.1),
@@ -221,7 +230,7 @@ function drawRow(
   })
   xPos += COL_WIDTHS.tipo
 
-  const analistaText = (row.analistaFinanceiro ?? '—').substring(0, 20)
+  const analistaText = fitText(row.analistaFinanceiro ?? '—', ctx.helvetica, 8, COL_WIDTHS.analista - 6)
   page.drawText(analistaText, {
     x: xPos, y: yPosition, size: 8,
     font: ctx.helvetica, color: rgb(0.1, 0.1, 0.1),
