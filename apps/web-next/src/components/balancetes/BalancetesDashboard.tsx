@@ -179,6 +179,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         defasagemLabel: r.defasagemLabel,
         status: 'yellow' as const,
         balanceteDigital: r.balanceteDigital,
+        analistaFinanceiro: r.analistaFinanceiro,
       }))
     const redRows = rows
       .filter((r) => r.status === 'red')
@@ -189,6 +190,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         defasagemLabel: r.defasagemLabel,
         status: 'red' as const,
         balanceteDigital: r.balanceteDigital,
+        analistaFinanceiro: r.analistaFinanceiro,
       }))
     const pdfBytes = await generateBalancetesRelatorioPDF(yellowRows, redRows)
     const today = new Date().toISOString().split('T')[0]

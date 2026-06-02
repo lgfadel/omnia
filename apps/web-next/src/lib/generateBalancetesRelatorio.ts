@@ -6,6 +6,7 @@ export interface RelatorioRow {
   defasagemLabel: string
   status: 'yellow' | 'red'
   balanceteDigital?: boolean | null
+  analistaFinanceiro?: string | null
 }
 
 const PAGE_WIDTH = 595
@@ -14,11 +15,12 @@ const MARGIN = 50
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
 
 const COL_WIDTHS = {
-  numero: 28,
-  condominio: 248,
-  competencia: 90,
-  tipo: 28,
-  defasagem: CONTENT_WIDTH - 28 - 248 - 90 - 28,
+  numero: 24,
+  condominio: 190,
+  competencia: 75,
+  tipo: 24,
+  analista: 105,
+  defasagem: CONTENT_WIDTH - 24 - 190 - 75 - 24 - 105,
 }
 
 export function calculateHeaderBottomY(logoHeight: number): number {
@@ -166,6 +168,9 @@ function drawTableHeader(page: PDFPage, ctx: PageContext, yPosition: number): nu
   page.drawText('TIPO', { x: xPos, y: yPosition, size: 8, font: ctx.helveticaBold, color: rgb(0.2, 0.2, 0.2) })
   xPos += COL_WIDTHS.tipo
 
+  page.drawText('ANALISTA', { x: xPos, y: yPosition, size: 8, font: ctx.helveticaBold, color: rgb(0.2, 0.2, 0.2) })
+  xPos += COL_WIDTHS.analista
+
   page.drawText('DEFASAGEM', { x: xPos, y: yPosition, size: 8, font: ctx.helveticaBold, color: rgb(0.2, 0.2, 0.2) })
 
   return yPosition - 22
@@ -196,7 +201,7 @@ function drawRow(
   })
   xPos += COL_WIDTHS.numero
 
-  const condText = row.condominium.substring(0, 46)
+  const condText = row.condominium.substring(0, 38)
   page.drawText(condText, {
     x: xPos, y: yPosition, size: 8,
     font: ctx.helvetica, color: rgb(0.1, 0.1, 0.1),
@@ -215,6 +220,13 @@ function drawRow(
     font: ctx.helveticaBold, color: rgb(0.2, 0.2, 0.2),
   })
   xPos += COL_WIDTHS.tipo
+
+  const analistaText = (row.analistaFinanceiro ?? '—').substring(0, 20)
+  page.drawText(analistaText, {
+    x: xPos, y: yPosition, size: 8,
+    font: ctx.helvetica, color: rgb(0.1, 0.1, 0.1),
+  })
+  xPos += COL_WIDTHS.analista
 
   page.drawText(row.defasagemLabel, {
     x: xPos, y: yPosition, size: 8,
