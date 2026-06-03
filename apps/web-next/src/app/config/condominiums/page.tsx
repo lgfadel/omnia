@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, FileSpreadsheet } from "lucide-react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 import { logger } from '@/lib/logging';
 import { formatAddress } from "@/lib/formatAddress";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge"
+import { generateCondominiosXLSX } from "@/lib/generateCondominiosXLSX";
 
 const columns = [
   { key: "name", label: "Nome", width: "w-[28%]" },
@@ -307,12 +308,23 @@ const ConfigCondominiums = () => {
         {/* Header: título + botão criar */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Condomínios</h1>
-          <Button 
-            onClick={handleCreate}
-            className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => generateCondominiosXLSX(condominiums)}
+              disabled={loading || condominiums.length === 0}
+              className="h-12 px-4 rounded-lg"
+            >
+              <FileSpreadsheet className="w-5 h-5 mr-2" />
+              Exportar Excel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              className="bg-primary hover:bg-primary/90 w-12 h-12 p-0 rounded-lg"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Filtros */}
