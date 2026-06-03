@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Pencil, Trash2, Plus, Search } from "lucide-react"
+import { Pencil, Trash2, Plus, Search, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ import {
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
 import { formatAddress } from "@/lib/formatAddress"
+import { generateCondominiosXLSX } from "@/lib/generateCondominiosXLSX"
 
 interface CondominiumListProps {
   condominiums: Condominium[]
@@ -56,7 +57,15 @@ export function CondominiumList({ condominiums, onEdit, onDelete, onCreate, isLo
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => generateCondominiosXLSX(condominiums)}
+          disabled={isLoading || condominiums.length === 0}
+        >
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Exportar Excel
+        </Button>
         <Button onClick={onCreate} disabled={isLoading}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Condomínio
