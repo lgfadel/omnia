@@ -39,7 +39,7 @@ export type ProtocolImportBatchResult = {
   items: ProtocolImportItemResult[]
 }
 
-const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_PDF_SIZE_BYTES = 20 * 1024 * 1024
 const DEFAULT_OPENAI_MODEL = process.env.OPENAI_PROTOCOL_IMPORT_MODEL || 'gpt-5-mini'
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const OCR_PROMPT = [
@@ -400,22 +400,31 @@ function isSuccessfulImportStatus(status: ProtocolImportItemResult['status']): b
 }
 
 export async function importProtocolPdfBatch(params: {
-  file: File
+  uploadPath: string
+  fileName: string
   authHeader: string | null
 }): Promise<ProtocolImportBatchResult> {
-  const { authHeader, file } = params
-
-  if (file.type !== 'application/pdf') {
-    throw new Error('Only PDF files are supported')
-  }
-
-  if (file.size > MAX_PDF_SIZE_BYTES) {
-    throw new Error('PDF exceeds the 10MB limit')
-  }
+  const { authHeader, uploadPath, fileName } = params
 
   const authenticatedUser = await authenticateOmniaUser(authHeader)
   const supabaseAdmin = createUserClient(authenticatedUser.accessToken)
-  const fileBytes = new Uint8Array(await file.arrayBuffer())
+
+  const { data: downloadedFile, error: downloadError } = await supabaseAdmin.storage
+    .from('balancete-import-pages')
+    .download(uploadPath)
+
+  if (downloadError || !downloadedFile) {
+    throw new Error(`Falha ao carregar arquivo enviado: ${downloadError?.message ?? 'arquivo não encontrado'}`)
+  }
+
+  const fileBytes = new Uint8Array(await downloadedFile.arrayBuffer())
+
+  if (fileBytes.byteLength > MAX_PDF_SIZE_BYTES) {
+    await supabaseAdmin.storage.from('balancete-import-pages').remove([uploadPath])
+    throw new Error(`PDF excede o limite de ${MAX_PDF_SIZE_BYTES / 1024 / 1024} MB`)
+  }
+
+  const file = { name: fileName, size: fileBytes.byteLength }
   const pages = await splitPdfIntoPages(fileBytes)
 
   const { data: batchRow, error: batchInsertError } = await supabaseAdmin
@@ -700,6 +709,8 @@ export async function importProtocolPdfBatch(params: {
   if (batchUpdateError) {
     throw new Error(`Failed to update import batch counters: ${batchUpdateError.message}`)
   }
+
+  await supabaseAdmin.storage.from('balancete-import-pages').remove([uploadPath])
 
   return {
     batch: {

@@ -211,7 +211,19 @@ export function ProtocolImportDialog({
               type="file"
               accept="application/pdf"
               className="hidden"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+              const file = event.target.files?.[0] ?? null
+              if (file && file.size > 20 * 1024 * 1024) {
+                toast({
+                  title: 'Arquivo muito grande',
+                  description: 'O PDF deve ter no máximo 20 MB. Comprima o arquivo e tente novamente.',
+                  variant: 'destructive',
+                })
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                return
+              }
+              setSelectedFile(file)
+            }}
             />
             {!selectedFile ? (
               <Button
@@ -223,7 +235,7 @@ export function ProtocolImportDialog({
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <FileUp className="w-8 h-8" />
                   <span>Selecionar PDF escaneado</span>
-                  <span className="text-xs">Apenas PDF, até 10MB</span>
+                  <span className="text-xs">Apenas PDF, até 20 MB</span>
                 </div>
               </Button>
             ) : (

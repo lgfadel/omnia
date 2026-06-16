@@ -1,39 +1,61 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { ProtocolImportBatchResult, ProtocolImportItemResult } from '@/server/balanceteProtocolImportService'
 
-async function getAuthorizationHeader(): Promise<string> {
+const IMPORT_BUCKET = 'balancete-import-pages'
+
+async function getSession() {
   const { data, error } = await supabase.auth.getSession()
-  if (error || !data.session?.access_token) {
-    throw new Error('Sessão autenticada não encontrada')
+  if (error || !data.session) throw new Error('Sessão autenticada não encontrada')
+  return data.session
+}
+
+async function callImportApi(body: object, authHeader: string): Promise<ProtocolImportBatchResult> {
+  const response = await fetch('/api/balancetes/protocol-imports', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: authHeader,
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    let errorMessage = 'Falha ao importar lote de protocolos'
+    try {
+      const payload = await response.json()
+      errorMessage = payload?.error || errorMessage
+    } catch {
+      // non-JSON error response
+    }
+    throw new Error(errorMessage)
   }
 
-  return `Bearer ${data.session.access_token}`
+  return response.json() as Promise<ProtocolImportBatchResult>
 }
 
 export const balanceteProtocolImportsRepo = {
   async importBatch(file: File): Promise<ProtocolImportBatchResult> {
-    const authHeader = await getAuthorizationHeader()
-    const formData = new FormData()
-    formData.append('file', file)
+    const session = await getSession()
+    const authHeader = `Bearer ${session.access_token}`
+    const uploadPath = `${session.user.id}/raw/${Date.now()}-${file.name}`
 
-    const response = await fetch('/api/balancetes/protocol-imports', {
-      method: 'POST',
-      headers: {
-        Authorization: authHeader,
-      },
-      body: formData,
-    })
+    const { error: uploadError } = await supabase.storage
+      .from(IMPORT_BUCKET)
+      .upload(uploadPath, file, { contentType: 'application/pdf', upsert: false })
 
-    const payload = await response.json()
-    if (!response.ok) {
-      throw new Error(payload?.error || 'Falha ao importar lote de protocolos')
+    if (uploadError) throw new Error(`Falha ao enviar arquivo: ${uploadError.message}`)
+
+    try {
+      return await callImportApi({ uploadPath, fileName: file.name }, authHeader)
+    } catch (error) {
+      await supabase.storage.from(IMPORT_BUCKET).remove([uploadPath])
+      throw error
     }
-
-    return payload as ProtocolImportBatchResult
   },
 
   async resolveItem(batchId: string, itemId: string, balanceteId: string): Promise<ProtocolImportItemResult> {
-    const authHeader = await getAuthorizationHeader()
+    const session = await getSession()
+    const authHeader = `Bearer ${session.access_token}`
     const response = await fetch(`/api/balancetes/protocol-imports/${batchId}/resolve`, {
       method: 'POST',
       headers: {
