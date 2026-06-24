@@ -24,6 +24,10 @@ export interface Condominium {
   active?: boolean | null
   balancete_digital?: boolean | null
   boleto_impresso?: boolean | null
+  boleto_delivery_type?: 'nao' | 'fisico_total' | 'fisico_parcial' | 'lista' | null
+  boleto_due_day?: number | null
+  boleto_observations?: string | null
+  garantidora?: boolean | null
   created_by?: string | null
   created_at: string | null
   updated_at: string | null
@@ -50,6 +54,10 @@ const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>)
   active: dbCondominium.active,
   balancete_digital: dbCondominium.balancete_digital,
   boleto_impresso: dbCondominium.boleto_impresso,
+  boleto_delivery_type: dbCondominium.boleto_delivery_type,
+  boleto_due_day: dbCondominium.boleto_due_day,
+  boleto_observations: dbCondominium.boleto_observations,
+  garantidora: dbCondominium.garantidora,
   created_by: dbCondominium.created_by,
   created_at: dbCondominium.created_at,
   updated_at: dbCondominium.updated_at
@@ -131,6 +139,10 @@ export const condominiumsRepoSupabase = {
         active: data.active ?? true,
         balancete_digital: data.balancete_digital ?? false,
         boleto_impresso: data.boleto_impresso ?? false,
+        boleto_delivery_type: data.boleto_delivery_type ?? 'nao',
+        boleto_due_day: data.boleto_due_day ?? null,
+        boleto_observations: data.boleto_observations ?? null,
+        garantidora: data.garantidora ?? false,
       })
       .select('*')
       .single()
@@ -166,6 +178,10 @@ export const condominiumsRepoSupabase = {
     if (data.active !== undefined && data.active !== null) updateData.active = data.active
     if (data.balancete_digital !== undefined) updateData.balancete_digital = data.balancete_digital ?? false
     if (data.boleto_impresso !== undefined) updateData.boleto_impresso = data.boleto_impresso ?? false
+    if (data.boleto_delivery_type !== undefined) updateData.boleto_delivery_type = data.boleto_delivery_type ?? 'nao'
+    if (data.boleto_due_day !== undefined) updateData.boleto_due_day = data.boleto_due_day ?? null
+    if (data.boleto_observations !== undefined) updateData.boleto_observations = data.boleto_observations ?? null
+    if (data.garantidora !== undefined) updateData.garantidora = data.garantidora ?? false
     
     logger.debug('Update data being sent to Supabase:', updateData)
     

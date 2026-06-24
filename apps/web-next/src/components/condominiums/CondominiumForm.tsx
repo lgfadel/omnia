@@ -6,12 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import { cepService, CEPServiceError } from "@/services/cep.service"
 import { cnpjService, CNPJServiceError } from "@/services/cnpj.service"
 import { Loader2 } from "lucide-react"
+
+const boletoDeliveryOptions = [
+  { value: "nao", label: "Não" },
+  { value: "fisico_total", label: "Físico total" },
+  { value: "fisico_parcial", label: "Físico parcial" },
+  { value: "lista", label: "Lista" },
+] as const
 
 const condominiumSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
@@ -22,6 +31,13 @@ const condominiumSchema = z.object({
   active: z.boolean().default(true),
   balancete_digital: z.boolean().default(false),
   boleto_impresso: z.boolean().default(false),
+  boleto_delivery_type: z.enum(["nao", "fisico_total", "fisico_parcial", "lista"]).default("nao"),
+  boleto_due_day: z.preprocess(
+    (value) => (value === "" || Number.isNaN(value) ? null : value),
+    z.number().int("Dia deve ser um número inteiro").min(1, "Dia deve ser entre 1 e 31").max(31, "Dia deve ser entre 1 e 31").nullable().optional()
+  ),
+  boleto_observations: z.string().optional().nullable(),
+  garantidora: z.boolean().default(false),
   zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(8, "CEP deve ter 8 dígitos").regex(/^\d{8}$/, "CEP deve conter apenas números"),
   street: z.string().min(1, "Rua é obrigatória"),
   number: z.string().min(1, "Número é obrigatório"),
@@ -44,6 +60,10 @@ interface CondominiumFormProps {
     active: boolean
     balancete_digital: boolean
     boleto_impresso: boolean
+    boleto_delivery_type: "nao" | "fisico_total" | "fisico_parcial" | "lista"
+    boleto_due_day?: number | null
+    boleto_observations?: string | null
+    garantidora: boolean
     street: string
     number: string
     complement?: string | null
@@ -57,6 +77,7 @@ interface CondominiumFormProps {
 }
 
 export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: CondominiumFormProps) {
+  const [activeTab, setActiveTab] = useState("info")
   const [searchingCEP, setSearchingCEP] = useState(false)
   const [cepError, setCepError] = useState<string | null>(null)
   const [searchingCNPJ, setSearchingCNPJ] = useState(false)
@@ -80,6 +101,10 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       active: condominium?.active ?? true,
       balancete_digital: condominium?.balancete_digital ?? false,
       boleto_impresso: condominium?.boleto_impresso ?? false,
+      boleto_delivery_type: condominium?.boleto_delivery_type ?? "nao",
+      boleto_due_day: condominium?.boleto_due_day ?? null,
+      boleto_observations: condominium?.boleto_observations || "",
+      garantidora: condominium?.garantidora ?? false,
       zip_code: condominium?.zip_code || "",
       street: condominium?.street || "",
       number: condominium?.number || "",
@@ -164,6 +189,8 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
   }
 
   const onFormSubmit = async (data: CondominiumFormData) => {
+    const boletoImpresso = data.boleto_delivery_type !== "nao"
+
     await onSubmit({
       name: data.name,
       cnpj: cnpjService.cleanCNPJ(data.cnpj),
@@ -172,7 +199,11 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       phone: data.phone || null,
       active: data.active,
       balancete_digital: data.balancete_digital,
-      boleto_impresso: data.boleto_impresso,
+      boleto_impresso: boletoImpresso,
+      boleto_delivery_type: data.boleto_delivery_type,
+      boleto_due_day: data.boleto_due_day ?? null,
+      boleto_observations: data.boleto_observations || null,
+      garantidora: data.garantidora,
       street: data.street,
       number: data.number,
       complement: data.complement || null,
@@ -187,10 +218,11 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
     <Card className="w-full">
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="info">Informações</TabsTrigger>
-              <TabsTrigger value="address">Endereço</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="info" onClick={() => setActiveTab("info")}>Informações</TabsTrigger>
+              <TabsTrigger value="address" onClick={() => setActiveTab("address")}>Endereço</TabsTrigger>
+              <TabsTrigger value="options" onClick={() => setActiveTab("options")}>Opções</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4 min-h-[500px]">
@@ -326,26 +358,6 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   disabled={isLoading}
                 />
               </div>
-
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="balancete_digital">Balancete Digital</Label>
-                <Switch
-                  id="balancete_digital"
-                  checked={watch("balancete_digital")}
-                  onCheckedChange={(checked) => setValue("balancete_digital", checked)}
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="boleto_impresso">Boleto Impresso</Label>
-                <Switch
-                  id="boleto_impresso"
-                  checked={watch("boleto_impresso")}
-                  onCheckedChange={(checked) => setValue("boleto_impresso", checked)}
-                  disabled={isLoading}
-                />
-              </div>
             </TabsContent>
 
             <TabsContent value="address" className="space-y-4 mt-4 min-h-[500px]">
@@ -473,6 +485,92 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
             </div>
           </div>
 
+            </TabsContent>
+
+            <TabsContent value="options" className="space-y-4 mt-4 min-h-[500px]">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Boletos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="boleto_delivery_type">Boleto Impresso</Label>
+                    <Select
+                      value={watch("boleto_delivery_type")}
+                      onValueChange={(value) => {
+                        const boletoDeliveryType = value as CondominiumFormData["boleto_delivery_type"]
+                        setValue("boleto_delivery_type", boletoDeliveryType)
+                        setValue("boleto_impresso", boletoDeliveryType !== "nao")
+                      }}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="boleto_delivery_type" aria-label="Boleto Impresso">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {boletoDeliveryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between space-x-2">
+                    <Label htmlFor="garantidora">Garantidora</Label>
+                    <Switch
+                      id="garantidora"
+                      checked={watch("garantidora")}
+                      onCheckedChange={(checked) => setValue("garantidora", checked)}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="boleto_due_day">Dia de vencimento</Label>
+                    <Input
+                      id="boleto_due_day"
+                      type="number"
+                      min={1}
+                      max={31}
+                      placeholder="Ex: 10"
+                      disabled={isLoading}
+                      {...register("boleto_due_day", { valueAsNumber: true })}
+                    />
+                    {errors.boleto_due_day && (
+                      <p className="text-sm text-red-500">{errors.boleto_due_day.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="boleto_observations">Observações</Label>
+                    <Textarea
+                      id="boleto_observations"
+                      {...register("boleto_observations")}
+                      placeholder="Detalhes especiais dos boletos"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Balancetes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between space-x-2">
+                    <Label htmlFor="balancete_digital">Balancete Digital</Label>
+                    <Switch
+                      id="balancete_digital"
+                      checked={watch("balancete_digital")}
+                      onCheckedChange={(checked) => setValue("balancete_digital", checked)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
 

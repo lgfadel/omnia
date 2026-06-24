@@ -511,12 +511,16 @@ export type Database = {
           address: string | null
           analista_financeiro: string | null
           balancete_digital: boolean
+          boleto_delivery_type: "nao" | "fisico_total" | "fisico_parcial" | "lista"
+          boleto_due_day: number | null
           boleto_impresso: boolean
+          boleto_observations: string | null
           city: string | null
           cnpj: string | null
           complement: string | null
           created_at: string | null
           created_by: string | null
+          garantidora: boolean
           id: string
           manager_name: string | null
           name: string
@@ -535,12 +539,16 @@ export type Database = {
           address?: string | null
           analista_financeiro?: string | null
           balancete_digital?: boolean
+          boleto_delivery_type?: "nao" | "fisico_total" | "fisico_parcial" | "lista"
+          boleto_due_day?: number | null
           boleto_impresso?: boolean
+          boleto_observations?: string | null
           city?: string | null
           cnpj?: string | null
           complement?: string | null
           created_at?: string | null
           created_by?: string | null
+          garantidora?: boolean
           id?: string
           manager_name?: string | null
           name: string
@@ -559,12 +567,16 @@ export type Database = {
           address?: string | null
           analista_financeiro?: string | null
           balancete_digital?: boolean
+          boleto_delivery_type?: "nao" | "fisico_total" | "fisico_parcial" | "lista"
+          boleto_due_day?: number | null
           boleto_impresso?: boolean
+          boleto_observations?: string | null
           city?: string | null
           cnpj?: string | null
           complement?: string | null
           created_at?: string | null
           created_by?: string | null
+          garantidora?: boolean
           id?: string
           manager_name?: string | null
           name?: string
