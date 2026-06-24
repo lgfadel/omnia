@@ -42,6 +42,25 @@ import { useRoles } from "@/hooks/useRoles"
 import { useAccessibleMenuTree } from "@/hooks/useMenuItems"
 import { MenuItem } from "@/repositories/menuItemsRepo.supabase"
 
+type SidebarMenuItemData = MenuItem & { children?: SidebarMenuItemData[] }
+
+const menuNameCollator = new Intl.Collator('pt-BR', {
+  sensitivity: 'base',
+  numeric: true,
+})
+
+function sortMenuItemsByName(items: SidebarMenuItemData[]): SidebarMenuItemData[] {
+  return items
+    .map((item) => ({
+      ...item,
+      children: item.children ? sortMenuItemsByName(item.children) : item.children,
+    }))
+    .sort((a, b) => {
+      const nameComparison = menuNameCollator.compare(a.name, b.name)
+      return nameComparison || (a.order_index || 0) - (b.order_index || 0)
+    })
+}
+
 // Mapeamento de ícones para os itens de menu
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'home': Home,
@@ -122,23 +141,24 @@ export function AppSidebar() {
 
   // Separar itens principais dos de configuração
   const { mainMenuItems, configMenuItems } = useMemo(() => {
-    const main: MenuItem[] = []
-    const config: MenuItem[] = []
+    const main: SidebarMenuItemData[] = []
+    const config: SidebarMenuItemData[] = []
     
     menuTree.forEach(item => {
       if (hiddenPaths.includes(item.path)) return
+      const menuItem = item as SidebarMenuItemData
       if (item.path.startsWith('/config')) {
-        config.push(item)
+        config.push(menuItem)
       } else {
-        main.push(item)
+        main.push(menuItem)
       }
     })
     
-    return { mainMenuItems: main, configMenuItems: config }
+    return { mainMenuItems: main, configMenuItems: sortMenuItemsByName(config) }
   }, [menuTree])
 
   // Renderizar item de menu recursivamente
-  const renderMenuItem = (item: MenuItem & { children?: MenuItem[] }, level = 0) => {
+  const renderMenuItem = (item: SidebarMenuItemData, level = 0) => {
     const Icon = getMenuIcon(item)
     const hasChildren = item.children && item.children.length > 0
     const isExpanded = expandedItems.has(item.id)
