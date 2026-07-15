@@ -239,8 +239,9 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="info" onClick={() => setActiveTab("info")}>Informações</TabsTrigger>
+              <TabsTrigger value="team" onClick={() => setActiveTab("team")}>Equipe</TabsTrigger>
               <TabsTrigger value="address" onClick={() => setActiveTab("address")}>Endereço</TabsTrigger>
               <TabsTrigger value="options" onClick={() => setActiveTab("options")}>Opções</TabsTrigger>
             </TabsList>
@@ -311,43 +312,55 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    placeholder="(00) 00000-0000"
-                    disabled={isLoading}
-                    maxLength={15}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      if (value.length <= 11) {
-                        setValue("phone", value)
-                      }
-                    }}
-                    value={(() => {
-                      const value = watch("phone") || ''
-                      if (!value) return ''
-                      
-                      // 8 dígitos: (43) 3333-3333
-                      if (value.length === 10) {
-                        return '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6)
-                      }
-                      // 9 dígitos: (43) 99999-9999
-                      if (value.length === 11) {
-                        return '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
-                      }
-                      
-                      // Parcial
-                      if (value.length > 2) {
-                        return '(' + value.slice(0, 2) + ') ' + value.slice(2)
-                      }
-                      
-                      return value
-                    })()}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  placeholder="(00) 00000-0000"
+                  disabled={isLoading}
+                  maxLength={15}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+                    if (value.length <= 11) {
+                      setValue("phone", value)
+                    }
+                  }}
+                  value={(() => {
+                    const value = watch("phone") || ''
+                    if (!value) return ''
 
+                    // 8 dígitos: (43) 3333-3333
+                    if (value.length === 10) {
+                      return '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6)
+                    }
+                    // 9 dígitos: (43) 99999-9999
+                    if (value.length === 11) {
+                      return '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7)
+                    }
+
+                    // Parcial
+                    if (value.length > 2) {
+                      return '(' + value.slice(0, 2) + ') ' + value.slice(2)
+                    }
+
+                    return value
+                  })()}
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="active">Status do Condomínio</Label>
+                <Switch
+                  id="active"
+                  checked={watch("active")}
+                  onCheckedChange={(checked) => setValue("active", checked)}
+                  disabled={isLoading}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="team" className="space-y-4 mt-4 min-h-[500px]">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
                   <Label htmlFor="syndic_name">Nome do Síndico</Label>
                   <Input
@@ -357,40 +370,40 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     disabled={isLoading}
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="syndic_cpf">CPF do Síndico</Label>
-                <Input
-                  id="syndic_cpf"
-                  placeholder="000.000.000-00"
-                  disabled={isLoading}
-                  maxLength={14}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '')
-                    if (value.length <= 11) {
-                      setValue("syndic_cpf", value)
-                    }
-                  }}
-                  value={(() => {
-                    const value = watch("syndic_cpf") || ''
-                    if (!value) return ''
-                    let formatted = value
-                    if (value.length > 3) {
-                      formatted = value.slice(0, 3) + '.' + value.slice(3)
-                    }
-                    if (value.length > 6) {
-                      formatted = formatted.slice(0, 7) + '.' + formatted.slice(7)
-                    }
-                    if (value.length > 9) {
-                      formatted = formatted.slice(0, 11) + '-' + formatted.slice(11)
-                    }
-                    return formatted
-                  })()}
-                />
-                {errors.syndic_cpf && (
-                  <p className="text-sm text-red-500">{errors.syndic_cpf.message}</p>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="syndic_cpf">CPF do Síndico</Label>
+                  <Input
+                    id="syndic_cpf"
+                    placeholder="000.000.000-00"
+                    disabled={isLoading}
+                    maxLength={14}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      if (value.length <= 11) {
+                        setValue("syndic_cpf", value)
+                      }
+                    }}
+                    value={(() => {
+                      const value = watch("syndic_cpf") || ''
+                      if (!value) return ''
+                      let formatted = value
+                      if (value.length > 3) {
+                        formatted = value.slice(0, 3) + '.' + value.slice(3)
+                      }
+                      if (value.length > 6) {
+                        formatted = formatted.slice(0, 7) + '.' + formatted.slice(7)
+                      }
+                      if (value.length > 9) {
+                        formatted = formatted.slice(0, 11) + '-' + formatted.slice(11)
+                      }
+                      return formatted
+                    })()}
+                  />
+                  {errors.syndic_cpf && (
+                    <p className="text-sm text-red-500">{errors.syndic_cpf.message}</p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -427,16 +440,6 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                     <p className="text-sm text-red-500">{errors.analista_assembleias_email.message}</p>
                   )}
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="active">Status do Condomínio</Label>
-                <Switch
-                  id="active"
-                  checked={watch("active")}
-                  onCheckedChange={(checked) => setValue("active", checked)}
-                  disabled={isLoading}
-                />
               </div>
             </TabsContent>
 
