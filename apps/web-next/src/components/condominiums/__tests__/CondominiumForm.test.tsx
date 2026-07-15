@@ -48,7 +48,7 @@ describe("CondominiumForm", () => {
     updated_at: null,
   }
 
-  it("exibe e envia o campo de analista financeiro", async () => {
+  it("exibe e envia o campo de analista financeiro na aba Equipe", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
     render(
@@ -59,12 +59,11 @@ describe("CondominiumForm", () => {
       />
     )
 
+    fireEvent.click(screen.getByRole("tab", { name: "Equipe" }))
+
     const input = screen.getByLabelText("Analista Financeiro")
     expect(input).toHaveValue("Marina Souza")
 
-    fireEvent.change(screen.getByLabelText("Nome do Condomínio *"), {
-      target: { value: "Condominio Teste" },
-    })
     fireEvent.change(input, { target: { value: "Paula Lima" } })
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }))
 
