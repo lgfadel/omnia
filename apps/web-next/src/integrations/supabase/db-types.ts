@@ -519,6 +519,8 @@ export type Database = {
         Row: {
           active: boolean
           address: string | null
+          analista_assembleias: string | null
+          analista_assembleias_email: string | null
           analista_financeiro: string | null
           balancete_digital: boolean
           boleto_delivery_type: "nao" | "fisico_total" | "fisico_parcial" | "lista"
@@ -539,6 +541,7 @@ export type Database = {
           phone: string | null
           state: string | null
           street: string | null
+          syndic_cpf: string | null
           syndic_name: string | null
           updated_at: string | null
           whatsapp: string | null
@@ -547,6 +550,8 @@ export type Database = {
         Insert: {
           active?: boolean
           address?: string | null
+          analista_assembleias?: string | null
+          analista_assembleias_email?: string | null
           analista_financeiro?: string | null
           balancete_digital?: boolean
           boleto_delivery_type?: "nao" | "fisico_total" | "fisico_parcial" | "lista"
@@ -567,6 +572,7 @@ export type Database = {
           phone?: string | null
           state?: string | null
           street?: string | null
+          syndic_cpf?: string | null
           syndic_name?: string | null
           updated_at?: string | null
           whatsapp?: string | null
@@ -575,6 +581,8 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string | null
+          analista_assembleias?: string | null
+          analista_assembleias_email?: string | null
           analista_financeiro?: string | null
           balancete_digital?: boolean
           boleto_delivery_type?: "nao" | "fisico_total" | "fisico_parcial" | "lista"
@@ -595,6 +603,7 @@ export type Database = {
           phone?: string | null
           state?: string | null
           street?: string | null
+          syndic_cpf?: string | null
           syndic_name?: string | null
           updated_at?: string | null
           whatsapp?: string | null

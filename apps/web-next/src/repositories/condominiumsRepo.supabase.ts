@@ -20,6 +20,9 @@ export interface Condominium {
   manager_name?: string | null
   phone?: string | null
   syndic_name?: string | null
+  syndic_cpf?: string | null
+  analista_assembleias?: string | null
+  analista_assembleias_email?: string | null
   whatsapp?: string | null
   active?: boolean | null
   balancete_digital?: boolean | null
@@ -50,6 +53,9 @@ const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>)
   manager_name: dbCondominium.manager_name,
   phone: dbCondominium.phone,
   syndic_name: dbCondominium.syndic_name,
+  syndic_cpf: dbCondominium.syndic_cpf,
+  analista_assembleias: dbCondominium.analista_assembleias,
+  analista_assembleias_email: dbCondominium.analista_assembleias_email,
   whatsapp: dbCondominium.whatsapp,
   active: dbCondominium.active,
   balancete_digital: dbCondominium.balancete_digital,
@@ -134,7 +140,10 @@ export const condominiumsRepoSupabase = {
         manager_name: data.manager_name,
         phone: data.phone,
         syndic_name: data.syndic_name,
+        syndic_cpf: data.syndic_cpf,
         analista_financeiro: data.analista_financeiro,
+        analista_assembleias: data.analista_assembleias,
+        analista_assembleias_email: data.analista_assembleias_email,
         whatsapp: data.whatsapp,
         active: data.active ?? true,
         balancete_digital: data.balancete_digital ?? false,
@@ -173,7 +182,10 @@ export const condominiumsRepoSupabase = {
     if (data.manager_name !== undefined) updateData.manager_name = data.manager_name
     if (data.phone !== undefined) updateData.phone = data.phone
     if (data.syndic_name !== undefined) updateData.syndic_name = data.syndic_name
+    if (data.syndic_cpf !== undefined) updateData.syndic_cpf = data.syndic_cpf
     if (data.analista_financeiro !== undefined) updateData.analista_financeiro = data.analista_financeiro
+    if (data.analista_assembleias !== undefined) updateData.analista_assembleias = data.analista_assembleias
+    if (data.analista_assembleias_email !== undefined) updateData.analista_assembleias_email = data.analista_assembleias_email
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp
     if (data.active !== undefined && data.active !== null) updateData.active = data.active
     if (data.balancete_digital !== undefined) updateData.balancete_digital = data.balancete_digital ?? false

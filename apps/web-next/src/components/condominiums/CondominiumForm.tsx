@@ -26,7 +26,18 @@ const condominiumSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos").max(14, "CNPJ deve ter 14 dígitos").regex(/^\d{14}$/, "CNPJ deve conter apenas números"),
   syndic_name: z.string().optional().nullable(),
+  syndic_cpf: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((val) => !val || /^\d{11}$/.test(val), "CPF deve ter 11 dígitos"),
   analista_financeiro: z.string().optional().nullable(),
+  analista_assembleias: z.string().optional().nullable(),
+  analista_assembleias_email: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((val) => !val || z.string().email().safeParse(val).success, "E-mail inválido"),
   phone: z.string().optional().nullable(),
   active: z.boolean().default(true),
   balancete_digital: z.boolean().default(false),
@@ -55,7 +66,10 @@ interface CondominiumFormProps {
     name: string
     cnpj: string
     syndic_name?: string | null
+    syndic_cpf?: string | null
     analista_financeiro?: string | null
+    analista_assembleias?: string | null
+    analista_assembleias_email?: string | null
     phone?: string | null
     active: boolean
     balancete_digital: boolean
@@ -96,7 +110,10 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       name: condominium?.name || "",
       cnpj: condominium?.cnpj || "",
       syndic_name: condominium?.syndic_name || "",
+      syndic_cpf: condominium?.syndic_cpf || "",
       analista_financeiro: condominium?.analista_financeiro || "",
+      analista_assembleias: condominium?.analista_assembleias || "",
+      analista_assembleias_email: condominium?.analista_assembleias_email || "",
       phone: condominium?.phone || "",
       active: condominium?.active ?? true,
       balancete_digital: condominium?.balancete_digital ?? false,
@@ -195,7 +212,10 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
       name: data.name,
       cnpj: cnpjService.cleanCNPJ(data.cnpj),
       syndic_name: data.syndic_name || null,
+      syndic_cpf: data.syndic_cpf || null,
       analista_financeiro: data.analista_financeiro || null,
+      analista_assembleias: data.analista_assembleias || null,
+      analista_assembleias_email: data.analista_assembleias_email || null,
       phone: data.phone || null,
       active: data.active,
       balancete_digital: data.balancete_digital,
@@ -340,6 +360,40 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="syndic_cpf">CPF do Síndico</Label>
+                <Input
+                  id="syndic_cpf"
+                  placeholder="000.000.000-00"
+                  disabled={isLoading}
+                  maxLength={14}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+                    if (value.length <= 11) {
+                      setValue("syndic_cpf", value)
+                    }
+                  }}
+                  value={(() => {
+                    const value = watch("syndic_cpf") || ''
+                    if (!value) return ''
+                    let formatted = value
+                    if (value.length > 3) {
+                      formatted = value.slice(0, 3) + '.' + value.slice(3)
+                    }
+                    if (value.length > 6) {
+                      formatted = formatted.slice(0, 7) + '.' + formatted.slice(7)
+                    }
+                    if (value.length > 9) {
+                      formatted = formatted.slice(0, 11) + '-' + formatted.slice(11)
+                    }
+                    return formatted
+                  })()}
+                />
+                {errors.syndic_cpf && (
+                  <p className="text-sm text-red-500">{errors.syndic_cpf.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="analista_financeiro">Analista Financeiro</Label>
                 <Input
                   id="analista_financeiro"
@@ -347,6 +401,32 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
                   placeholder="Nome do analista financeiro"
                   disabled={isLoading}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="analista_assembleias">Analista de Assembleias</Label>
+                  <Input
+                    id="analista_assembleias"
+                    {...register("analista_assembleias")}
+                    placeholder="Nome da analista de assembleias"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="analista_assembleias_email">E-mail da Analista de Assembleias</Label>
+                  <Input
+                    id="analista_assembleias_email"
+                    type="email"
+                    {...register("analista_assembleias_email")}
+                    placeholder="email@exemplo.com"
+                    disabled={isLoading}
+                  />
+                  {errors.analista_assembleias_email && (
+                    <p className="text-sm text-red-500">{errors.analista_assembleias_email.message}</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between space-x-2">
