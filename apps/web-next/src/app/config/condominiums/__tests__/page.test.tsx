@@ -8,6 +8,7 @@ const mockUpdateCondominium = vi.fn()
 const mockDeleteCondominium = vi.fn()
 const mockClearError = vi.fn()
 const mockToast = vi.fn()
+const mockPush = vi.fn()
 const mockTabelaOmnia = vi.fn(({ columns, data }: any) => (
   <div>
     <div data-testid="columns">{columns.map((column: any) => column.label).join("|")}</div>
@@ -27,15 +28,8 @@ vi.mock("@/components/ui/tabela-omnia", () => ({
   TabelaOmnia: (props: any) => mockTabelaOmnia(props),
 }))
 
-vi.mock("@/components/condominiums/CondominiumForm", () => ({
-  CondominiumForm: () => null,
-}))
-
-vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock("@/components/ui/alert-dialog", () => ({
