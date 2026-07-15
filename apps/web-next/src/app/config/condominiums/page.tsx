@@ -3,12 +3,11 @@
 import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TabelaOmnia } from "@/components/ui/tabela-omnia";
-import { CondominiumForm } from "@/components/condominiums/CondominiumForm";
 import { useCondominiumStore } from "@/stores/condominiums.store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Condominium } from "@/repositories/condominiumsRepo.supabase";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,19 +28,17 @@ const columns = [
 
 const ConfigCondominiums = () => {
   const { toast } = useToast();
+  const router = useRouter();
   const {
     condominiums,
     loading,
     error,
     loadCondominiums,
-    createCondominium,
     updateCondominium,
     deleteCondominium,
     clearError
   } = useCondominiumStore();
-  
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingCondominium, setEditingCondominium] = useState<Condominium | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -67,55 +64,13 @@ const ConfigCondominiums = () => {
   }, [error, toast, clearError]);
 
   const handleCreate = () => {
-    logger.debug('ConfigCondominiums: Opening create form')
-    setEditingCondominium(null);
-    setIsFormOpen(true);
+    logger.debug('ConfigCondominiums: Navigating to create form')
+    router.push('/config/condominiums/new');
   };
 
   const handleEdit = (condominium: Condominium) => {
-    logger.debug(`ConfigCondominiums: Opening edit form for condominium: ${condominium.id}`)
-    setEditingCondominium(condominium);
-    setIsFormOpen(true);
-  };
-
-  const handleFormSubmit = async (data: {
-    name: string;
-    address?: string | null;
-  }) => {
-    logger.debug('ConfigCondominiums: Submitting form')
-    
-    try {
-      if (editingCondominium) {
-        await updateCondominium(editingCondominium.id, data);
-        toast({
-          title: "Condomínio atualizado!",
-          description: `O condomínio "${data.name}" foi atualizado com sucesso.`
-        });
-      } else {
-        await createCondominium(data);
-        toast({
-          title: "Condomínio criado!",
-          description: `O condomínio "${data.name}" foi criado com sucesso.`
-        });
-      }
-      setIsFormOpen(false);
-      setEditingCondominium(null);
-    } catch (error) {
-      logger.error(`ConfigCondominiums: Error submitting form: ${error}`)
-      const treatedError = handleSupabaseError(
-        error,
-        createErrorContext(
-          editingCondominium ? 'update' : 'create',
-          'condomínio',
-          'omnia_condominiums'
-        )
-      );
-      toast({
-        title: "Erro",
-        description: treatedError.message,
-        variant: "destructive"
-      });
-    }
+    logger.debug(`ConfigCondominiums: Navigating to edit form for condominium: ${condominium.id}`)
+    router.push(`/config/condominiums/${condominium.id}/edit`);
   };
 
   const handleDelete = (id: string | number) => {
@@ -200,17 +155,8 @@ const ConfigCondominiums = () => {
     }
   };
 
-  const handleFormCancel = () => {
-    logger.debug('ConfigCondominiums: Form cancelled')
-    setIsFormOpen(false);
-    setEditingCondominium(null);
-  };
-
   const handleView = (id: string | number) => {
-    const condominium = condominiums.find(c => c.id === String(id));
-    if (condominium) {
-      handleEdit(condominium);
-    }
+    router.push(`/config/condominiums/${String(id)}/edit`);
   };
 
   const breadcrumbItems = [
@@ -381,23 +327,6 @@ const ConfigCondominiums = () => {
           )}
         </div>
       </div>
-
-      {/* Dialog de formulário */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingCondominium ? "Editar Condomínio" : "Novo Condomínio"}
-            </DialogTitle>
-          </DialogHeader>
-          <CondominiumForm
-            condominium={editingCondominium || undefined}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
-            isLoading={loading}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* AlertDialog de confirmação de exclusão */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

@@ -48,7 +48,7 @@ describe("CondominiumForm", () => {
     updated_at: null,
   }
 
-  it("exibe e envia o campo de analista financeiro na aba Equipe", async () => {
+  it("exibe e envia o campo de analista financeiro", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
     render(
@@ -58,8 +58,6 @@ describe("CondominiumForm", () => {
         onCancel={vi.fn()}
       />
     )
-
-    fireEvent.click(screen.getByRole("tab", { name: "Equipe" }))
 
     const input = screen.getByLabelText("Analista Financeiro")
     expect(input).toHaveValue("Marina Souza")
@@ -76,7 +74,7 @@ describe("CondominiumForm", () => {
     })
   })
 
-  it("move opções para a aba Opções e envia detalhes de boletos", async () => {
+  it("envia detalhes de boletos da seção Opções", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
     render(
@@ -94,10 +92,8 @@ describe("CondominiumForm", () => {
       />
     )
 
-    fireEvent.click(screen.getByRole("tab", { name: "Opções" }))
-
-    expect(screen.getByRole("heading", { name: "Boletos" })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: "Balancetes" })).toBeInTheDocument()
+    expect(screen.getByText("Boletos")).toBeInTheDocument()
+    expect(screen.getByText("Balancetes")).toBeInTheDocument()
     const boletoSelect = screen.getByRole("combobox", { name: "Boleto Impresso" })
     expect(boletoSelect).toHaveTextContent("Físico total")
     expect(screen.getByRole("switch", { name: "Garantidora" })).toBeInTheDocument()
@@ -145,8 +141,6 @@ describe("CondominiumForm", () => {
         onCancel={vi.fn()}
       />
     )
-
-    fireEvent.click(screen.getByRole("tab", { name: "Opções" }))
 
     expect(screen.getByRole("combobox", { name: "Boleto Impresso" })).toHaveTextContent("Não")
 
