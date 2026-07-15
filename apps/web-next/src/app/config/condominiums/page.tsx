@@ -5,7 +5,7 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TabelaOmnia } from "@/components/ui/tabela-omnia";
 import { useCondominiumStore } from "@/stores/condominiums.store";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Condominium } from "@/repositories/condominiumsRepo.supabase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -164,28 +164,19 @@ const ConfigCondominiums = () => {
     { label: "Condomínios", isActive: true }
   ];
 
-  // Filter and format data for table
-  const tableData = useMemo(() => {
-    let filtered = condominiums.filter(c => 
+  // Filter and format data for table.
+  // Not manually memoized on purpose: the React Compiler memoizes this
+  // derived value (and the cell handlers it closes over) automatically.
+  const filteredCondominiums = condominiums
+    .filter(c =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.cnpj?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.analista_financeiro?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    )
+    // Show only active by default (active is true only when explicitly true)
+    .filter(c => (showOnlyActive ? c.active === true : c.active !== true));
 
-    // Apply status filter - show only active by default
-    filtered = filtered.filter(c => {
-      // Consider active only if explicitly true
-      const isActive = c.active === true;
-      const isInactive = c.active === false || c.active === null || c.active === undefined;
-      
-      if (showOnlyActive) {
-        return isActive;
-      } else {
-        return isInactive;
-      }
-    });
-
-    return filtered.map(c => {
+  const tableData = filteredCondominiums.map(c => {
       const isEditingSyndic = editingCell?.id === c.id && editingCell?.field === 'syndic_name';
       const isEditingAnalistaFinanceiro = editingCell?.id === c.id && editingCell?.field === 'analista_financeiro';
       
@@ -244,7 +235,6 @@ const ConfigCondominiums = () => {
         active: c.active,
       };
     });
-  }, [condominiums, searchQuery, showOnlyActive, editingCell, editValue]);
 
   return (
     <Layout>
