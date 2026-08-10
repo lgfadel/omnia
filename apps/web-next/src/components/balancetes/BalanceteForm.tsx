@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,18 +20,34 @@ import { CondominiumSelect } from "@/components/condominiums/CondominiumSelect";
 import type { Condominium } from "@/repositories/condominiumsRepo.supabase";
 import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 
-const balanceteSchema = z.object({
-  condominium_id: z.string().min(1, "Selecione um condomínio"),
-  received_at: z.string().min(1, "Informe a data de recebimento"),
-  competencia: z
-    .string()
-    .min(1, "Informe a competência")
-    .regex(/^\d{2}\/\d{4}$/, "Formato inválido. Use MM/AAAA"),
-  volumes: z.coerce.number().int().min(1, "Mínimo 1 volume"),
-  observations: z.string().optional(),
-});
+function buildBalanceteSchema(requireReceivedAt: boolean) {
+  return z
+    .object({
+      condominium_id: z.string().min(1, "Selecione um condomínio"),
+      received_at: z.string().optional(),
+      competencia: z
+        .string()
+        .min(1, "Informe a competência")
+        .regex(/^\d{2}\/\d{4}$/, "Formato inválido. Use MM/AAAA"),
+      volumes: z.coerce.number().int().min(1, "Mínimo 1 volume"),
+      observations: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (requireReceivedAt && !data.received_at) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["received_at"],
+          message: "Informe a data de recebimento",
+        });
+      }
+    });
+}
 
-type BalanceteFormData = z.infer<typeof balanceteSchema>;
+type BalanceteFormData = z.infer<ReturnType<typeof buildBalanceteSchema>>;
+
+function formatShortDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString("pt-BR");
+}
 
 interface BalanceteFormProps {
   open: boolean;
@@ -67,6 +83,12 @@ export function BalanceteForm({
   isLoading = false,
 }: BalanceteFormProps) {
   const isEditing = !!balancete;
+  const isEditingPendingFisico = isEditing && !balancete?.received_at;
+
+  const balanceteSchema = useMemo(
+    () => buildBalanceteSchema(!isEditingPendingFisico),
+    [isEditingPendingFisico]
+  );
 
   const {
     register,
@@ -98,7 +120,7 @@ export function BalanceteForm({
       if (balancete) {
         reset({
           condominium_id: balancete.condominium_id,
-          received_at: balancete.received_at,
+          received_at: balancete.received_at ?? "",
           competencia: balancete.competencia,
           volumes: balancete.volumes,
           observations: balancete.observations || "",
@@ -170,10 +192,19 @@ export function BalanceteForm({
             )}
           </div>
 
+          {isEditingPendingFisico && balancete?.digital_prepared_at && (
+            <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <span className="text-xs text-blue-700 dark:text-blue-300">
+                ℹ️ Digital pronto em {formatShortDate(balancete.digital_prepared_at)} — aguardando recebimento físico
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="received_at">
-                {isDigital ? "Data de Publicação *" : "Data de Recebimento *"}
+                {isDigital ? "Data de Publicação" : "Data de Recebimento"}
+                {!isEditingPendingFisico && " *"}
               </Label>
               <Input
                 id="received_at"

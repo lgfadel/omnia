@@ -43,7 +43,7 @@ interface ProtocolosModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return ""
   const datePart = dateStr.split("T")[0]
   const [year, month, day] = datePart.split("-")

@@ -385,16 +385,65 @@ export type Database = {
           },
         ]
       }
+      omnia_balancete_csv_import_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_count: number
+          details: Json
+          id: string
+          ignored_count: number
+          not_matched_count: number
+          original_filename: string
+          total_rows: number
+          updated_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          details?: Json
+          id?: string
+          ignored_count?: number
+          not_matched_count?: number
+          original_filename: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          details?: Json
+          id?: string
+          ignored_count?: number
+          not_matched_count?: number
+          original_filename?: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_balancete_csv_import_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omnia_balancetes: {
         Row: {
           competencia: string
           condominium_id: string
           created_at: string | null
           created_by: string
+          csv_import_batch_id: string | null
+          digital_prepared_at: string | null
           id: string
           observations: string | null
           protocolo_id: string | null
-          received_at: string
+          received_at: string | null
           sent_at: string | null
           status: string
           updated_at: string | null
@@ -405,10 +454,12 @@ export type Database = {
           condominium_id: string
           created_at?: string | null
           created_by: string
+          csv_import_batch_id?: string | null
+          digital_prepared_at?: string | null
           id?: string
           observations?: string | null
           protocolo_id?: string | null
-          received_at?: string
+          received_at?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string | null
@@ -419,10 +470,12 @@ export type Database = {
           condominium_id?: string
           created_at?: string | null
           created_by?: string
+          csv_import_batch_id?: string | null
+          digital_prepared_at?: string | null
           id?: string
           observations?: string | null
           protocolo_id?: string | null
-          received_at?: string
+          received_at?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string | null
@@ -441,6 +494,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_balancetes_csv_import_batch_id_fkey"
+            columns: ["csv_import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_balancete_csv_import_batches"
             referencedColumns: ["id"]
           },
           {
