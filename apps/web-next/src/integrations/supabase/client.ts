@@ -1,7 +1,7 @@
 // Supabase browser client for Next.js — uses cookie-based session storage
 // so that the middleware (server-side) and the client share the same session.
 import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from './types';
+import type { Database } from './db-types';
 import { logger } from '../../lib/logging';
 
 // Supabase project configuration — values come from .env.local (dev) or Vercel env vars (prod)

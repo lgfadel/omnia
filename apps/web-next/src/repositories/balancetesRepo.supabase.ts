@@ -8,13 +8,15 @@ export interface Balancete {
   condominium_id: string
   condominium_name?: string
   balancete_digital?: boolean | null
-  received_at: string
+  received_at: string | null
   competencia: string
   volumes: number
   observations?: string | null
   status: string
   sent_at?: string | null
   protocolo_id?: string | null
+  digital_prepared_at?: string | null
+  csv_import_batch_id?: string | null
   created_by?: string | null
   created_at: string | null
   updated_at: string | null
@@ -26,7 +28,7 @@ export interface CreateBalanceteData {
   competencia: string
   volumes: number
   observations?: string | null
-  created_by?: string | null
+  created_by: string
 }
 
 export interface UpdateBalanceteData {
@@ -63,6 +65,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       protocolo_id: row.protocolo_id,
       created_by: row.created_by,
       created_at: row.created_at,
@@ -112,6 +116,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -155,6 +161,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -206,6 +214,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -249,6 +259,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       protocolo_id: row.protocolo_id,
       created_by: row.created_by,
       created_at: row.created_at,
@@ -283,6 +295,8 @@ export const balancetesRepoSupabase = {
       observations: row.observations,
       status: row.status,
       sent_at: row.sent_at,
+      digital_prepared_at: row.digital_prepared_at,
+      csv_import_batch_id: row.csv_import_batch_id,
       protocolo_id: row.protocolo_id,
       created_by: row.created_by,
       created_at: row.created_at,

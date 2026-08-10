@@ -11,9 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowUpDown, ArrowUp, ArrowDown, FileDown } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown, FileDown, Upload } from "lucide-react"
 import { generateBalancetesRelatorioPDF } from "@/lib/generateBalancetesRelatorio"
 import { downloadPDF } from "@/lib/generateProtocoloPDF"
+import { BalanceteCsvImportDialog } from "@/components/balancetes/BalanceteCsvImportDialog"
+import { useAuthStore } from "@/stores/auth.store"
+import { useBalancetesStore } from "@/stores/balancetes.store"
 import type { Balancete } from "@/repositories/balancetesRepo.supabase"
 import type { Condominium } from "@/repositories/condominiumsRepo.supabase"
 import {
@@ -64,22 +67,29 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
   const [statusFilter, setStatusFilter] = useState<'all' | BalanceteStatusColor>('all')
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const { userProfile } = useAuthStore()
+  const { loadBalancetes } = useBalancetesStore()
 
   const rows = useMemo(() => {
     const activeCondominiums = condominiums.filter((c) => c.active === true)
 
+    function latestCompetenciaOf(items: Balancete[]): string | null {
+      return items.reduce((best, b) => {
+        if (!best) return b.competencia
+        const bestDate = parseCompetencia(best)
+        const bDate = parseCompetencia(b.competencia)
+        return bDate > bestDate ? b.competencia : best
+      }, null as string | null)
+    }
+
     return activeCondominiums.map((cond) => {
       const condBalancetes = balancetes.filter((b) => b.condominium_id === cond.id)
+      const receivedBalancetes = condBalancetes.filter((b) => Boolean(b.received_at))
+      const pendingDigitalBalancetes = condBalancetes.filter((b) => !b.received_at && b.digital_prepared_at)
 
-      let latestCompetencia: string | null = null
-      if (condBalancetes.length > 0) {
-        latestCompetencia = condBalancetes.reduce((best, b) => {
-          if (!best) return b.competencia
-          const bestDate = parseCompetencia(best)
-          const bDate = parseCompetencia(b.competencia)
-          return bDate > bestDate ? b.competencia : best
-        }, null as string | null)
-      }
+      const latestCompetencia = latestCompetenciaOf(receivedBalancetes)
+      const pendingDigitalCompetencia = latestCompetenciaOf(pendingDigitalBalancetes)
 
       const status = getBalanceteStatus(latestCompetencia)
       const defasagemLabel = getMonthsAgoLabel(latestCompetencia)
@@ -98,6 +108,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         condominium: cond.name,
         analistaFinanceiro: cond.analista_financeiro,
         competencia: latestCompetencia,
+        pendingDigitalCompetencia,
         defasagemLabel,
         statusLabel,
         status,
@@ -277,16 +288,27 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         </button>
       </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-9 px-3 gap-2 shrink-0"
-        onClick={handleGerarRelatorio}
-        disabled={counts.yellow + counts.red === 0}
-      >
-        <FileDown className="w-4 h-4" />
-        Gerar Relatório
-      </Button>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 px-3 gap-2"
+          onClick={() => setImportDialogOpen(true)}
+        >
+          <Upload className="w-4 h-4" />
+          Importar CSV
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 px-3 gap-2"
+          onClick={handleGerarRelatorio}
+          disabled={counts.yellow + counts.red === 0}
+        >
+          <FileDown className="w-4 h-4" />
+          Gerar Relatório
+        </Button>
+      </div>
     </div>
 
       {/* Table */}
@@ -361,8 +383,13 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
                   <TableCell className="py-3 text-sm">
                     {row.analistaFinanceiro || <span className="text-muted-foreground">-</span>}
                   </TableCell>
-                  <TableCell className="py-3 text-sm">
-                    {row.competencia ?? <span className="text-muted-foreground">—</span>}
+                  <TableCell className="py-3 text-sm space-y-1">
+                    <div>{row.competencia ?? <span className="text-muted-foreground">—</span>}</div>
+                    {row.pendingDigitalCompetencia && (
+                      <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 text-xs">
+                        Digital pronto {row.pendingDigitalCompetencia}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="py-3 text-sm font-semibold">
                     {row.balanceteDigital === true ? 'D' : 'I'}
@@ -381,6 +408,17 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
           </Table>
         )}
       </div>
+
+      <BalanceteCsvImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        condominiums={condominiums}
+        balancetes={balancetes}
+        createdBy={userProfile?.id}
+        onImportSuccess={async () => {
+          await loadBalancetes()
+        }}
+      />
     </div>
   )
 }

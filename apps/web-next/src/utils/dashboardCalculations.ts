@@ -366,11 +366,11 @@ function calculateWorkflowMetrics<T extends {
 
 function getLatestBalanceteByCondominium(balancetes: Balancete[], condominiumId: string) {
   return balancetes
-    .filter((balancete) => balancete.condominium_id === condominiumId)
+    .filter((balancete) => balancete.condominium_id === condominiumId && Boolean(balancete.received_at))
     .sort((a, b) => {
       const competenciaDiff = parseCompetencia(b.competencia).getTime() - parseCompetencia(a.competencia).getTime()
       if (competenciaDiff !== 0) return competenciaDiff
-      return new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+      return new Date(b.received_at as string).getTime() - new Date(a.received_at as string).getTime()
     })[0] || null
 }
 

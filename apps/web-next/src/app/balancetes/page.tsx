@@ -46,7 +46,7 @@ const columns = [
   { key: "sent_status", label: "Dt Envio", width: "w-[12%]", sortable: true },
 ];
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
   // Extrair apenas a parte da data (YYYY-MM-DD) se vier com timestamp
   const datePart = dateStr.split("T")[0];
@@ -229,7 +229,7 @@ export default function BalancetesPage() {
         return {
           ...rest,
           tipo_envio: b.balancete_digital === true ? "D" : "I",
-          received_at: formatDate(b.received_at),
+          received_at: b.received_at ? formatDate(b.received_at) : "Aguardando físico",
           _raw_received_at: b.received_at,
           _raw_sent_at: dataEnvio,
           _attachmentCount: attachmentCount,
@@ -266,9 +266,15 @@ export default function BalancetesPage() {
       }
 
       if (sortField === 'received_at') {
-        const aDate = new Date(a._raw_received_at);
-        const bDate = new Date(b._raw_received_at);
-        return (aDate.getTime() - bDate.getTime()) * directionMultiplier;
+        const aDate = a._raw_received_at ? new Date(a._raw_received_at) : null;
+        const bDate = b._raw_received_at ? new Date(b._raw_received_at) : null;
+
+        if (aDate && bDate) {
+          return (aDate.getTime() - bDate.getTime()) * directionMultiplier;
+        }
+        if (aDate && !bDate) return -1;
+        if (!aDate && bDate) return 1;
+        return 0;
       }
 
       if (sortField === 'sent_status') {
@@ -465,16 +471,13 @@ export default function BalancetesPage() {
 
   const handleFormSubmit = async (data: {
     condominium_id: string;
-    received_at: string;
+    received_at?: string;
     competencia: string;
     volumes: number;
     observations?: string;
   }) => {
     setFormLoading(true);
-    
-    console.log('[DEBUG] User from auth store:', userProfile);
-    console.log('[DEBUG] User ID:', userProfile?.id);
-    
+
     try {
       if (editingBalancete) {
         await updateBalancete(editingBalancete.id, {
@@ -486,9 +489,10 @@ export default function BalancetesPage() {
         });
         toast({ title: "Balancete atualizado com sucesso!" });
       } else {
+        // Validado pelo BalanceteForm: received_at é obrigatório ao cadastrar um novo balancete.
         await createBalancete({
           condominium_id: data.condominium_id,
-          received_at: data.received_at,
+          received_at: data.received_at!,
           competencia: data.competencia,
           volumes: data.volumes,
           observations: data.observations || null,

@@ -42,7 +42,7 @@ import { useToast } from "@/hooks/use-toast"
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF"
 import { ProtocolImportDialog } from "@/components/balancetes/ProtocolImportDialog"
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return ""
   const datePart = dateStr.split("T")[0]
   const [year, month, day] = datePart.split("-")
