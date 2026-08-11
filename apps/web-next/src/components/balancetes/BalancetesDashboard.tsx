@@ -387,7 +387,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
                     <div>{row.competencia ?? <span className="text-muted-foreground">—</span>}</div>
                     {row.pendingDigitalCompetencia && (
                       <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 text-xs">
-                        Digital pronto {row.pendingDigitalCompetencia}
+                        {row.pendingDigitalCompetencia}
                       </Badge>
                     )}
                   </TableCell>

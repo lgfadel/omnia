@@ -87,6 +87,47 @@ describe('BalancetesDashboard', () => {
     expect(screen.getByRole('cell', { name: 'Marina Souza' })).toBeInTheDocument()
   })
 
+  it('exibe somente a competência no badge de balancete digital pendente', () => {
+    render(
+      <BalancetesDashboard
+        balancetes={[
+          {
+            id: 'bal-1',
+            condominium_id: 'cond-1',
+            received_at: null,
+            digital_prepared_at: '2026-04-01T12:00:00Z',
+            competencia: '05/2026',
+            volumes: 1,
+            status: 'pending',
+            created_at: null,
+            updated_at: null,
+          },
+        ]}
+        condominiums={[
+          {
+            id: 'cond-1',
+            name: 'Condominio com Digital Pendente',
+            cnpj: null,
+            address: null,
+            number: null,
+            neighborhood: null,
+            city: null,
+            state: null,
+            zip_code: null,
+            active: true,
+            balancete_digital: true,
+            boleto_impresso: false,
+            created_at: null,
+            updated_at: null,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText(/05\/2026/)).toHaveTextContent('05/2026')
+    expect(screen.queryByText(/Digital pronto/)).not.toBeInTheDocument()
+  })
+
   it('dispara callback ao clicar no nome do condominio', () => {
     const onCondominiumClick = vi.fn()
 
