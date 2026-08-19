@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
+import { AtaTranscriptionPanel } from "@/components/atas/AtaTranscriptionPanel"
 import { FileUploader } from "@/components/atas/FileUploader"
 import { Edit, FileDown, Archive, Clock, ChevronDown } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
@@ -210,6 +211,7 @@ const AtaDetail = () => {
         <Tabs defaultValue="resumo" className="space-y-6">
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
+            <TabsTrigger value="transcricao">Transcrição</TabsTrigger>
             <TabsTrigger value="anexos">
               Anexos ({(() => {
                 const directAttachments = ata.attachments?.length || 0;
@@ -306,6 +308,10 @@ const AtaDetail = () => {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="transcricao">
+            <AtaTranscriptionPanel ataId={ata.id} />
           </TabsContent>
 
           <TabsContent value="anexos">

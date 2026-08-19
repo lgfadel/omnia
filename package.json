@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
-    "apps/web-next"
+    "apps/web-next",
+    "apps/ata-transcription-worker"
   ],
   "scripts": {
     "dev": "npm --prefix apps/web-next run dev",
@@ -13,6 +14,7 @@
     "lint": "npm --prefix apps/web-next run lint",
     "lint:fix": "npm --prefix apps/web-next run lint --fix",
     "test": "npm --prefix apps/web-next run test",
+    "test:worker": "npm --prefix apps/ata-transcription-worker run test",
     "test:ui": "npm --prefix apps/web-next run test:ui",
     "test:run": "npm --prefix apps/web-next run test:run",
     "test:coverage": "npm --prefix apps/web-next run test:coverage",
