@@ -56,6 +56,43 @@ export interface Ata {
   comments?: Comment[];
 }
 
+export type AtaTranscriptionStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed'
+
+export type AtaTranscriptionStage = 'downloading' | 'splitting' | 'transcribing' | 'saving';
+
+export interface AtaTranscriptionJob {
+  id: string;
+  ataId: string;
+  status: AtaTranscriptionStatus;
+  originalFilename: string;
+  errorMessage?: string;
+  attemptCount: number;
+  createdAt: string;
+  totalChunks?: number;
+  processedChunks: number;
+  stage?: AtaTranscriptionStage;
+}
+
+export interface AtaTranscriptionSegment {
+  id: string;
+  sequence: number;
+  startMs: number;
+  endMs: number;
+  speakerLabel?: string;
+  speakerName?: string;
+  text: string;
+}
+
+export interface AtaTranscription {
+  id: string;
+  jobId: string;
+  rawText: string;
+  revisedText?: string;
+  language: string;
+  isReviewed: boolean;
+  segments: AtaTranscriptionSegment[];
+}
+
 export interface Tarefa {
   id: string;
   title: string;

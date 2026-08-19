@@ -33,6 +33,10 @@ dist-ssr
 supabase/.temp/
 
 # Temporary files
+# Gravações de assembleia ficam aqui durante testes. São dezenas de MB de áudio
+# confidencial de condomínio — um `git add -A` distraído as tornaria permanentes.
+temp/
+graphify-out/
 *.tmp
 *.temp
 *.bak
