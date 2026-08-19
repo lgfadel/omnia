@@ -30,7 +30,7 @@ interface OpenAITranscription {
 
 type AdminClient = SupabaseClient<any, 'public', any, any, any>
 
-const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_API_KEY'] as const
+const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_ATA_TRANSCRIPTION_API_KEY'] as const
 
 function getEnvironment() {
   for (const key of requiredEnvironment) {
@@ -40,7 +40,7 @@ function getEnvironment() {
   return {
     supabaseUrl: process.env.SUPABASE_URL!,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    openAiApiKey: process.env.OPENAI_API_KEY!,
+    openAiApiKey: process.env.OPENAI_ATA_TRANSCRIPTION_API_KEY!,
   }
 }
 
