@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
-import { getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
+import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
 import { FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
@@ -94,12 +94,16 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
         originalFilename: file.name,
         attemptCount: 0,
         createdAt: new Date().toISOString(),
+        processedChunks: 0,
       })
       await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds)
       await refresh()
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível enviar a gravação.')
+      // refresh() zera o erro ao carregar com sucesso, então a mensagem precisa
+      // ser definida depois dele — caso contrário a falha some da tela.
+      const message = uploadError instanceof Error ? uploadError.message : 'Não foi possível enviar a gravação.'
       await refresh()
+      setError(message)
     } finally {
       setIsUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -182,7 +186,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
             ref={inputRef}
             className="hidden"
             type="file"
-            accept="audio/mpeg,audio/mp4,audio/wav,video/mp4,audio/webm,video/webm,.mp3,.m4a,.wav,.mp4,.webm"
+            accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,video/mp4,audio/webm,video/webm,audio/ogg,.mp3,.m4a,.wav,.mp4,.webm,.aac,.ogg,.oga,.opus"
             onChange={(event) => {
               const file = event.target.files?.[0]
               if (file) void handleFileSelection(file)
@@ -193,7 +197,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
             <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/50 p-6 text-center dark:border-violet-900 dark:bg-violet-950/10">
               <FilePlus2 className="mx-auto mb-3 h-7 w-7 text-violet-600" />
               <p className="font-medium">Envie uma gravação de até 6 horas</p>
-              <p className="mt-1 text-sm text-muted-foreground">MP3, M4A, WAV, MP4 ou WebM. O processamento continua mesmo se você sair desta tela.</p>
+              <p className="mt-1 text-sm text-muted-foreground">MP3, M4A, AAC, WAV, MP4, WebM ou OGG. O envio começa assim que você escolher o arquivo, e o processamento continua mesmo se você sair desta tela.</p>
               <Button className="mt-4" onClick={() => inputRef.current?.click()} disabled={isUploading}>
                 <FilePlus2 className="mr-2 h-4 w-4" />
                 {isUploading ? 'Enviando…' : 'Selecionar gravação'}
@@ -207,7 +211,18 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
                 <span className="truncate font-medium">{job.originalFilename}</span>
                 <span className="shrink-0 text-muted-foreground">Execução em background</span>
               </div>
-              <Progress value={job.status === 'uploading' ? 25 : job.status === 'queued' ? 45 : 70} />
+              {(() => {
+                const { percent, label } = getTranscriptionProgress(job)
+                return (
+                  <>
+                    <Progress value={percent} />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium tabular-nums">{percent}%</span>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           )}
 
@@ -268,16 +283,17 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
 
             <div className="space-y-3 border-t pt-5">
               <div>
-                <h3 className="font-medium">Falantes e trechos</h3>
-                <p className="text-sm text-muted-foreground">Os rótulos são editáveis. Em áudios divididos, revise a correspondência entre trechos.</p>
+                <h3 className="font-medium">Trechos com horário</h3>
+                <p className="text-sm text-muted-foreground">A transcrição não identifica quem falou. Atribua os nomes conforme reconhecer as vozes.</p>
               </div>
               <div className="max-h-[32rem] space-y-2 overflow-auto pr-1" style={{ contentVisibility: 'auto' }}>
                 {transcription.segments.map((segment) => (
                   <div key={segment.id} className="grid gap-2 rounded-lg border p-3 md:grid-cols-[7rem_13rem_1fr] md:items-start">
                     <span className="pt-2 font-mono text-xs text-muted-foreground">{formatTimestamp(segment.startMs)}–{formatTimestamp(segment.endMs)}</span>
                     <Input
-                      defaultValue={segment.speakerName ?? segment.speakerLabel}
-                      aria-label={`Nome do ${segment.speakerLabel}`}
+                      defaultValue={segment.speakerName ?? segment.speakerLabel ?? ''}
+                      placeholder="Quem falou?"
+                      aria-label={`Quem falou em ${formatTimestamp(segment.startMs)}`}
                       onBlur={(event) => {
                         void ataTranscriptionsRepoSupabase.renameSpeaker(segment.id, event.target.value)
                           .catch(() => setError('Não foi possível salvar o nome do falante.'))

@@ -58,6 +58,8 @@ export interface Ata {
 
 export type AtaTranscriptionStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed'
 
+export type AtaTranscriptionStage = 'downloading' | 'splitting' | 'transcribing' | 'saving';
+
 export interface AtaTranscriptionJob {
   id: string;
   ataId: string;
@@ -66,6 +68,9 @@ export interface AtaTranscriptionJob {
   errorMessage?: string;
   attemptCount: number;
   createdAt: string;
+  totalChunks?: number;
+  processedChunks: number;
+  stage?: AtaTranscriptionStage;
 }
 
 export interface AtaTranscriptionSegment {
@@ -73,7 +78,7 @@ export interface AtaTranscriptionSegment {
   sequence: number;
   startMs: number;
   endMs: number;
-  speakerLabel: string;
+  speakerLabel?: string;
   speakerName?: string;
   text: string;
 }

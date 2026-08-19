@@ -17,7 +17,10 @@ describe('AtaTranscriptionPanel', () => {
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
     expect(await screen.findByText('Envie uma gravação de até 6 horas')).toBeInTheDocument()
-    expect(screen.getByText(/O processamento continua mesmo se você sair desta tela/)).toBeInTheDocument()
+    // O envio dispara na seleção do arquivo, sem botão de confirmar; a tela precisa
+    // dizer isso, senão o usuário não sabe se algo começou.
+    expect(screen.getByText(/O envio começa assim que você escolher o arquivo/)).toBeInTheDocument()
+    expect(screen.getByText(/processamento continua mesmo se você sair desta tela/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeInTheDocument()
   })
 })
