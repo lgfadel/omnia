@@ -4,12 +4,46 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { spawn } from 'node:child_process'
+import { Agent, setGlobalDispatcher } from 'undici'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
-import { mergeDiarizedChunks, type DiarizedSegment } from './transcript.js'
+import { mergeTranscribedChunks, type TranscribedSegment } from './transcript.js'
+
+// Medido em 19/08/2026: um bloco de 20 minutos leva ~635 s para retornar. Isso
+// estoura dois limites padrão de uma vez — o headersTimeout de 300 s do undici,
+// que é o cliente HTTP por trás do fetch do Node, e o timeout de 600 s do SDK da
+// OpenAI. Os dois precisam subir; corrigir só um faz a falha reaparecer adiante.
+const REQUEST_TIMEOUT_MS = 30 * 60 * 1000
+
+setGlobalDispatcher(new Agent({
+  headersTimeout: REQUEST_TIMEOUT_MS,
+  bodyTimeout: REQUEST_TIMEOUT_MS,
+}))
+
+// Teste controlado com o mesmo áudio e os mesmos bytes: gpt-4o-transcribe-diarize
+// devolveu 6,3% dos trechos em inglês e frases inventadas; whisper-1 devolveu 0%
+// de inglês, português coerente, 9x mais rápido e pelo mesmo preço. A diarização
+// se perde — era o único motivo de usar o outro modelo — e os falantes passam a
+// ser nomeados por quem revisa.
+const TRANSCRIPTION_MODEL = 'whisper-1'
+
+// Diferente do modelo de diarização, o whisper aceita `prompt`, e é por ele que
+// ancoramos o português e o vocabulário recorrente de assembleia.
+const TRANSCRIPTION_PROMPT = [
+  'Assembleia de condomínio em português do Brasil.',
+  'Termos recorrentes: assembleia geral ordinária, assembleia geral extraordinária,',
+  'síndico, subsíndico, conselho fiscal, convocação, quórum, pauta, deliberação,',
+  'taxa condominial, rateio, balancete, prestação de contas, administradora,',
+  'condômino, procuração, advogado, unidade, bloco, torre.',
+].join(' ')
+
+// Gravações de assembleia são de campo distante, com clipping e vozes em volumes
+// muito diferentes. Sem tratamento o modelo perde as falas mais baixas: normalizar
+// e comprimir a dinâmica rendeu ~19% mais conteúdo transcrito na medição.
+const AUDIO_FILTERS = 'highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=7,acompressor=threshold=-18dB:ratio=4:attack=20:release=250'
 
 const AUDIO_BUCKET = 'ata-transcription-audio'
-const CHUNK_SECONDS = 20 * 60
+const CHUNK_SECONDS = 30 * 60
 const MAX_DURATION_SECONDS = 6 * 60 * 60
 const POLL_INTERVAL_MS = 5_000
 const STALE_LEASE_MINUTES = 45
@@ -24,7 +58,7 @@ interface TranscriptionJob {
 
 interface OpenAITranscription {
   text?: string
-  segments?: DiarizedSegment[]
+  segments?: TranscribedSegment[]
   usage?: Record<string, unknown>
 }
 
@@ -78,7 +112,7 @@ function readAudioDuration(inputPath: string): Promise<number> {
 async function splitAudio(inputPath: string, workspace: string): Promise<string[]> {
   const outputPattern = join(workspace, 'chunk-%03d.mp3')
   await run('ffmpeg', [
-    '-y', '-i', inputPath, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '64k',
+    '-y', '-i', inputPath, '-vn', '-ac', '1', '-ar', '16000', '-af', AUDIO_FILTERS, '-b:a', '64k',
     '-f', 'segment', '-segment_time', String(CHUNK_SECONDS), '-reset_timestamps', '1', outputPattern,
   ])
   return (await readdir(workspace))
@@ -124,6 +158,11 @@ async function processJob(
 ): Promise<void> {
   const workspace = await mkdtemp(join(tmpdir(), 'omnia-ata-transcription-'))
   try {
+    // A interface fica minutos sem novidade durante um bloco longo; publicar a
+    // etapa e a contagem de blocos é o que diferencia "trabalhando" de "travado".
+    await supabase.from('omnia_ata_transcription_jobs')
+      .update({ stage: 'downloading', processed_chunks: 0, total_chunks: null })
+      .eq('id', job.id)
     const { data: audio, error: downloadError } = await supabase.storage.from(AUDIO_BUCKET).download(job.storage_path)
     if (downloadError || !audio) throw downloadError ?? new Error('Temporary audio was not found.')
 
@@ -131,35 +170,42 @@ async function processJob(
     await pipeline(audio.stream(), createWriteStream(inputPath))
     const durationSeconds = await readAudioDuration(inputPath)
     if (durationSeconds > MAX_DURATION_SECONDS) throw new Error('Audio exceeds the maximum duration.')
+    await supabase.from('omnia_ata_transcription_jobs').update({ stage: 'splitting' }).eq('id', job.id)
     const chunks = await splitAudio(inputPath, workspace)
     if (chunks.length === 0) throw new Error('The audio could not be split into processable chunks.')
+    await supabase.from('omnia_ata_transcription_jobs')
+      .update({ stage: 'transcribing', total_chunks: chunks.length })
+      .eq('id', job.id)
 
-    const chunkResults = [] as Array<{ chunkIndex: number; startOffsetSeconds: number; segments: DiarizedSegment[] }>
+    const chunkResults = [] as Array<{ chunkIndex: number; startOffsetSeconds: number; segments: TranscribedSegment[] }>
     const usages: Record<string, unknown>[] = []
     for (const [index, chunkPath] of chunks.entries()) {
       const { error: heartbeatError } = await supabase
         .from('omnia_ata_transcription_jobs')
-        .update({ heartbeat_at: new Date().toISOString() })
+        .update({ heartbeat_at: new Date().toISOString(), processed_chunks: index })
         .eq('id', job.id)
         .eq('status', 'processing')
       if (heartbeatError) throw heartbeatError
 
       const result = await openai.audio.transcriptions.create({
         file: createReadStream(chunkPath),
-        model: 'gpt-4o-transcribe-diarize',
+        model: TRANSCRIPTION_MODEL,
         language: 'pt',
-        response_format: 'diarized_json',
-        chunking_strategy: 'auto',
+        prompt: TRANSCRIPTION_PROMPT,
+        response_format: 'verbose_json',
       }) as unknown as OpenAITranscription
       chunkResults.push({
         chunkIndex: index + 1,
         startOffsetSeconds: index * CHUNK_SECONDS,
-        segments: result.segments ?? [{ start: 0, end: CHUNK_SECONDS, speaker: 'A', text: result.text ?? '' }],
+        segments: result.segments ?? [{ start: 0, end: CHUNK_SECONDS, text: result.text ?? '' }],
       })
       if (result.usage) usages.push(result.usage)
     }
 
-    const merged = mergeDiarizedChunks(chunkResults)
+    await supabase.from('omnia_ata_transcription_jobs')
+      .update({ stage: 'saving', processed_chunks: chunks.length })
+      .eq('id', job.id)
+    const merged = mergeTranscribedChunks(chunkResults)
     const { data: transcription, error: transcriptError } = await supabase
       .from('omnia_ata_transcriptions')
       .upsert({ ata_id: job.ata_id, job_id: job.id, raw_text: merged.rawText, language: 'pt-BR' }, { onConflict: 'job_id' })
@@ -180,7 +226,6 @@ async function processJob(
           sequence: segment.sequence,
           start_ms: segment.startMs,
           end_ms: segment.endMs,
-          speaker_label: segment.speakerLabel,
           text: segment.text,
         })),
       )
@@ -192,7 +237,7 @@ async function processJob(
 
     const { error: completeError } = await supabase
       .from('omnia_ata_transcription_jobs')
-      .update({ status: 'completed', completed_at: new Date().toISOString(), heartbeat_at: null, usage: { chunks: usages } })
+      .update({ status: 'completed', completed_at: new Date().toISOString(), heartbeat_at: null, stage: null, usage: { chunks: usages } })
       .eq('id', job.id)
     if (completeError) throw completeError
   } catch (error) {
@@ -205,6 +250,7 @@ async function processJob(
         status: 'failed',
         error_message: 'Não foi possível processar esta gravação. Verifique o arquivo e tente novamente.',
         heartbeat_at: null,
+        stage: null,
         completed_at: new Date().toISOString(),
       })
       .eq('id', job.id)
@@ -220,7 +266,7 @@ async function runWorker() {
   const supabase = createClient(environment.supabaseUrl, environment.supabaseServiceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
-  const openai = new OpenAI({ apiKey: environment.openAiApiKey })
+  const openai = new OpenAI({ apiKey: environment.openAiApiKey, timeout: REQUEST_TIMEOUT_MS })
   let isProcessing = false
 
   const poll = async () => {
