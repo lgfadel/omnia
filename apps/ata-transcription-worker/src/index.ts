@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { spawn } from 'node:child_process'
+import { createServer } from 'node:http'
 import { Agent, setGlobalDispatcher } from 'undici'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
@@ -45,8 +46,14 @@ const AUDIO_FILTERS = 'highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=7,acompressor=th
 const AUDIO_BUCKET = 'ata-transcription-audio'
 const CHUNK_SECONDS = 30 * 60
 const MAX_DURATION_SECONDS = 6 * 60 * 60
-const POLL_INTERVAL_MS = 5_000
 const STALE_LEASE_MINUTES = 45
+
+// O Railway adormece um serviço após 10 minutos sem tráfego de SAÍDA, e serviço
+// dormindo não gera cobrança de compute. O worker antigo consultava a fila a cada
+// 5 segundos, o que o mantinha acordado para sempre — pagando o mês inteiro para
+// trabalhar cerca de 1% do tempo. Aqui ele não pergunta nada: dorme até ser
+// avisado, drena tudo o que houver e volta a ficar em silêncio.
+const WAKE_PATH = '/wake'
 
 interface TranscriptionJob {
   id: string
@@ -64,7 +71,7 @@ interface OpenAITranscription {
 
 type AdminClient = SupabaseClient<any, 'public', any, any, any>
 
-const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_ATA_TRANSCRIPTION_API_KEY'] as const
+const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_ATA_TRANSCRIPTION_API_KEY', 'WORKER_WAKE_SECRET'] as const
 
 function getEnvironment() {
   for (const key of requiredEnvironment) {
@@ -75,6 +82,8 @@ function getEnvironment() {
     supabaseUrl: process.env.SUPABASE_URL!,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
     openAiApiKey: process.env.OPENAI_ATA_TRANSCRIPTION_API_KEY!,
+    wakeSecret: process.env.WORKER_WAKE_SECRET!,
+    port: Number(process.env.PORT ?? 8080),
   }
 }
 
@@ -267,23 +276,56 @@ async function runWorker() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
   const openai = new OpenAI({ apiKey: environment.openAiApiKey, timeout: REQUEST_TIMEOUT_MS })
-  let isProcessing = false
+  let draining: Promise<void> | null = null
 
-  const poll = async () => {
-    if (isProcessing) return
-    isProcessing = true
-    try {
+  // Uma chamada de wake pode chegar enquanto outra drenagem ainda roda. Reaproveitar
+  // a promessa em curso evita dois processamentos do mesmo trabalho e mantém o
+  // claim otimista do banco como única fonte de verdade.
+  const drainQueue = async () => {
+    for (;;) {
       const job = await claimNextJob(supabase)
-      if (job) await processJob(job, supabase, openai)
-    } catch (error) {
-      console.error('Transcription worker poll failed', error)
-    } finally {
-      isProcessing = false
+      if (!job) return
+      try {
+        await processJob(job, supabase, openai)
+      } catch (error) {
+        console.error('Transcription job failed, continuing with the queue', error)
+      }
     }
   }
 
-  await poll()
-  setInterval(poll, POLL_INTERVAL_MS)
+  const drain = () => {
+    if (!draining) {
+      draining = drainQueue()
+        .catch((error) => console.error('Transcription drain failed', error))
+        .finally(() => { draining = null })
+    }
+    return draining
+  }
+
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    if (request.method !== 'POST' || url.pathname !== WAKE_PATH) {
+      response.writeHead(404).end()
+      return
+    }
+    if (request.headers.authorization !== `Bearer ${environment.wakeSecret}`) {
+      response.writeHead(401).end()
+      return
+    }
+    // Responder antes de drenar: a transcrição leva minutos e quem chamou não pode
+    // ficar preso esperando. O trabalho continua depois da resposta.
+    response.writeHead(202, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ status: 'draining' }))
+    void drain()
+  })
+
+  server.listen(environment.port, () => {
+    console.log(`Transcription worker listening on ${environment.port}`)
+  })
+
+  // Um deploy ou um reinício pode acontecer com trabalho parado na fila, e nesse
+  // caso ninguém vai chamar o wake de novo.
+  void drain()
 }
 
 runWorker().catch((error) => {

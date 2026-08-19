@@ -56,6 +56,29 @@ function jsonWithCors(body: unknown, status: number, corsHeaders: Record<string,
   })
 }
 
+// O worker do Railway dorme após 10 minutos sem tráfego de saída e não é cobrado
+// enquanto dorme. Por isso ele não consulta mais a fila: precisa ser avisado no
+// exato momento em que há trabalho. A falha do aviso não pode derrubar a
+// requisição do usuário — o áudio já está no Storage e o job já está enfileirado,
+// então o pior caso é atraso, não perda.
+async function wakeWorker(): Promise<void> {
+  const url = Deno.env.get('TRANSCRIPTION_WORKER_URL')
+  const secret = Deno.env.get('WORKER_WAKE_SECRET')
+  if (!url || !secret) {
+    console.error('Worker wake is not configured; the job will wait for the next wake')
+    return
+  }
+  try {
+    const response = await fetch(`${url}/wake`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+    if (!response.ok) console.error('Worker wake returned', response.status)
+  } catch (error) {
+    console.error('Unable to wake the transcription worker', error)
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const corsHeaders = buildCorsHeaders(req)
   const json = (body: unknown, status = 200) => jsonWithCors(body, status, corsHeaders)
@@ -111,6 +134,13 @@ Deno.serve(async (req: Request) => {
       if (jobError || transcriptionError) {
         console.error('Unable to load ata transcription', jobError ?? transcriptionError)
         return json({ error: 'Não foi possível carregar a transcrição.' }, 500)
+      }
+      // Rede de segurança: se o aviso anterior se perdeu, o job ficaria em `queued`
+      // para sempre e a tela mostraria "Na fila" sem erro nenhum. O painel consulta
+      // este endpoint a cada 7,5 s enquanto há trabalho ativo, então é aqui que a
+      // tentativa perdida se recupera sozinha.
+      if (job?.status === 'queued' && Date.parse(job.created_at) < Date.now() - 60_000) {
+        await wakeWorker()
       }
       return json({ job, transcription })
     }
@@ -218,6 +248,7 @@ Deno.serve(async (req: Request) => {
       if (job.status !== 'uploading') return json({ error: 'O áudio já foi enviado.' }, 409)
       const { error } = await admin.from('omnia_ata_transcription_jobs').update({ status: 'queued', error_message: null }).eq('id', job.id)
       if (error) return json({ error: 'Não foi possível enfileirar a transcrição.' }, 500)
+      await wakeWorker()
       return json({ status: 'queued' })
     }
 
@@ -255,6 +286,7 @@ Deno.serve(async (req: Request) => {
       processed_chunks: 0,
     }).eq('id', job.id)
     if (error) return json({ error: 'Não foi possível reenfileirar a transcrição.' }, 500)
+    await wakeWorker()
     return json({ status: 'queued' })
   } catch (error) {
     console.error('Unhandled ata-transcriptions failure', error)

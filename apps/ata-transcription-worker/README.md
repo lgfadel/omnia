@@ -5,8 +5,24 @@ Serviço Railway que processa em background os trabalhos em `omnia_ata_transcrip
 ## Deploy
 
 1. Crie um serviço Railway apontando para este diretório (`apps/ata-transcription-worker`).
-2. O `Dockerfile` instala FFmpeg e inicia o polling automaticamente. Mantenha uma réplica; o lease de 45 minutos recupera trabalho abandonado após reinício.
-3. Configure, somente no Railway, as variáveis `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `OPENAI_ATA_TRANSCRIPTION_API_KEY`.
+2. O `Dockerfile` instala FFmpeg e sobe um servidor HTTP. Mantenha uma réplica; o lease de 45 minutos recupera trabalho abandonado após reinício.
+3. Configure, somente no Railway, as variáveis `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_ATA_TRANSCRIPTION_API_KEY` e `WORKER_WAKE_SECRET`.
+4. Habilite **serverless** no serviço e exponha um domínio. A edge function precisa das mesmas `TRANSCRIPTION_WORKER_URL` e `WORKER_WAKE_SECRET`.
+
+## Por que ele dorme
+
+O Railway adormece um serviço após 10 minutos sem tráfego de **saída**, e serviço
+dormindo não gera cobrança de compute. Com 2-3 assembleias por semana o worker
+trabalha cerca de 1% do tempo, então o polling de 5 em 5 segundos custava o mês
+inteiro para ficar perguntando a uma fila vazia — e, por ser tráfego de saída,
+impedia o adormecimento por construção.
+
+Ele não consulta mais nada. Dorme até receber `POST /wake` com
+`Authorization: Bearer $WORKER_WAKE_SECRET`, responde 202 na hora, drena tudo o
+que estiver na fila e volta ao silêncio. A edge function avisa em `complete` e em
+`retry`; se esse aviso se perder, o `GET` do painel (consultado a cada 7,5 s
+enquanto há trabalho ativo) reenvia o aviso para qualquer job parado há mais de um
+minuto. O worker também drena ao subir, o que cobre reinícios e deploys.
 
 ### Estado provisionado
 
