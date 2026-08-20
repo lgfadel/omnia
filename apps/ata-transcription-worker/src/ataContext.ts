@@ -44,6 +44,61 @@ export interface AtaContext {
   prompt: string
 }
 
+// A convocação é texto de documento, não cadastro: os nomes que importam estão
+// lá em caixa alta inicial, no meio de frases. Sequências assim são justamente
+// o que o modelo erra ao ouvir — nome de condomínio, de síndico, de rua, de
+// empresa — e o que `keywords` existe para ancorar.
+const TITLE_CASE_SEQUENCE = /[A-ZÀ-Ú][\wà-ú'-]{2,}(?:\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ú][\wà-ú'-]{2,}){0,3}/g
+
+// A captura pega a sequência inteira em caixa alta inicial, e no edital ela vem
+// colada ao cargo ou ao tipo do empreendimento: "Síndico Eduardo Marchetti",
+// "CONDOMÍNIO EDIFÍCIO VILA NOVA". Guardar assim quebra duas coisas — o nome
+// não casa com o que se diz na assembleia, e a mesma pessoa vira duas keywords.
+// Por isso a poda é por token, nas pontas.
+const STOP_TOKENS = new Set([
+  'a', 'o', 'os', 'as', 'e', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'ao', 'aos',
+  'assembleia', 'assembleias', 'geral', 'ordinária', 'ordinaria', 'extraordinária', 'extraordinaria',
+  'edital', 'convocação', 'convocacao', 'ordem', 'dia', 'pauta', 'anexo', 'obs',
+  'condomínio', 'condominio', 'edifício', 'edificio', 'residencial', 'bloco', 'torre',
+  'síndico', 'sindico', 'síndica', 'sindica', 'subsíndico', 'subsindico', 'conselho', 'fiscal',
+  'prestação', 'prestacao', 'contas', 'balancete', 'convenção', 'convencao', 'regimento',
+  'senhores', 'senhoras', 'condôminos', 'condominos', 'condômino', 'condomino',
+  'primeira', 'segunda', 'terceira', 'data', 'hora', 'horário', 'horario', 'local',
+  'cnpj', 'rua', 'avenida', 'nos', 'termos', 'fica', 'ficam',
+])
+
+function normalizeToken(token: string): string {
+  return token.toLowerCase().replace(/[^0-9a-zà-ú]/g, '')
+}
+
+// Sequência que sobra vazia era só jargão; jargão já está na lista fixa e não
+// precisa de vaga aqui.
+function trimStopTokens(sequence: string): string {
+  const tokens = sequence.split(/\s+/)
+  let start = 0
+  let end = tokens.length
+  while (start < end && STOP_TOKENS.has(normalizeToken(tokens[start]))) start += 1
+  while (end > start && STOP_TOKENS.has(normalizeToken(tokens[end - 1]))) end -= 1
+  return tokens.slice(start, end).join(' ')
+}
+
+export function extractConvocationKeywords(text: string): string[] {
+  const counts = new Map<string, { display: string; hits: number }>()
+  for (const match of text.matchAll(TITLE_CASE_SEQUENCE)) {
+    const display = trimStopTokens(match[0].replace(/\s+/g, ' ').trim())
+    const key = display.toLowerCase()
+    if (display.length < 4) continue
+    const entry = counts.get(key)
+    if (entry) entry.hits += 1
+    else counts.set(key, { display, hits: 1 })
+  }
+  // Nome que aparece mais de uma vez na convocação é nome que vai aparecer
+  // dezenas de vezes na gravação; ele entra na frente.
+  return [...counts.values()]
+    .sort((a, b) => b.hits - a.hits || b.display.length - a.display.length)
+    .map((entry) => entry.display)
+}
+
 export function buildAtaContext(input: {
   condominiumName?: string | null
   syndicName?: string | null
@@ -51,7 +106,9 @@ export function buildAtaContext(input: {
   secretaryName?: string | null
   title?: string | null
   tags?: string[] | null
+  convocationText?: string | null
 }): AtaContext {
+  const convocationText = sanitize(input.convocationText)
   const specific = [
     input.condominiumName,
     input.syndicName,
@@ -62,6 +119,9 @@ export function buildAtaContext(input: {
   ]
     .map(sanitize)
     .filter(Boolean)
+    // O cadastro vem primeiro: ele é digitado por gente, a convocação é lida por
+    // heurística. Quando os dois trazem o mesmo nome, prevalece o do cadastro.
+    .concat(convocationText ? extractConvocationKeywords(convocationText) : [])
 
   const seen = new Set<string>()
   const keywords: string[] = []
@@ -79,6 +139,10 @@ export function buildAtaContext(input: {
   if (input.managerName) parts.push(`Administradora: ${sanitize(input.managerName)}.`)
   if (input.secretaryName) parts.push(`Secretário da ata: ${sanitize(input.secretaryName)}.`)
   if (input.title) parts.push(`Assunto: ${sanitize(input.title)}.`)
+  // O edital entra por último e inteiro: é contexto não estruturado, que é
+  // exatamente o que o prompt aceita, e traz a pauta com as palavras que serão
+  // ditas na assembleia.
+  if (convocationText) parts.push(`Convocação: ${convocationText}`)
 
   return { keywords, prompt: parts.join(' ') }
 }
@@ -91,6 +155,7 @@ export async function loadAtaContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any, any, any>,
   ataId: string,
+  convocationText?: string | null,
 ): Promise<AtaContext> {
   try {
     const { data: ata } = await supabase
@@ -98,7 +163,7 @@ export async function loadAtaContext(
       .select('title, tags, condominium_id, secretary_id')
       .eq('id', ataId)
       .maybeSingle()
-    if (!ata) return buildAtaContext({})
+    if (!ata) return buildAtaContext({ convocationText })
 
     const [condominium, secretary] = await Promise.all([
       ata.condominium_id
@@ -116,9 +181,10 @@ export async function loadAtaContext(
       secretaryName: secretary.data?.name,
       title: ata.title,
       tags: ata.tags,
+      convocationText,
     })
   } catch (error) {
     console.error(`Could not load ata context for ${ataId}`, error)
-    return buildAtaContext({})
+    return buildAtaContext({ convocationText })
   }
 }

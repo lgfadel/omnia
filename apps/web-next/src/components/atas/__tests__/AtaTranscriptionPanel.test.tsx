@@ -16,7 +16,7 @@ vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({
 
 const repo = vi.mocked(ataTranscriptionsRepoSupabase)
 
-function transcriptionWith(revisedText?: string) {
+function transcriptionWith(revisedText?: string, isReviewed = false) {
   return {
     job: {
       id: 'job-1',
@@ -33,7 +33,7 @@ function transcriptionWith(revisedText?: string) {
       rawText: 'texto do áudio',
       revisedText,
       language: 'pt',
-      isReviewed: false,
+      isReviewed,
     },
   }
 }
@@ -137,5 +137,45 @@ describe('AtaTranscriptionPanel · download do texto', () => {
     expect(downloadName).toBe('assembleia-transcricao.txt')
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:fake')
+  })
+})
+
+describe('AtaTranscriptionPanel · estado da revisão', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.audioUrl.mockResolvedValue(null)
+  })
+
+  it('shows the review is closed and drops the actions that no longer apply', async () => {
+    repo.load.mockResolvedValue(transcriptionWith('texto revisado à mão', true))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    expect(await screen.findByText('Revisada')).toBeInTheDocument()
+    // Marcar de novo o que já está revisado, ou salvar rascunho de um texto
+    // fechado, são botões que só confundem quem terminou a revisão.
+    expect(screen.queryByRole('button', { name: 'Marcar como revisada' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Salvar rascunho' })).toBeNull()
+    expect(screen.getByRole('button', { name: /Baixar \.txt/ })).toBeEnabled()
+    expect(screen.getByLabelText('Texto da transcrição')).toBeDisabled()
+  })
+
+  it('reopens a closed review for editing', async () => {
+    repo.load.mockResolvedValue(transcriptionWith('texto revisado à mão', true))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reabrir para edição' }))
+
+    await waitFor(() => expect(repo.saveReview).toHaveBeenCalledWith('transcription-1', 'texto revisado à mão', false))
+  })
+
+  it('surfaces a review that the database refused to store', async () => {
+    repo.load.mockResolvedValue(transcriptionWith())
+    repo.saveReview.mockRejectedValue(new Error('sem permissão'))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como revisada' }))
+
+    // O pior desfecho possível é o botão piscar e a revisão não existir.
+    expect(await screen.findByText('Não foi possível salvar a revisão.')).toBeInTheDocument()
   })
 })

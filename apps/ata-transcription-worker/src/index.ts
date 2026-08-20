@@ -56,6 +56,7 @@ interface TranscriptionJob {
   storage_path: string
   status: 'queued' | 'processing' | 'completed' | 'failed'
   attempt_count: number
+  context_text: string | null
 }
 
 interface OpenAITranscription {
@@ -165,7 +166,7 @@ async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | n
     .update({ status: 'processing', started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
     .eq('id', candidate.id)
     .eq('status', 'queued')
-    .select('id, ata_id, storage_path, status, attempt_count')
+    .select('id, ata_id, storage_path, status, attempt_count, context_text')
     .maybeSingle()
   if (claimError) throw claimError
   return claimed as TranscriptionJob | null
@@ -197,7 +198,7 @@ async function processJob(
       .update({ stage: 'transcribing', total_chunks: chunks.length })
       .eq('id', job.id)
 
-    const context = await loadAtaContext(supabase, job.ata_id)
+    const context = await loadAtaContext(supabase, job.ata_id, job.context_text)
     const chunkResults = [] as Array<{ chunkIndex: number; text: string }>
     const usages: Record<string, unknown>[] = []
     let carryOver = ''

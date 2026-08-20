@@ -28,6 +28,10 @@ function buildCorsHeaders(req: Request): Record<string, string> {
   }
 }
 
+// A convocação inteira não interessa: cabeçalho e pauta bastam, e um texto
+// longo demais no prompt dilui justamente o que ele deveria ancorar.
+const MAX_CONTEXT_CHARS = 4000
+
 const AUDIO_BUCKET = 'ata-transcription-audio'
 const MAX_DURATION_SECONDS = 6 * 60 * 60
 const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024
@@ -163,6 +167,7 @@ Deno.serve(async (req: Request) => {
       sizeBytes?: number
       durationSeconds?: number
       jobId?: string
+      contextText?: string
     }
     if (!isAction(payload.action)) return json({ error: 'Ação inválida.' }, 400)
 
@@ -187,6 +192,13 @@ Deno.serve(async (req: Request) => {
       const authorization = await getAuthorizedAta(payload.ataId)
       if (!authorization) return json({ error: 'Acesso negado.' }, 403)
 
+      // O texto vem do navegador, que extraiu o PDF da convocação. É contexto
+      // para o modelo, nunca conteúdo executável — cortar o tamanho aqui evita
+      // que um PDF de 300 páginas vire um prompt impagável.
+      const contextText = typeof payload.contextText === 'string'
+        ? payload.contextText.slice(0, MAX_CONTEXT_CHARS).trim() || null
+        : null
+
       const jobId = crypto.randomUUID()
       const storagePath = `${payload.ataId}/${jobId}/${sanitizeFileName(payload.fileName)}`
       const { error: insertError } = await admin.from('omnia_ata_transcription_jobs').insert({
@@ -198,6 +210,7 @@ Deno.serve(async (req: Request) => {
         mime_type: payload.mimeType,
         size_bytes: payload.sizeBytes,
         duration_seconds: Math.ceil(payload.durationSeconds),
+        context_text: contextText,
         is_current: false,
       })
       if (insertError) {

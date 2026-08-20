@@ -122,7 +122,7 @@ export const ataTranscriptionsRepoSupabase = {
     }
   },
 
-  async upload(ataId: string, file: File, durationSeconds: number): Promise<void> {
+  async upload(ataId: string, file: File, durationSeconds: number, contextText?: string): Promise<void> {
     const { data, error } = await supabase.functions.invoke<StartUploadResponse>('ata-transcriptions', {
       body: {
         action: 'create',
@@ -131,6 +131,7 @@ export const ataTranscriptionsRepoSupabase = {
         mimeType: file.type,
         sizeBytes: file.size,
         durationSeconds,
+        contextText,
       },
     })
     if (error || !data) throw await describeFunctionError(error, 'Não foi possível iniciar o envio do áudio.')
@@ -162,15 +163,22 @@ export const ataTranscriptionsRepoSupabase = {
     if (error) throw await describeFunctionError(error, 'Não foi possível reenfileirar a transcrição.')
   },
 
+  // O update precisa devolver a linha. Sem isso, uma revisão barrada pela RLS
+  // volta como sucesso sem ter gravado nada: o PostgREST não erra quando o
+  // filtro simplesmente não alcança nenhuma linha visível, e quem revisou uma
+  // assembleia inteira acharia que salvou.
   async saveReview(transcriptionId: string, revisedText: string, isReviewed: boolean): Promise<void> {
-    const { error } = await untypedSupabase
+    const { data, error } = await untypedSupabase
       .from('omnia_ata_transcriptions')
       .update({
         revised_text: revisedText,
         is_reviewed: isReviewed,
       })
       .eq('id', transcriptionId)
+      .select('id')
+      .maybeSingle()
     if (error) throw error
+    if (!data) throw new Error('A revisão não foi gravada: seu usuário não tem permissão para editar esta ata.')
   },
 
   // Devolve null quando a gravação não existe mais no bucket — transcrições

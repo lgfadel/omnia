@@ -66,6 +66,8 @@ Crie a última variável como uma chave de service account exclusiva do projeto 
 
 O `whisper-1` da API é o large-v2 e ficou para trás em acurácia. O `gpt-transcribe` erra menos e, mais importante, aceita `keywords`: uma lista de literais que ancora o que nenhum modelo tem como adivinhar — nome do condomínio, do síndico, da administradora, de quem secretaria, título e tags daquela ata. Em assembleia, o erro que mais dói é nome próprio, e é exatamente essa classe que o parâmetro ataca. O worker monta a lista por ata, com fallback para o vocabulário fixo de condomínio se o cadastro não estiver disponível — contexto ausente piora a transcrição, mas não pode derrubá-la.
 
+Quando quem envia a gravação anexa a **convocação da assembleia em PDF**, ela vira a melhor fonte de contexto que existe: traz o nome do condomínio, o do síndico, a data e a pauta inteira, sem ambiguidade. O texto é extraído no navegador (o usuário vê na hora o que foi lido, e um PDF escaneado é recusado ali mesmo), guardado em `omnia_ata_transcription_jobs.context_text` e usado de dois jeitos — o texto inteiro entra no prompt, e os nomes próprios dele viram `keywords`, atrás dos que vêm do cadastro. Nenhum PDF entra no Storage: só o texto, que é o que o modelo consome.
+
 O prompt de cada bloco carrega os últimos 400 caracteres do bloco anterior. Sem isso, cada 30 minutos recomeçava sem saber de que assembleia se tratava, e nomes já acertados voltavam a ser chutados.
 
 O áudio recebe `highpass`, `loudnorm` e compressão antes do envio, o que rendeu ~19% mais conteúdo transcrito em gravação de campo distante.

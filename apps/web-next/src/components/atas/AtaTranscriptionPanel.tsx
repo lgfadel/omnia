@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,9 +11,10 @@ import { Progress } from '@/components/ui/progress'
 import { AtaTranscriptionEditor } from './AtaTranscriptionEditor'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
 import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
+import { readConvocacao, type ConvocacaoContext } from '@/lib/convocacao'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
-import { Download, FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, Download, FileAudio, FilePlus2, FileText, RefreshCcw, Sparkles, TriangleAlert, X } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
   ataId: string
@@ -46,6 +48,7 @@ type AudioState =
 
 export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const convocacaoRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [job, setJob] = useState<AtaTranscriptionJob | null>(null)
   const [transcription, setTranscription] = useState<AtaTranscription | null>(null)
@@ -59,8 +62,11 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
+  const [convocacao, setConvocacao] = useState<ConvocacaoContext | null>(null)
+  const [isReadingConvocacao, setIsReadingConvocacao] = useState(false)
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
   const transcriptionId = transcription?.id
+  const isReviewed = Boolean(transcription?.isReviewed)
 
   const refresh = useCallback(async () => {
     try {
@@ -119,7 +125,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
         createdAt: new Date().toISOString(),
         processedChunks: 0,
       })
-      await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds)
+      await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
       await refresh()
     } catch (uploadError) {
       // refresh() zera o erro ao carregar com sucesso, então a mensagem precisa
@@ -130,6 +136,20 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
     } finally {
       setIsUploading(false)
       if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const handleConvocacaoSelection = async (file: File) => {
+    setError(null)
+    setIsReadingConvocacao(true)
+    try {
+      setConvocacao(await readConvocacao(file))
+    } catch (readError) {
+      setConvocacao(null)
+      setError(readError instanceof Error ? readError.message : 'Não foi possível ler esta convocação.')
+    } finally {
+      setIsReadingConvocacao(false)
+      if (convocacaoRef.current) convocacaoRef.current.value = ''
     }
   }
 
@@ -248,15 +268,64 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
             }}
           />
 
+          <Input
+            ref={convocacaoRef}
+            className="hidden"
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void handleConvocacaoSelection(file)
+            }}
+          />
+
           {!job && (
             <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/50 p-6 text-center dark:border-violet-900 dark:bg-violet-950/10">
               <FilePlus2 className="mx-auto mb-3 h-7 w-7 text-violet-600" />
               <p className="font-medium">Envie uma gravação de até 6 horas</p>
               <p className="mt-1 text-sm text-muted-foreground">MP3, M4A, AAC, WAV, MP4, WebM ou OGG. O envio começa assim que você escolher o arquivo, e o processamento continua mesmo se você sair desta tela.</p>
-              <Button className="mt-4" onClick={() => inputRef.current?.click()} disabled={isUploading}>
+              <Button className="mt-4" onClick={() => inputRef.current?.click()} disabled={isUploading || isReadingConvocacao}>
                 <FilePlus2 className="mr-2 h-4 w-4" />
                 {isUploading ? 'Enviando…' : 'Selecionar gravação'}
               </Button>
+
+              <div className="mt-6 border-t border-dashed border-violet-200 pt-4 text-left dark:border-violet-900">
+                {convocacao ? (
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                        <div className="space-y-1 text-sm">
+                          <p className="font-medium">Convocação lida</p>
+                          <ul className="text-muted-foreground">
+                            {convocacao.condominio && <li>Condomínio: {convocacao.condominio}</li>}
+                            {convocacao.sindico && <li>Síndico: {convocacao.sindico}</li>}
+                            {convocacao.data && <li>Data: {convocacao.data}</li>}
+                            <li>
+                              {convocacao.pautaItems.length > 0
+                                ? `${convocacao.pautaItems.length} ${convocacao.pautaItems.length === 1 ? 'item de pauta' : 'itens de pauta'}`
+                                : 'Pauta não identificada — o texto da convocação será usado assim mesmo'}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Remover convocação" onClick={() => setConvocacao(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+                    <span className="text-muted-foreground">
+                      Tem a convocação em PDF? Ela ancora o nome do condomínio, do síndico e a pauta na transcrição.
+                    </span>
+                    <Button variant="outline" size="sm" disabled={isReadingConvocacao || isUploading} onClick={() => convocacaoRef.current?.click()}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {isReadingConvocacao ? 'Lendo…' : 'Anexar convocação (opcional)'}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -307,9 +376,21 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg">Transcrição para revisão</CardTitle>
-                <CardDescription>Edite o texto antes de usar o conteúdo na futura geração da minuta.</CardDescription>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-lg">{isReviewed ? 'Transcrição revisada' : 'Transcrição para revisão'}</CardTitle>
+                  {isReviewed && (
+                    <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300" variant="outline">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Revisada
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription>
+                  {isReviewed
+                    ? 'O texto está fechado. Reabra para editar, ou baixe o .txt para usar fora daqui.'
+                    : 'Edite o texto antes de usar o conteúdo na futura geração da minuta.'}
+                </CardDescription>
               </div>
               <Button variant="outline" onClick={() => setShowMinutaNotice(true)}>
                 <Sparkles className="mr-2 h-4 w-4" />
@@ -330,7 +411,11 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               </Alert>
             )}
 
-            <AtaTranscriptionEditor value={draftText} onChange={setDraftText} disabled={isSaving || isDiscarding} />
+            <AtaTranscriptionEditor
+              value={draftText}
+              onChange={setDraftText}
+              disabled={isSaving || isDiscarding || isReviewed}
+            />
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 variant="ghost"
@@ -340,12 +425,28 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               >
                 {isDiscarding ? 'Descartando…' : 'Descartar transcrição'}
               </Button>
-              <Button variant="ghost" disabled={isSaving || isDiscarding || !draftText.trim()} onClick={downloadTranscription}>
-                <Download className="mr-2 h-4 w-4" />
-                Baixar .txt
-              </Button>
-              <Button variant="outline" disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(false)}>Salvar rascunho</Button>
-              <Button disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(true)}>{isSaving ? 'Salvando…' : 'Marcar como revisada'}</Button>
+              {isReviewed ? (
+                <>
+                  <Button variant="outline" disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(false)}>
+                    {isSaving ? 'Reabrindo…' : 'Reabrir para edição'}
+                  </Button>
+                  <Button disabled={!draftText.trim()} onClick={downloadTranscription}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar .txt
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" disabled={isSaving || isDiscarding || !draftText.trim()} onClick={downloadTranscription}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar .txt
+                  </Button>
+                  <Button variant="outline" disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(false)}>Salvar rascunho</Button>
+                  <Button disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(true)}>
+                    {isSaving ? 'Salvando…' : 'Marcar como revisada'}
+                  </Button>
+                </>
+              )}
             </div>
 
             {audio.status === 'ready' && (
