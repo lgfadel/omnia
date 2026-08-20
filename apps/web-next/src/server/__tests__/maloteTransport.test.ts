@@ -8,6 +8,7 @@ describe('getMaloteTransportOptions', () => {
       port: 465,
       secure: true,
       auth: { user: 'envio@empresa.com', pass: 'app-password' },
+      sender: 'envio@empresa.com',
     })
   })
 
@@ -16,6 +17,7 @@ describe('getMaloteTransportOptions', () => {
       host: '127.0.0.1',
       port: 55425,
       secure: false,
+      sender: 'malotes@localhost',
     })
   })
 

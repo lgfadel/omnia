@@ -2,6 +2,7 @@ import { renderMaloteTemplate } from '@/lib/malotes'
 
 export type MaloteMailTransport = {
   sendMail: (message: {
+    from: string
     to: string
     subject: string
     text: string
@@ -11,6 +12,7 @@ export type MaloteMailTransport = {
 
 type SendMaloteEmailInput = {
   transport: MaloteMailTransport
+  sender: string
   recipient: string
   subjectTemplate: string
   bodyTemplate: string
@@ -29,6 +31,7 @@ export async function sendMaloteEmail(input: SendMaloteEmailInput) {
   const subject = renderMaloteTemplate(input.subjectTemplate, context)
   const body = renderMaloteTemplate(input.bodyTemplate, context)
   const response = await input.transport.sendMail({
+    from: input.sender,
     to: input.recipient,
     subject,
     text: body,

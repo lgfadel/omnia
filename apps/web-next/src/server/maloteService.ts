@@ -150,13 +150,15 @@ export function getMaloteTransportOptions(values: Record<string, string | undefi
   const secure = values.MALOTE_SMTP_SECURE ? values.MALOTE_SMTP_SECURE === 'true' : port === 465
   const user = values.MALOTE_SMTP_USER ?? values.GMAIL_SMTP_USER
   const pass = values.MALOTE_SMTP_PASSWORD ?? values.GMAIL_SMTP_APP_PASSWORD
+  const sender = values.MALOTE_SMTP_FROM ?? user ?? 'malotes@localhost'
   if ((user && !pass) || (!user && pass)) throw new Error('Configure usuário e senha SMTP juntos.')
   if (host === 'smtp.gmail.com' && (!user || !pass)) throw new Error('Missing required environment variable: GMAIL_SMTP_USER')
-  return user && pass ? { host, port, secure, auth: { user, pass } } : { host, port, secure }
+  return user && pass ? { host, port, secure, auth: { user, pass }, sender } : { host, port, secure, sender }
 }
 
 function createGmailTransport() {
-  return nodemailer.createTransport(getMaloteTransportOptions())
+  const { sender, ...options } = getMaloteTransportOptions()
+  return { transport: nodemailer.createTransport(options), sender }
 }
 
 export async function sendMalote(authHeader: string | null, batchId: string, itemIds?: string[]) {
@@ -170,7 +172,7 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
   if (itemIds?.length) itemsQuery = itemsQuery.in('id', itemIds)
   const { data: items, error: itemsError } = await itemsQuery
   if (itemsError || !items?.length) throw new Error('Não há anexos disponíveis para envio.')
-  const transport = createGmailTransport()
+  const mailer = createGmailTransport()
   const results = []
   for (const item of items) {
     const { data: claimedItem, error: claimError } = await client.from('omnia_malote_items')
@@ -187,7 +189,7 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
       const renderedBody = renderMaloteTemplate(batch.body_template, templateContext)
       const { data: attempt, error: startAttemptError } = await client.from('omnia_malote_attempts').insert({ item_id: item.id, attempted_by: user.omniaUserId, recipient_email: batch.recipient_email, rendered_subject: renderedSubject, rendered_body: renderedBody, status: 'sending' }).select('id').single()
       if (startAttemptError || !attempt) throw new Error(startAttemptError?.message ?? 'Não foi possível registrar a tentativa de envio.')
-      const sent = await sendMaloteEmail({ transport, recipient: batch.recipient_email, subjectTemplate: batch.subject_template, bodyTemplate: batch.body_template, condominiumName: templateContext.condominium, fileName: claimedItem.file_name, fileContents, sentAt })
+      const sent = await sendMaloteEmail({ transport: mailer.transport, sender: mailer.sender, recipient: batch.recipient_email, subjectTemplate: batch.subject_template, bodyTemplate: batch.body_template, condominiumName: templateContext.condominium, fileName: claimedItem.file_name, fileContents, sentAt })
       const { data: sentAttempt, error: sentAttemptError } = await client.from('omnia_malote_attempts').update({ status: 'sent', smtp_message_id: sent.messageId }).eq('id', attempt.id).eq('status', 'sending').select('id').maybeSingle()
       if (sentAttemptError || !sentAttempt) { results.push({ itemId: item.id, status: 'delivery_unknown' }); continue }
       const { data: sentItem, error: sentUpdateError } = await client.from('omnia_malote_items').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', claimedItem.id).eq('status', 'sending').select('id').maybeSingle()
