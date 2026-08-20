@@ -4,6 +4,8 @@
 Welcome to the repository knowledge base. Start with the project overview, then dive into specific guides as needed.
 
 ## Core Guides
+- [Malotes digitais](../../docs/malotes-digitais.md) — operação, configuração SMTP e ambiente local de testes.
+- [Baseline local de testes](../../docs/local-test-environment.md) — schema, dados dummy e smoke test autenticado.
 - [Project Overview](./project-overview.md)
 - [Architecture Notes](./architecture.md)
 - [Development Workflow](./development-workflow.md)

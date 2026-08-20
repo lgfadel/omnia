@@ -1,0 +1,22 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { RoleProtectedRoute } from '@/components/auth/RoleProtectedRoute'
+import { Layout } from '@/components/layout/Layout'
+import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { supabase } from '@/integrations/supabase/client'
+import { useToast } from '@/hooks/use-toast'
+
+async function api(path: string, init?: RequestInit) { const { data } = await supabase.auth.getSession(); const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}`, ...init?.headers } }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? 'Não foi possível concluir a operação.'); return body }
+
+export default function ConfigMalotesPage() {
+  const { toast } = useToast(); const [recipientEmail, setRecipientEmail] = useState(''); const [subjectTemplate, setSubjectTemplate] = useState(''); const [bodyTemplate, setBodyTemplate] = useState(''); const [cutoff, setCutoff] = useState(''); const [preview, setPreview] = useState<string | null>(null)
+  useEffect(() => { api('/api/malotes/settings').then((settings) => { setRecipientEmail(settings.recipient_email); setSubjectTemplate(settings.default_subject_template); setBodyTemplate(settings.default_body_template) }).catch((error) => toast({ title: 'Erro', description: error.message, variant: 'destructive' })) }, [toast])
+  const save = async () => { try { await api('/api/malotes/settings', { method: 'PUT', body: JSON.stringify({ recipientEmail, subjectTemplate, bodyTemplate }) }); toast({ title: 'Configuração salva' }) } catch (error) { toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) } }
+  const clean = async (isPreview: boolean) => { try { const result = await api('/api/malotes/cleanup', { method: 'POST', body: JSON.stringify({ before: cutoff, preview: isPreview }) }); if (isPreview) setPreview(`${result.count} anexo(s), ${(result.totalBytes / 1024 / 1024).toFixed(1)} MB`); else { setPreview(null); toast({ title: 'Limpeza concluída', description: `${result.count} anexo(s) removido(s).` }) } } catch (error) { toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) } }
+  return <RoleProtectedRoute allowedRoles={['ADMIN']}><Layout><div className="mx-auto max-w-3xl space-y-7"><BreadcrumbOmnia items={[{ label: 'Configurações', href: '/config' }, { label: 'Malotes', isActive: true }]} /><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Administração</p><h1 className="mt-2 text-3xl font-semibold">Configuração de malotes</h1></div><section className="space-y-5 rounded-xl border bg-card p-6"><div className="space-y-2"><Label>E-mail de destino</Label><Input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} /></div><div className="space-y-2"><Label>Assunto padrão</Label><Input value={subjectTemplate} onChange={(event) => setSubjectTemplate(event.target.value)} /></div><div className="space-y-2"><Label>Texto padrão</Label><Textarea rows={9} value={bodyTemplate} onChange={(event) => setBodyTemplate(event.target.value)} /><p className="text-xs text-muted-foreground">Variáveis disponíveis: {'{{condominio}}'}, {'{{data_envio}}'}, {'{{arquivo}}'}.</p></div><Button onClick={save}>Salvar configuração</Button></section><section className="space-y-4 rounded-xl border border-dashed p-6"><div><h2 className="font-semibold">Limpeza manual de anexos</h2><p className="text-sm text-muted-foreground">O histórico permanece; somente PDFs armazenados serão removidos.</p></div><div className="flex flex-wrap gap-3"><Input className="max-w-xs" type="date" value={cutoff} onChange={(event) => setCutoff(event.target.value)} /><Button variant="outline" disabled={!cutoff} onClick={() => clean(true)}>Pré-visualizar</Button><Button variant="destructive" disabled={!preview} onClick={() => { if (window.confirm(`Remover ${preview}?`)) clean(false) }}>Limpar anexos</Button></div>{preview && <p className="text-sm text-muted-foreground">Elegíveis para remoção: {preview}</p>}</section></div></Layout></RoleProtectedRoute>
+}

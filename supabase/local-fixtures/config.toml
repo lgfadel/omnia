@@ -1,0 +1,26 @@
+project_id = "omnia-local-test"
+
+[api]
+port = 55421
+
+[db]
+port = 55422
+shadow_port = 55420
+
+[db.pooler]
+port = 55429
+
+[studio]
+port = 55423
+
+[local_smtp]
+port = 55424
+smtp_port = 55425
+pop3_port = 55426
+
+[analytics]
+port = 55427
+vector_port = 55428
+
+[edge_runtime]
+inspector_port = 8084
