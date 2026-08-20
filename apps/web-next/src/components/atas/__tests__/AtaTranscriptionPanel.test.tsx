@@ -125,3 +125,30 @@ describe('AtaTranscriptionPanel · conferência pelo áudio', () => {
     expect(document.querySelector('audio')).toBeNull()
   })
 })
+
+describe('AtaTranscriptionPanel · download do texto', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.load.mockResolvedValue(transcriptionWith('texto revisado à mão'))
+    repo.audioUrl.mockResolvedValue(null)
+  })
+
+  it('saves the text under the name of the recording it came from', async () => {
+    const createObjectURL = vi.fn().mockReturnValue('blob:fake')
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, writable: true, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, writable: true, configurable: true })
+    let downloadName = ''
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloadName = this.download
+    })
+
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    fireEvent.click(await screen.findByRole('button', { name: /Baixar \.txt/ }))
+
+    // "transcricao.txt" numa pasta de downloads não diz de qual assembleia é.
+    expect(downloadName).toBe('assembleia-transcricao.txt')
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:fake')
+  })
+})

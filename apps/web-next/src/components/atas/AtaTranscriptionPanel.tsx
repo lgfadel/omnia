@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { Textarea } from '@/components/ui/textarea'
+import { AtaTranscriptionEditor } from './AtaTranscriptionEditor'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
 import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 import type { AtaTranscription, AtaTranscriptionJob, AtaTranscriptionSegment } from '@/data/types'
-import { FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
+import { Download, FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
   ataId: string
@@ -220,6 +220,22 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
     }
   }
 
+  const downloadTranscription = () => {
+    if (!job) return
+    // O nome do arquivo enviado é a única referência que quem revisa reconhece
+    // depois, fora desta tela: preservá-lo evita uma pasta de "transcricao.txt".
+    const base = job.originalFilename.replace(/\.[^.]+$/, '') || 'transcricao'
+    const blob = new Blob([draftText], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${base}-transcricao.txt`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const handleDiscard = async () => {
     if (!job) return
     setIsDiscarding(true)
@@ -355,7 +371,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               </Alert>
             )}
 
-            <Textarea value={draftText} onChange={(event) => setDraftText(event.target.value)} className="min-h-72 font-mono text-sm leading-6" />
+            <AtaTranscriptionEditor value={draftText} onChange={setDraftText} disabled={isSaving || isDiscarding} />
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 variant="ghost"
@@ -364,6 +380,10 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
                 onClick={() => setShowDiscardDialog(true)}
               >
                 {isDiscarding ? 'Descartando…' : 'Descartar transcrição'}
+              </Button>
+              <Button variant="ghost" disabled={isSaving || isDiscarding || !draftText.trim()} onClick={downloadTranscription}>
+                <Download className="mr-2 h-4 w-4" />
+                Baixar .txt
               </Button>
               <Button variant="outline" disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(false)}>Salvar rascunho</Button>
               <Button disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(true)}>{isSaving ? 'Salvando…' : 'Marcar como revisada'}</Button>
