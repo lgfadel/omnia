@@ -142,8 +142,21 @@ export async function confirmMaloteUpload(authHeader: string | null, itemId: str
   if (updateError) throw new Error(updateError.message)
 }
 
+export function getMaloteTransportOptions(values: Record<string, string | undefined> = process.env) {
+  const host = values.MALOTE_SMTP_HOST ?? 'smtp.gmail.com'
+  const configuredPort = values.MALOTE_SMTP_PORT
+  const port = configuredPort ? Number(configuredPort) : 465
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('MALOTE_SMTP_PORT deve ser uma porta válida.')
+  const secure = values.MALOTE_SMTP_SECURE ? values.MALOTE_SMTP_SECURE === 'true' : port === 465
+  const user = values.MALOTE_SMTP_USER ?? values.GMAIL_SMTP_USER
+  const pass = values.MALOTE_SMTP_PASSWORD ?? values.GMAIL_SMTP_APP_PASSWORD
+  if ((user && !pass) || (!user && pass)) throw new Error('Configure usuário e senha SMTP juntos.')
+  if (host === 'smtp.gmail.com' && (!user || !pass)) throw new Error('Missing required environment variable: GMAIL_SMTP_USER')
+  return user && pass ? { host, port, secure, auth: { user, pass } } : { host, port, secure }
+}
+
 function createGmailTransport() {
-  return nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env('GMAIL_SMTP_USER'), pass: env('GMAIL_SMTP_APP_PASSWORD') } })
+  return nodemailer.createTransport(getMaloteTransportOptions())
 }
 
 export async function sendMalote(authHeader: string | null, batchId: string, itemIds?: string[]) {

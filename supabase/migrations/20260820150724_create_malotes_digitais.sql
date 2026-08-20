@@ -85,6 +85,7 @@ CREATE POLICY "Authenticated users can read malote attempts"
   ON public.omnia_malote_attempts FOR SELECT TO authenticated USING (true);
 
 GRANT SELECT ON public.omnia_malote_settings, public.omnia_malote_batches, public.omnia_malote_items, public.omnia_malote_attempts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_malote_settings, public.omnia_malote_batches, public.omnia_malote_items, public.omnia_malote_attempts TO service_role;
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('malote-attachments', 'malote-attachments', false, 18874368, ARRAY['application/pdf'])

@@ -29,4 +29,13 @@ Se uma tentativa permanecer como `sending` por mais de 30 minutos após uma inte
 
 ## Desenvolvimento local
 
-Execute as migrações em um banco Supabase local e configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` para essa instância. Não use credenciais Gmail de produção em ambiente local.
+Para um ambiente local isolado e reproduzível do módulo, execute:
+
+```bash
+npm run local:test:up
+npm run dev
+```
+
+O comando cria o Supabase em `http://localhost:55421`, configura a UI em `http://localhost:3000`, semeia dois condomínios e o usuário ADMIN `admin@omnia.local` com senha `senha-local-omnia`. Os e-mails não saem para a internet: são enviados ao Mailpit em `http://localhost:55424`.
+
+Use `npm run local:test:status` para conferir os serviços e `npm run local:test:down` para parar somente essa pilha. O fixture é propositalmente limitado às tabelas exigidas pelo malote; ele não substitui uma base completa de todos os módulos do Omnia.
