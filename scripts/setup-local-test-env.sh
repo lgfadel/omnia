@@ -31,6 +31,7 @@ provision() {
   supabase start --workdir "$environment_root"
   load_local_env
   run_sql_file "$repo_root/supabase/local-fixtures/malotes-core.sql"
+  run_sql_file "$repo_root/supabase/local-fixtures/app-core.sql"
   malote_schema_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT to_regclass('public.omnia_malote_settings') IS NOT NULL")"
   if [[ "$malote_schema_present" != 't' ]]; then
     run_sql_file "$repo_root/supabase/migrations/20260820150724_create_malotes_digitais.sql"
@@ -49,6 +50,13 @@ INSERT INTO public.omnia_users (auth_user_id, name, email, roles, color)
 VALUES ('$existing_auth_user_id', 'Admin Local', '$test_email', ARRAY['ADMIN'], '#2563EB')
 ON CONFLICT (auth_user_id) DO UPDATE
 SET name = EXCLUDED.name, email = EXCLUDED.email, roles = EXCLUDED.roles, color = EXCLUDED.color;
+
+INSERT INTO public.omnia_user_permissions (user_id, menu_item_id, can_access, granted_by)
+SELECT local_user.id, menu.id, true, local_user.id
+FROM public.omnia_users local_user
+CROSS JOIN public.omnia_menu_items menu
+WHERE local_user.auth_user_id = '$existing_auth_user_id'
+ON CONFLICT (user_id, menu_item_id) DO UPDATE SET can_access = EXCLUDED.can_access;
 
 UPDATE public.omnia_malote_settings
 SET recipient_email = 'malotes@local.test';
