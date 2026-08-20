@@ -110,4 +110,5 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para guias de desenvolvimento.
 Para informações detalhadas sobre implementação:
 - [atas.md](atas.md) - Sistema de atas
 - [tarefas.md](tarefas.md) - Sistema de tarefas
+- [docs/malotes-digitais.md](docs/malotes-digitais.md) - Operação e configuração de malotes digitais
 - [docs/](docs/) - Documentação técnica específica
