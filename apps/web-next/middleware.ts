@@ -1,9 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isApiRoute } from './src/lib/routeAccess'
 
 const PUBLIC_ROUTES = ['/auth', '/reset-password', '/change-password']
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // API handlers validate their own bearer token. Redirecting here only checks
+  // cookies and would reject valid Authorization headers before the route runs.
+  if (isApiRoute(pathname)) return NextResponse.next()
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -34,8 +41,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const { pathname } = request.nextUrl
 
   // Allow public routes and static assets
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route))

@@ -33,9 +33,9 @@ Para um ambiente local isolado e reproduzível do módulo, execute:
 
 ```bash
 npm run local:test:up
-npm run dev
+npm run local:test:app
 ```
 
-O comando cria o Supabase em `http://localhost:55421`, configura a UI em `http://localhost:3000`, semeia dois condomínios e o usuário ADMIN `admin@omnia.local` com senha `senha-local-omnia`. Os e-mails não saem para a internet: são enviados ao Mailpit em `http://localhost:55424`.
+O comando cria o Supabase em `http://localhost:55421`, configura a UI em `http://localhost:3000` em modo de produção (`next build` + `next start`), semeia dois condomínios e o usuário ADMIN `admin@omnia.local` com senha `senha-local-omnia`. Os e-mails não saem para a internet: são enviados ao Mailpit em `http://localhost:55424`.
 
 Use `npm run local:test:status` para conferir os serviços e `npm run local:test:down` para parar somente essa pilha. O fixture é propositalmente limitado às tabelas exigidas pelo malote; ele não substitui uma base completa de todos os módulos do Omnia.

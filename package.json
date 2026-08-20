@@ -25,6 +25,7 @@
     "local:test:up": "bash scripts/setup-local-test-env.sh up",
     "local:test:status": "bash scripts/setup-local-test-env.sh status",
     "local:test:down": "bash scripts/setup-local-test-env.sh down",
+    "local:test:app": "npm run build && npm run start",
     "type-check": "npm --prefix apps/web-next run type-check",
     "format": "prettier --write \"apps/web-next/src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"apps/web-next/src/**/*.{ts,tsx,js,jsx,json,css,md}\""

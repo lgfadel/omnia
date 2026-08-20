@@ -9,7 +9,7 @@ Use `npm run local:test:up` from the repository root. It creates or reuses an is
 
 Credentials are intentionally local-only: `admin@omnia.local` / `senha-local-omnia`.
 
-The script stores Docker/Supabase runtime files in `.context/local-test-env` and writes `apps/web-next/.env.local`; neither belongs in commits. Start the app with `npm run dev`, then use `http://localhost:3000/auth` to sign in and open `/malotes`.
+The script stores Docker/Supabase runtime files in `.context/local-test-env` and writes `apps/web-next/.env.local`; neither belongs in commits. Start the app with `npm run local:test:app` so it uses the production build/runtime, then use `http://localhost:3000/auth` to sign in and open `/malotes`.
 
 Use `npm run local:test:status` to inspect services and `npm run local:test:down` to stop only this isolated stack.
 
