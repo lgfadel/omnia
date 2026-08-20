@@ -7,8 +7,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // bloqueia no preflight e o erro chega como falha de rede, sem status. A lista vem
 // de ALLOWED_ORIGINS (separada por vírgula) e a origem recebida é refletida apenas
 // quando consta nela — nunca "*", que dispensaria a checagem.
+// O padrão é o domínio próprio, não o *.vercel.app: a produção atende em
+// omnia.loovus.com.br, e apontar o fallback para o domínio da plataforma já
+// deixou toda chamada de produção bloqueada no preflight, com "Failed to send a
+// request to the Edge Function" na tela e nenhum registro do lado do servidor.
 const ALLOWED_ORIGINS = new Set(
-  (Deno.env.get('ALLOWED_ORIGINS') ?? Deno.env.get('ALLOWED_ORIGIN') ?? 'https://omnia.vercel.app')
+  (Deno.env.get('ALLOWED_ORIGINS') ?? Deno.env.get('ALLOWED_ORIGIN') ?? 'https://omnia.loovus.com.br')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
