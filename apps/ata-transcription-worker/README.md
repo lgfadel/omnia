@@ -30,11 +30,30 @@ Projeto Railway `omnia-ata-transcription` (`d633647d-5482-4989-977b-8cbca401d861
 serviço `ata-transcription-worker` (`0fc34cb9-da24-4294-a0e5-ee7243abe221`),
 ambiente `production`, com as três variáveis já configuradas.
 
-> **Pendência de CD.** O primeiro deploy foi feito com `railway up` a partir dos
-> arquivos locais, não do GitHub. O código em execução não está amarrado a nenhum
-> commit, então um `git push` não redeploya nada. Antes de tratar isso como
-> produção de verdade, conecte o repositório ao serviço e aponte o root directory
-> para `apps/ata-transcription-worker`.
+> **Pendência de CD — parece resolvida no config, mas não está.** O serviço já
+> registra `source.repo = lgfadel/omnia` e `rootDirectory =
+> apps/ata-transcription-worker`, o que dá a impressão de estar conectado. Não
+> está: ele não tem nenhum *deployment trigger*, e a API recusa criar um com
+> "no one in the project has access to it" — o GitHub App do Railway não tem
+> acesso ao repositório nesta workspace. Ou seja, **`git push` não redeploya o
+> worker**.
+>
+> Só quem tem a conta do GitHub resolve, pelo dashboard: no serviço, *Settings →
+> Source*, conectar `lgfadel/omnia` (autorizando o Railway App no repositório),
+> branch `main`, root directory `apps/ata-transcription-worker`.
+>
+> Enquanto isso, todo deploy é manual e **precisa sair da raiz do repositório**,
+> não deste diretório — o root directory do serviço faz o build procurar
+> `apps/ata-transcription-worker/Dockerfile` dentro do arquivo enviado:
+>
+> ```sh
+> railway up -p d633647d-5482-4989-977b-8cbca401d861 \
+>   -s ata-transcription-worker -e production --ci
+> ```
+>
+> O `-p` não é opcional: a raiz do repo está linkada a outro projeto Railway
+> (`omnia`, `dcbcd4eb-79c7-4963-a048-4703a09cdb23`), e sem ele o deploy vai
+> parar no serviço errado.
 
 O worker não emite log em operação normal: ele consulta a fila a cada 5 s e só
 escreve em caso de erro. Um serviço silencioso é um serviço saudável.
