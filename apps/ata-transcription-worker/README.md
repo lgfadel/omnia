@@ -58,9 +58,25 @@ ambiente `production`, com as três variáveis já configuradas.
 O worker não emite log em operação normal: ele consulta a fila a cada 5 s e só
 escreve em caso de erro. Um serviço silencioso é um serviço saudável.
 
-Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker usa `whisper-1` com idioma `pt` e divide gravações em blocos de 30 minutos. O objeto privado do Storage é **mantido** após concluir: é ele que alimenta o player de conferência da revisão, onde clicar num trecho toca aquele momento da gravação. O áudio só é removido quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha, o áudio também permanece para uma nova tentativa.
+Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker divide gravações em blocos de 30 minutos e transcreve cada bloco com `gpt-transcribe`. O objeto privado do Storage é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O áudio só é removido quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha, o áudio também permanece para uma nova tentativa.
 
-## Por que whisper-1 e não o modelo com diarização
+`TRANSCRIPTION_MODEL` é opcional e serve de válvula: apontá-la para `whisper-1` no Railway reverte o modelo sem deploy, e o worker monta a requisição correta para cada família.
+
+## Por que gpt-transcribe
+
+O `whisper-1` da API é o large-v2 e ficou para trás em acurácia. O `gpt-transcribe` erra menos e, mais importante, aceita `keywords`: uma lista de literais que ancora o que nenhum modelo tem como adivinhar — nome do condomínio, do síndico, da administradora, de quem secretaria, título e tags daquela ata. Em assembleia, o erro que mais dói é nome próprio, e é exatamente essa classe que o parâmetro ataca. O worker monta a lista por ata, com fallback para o vocabulário fixo de condomínio se o cadastro não estiver disponível — contexto ausente piora a transcrição, mas não pode derrubá-la.
+
+O prompt de cada bloco carrega os últimos 400 caracteres do bloco anterior. Sem isso, cada 30 minutos recomeçava sem saber de que assembleia se tratava, e nomes já acertados voltavam a ser chutados.
+
+O áudio recebe `highpass`, `loudnorm` e compressão antes do envio, o que rendeu ~19% mais conteúdo transcrito em gravação de campo distante.
+
+### O que a troca custou
+
+O `gpt-transcribe` não devolve marcação de tempo alguma. A decisão, tomada explicitamente, foi trocar o player de conferência trecho a trecho por acurácia: o texto é o produto da ata, e o player era conveniência. Com isso saíram da tela a lista de trechos com horário e o clique-para-ouvir; ficou um player simples da gravação inteira. A quebra de parágrafo, que antes vinha das pausas do áudio, passou a ser feita por sentença — sem ela a revisão chega como um bloco corrido de 80 mil caracteres.
+
+A tabela `omnia_ata_transcription_segments` deixou de ser escrita. Ela segue no banco com o histórico do que já foi transcrito por whisper; nada novo entra ali.
+
+### Teste que descartou a diarização
 
 Teste controlado em 19/08/2026, mesmo arquivo e mesmos bytes, variando apenas o modelo:
 
@@ -69,4 +85,4 @@ Teste controlado em 19/08/2026, mesmo arquivo e mesmos bytes, variando apenas o 
 | `gpt-4o-transcribe-diarize` | 6,3% | Frases inventadas, como "The board is flat" repetido quatro vezes |
 | `whisper-1` | 0% | Português coerente, 9x mais rápido, mesmo preço |
 
-O `whisper-1` não separa falantes — era o único motivo de usar o outro modelo. A atribuição manual de nomes trecho a trecho chegou a existir na tela e foi removida: não era prática em assembleia com dezenas de vozes. O áudio recebe `highpass`, `loudnorm` e compressão antes do envio, o que rendeu ~19% mais conteúdo transcrito em gravação de campo distante.
+A atribuição manual de nomes trecho a trecho chegou a existir na tela e foi removida: não era prática em assembleia com dezenas de vozes.

@@ -3,7 +3,6 @@ import type {
   AtaTranscription,
   AtaTranscriptionStage,
   AtaTranscriptionJob,
-  AtaTranscriptionSegment,
   AtaTranscriptionStatus,
 } from '@/data/types'
 
@@ -55,16 +54,6 @@ type DbJob = {
   stage: AtaTranscriptionStage | null
 }
 
-type DbSegment = {
-  id: string
-  sequence: number
-  start_ms: number
-  end_ms: number
-  speaker_label: string | null
-  speaker_name: string | null
-  text: string
-}
-
 type DbTranscription = {
   id: string
   job_id: string
@@ -72,7 +61,6 @@ type DbTranscription = {
   revised_text: string | null
   language: string
   is_reviewed: boolean
-  omnia_ata_transcription_segments: DbSegment[] | null
 }
 
 type StartUploadResponse = { jobId: string; path: string; token: string }
@@ -81,28 +69,6 @@ type StartUploadResponse = { jobId: string; path: string; token: string }
 // this scoped client preserves the existing repository pattern for newly introduced tables.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const untypedSupabase = supabase as any
-
-// O PostgREST deste projeto está limitado a 1000 linhas por resposta e ignora
-// tanto `limit` quanto o cabeçalho Range acima disso. Uma assembleia de uma hora
-// gera ~2000 segmentos, então o embed simples devolvia menos da metade da ata sem
-// qualquer aviso — a transcrição simplesmente parecia terminar no meio.
-const SEGMENT_PAGE_SIZE = 1000
-
-async function loadAllSegments(transcriptionId: string): Promise<DbSegment[]> {
-  const segments: DbSegment[] = []
-  for (let from = 0; ; from += SEGMENT_PAGE_SIZE) {
-    const { data, error } = await untypedSupabase
-      .from('omnia_ata_transcription_segments')
-      .select('*')
-      .eq('transcription_id', transcriptionId)
-      .order('sequence', { ascending: true })
-      .range(from, from + SEGMENT_PAGE_SIZE - 1)
-    if (error) throw error
-    const page = (data ?? []) as DbSegment[]
-    segments.push(...page)
-    if (page.length < SEGMENT_PAGE_SIZE) return segments
-  }
-}
 
 function mapJob(job: DbJob): AtaTranscriptionJob {
   return {
@@ -119,18 +85,6 @@ function mapJob(job: DbJob): AtaTranscriptionJob {
   }
 }
 
-function mapSegment(segment: DbSegment): AtaTranscriptionSegment {
-  return {
-    id: segment.id,
-    sequence: segment.sequence,
-    startMs: segment.start_ms,
-    endMs: segment.end_ms,
-    speakerLabel: segment.speaker_label ?? undefined,
-    speakerName: segment.speaker_name ?? undefined,
-    text: segment.text,
-  }
-}
-
 function mapTranscription(transcription: DbTranscription): AtaTranscription {
   return {
     id: transcription.id,
@@ -139,9 +93,6 @@ function mapTranscription(transcription: DbTranscription): AtaTranscription {
     revisedText: transcription.revised_text ?? undefined,
     language: transcription.language,
     isReviewed: transcription.is_reviewed,
-    segments: (transcription.omnia_ata_transcription_segments ?? [])
-      .map(mapSegment)
-      .sort((a, b) => a.sequence - b.sequence),
   }
 }
 
@@ -165,17 +116,9 @@ export const ataTranscriptionsRepoSupabase = {
       : { data: null, error: null }
 
     if (transcriptionError) throw transcriptionError
-    if (!transcription) {
-      return { job: job ? mapJob(job as DbJob) : null, transcription: null }
-    }
-
-    const segments = await loadAllSegments((transcription as { id: string }).id)
     return {
       job: job ? mapJob(job as DbJob) : null,
-      transcription: mapTranscription({
-        ...(transcription as DbTranscription),
-        omnia_ata_transcription_segments: segments,
-      }),
+      transcription: transcription ? mapTranscription(transcription as DbTranscription) : null,
     }
   },
 

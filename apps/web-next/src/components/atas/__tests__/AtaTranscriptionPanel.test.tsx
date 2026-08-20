@@ -16,10 +16,6 @@ vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({
 
 const repo = vi.mocked(ataTranscriptionsRepoSupabase)
 
-function segment(id: string, startMs: number, endMs: number, text: string) {
-  return { id, sequence: Number(id.split('-')[1]), startMs, endMs, text }
-}
-
 function transcriptionWith(revisedText?: string) {
   return {
     job: {
@@ -38,10 +34,6 @@ function transcriptionWith(revisedText?: string) {
       revisedText,
       language: 'pt',
       isReviewed: false,
-      segments: [
-        segment('seg-1', 0, 5_000, 'abertura da assembleia'),
-        segment('seg-2', 5_000, 12_000, 'aprovação das contas'),
-      ],
     },
   }
 }
@@ -97,31 +89,26 @@ describe('AtaTranscriptionPanel', () => {
   })
 })
 
-describe('AtaTranscriptionPanel · conferência pelo áudio', () => {
+describe('AtaTranscriptionPanel · gravação', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     repo.load.mockResolvedValue(transcriptionWith())
-    repo.audioUrl.mockResolvedValue('https://storage.example/assembleia.m4a')
   })
 
-  it('seeks the recording to the clicked excerpt', async () => {
-    const play = vi.fn().mockResolvedValue(undefined)
-    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(play)
+  it('offers the recording while the text is being corrected', async () => {
+    repo.audioUrl.mockResolvedValue('https://storage.example/assembleia.m4a')
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ouvir o trecho de 00:05–00:12' }))
-
-    const player = document.querySelector('audio') as HTMLAudioElement
-    expect(player.currentTime).toBe(5)
-    expect(play).toHaveBeenCalled()
+    expect(await screen.findByText('Gravação original')).toBeInTheDocument()
+    expect(document.querySelector('audio')).not.toBeNull()
   })
 
-  it('keeps the excerpts readable when the recording is gone', async () => {
+  it('says nothing about a recording that no longer exists', async () => {
     repo.audioUrl.mockResolvedValue(null)
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-    expect(await screen.findByText(/gravação desta ata não está mais disponível/)).toBeInTheDocument()
-    expect(screen.getByText('aprovação das contas')).toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Descartar transcrição' })
+    expect(screen.queryByText('Gravação original')).toBeNull()
     expect(document.querySelector('audio')).toBeNull()
   })
 })

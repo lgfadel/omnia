@@ -73,16 +73,6 @@ export interface AtaTranscriptionJob {
   stage?: AtaTranscriptionStage;
 }
 
-export interface AtaTranscriptionSegment {
-  id: string;
-  sequence: number;
-  startMs: number;
-  endMs: number;
-  speakerLabel?: string;
-  speakerName?: string;
-  text: string;
-}
-
 export interface AtaTranscription {
   id: string;
   jobId: string;
@@ -90,7 +80,6 @@ export interface AtaTranscription {
   revisedText?: string;
   language: string;
   isReviewed: boolean;
-  segments: AtaTranscriptionSegment[];
 }
 
 export interface Tarefa {

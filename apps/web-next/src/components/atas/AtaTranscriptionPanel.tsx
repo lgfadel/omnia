@@ -11,7 +11,7 @@ import { AtaTranscriptionEditor } from './AtaTranscriptionEditor'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
 import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
-import type { AtaTranscription, AtaTranscriptionJob, AtaTranscriptionSegment } from '@/data/types'
+import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
 import { Download, FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
@@ -37,36 +37,12 @@ function readAudioDuration(file: File): Promise<number> {
   })
 }
 
-function formatTimestamp(milliseconds: number): string {
-  const totalSeconds = Math.floor(milliseconds / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  return hours > 0
-    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
 
 type AudioState =
   | { status: 'loading' }
   | { status: 'ready'; url: string }
   | { status: 'gone' }
   | { status: 'error' }
-
-// A lista de uma assembleia de uma hora passa de 2000 trechos: varrer tudo a cada
-// evento de tempo do áudio (4x por segundo) travaria a rolagem da revisão.
-function findSegmentAt(segments: AtaTranscriptionSegment[], timeMs: number): AtaTranscriptionSegment | null {
-  let low = 0
-  let high = segments.length - 1
-  while (low <= high) {
-    const middle = (low + high) >> 1
-    const segment = segments[middle]
-    if (timeMs < segment.startMs) high = middle - 1
-    else if (timeMs >= segment.endMs) low = middle + 1
-    else return segment
-  }
-  return null
-}
 
 export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -83,7 +59,6 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
-  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null)
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
   const transcriptionId = transcription?.id
 
@@ -131,22 +106,6 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
       })
     return () => { cancelled = true }
   }, [job?.id, transcriptionId, isJobActive])
-
-  const handleTimeUpdate = () => {
-    const player = audioRef.current
-    if (!player || !transcription) return
-    const current = findSegmentAt(transcription.segments, player.currentTime * 1000)
-    setActiveSegmentId((previous) => (previous === (current?.id ?? null) ? previous : current?.id ?? null))
-  }
-
-  const playFrom = (startMs: number) => {
-    const player = audioRef.current
-    if (!player) return
-    player.currentTime = startMs / 1000
-    // play() rejeita quando o navegador bloqueia a reprodução; aqui sempre parte
-    // de um clique, e não há o que fazer além de deixar o usuário apertar play.
-    void player.play().catch(() => undefined)
-  }
 
   const uploadFile = async (file: File, durationSeconds: number) => {
     try {
@@ -389,67 +348,22 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               <Button disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(true)}>{isSaving ? 'Salvando…' : 'Marcar como revisada'}</Button>
             </div>
 
-            <div className="space-y-3 border-t pt-5">
-              <div>
-                <h3 className="font-medium">Trechos com horário</h3>
-                <p className="text-sm text-muted-foreground">
-                  {audio.status === 'ready'
-                    ? 'Clique em um trecho para ouvir aquele momento da gravação enquanto corrige o texto.'
-                    : audio.status === 'error'
-                      ? 'Não foi possível carregar a gravação agora. Os trechos continuam servindo de referência de horário.'
-                      : audio.status === 'gone'
-                        ? 'A gravação desta ata não está mais disponível. Os trechos continuam servindo de referência de horário.'
-                        : 'Carregando a gravação…'}
-                </p>
-              </div>
-
-              {audio.status === 'ready' && (
+            {audio.status === 'ready' && (
+              <div className="space-y-2 border-t pt-5">
+                <div>
+                  <h3 className="font-medium">Gravação original</h3>
+                  <p className="text-sm text-muted-foreground">Disponível para conferir uma passagem duvidosa enquanto você corrige o texto.</p>
+                </div>
                 <audio
                   ref={audioRef}
                   src={audio.url}
                   controls
                   preload="metadata"
                   className="w-full rounded-lg"
-                  onTimeUpdate={handleTimeUpdate}
                   onError={() => setAudio({ status: 'error' })}
                 />
-              )}
-
-              <div className="max-h-[32rem] space-y-2 overflow-auto pr-1" style={{ contentVisibility: 'auto' }}>
-                {transcription.segments.map((segment) => {
-                  const isActive = segment.id === activeSegmentId
-                  const timestamp = `${formatTimestamp(segment.startMs)}–${formatTimestamp(segment.endMs)}`
-                  const rowClass = `grid w-full gap-2 rounded-lg border p-3 text-left transition-colors md:grid-cols-[7rem_1fr] md:items-start ${
-                    isActive
-                      ? 'border-violet-300 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30'
-                      : 'border-border'
-                  }`
-                  const body = (
-                    <>
-                      <span className={`pt-1 font-mono text-xs ${isActive ? 'text-violet-700 dark:text-violet-300' : 'text-muted-foreground'}`}>
-                        {timestamp}
-                      </span>
-                      <p className="text-sm leading-6">{segment.text}</p>
-                    </>
-                  )
-
-                  return audio.status === 'ready' ? (
-                    <button
-                      key={segment.id}
-                      type="button"
-                      className={`${rowClass} hover:border-violet-200 hover:bg-muted/60 dark:hover:border-violet-900`}
-                      aria-current={isActive || undefined}
-                      aria-label={`Ouvir o trecho de ${timestamp}`}
-                      onClick={() => playFrom(segment.startMs)}
-                    >
-                      {body}
-                    </button>
-                  ) : (
-                    <div key={segment.id} className={rowClass}>{body}</div>
-                  )
-                })}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}

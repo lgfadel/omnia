@@ -1,35 +1,35 @@
-export interface TranscribedSegment {
-  start: number
-  end: number
-  text: string
-}
-
 export interface TranscribedChunk {
   chunkIndex: number
-  startOffsetSeconds: number
-  segments: TranscribedSegment[]
-}
-
-export interface PersistedSegment {
-  sequence: number
-  startMs: number
-  endMs: number
   text: string
 }
 
-// Uma pausa longa entre trechos quase sempre marca troca de assunto ou de quem
-// fala. Quebrar o parágrafo ali é o que torna 80 mil caracteres editáveis: sem
-// isso a ata chega como um bloco único de texto corrido.
-// O whisper entra em loop sobre trechos quase inaudíveis e repete a mesma frase
-// várias vezes. Medido contra o áudio real: uma fala dita 2-3 vezes saiu 6 vezes.
-// Comparar cada trecho com os últimos três, por coeficiente de Dice, derrubou as
-// 6 para 3 sem perder um único ponto de cobertura nem nenhuma frase legítima —
-// repetição real em assembleia é comum e não pode ser eliminada por completo.
-const REPETITION_SIMILARITY = 0.8
-const REPETITION_WINDOW = 3
+// O modelo devolve um bloco corrido de texto. Sem quebra, a revisão de uma
+// assembleia chega como 80 mil caracteres em um parágrafo único — impossível de
+// editar. Agrupar por sentença é o substituto do que antes vinha das pausas do
+// áudio, agora que a transcrição não traz mais marcação de tempo.
+const SENTENCES_PER_PARAGRAPH = 4
+const PARAGRAPH_MAX_CHARS = 700
 
+// Todo ASR entra em loop sobre trechos quase inaudíveis e repete a mesma frase
+// várias vezes. Medido contra o áudio real: uma fala dita 2-3 vezes saiu 6 vezes.
+// Comparar cada sentença com as últimas três, por coeficiente de Dice, derruba a
+// repetição sem perder cobertura — repetição real em assembleia é comum e não
+// pode ser eliminada por completo.
+// O limiar é quase identidade de propósito: comparando sentença a sentença, uma
+// palavra diferente em seis já dá 0,83, e "a unidade 101 votou a favor" contra
+// "a unidade 102 votou a favor" são duas deliberações, não um loop. O loop do
+// modelo repete literalmente; é isso, e só isso, que este corte remove.
+const REPETITION_SIMILARITY = 0.95
+const REPETITION_WINDOW = 3
+// Frase curta se repete de verdade em assembleia — "sim", "isso", "aprovado" —
+// e nunca é o loop do modelo, que despeja períodos inteiros. Abaixo deste número
+// de palavras a frase passa sem comparação.
+const REPETITION_MIN_WORDS = 4
+
+// Os dígitos entram na comparação: "unidade 101" e "unidade 102" são a mesma
+// frase quando se ignora número, e apagar uma delas apagaria uma deliberação.
 function toComparableWords(text: string): string[] {
-  return text.toLowerCase().replace(/[^a-zà-ú ]/g, ' ').split(/\s+/).filter(Boolean)
+  return text.toLowerCase().replace(/[^0-9a-zà-ú ]/g, ' ').split(/\s+/).filter(Boolean)
 }
 
 function diceSimilarity(a: string[], b: string[]): number {
@@ -47,53 +47,63 @@ function diceSimilarity(a: string[], b: string[]): number {
   return (2 * shared) / (a.length + b.length)
 }
 
-function dropRepeatedLoops<T extends { text: string }>(segments: T[]): T[] {
-  const kept: T[] = []
+// Divide preservando a pontuação final, que é o que dá ritmo de leitura à ata.
+export function splitSentences(text: string): string[] {
+  return text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?…])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+}
+
+function dropRepeatedLoops(sentences: string[]): string[] {
+  const kept: string[] = []
   const recent: string[][] = []
-  for (const segment of segments) {
-    const words = toComparableWords(segment.text)
-    if (words.length > 0 && recent.some((previous) => diceSimilarity(words, previous) > REPETITION_SIMILARITY)) {
+  for (const sentence of sentences) {
+    const words = toComparableWords(sentence)
+    if (words.length >= REPETITION_MIN_WORDS && recent.some((previous) => diceSimilarity(words, previous) > REPETITION_SIMILARITY)) {
       continue
     }
-    kept.push(segment)
+    kept.push(sentence)
     recent.push(words)
     if (recent.length > REPETITION_WINDOW) recent.shift()
   }
   return kept
 }
 
-const PARAGRAPH_GAP_SECONDS = 2
-
-export function mergeTranscribedChunks(
-  chunks: TranscribedChunk[],
-): { rawText: string; segments: PersistedSegment[] } {
-  const merged = chunks
-    .flatMap((chunk) =>
-      chunk.segments.map((segment) => ({
-        startMs: Math.round((chunk.startOffsetSeconds + segment.start) * 1000),
-        endMs: Math.round((chunk.startOffsetSeconds + segment.end) * 1000),
-        text: segment.text.trim(),
-      })),
-    )
-    .filter((segment) => segment.text.length > 0)
-    .sort((a, b) => a.startMs - b.startMs)
-  const deduped = dropRepeatedLoops(merged)
-    .map((segment, sequence) => ({ ...segment, sequence }))
-
+function toParagraphs(sentences: string[]): string[] {
   const paragraphs: string[] = []
   let current: string[] = []
-  let previousEndMs: number | null = null
+  let currentChars = 0
 
-  for (const segment of deduped) {
-    const gapSeconds = previousEndMs === null ? 0 : (segment.startMs - previousEndMs) / 1000
-    if (current.length > 0 && gapSeconds >= PARAGRAPH_GAP_SECONDS) {
+  for (const sentence of sentences) {
+    current.push(sentence)
+    currentChars += sentence.length + 1
+    if (current.length >= SENTENCES_PER_PARAGRAPH || currentChars >= PARAGRAPH_MAX_CHARS) {
       paragraphs.push(current.join(' '))
       current = []
+      currentChars = 0
     }
-    current.push(segment.text)
-    previousEndMs = segment.endMs
   }
   if (current.length > 0) paragraphs.push(current.join(' '))
+  return paragraphs
+}
 
-  return { rawText: paragraphs.join('\n\n'), segments: deduped }
+export function mergeTranscribedChunks(chunks: TranscribedChunk[]): { rawText: string } {
+  const sentences = [...chunks]
+    .sort((a, b) => a.chunkIndex - b.chunkIndex)
+    .flatMap((chunk) => splitSentences(chunk.text))
+  return { rawText: toParagraphs(dropRepeatedLoops(sentences)).join('\n\n') }
+}
+
+// O modelo aceita contexto por prompt, e o fim do bloco anterior é o contexto
+// mais valioso que existe para o bloco seguinte: sem ele, cada 30 minutos
+// recomeça sem saber de que assembleia se trata, e nomes próprios que já haviam
+// sido acertados voltam a ser chutados.
+const CARRY_OVER_CHARS = 400
+
+export function buildCarryOver(previousText: string): string {
+  // O prompt não aceita quebra de linha nem os sinais de maior e menor.
+  const sanitized = previousText.replace(/[<>]/g, ' ').replace(/\s+/g, ' ').trim()
+  return sanitized.length <= CARRY_OVER_CHARS ? sanitized : sanitized.slice(-CARRY_OVER_CHARS)
 }

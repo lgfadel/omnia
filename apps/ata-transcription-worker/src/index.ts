@@ -8,7 +8,8 @@ import { createServer } from 'node:http'
 import { Agent, setGlobalDispatcher } from 'undici'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
-import { mergeTranscribedChunks, type TranscribedSegment } from './transcript.js'
+import { loadAtaContext } from './ataContext.js'
+import { buildCarryOver, mergeTranscribedChunks } from './transcript.js'
 
 // Medido em 19/08/2026: um bloco de 20 minutos leva ~635 s para retornar. Isso
 // estoura dois limites padrão de uma vez — o headersTimeout de 300 s do undici,
@@ -21,22 +22,16 @@ setGlobalDispatcher(new Agent({
   bodyTimeout: REQUEST_TIMEOUT_MS,
 }))
 
-// Teste controlado com o mesmo áudio e os mesmos bytes: gpt-4o-transcribe-diarize
-// devolveu 6,3% dos trechos em inglês e frases inventadas; whisper-1 devolveu 0%
-// de inglês, português coerente, 9x mais rápido e pelo mesmo preço. A diarização
-// se perde — era o único motivo de usar o outro modelo — e os falantes passam a
-// ser nomeados por quem revisa.
-const TRANSCRIPTION_MODEL = 'whisper-1'
-
-// Diferente do modelo de diarização, o whisper aceita `prompt`, e é por ele que
-// ancoramos o português e o vocabulário recorrente de assembleia.
-const TRANSCRIPTION_PROMPT = [
-  'Assembleia de condomínio em português do Brasil.',
-  'Termos recorrentes: assembleia geral ordinária, assembleia geral extraordinária,',
-  'síndico, subsíndico, conselho fiscal, convocação, quórum, pauta, deliberação,',
-  'taxa condominial, rateio, balancete, prestação de contas, administradora,',
-  'condômino, procuração, advogado, unidade, bloco, torre.',
-].join(' ')
+// O whisper-1 é o large-v2 e ficou para trás em acurácia. O gpt-transcribe erra
+// menos e aceita `keywords`, que é onde ancoramos os nomes próprios daquela
+// assembleia — a classe de erro que mais dói numa ata. O preço é não devolver
+// marcação de tempo alguma; a decisão foi trocar o player de conferência por
+// acurácia, porque o texto é o produto e o player era conveniência.
+// TRANSCRIPTION_MODEL existe como válvula: apontar de volta para whisper-1 no
+// Railway reverte o modelo sem deploy, e o código monta a requisição certa para
+// cada família.
+const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL?.trim() || 'gpt-transcribe'
+const IS_WHISPER = TRANSCRIPTION_MODEL.startsWith('whisper')
 
 // Gravações de assembleia são de campo distante, com clipping e vozes em volumes
 // muito diferentes. Sem tratamento o modelo perde as falas mais baixas: normalizar
@@ -65,9 +60,25 @@ interface TranscriptionJob {
 
 interface OpenAITranscription {
   text?: string
-  segments?: TranscribedSegment[]
   usage?: Record<string, unknown>
 }
+
+// `keywords` e `languages` são do gpt-transcribe e ainda não existem nos tipos
+// do SDK, que os encaminha como campos extras do multipart (arrays viram
+// `campo[]`, a convenção da própria API). Descrever a requisição aqui é o que
+// permite usar o parâmetro que ancora os nomes próprios da assembleia.
+type TranscriptionRequest = {
+  file: ReturnType<typeof createReadStream>
+  model: string
+  prompt: string
+  response_format: 'json'
+  language?: string
+  temperature?: number
+  keywords?: string[]
+  languages?: string[]
+}
+
+type SdkTranscriptionParams = Parameters<OpenAI['audio']['transcriptions']['create']>[0]
 
 type AdminClient = SupabaseClient<any, 'public', any, any, any>
 
@@ -186,8 +197,10 @@ async function processJob(
       .update({ stage: 'transcribing', total_chunks: chunks.length })
       .eq('id', job.id)
 
-    const chunkResults = [] as Array<{ chunkIndex: number; startOffsetSeconds: number; segments: TranscribedSegment[] }>
+    const context = await loadAtaContext(supabase, job.ata_id)
+    const chunkResults = [] as Array<{ chunkIndex: number; text: string }>
     const usages: Record<string, unknown>[] = []
+    let carryOver = ''
     for (const [index, chunkPath] of chunks.entries()) {
       const { error: heartbeatError } = await supabase
         .from('omnia_ata_transcription_jobs')
@@ -196,18 +209,31 @@ async function processJob(
         .eq('status', 'processing')
       if (heartbeatError) throw heartbeatError
 
-      const result = await openai.audio.transcriptions.create({
-        file: createReadStream(chunkPath),
-        model: TRANSCRIPTION_MODEL,
-        language: 'pt',
-        prompt: TRANSCRIPTION_PROMPT,
-        response_format: 'verbose_json',
-      }) as unknown as OpenAITranscription
-      chunkResults.push({
-        chunkIndex: index + 1,
-        startOffsetSeconds: index * CHUNK_SECONDS,
-        segments: result.segments ?? [{ start: 0, end: CHUNK_SECONDS, text: result.text ?? '' }],
-      })
+      const prompt = carryOver ? `${context.prompt} Continuação de: ${carryOver}` : context.prompt
+      const request: TranscriptionRequest = IS_WHISPER
+        ? {
+          file: createReadStream(chunkPath),
+          model: TRANSCRIPTION_MODEL,
+          language: 'pt',
+          prompt,
+          temperature: 0,
+          response_format: 'json',
+        }
+        : {
+          file: createReadStream(chunkPath),
+          model: TRANSCRIPTION_MODEL,
+          languages: ['pt'],
+          keywords: context.keywords,
+          prompt,
+          response_format: 'json',
+        }
+
+      const result = await openai.audio.transcriptions.create(
+        request as unknown as SdkTranscriptionParams,
+      ) as unknown as OpenAITranscription
+      const text = result.text ?? ''
+      chunkResults.push({ chunkIndex: index + 1, text })
+      carryOver = buildCarryOver(text)
       if (result.usage) usages.push(result.usage)
     }
 
@@ -222,29 +248,18 @@ async function processJob(
       .single()
     if (transcriptError || !transcription) throw transcriptError ?? new Error('Could not persist transcription.')
 
+    // Uma reprocessada precisa começar limpa: sem isso, os trechos da transcrição
+    // anterior deste mesmo job ficariam órfãos apontando para o texto novo.
     const { error: deleteSegmentsError } = await supabase
       .from('omnia_ata_transcription_segments')
       .delete()
       .eq('transcription_id', transcription.id)
     if (deleteSegmentsError) throw deleteSegmentsError
 
-    if (merged.segments.length > 0) {
-      const { error: insertSegmentsError } = await supabase.from('omnia_ata_transcription_segments').insert(
-        merged.segments.map((segment) => ({
-          transcription_id: transcription.id,
-          sequence: segment.sequence,
-          start_ms: segment.startMs,
-          end_ms: segment.endMs,
-          text: segment.text,
-        })),
-      )
-      if (insertSegmentsError) throw insertSegmentsError
-    }
-
-    // O áudio fica retido: é ele que permite conferir um trecho duvidoso durante a
-    // revisão. A limpeza acontece quando esta transcrição deixa de ser a atual da
-    // ata — substituída por outra gravação ou descartada —, o que mantém no bucket
-    // no máximo um arquivo por ata.
+    // O áudio fica retido para permitir reprocessar a mesma gravação com outro
+    // modelo ou outro contexto, sem pedir o arquivo de novo a quem revisa. A
+    // limpeza acontece quando a transcrição deixa de ser a atual da ata —
+    // substituída ou descartada —, o que mantém no bucket um arquivo por ata.
 
     const { error: completeError } = await supabase
       .from('omnia_ata_transcription_jobs')
