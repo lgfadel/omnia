@@ -82,15 +82,15 @@ ALTER TABLE public.omnia_crm_origens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.omnia_crm_statuses ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can read local user permissions" ON public.omnia_user_permissions;
-CREATE POLICY "Authenticated users can read local user permissions" ON public.omnia_user_permissions FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local user permissions" ON public.omnia_user_permissions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local administradoras" ON public.omnia_administradoras;
-CREATE POLICY "Authenticated users can read local administradoras" ON public.omnia_administradoras FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local administradoras" ON public.omnia_administradoras FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local tags" ON public.omnia_tags;
-CREATE POLICY "Authenticated users can read local tags" ON public.omnia_tags FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local tags" ON public.omnia_tags FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local crm origins" ON public.omnia_crm_origens;
-CREATE POLICY "Authenticated users can read local crm origins" ON public.omnia_crm_origens FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local crm origins" ON public.omnia_crm_origens FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local crm statuses" ON public.omnia_crm_statuses;
-CREATE POLICY "Authenticated users can read local crm statuses" ON public.omnia_crm_statuses FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local crm statuses" ON public.omnia_crm_statuses FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-GRANT SELECT ON public.omnia_user_permissions, public.omnia_administradoras, public.omnia_tags, public.omnia_crm_origens, public.omnia_crm_statuses TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_user_permissions, public.omnia_administradoras, public.omnia_tags, public.omnia_crm_origens, public.omnia_crm_statuses TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_user_permissions, public.omnia_administradoras, public.omnia_tags, public.omnia_crm_origens, public.omnia_crm_statuses TO service_role;

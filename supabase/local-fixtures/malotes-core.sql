@@ -54,16 +54,16 @@ ALTER TABLE public.omnia_menu_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.omnia_role_permissions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can read local users" ON public.omnia_users;
-CREATE POLICY "Authenticated users can read local users" ON public.omnia_users FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local users" ON public.omnia_users FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local condominiums" ON public.omnia_condominiums;
-CREATE POLICY "Authenticated users can read local condominiums" ON public.omnia_condominiums FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local condominiums" ON public.omnia_condominiums FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local menu items" ON public.omnia_menu_items;
-CREATE POLICY "Authenticated users can read local menu items" ON public.omnia_menu_items FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local menu items" ON public.omnia_menu_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Authenticated users can read local role permissions" ON public.omnia_role_permissions;
-CREATE POLICY "Authenticated users can read local role permissions" ON public.omnia_role_permissions FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read local role permissions" ON public.omnia_role_permissions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT ON public.omnia_users, public.omnia_condominiums, public.omnia_menu_items, public.omnia_role_permissions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_users, public.omnia_condominiums, public.omnia_menu_items, public.omnia_role_permissions TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_users, public.omnia_condominiums, public.omnia_menu_items, public.omnia_role_permissions TO service_role;
 
 INSERT INTO public.omnia_condominiums (name, city, state)

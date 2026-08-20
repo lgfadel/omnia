@@ -23,6 +23,7 @@
     "test:visual": "playwright test --config=playwright.visual.config.ts",
     "test:visual:update": "playwright test --config=playwright.visual.config.ts --update-snapshots",
     "local:test:up": "bash scripts/setup-local-test-env.sh up",
+    "local:test:verify": "bash scripts/verify-local-test-env.sh",
     "local:test:status": "bash scripts/setup-local-test-env.sh status",
     "local:test:down": "bash scripts/setup-local-test-env.sh down",
     "local:test:app": "npm run build && npm run start",

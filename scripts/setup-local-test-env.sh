@@ -32,6 +32,8 @@ provision() {
   load_local_env
   run_sql_file "$repo_root/supabase/local-fixtures/malotes-core.sql"
   run_sql_file "$repo_root/supabase/local-fixtures/app-core.sql"
+  run_sql_file "$repo_root/supabase/local-fixtures/app-operational.sql"
+  run_sql_file "$repo_root/supabase/local-fixtures/app-secondary.sql"
   malote_schema_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT to_regclass('public.omnia_malote_settings') IS NOT NULL")"
   if [[ "$malote_schema_present" != 't' ]]; then
     run_sql_file "$repo_root/supabase/migrations/20260820150724_create_malotes_digitais.sql"
@@ -62,6 +64,8 @@ UPDATE public.omnia_malote_settings
 SET recipient_email = 'malotes@local.test';
 SQL
 
+  run_sql_file "$repo_root/supabase/local-fixtures/seed.sql"
+
   printf '%s\n' \
     "NEXT_PUBLIC_SUPABASE_URL=\"$API_URL\"" \
     "NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$ANON_KEY\"" \
@@ -76,7 +80,7 @@ SQL
   echo "Supabase Studio: $STUDIO_URL"
   echo "Mailpit: $INBUCKET_URL"
   echo "Login: $test_email / $test_password"
-  echo "Inicie a UI com: npm run dev"
+  echo "Inicie a UI de teste com: npm run local:test:app"
 }
 
 case "$command" in
