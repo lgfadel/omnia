@@ -241,8 +241,10 @@ async function processJob(
       if (insertSegmentsError) throw insertSegmentsError
     }
 
-    const { error: removeError } = await supabase.storage.from(AUDIO_BUCKET).remove([job.storage_path])
-    if (removeError) throw removeError
+    // O áudio fica retido: é ele que permite conferir um trecho duvidoso durante a
+    // revisão. A limpeza acontece quando esta transcrição deixa de ser a atual da
+    // ata — substituída por outra gravação ou descartada —, o que mantém no bucket
+    // no máximo um arquivo por ata.
 
     const { error: completeError } = await supabase
       .from('omnia_ata_transcription_jobs')

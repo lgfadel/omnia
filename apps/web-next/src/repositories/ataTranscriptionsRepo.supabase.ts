@@ -230,11 +230,23 @@ export const ataTranscriptionsRepoSupabase = {
     if (error) throw error
   },
 
-  async renameSpeaker(segmentId: string, speakerName: string): Promise<void> {
-    const { error } = await untypedSupabase
-      .from('omnia_ata_transcription_segments')
-      .update({ speaker_name: speakerName.trim() || null })
-      .eq('id', segmentId)
-    if (error) throw error
+  // Devolve null quando a gravação não existe mais no bucket — transcrições
+  // anteriores à retenção do áudio continuam revisáveis, apenas sem player.
+  async audioUrl(jobId: string): Promise<string | null> {
+    const { data, error } = await supabase.functions.invoke<{ url: string | null }>('ata-transcriptions', {
+      body: { action: 'audio', jobId },
+    })
+    if (error) throw await describeFunctionError(error, 'Não foi possível carregar a gravação.')
+    return data?.url ?? null
+  },
+
+  // A ata deixa de ter transcrição atual e o painel volta a pedir uma gravação.
+  // O job, o áudio e o texto permanecem no histórico — descartar é uma decisão
+  // editorial, não um expurgo de dados.
+  async discard(jobId: string): Promise<void> {
+    const { error } = await supabase.functions.invoke('ata-transcriptions', {
+      body: { action: 'discard', jobId },
+    })
+    if (error) throw await describeFunctionError(error, 'Não foi possível descartar a transcrição.')
   },
 }

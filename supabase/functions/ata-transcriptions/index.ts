@@ -27,18 +27,22 @@ function buildCorsHeaders(req: Request): Record<string, string> {
 const AUDIO_BUCKET = 'ata-transcription-audio'
 const MAX_DURATION_SECONDS = 6 * 60 * 60
 const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024
+// Uma revisão de assembleia dura horas; um link curto obrigaria a recarregar a
+// página no meio do trabalho.
+const AUDIO_URL_TTL_SECONDS = 4 * 60 * 60
+
 const ACCEPTED_MIME_TYPES = new Set([
   'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac',
   'audio/wav', 'audio/x-wav', 'video/mp4', 'audio/webm', 'video/webm',
   'audio/ogg', 'audio/opus',
 ])
 
-type Action = 'create' | 'complete' | 'retry' | 'cancel'
+type Action = 'create' | 'complete' | 'retry' | 'cancel' | 'discard' | 'audio'
 type TeamProfile = { id: string; roles: string[] | null }
 type AtaAccess = { responsible_id: string | null }
 
 function isAction(value: unknown): value is Action {
-  return value === 'create' || value === 'complete' || value === 'retry' || value === 'cancel'
+  return value === 'create' || value === 'complete' || value === 'retry' || value === 'cancel' || value === 'discard' || value === 'audio'
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -206,7 +210,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: previousJob, error: previousJobError } = await admin
         .from('omnia_ata_transcription_jobs')
-        .select('id')
+        .select('id, storage_path')
         .eq('ata_id', payload.ataId)
         .eq('is_current', true)
         .maybeSingle()
@@ -230,6 +234,13 @@ Deno.serve(async (req: Request) => {
         if (previousJob) await admin.from('omnia_ata_transcription_jobs').update({ is_current: true }).eq('id', previousJob.id)
         await admin.from('omnia_ata_transcription_jobs').delete().eq('id', jobId)
         return json({ error: 'Não foi possível ativar o trabalho de transcrição.' }, 500)
+      }
+
+      // A gravação anterior não é mais alcançável pela tela; só o texto dela
+      // segue no histórico. Manter o arquivo custaria até 1 GB por substituição.
+      if (previousJob?.storage_path) {
+        const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([previousJob.storage_path])
+        if (purgeError) console.error('Unable to purge replaced audio', purgeError)
       }
 
       return json({ jobId, path: upload.path, token: upload.token }, 201)
@@ -271,6 +282,39 @@ Deno.serve(async (req: Request) => {
       if (deleteError) return json({ error: 'Não foi possível cancelar o envio.' }, 500)
       if (previousJob) await admin.from('omnia_ata_transcription_jobs').update({ is_current: true }).eq('id', previousJob.id)
       return json({ status: 'cancelled' })
+    }
+
+    if (payload.action === 'audio') {
+      if (job.status === 'uploading') return json({ url: null })
+      const { data, error } = await admin.storage
+        .from(AUDIO_BUCKET)
+        .createSignedUrl(job.storage_path, AUDIO_URL_TTL_SECONDS)
+      // Transcrições anteriores à retenção do áudio não têm mais arquivo no
+      // bucket. Isso não impede a revisão — apenas não há o que tocar —, então
+      // a falha vira ausência de player, registrada no log para diagnóstico.
+      if (error || !data?.signedUrl) {
+        console.error('Unable to sign transcription audio', error)
+        return json({ url: null })
+      }
+      return json({ url: data.signedUrl })
+    }
+
+    if (payload.action === 'discard') {
+      // Descartar é diferente de cancelar: o áudio e o texto já processados
+      // continuam no histórico da ata, ela apenas deixa de ter transcrição
+      // atual. Cancelar existe só para o envio que ainda nem terminou.
+      if (job.status === 'uploading') return json({ error: 'Este envio ainda está em andamento.' }, 409)
+      const { error } = await admin
+        .from('omnia_ata_transcription_jobs')
+        .update({ is_current: false })
+        .eq('id', job.id)
+      if (error) {
+        console.error('Unable to discard transcription', error)
+        return json({ error: 'Não foi possível descartar a transcrição.' }, 500)
+      }
+      const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
+      if (purgeError) console.error('Unable to purge discarded audio', purgeError)
+      return json({ status: 'discarded' })
     }
 
     if (job.status !== 'failed') return json({ error: 'Apenas transcrições com falha podem ser reenviadas.' }, 409)

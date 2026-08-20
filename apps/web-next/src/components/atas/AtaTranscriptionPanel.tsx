@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
 import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
-import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
+import type { AtaTranscription, AtaTranscriptionJob, AtaTranscriptionSegment } from '@/data/types'
 import { FileAudio, FilePlus2, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
@@ -47,8 +47,30 @@ function formatTimestamp(milliseconds: number): string {
     : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+type AudioState =
+  | { status: 'loading' }
+  | { status: 'ready'; url: string }
+  | { status: 'gone' }
+  | { status: 'error' }
+
+// A lista de uma assembleia de uma hora passa de 2000 trechos: varrer tudo a cada
+// evento de tempo do áudio (4x por segundo) travaria a rolagem da revisão.
+function findSegmentAt(segments: AtaTranscriptionSegment[], timeMs: number): AtaTranscriptionSegment | null {
+  let low = 0
+  let high = segments.length - 1
+  while (low <= high) {
+    const middle = (low + high) >> 1
+    const segment = segments[middle]
+    if (timeMs < segment.startMs) high = middle - 1
+    else if (timeMs >= segment.endMs) low = middle + 1
+    else return segment
+  }
+  return null
+}
+
 export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const [job, setJob] = useState<AtaTranscriptionJob | null>(null)
   const [transcription, setTranscription] = useState<AtaTranscription | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,7 +80,12 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const [draftText, setDraftText] = useState('')
   const [showMinutaNotice, setShowMinutaNotice] = useState(false)
   const [replacement, setReplacement] = useState<{ file: File; durationSeconds: number } | null>(null)
+  const [isDiscarding, setIsDiscarding] = useState(false)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null)
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
+  const transcriptionId = transcription?.id
 
   const refresh = useCallback(async () => {
     try {
@@ -83,6 +110,43 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
     const interval = window.setInterval(() => void refresh(), 7_500)
     return () => window.clearInterval(interval)
   }, [isJobActive, refresh])
+
+  // A URL assinada é buscada uma vez por transcrição, e não a cada refresh: o
+  // painel repete o load a cada 7,5 s enquanto há trabalho ativo.
+  useEffect(() => {
+    const jobId = job?.id
+    if (!jobId || !transcriptionId || isJobActive) {
+      setAudio({ status: 'loading' })
+      return
+    }
+    let cancelled = false
+    setAudio({ status: 'loading' })
+    ataTranscriptionsRepoSupabase.audioUrl(jobId)
+      .then((url) => {
+        if (cancelled) return
+        setAudio(url ? { status: 'ready', url } : { status: 'gone' })
+      })
+      .catch(() => {
+        if (!cancelled) setAudio({ status: 'error' })
+      })
+    return () => { cancelled = true }
+  }, [job?.id, transcriptionId, isJobActive])
+
+  const handleTimeUpdate = () => {
+    const player = audioRef.current
+    if (!player || !transcription) return
+    const current = findSegmentAt(transcription.segments, player.currentTime * 1000)
+    setActiveSegmentId((previous) => (previous === (current?.id ?? null) ? previous : current?.id ?? null))
+  }
+
+  const playFrom = (startMs: number) => {
+    const player = audioRef.current
+    if (!player) return
+    player.currentTime = startMs / 1000
+    // play() rejeita quando o navegador bloqueia a reprodução; aqui sempre parte
+    // de um clique, e não há o que fazer além de deixar o usuário apertar play.
+    void player.play().catch(() => undefined)
+  }
 
   const uploadFile = async (file: File, durationSeconds: number) => {
     try {
@@ -156,6 +220,22 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
     }
   }
 
+  const handleDiscard = async () => {
+    if (!job) return
+    setIsDiscarding(true)
+    setError(null)
+    try {
+      await ataTranscriptionsRepoSupabase.discard(job.id)
+      await refresh()
+    } catch (discardError) {
+      const message = discardError instanceof Error ? discardError.message : 'Não foi possível descartar a transcrição.'
+      await refresh()
+      setError(message)
+    } finally {
+      setIsDiscarding(false)
+    }
+  }
+
   if (isLoading) return <p className="py-10 text-sm text-muted-foreground">Carregando transcrição…</p>
 
   return (
@@ -168,7 +248,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
                 <FileAudio className="h-5 w-5 text-violet-600" />
                 Áudio da assembleia
               </CardTitle>
-              <CardDescription>Envie a gravação para criar uma transcrição revisável, com timestamps e locutores.</CardDescription>
+              <CardDescription>Envie a gravação para criar uma transcrição revisável, com marcação de horário em cada trecho.</CardDescription>
             </div>
             {job && <AtaTranscriptionStatus status={job.status} />}
           </div>
@@ -277,36 +357,97 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
 
             <Textarea value={draftText} onChange={(event) => setDraftText(event.target.value)} className="min-h-72 font-mono text-sm leading-6" />
             <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" disabled={isSaving} onClick={() => void handleSaveReview(false)}>Salvar rascunho</Button>
-              <Button disabled={isSaving} onClick={() => void handleSaveReview(true)}>{isSaving ? 'Salvando…' : 'Marcar como revisada'}</Button>
+              <Button
+                variant="ghost"
+                className="text-muted-foreground hover:text-destructive"
+                disabled={isSaving || isDiscarding}
+                onClick={() => setShowDiscardDialog(true)}
+              >
+                {isDiscarding ? 'Descartando…' : 'Descartar transcrição'}
+              </Button>
+              <Button variant="outline" disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(false)}>Salvar rascunho</Button>
+              <Button disabled={isSaving || isDiscarding} onClick={() => void handleSaveReview(true)}>{isSaving ? 'Salvando…' : 'Marcar como revisada'}</Button>
             </div>
 
             <div className="space-y-3 border-t pt-5">
               <div>
                 <h3 className="font-medium">Trechos com horário</h3>
-                <p className="text-sm text-muted-foreground">A transcrição não identifica quem falou. Atribua os nomes conforme reconhecer as vozes.</p>
+                <p className="text-sm text-muted-foreground">
+                  {audio.status === 'ready'
+                    ? 'Clique em um trecho para ouvir aquele momento da gravação enquanto corrige o texto.'
+                    : audio.status === 'error'
+                      ? 'Não foi possível carregar a gravação agora. Os trechos continuam servindo de referência de horário.'
+                      : audio.status === 'gone'
+                        ? 'A gravação desta ata não está mais disponível. Os trechos continuam servindo de referência de horário.'
+                        : 'Carregando a gravação…'}
+                </p>
               </div>
+
+              {audio.status === 'ready' && (
+                <audio
+                  ref={audioRef}
+                  src={audio.url}
+                  controls
+                  preload="metadata"
+                  className="w-full rounded-lg"
+                  onTimeUpdate={handleTimeUpdate}
+                  onError={() => setAudio({ status: 'error' })}
+                />
+              )}
+
               <div className="max-h-[32rem] space-y-2 overflow-auto pr-1" style={{ contentVisibility: 'auto' }}>
-                {transcription.segments.map((segment) => (
-                  <div key={segment.id} className="grid gap-2 rounded-lg border p-3 md:grid-cols-[7rem_13rem_1fr] md:items-start">
-                    <span className="pt-2 font-mono text-xs text-muted-foreground">{formatTimestamp(segment.startMs)}–{formatTimestamp(segment.endMs)}</span>
-                    <Input
-                      defaultValue={segment.speakerName ?? segment.speakerLabel ?? ''}
-                      placeholder="Quem falou?"
-                      aria-label={`Quem falou em ${formatTimestamp(segment.startMs)}`}
-                      onBlur={(event) => {
-                        void ataTranscriptionsRepoSupabase.renameSpeaker(segment.id, event.target.value)
-                          .catch(() => setError('Não foi possível salvar o nome do falante.'))
-                      }}
-                    />
-                    <p className="pt-2 text-sm leading-6">{segment.text}</p>
-                  </div>
-                ))}
+                {transcription.segments.map((segment) => {
+                  const isActive = segment.id === activeSegmentId
+                  const timestamp = `${formatTimestamp(segment.startMs)}–${formatTimestamp(segment.endMs)}`
+                  const rowClass = `grid w-full gap-2 rounded-lg border p-3 text-left transition-colors md:grid-cols-[7rem_1fr] md:items-start ${
+                    isActive
+                      ? 'border-violet-300 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30'
+                      : 'border-border'
+                  }`
+                  const body = (
+                    <>
+                      <span className={`pt-1 font-mono text-xs ${isActive ? 'text-violet-700 dark:text-violet-300' : 'text-muted-foreground'}`}>
+                        {timestamp}
+                      </span>
+                      <p className="text-sm leading-6">{segment.text}</p>
+                    </>
+                  )
+
+                  return audio.status === 'ready' ? (
+                    <button
+                      key={segment.id}
+                      type="button"
+                      className={`${rowClass} hover:border-violet-200 hover:bg-muted/60 dark:hover:border-violet-900`}
+                      aria-current={isActive || undefined}
+                      aria-label={`Ouvir o trecho de ${timestamp}`}
+                      onClick={() => playFrom(segment.startMs)}
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <div key={segment.id} className={rowClass}>{body}</div>
+                  )
+                })}
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar esta transcrição?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A ata volta a pedir uma gravação e a revisão feita neste texto deixa de valer. O áudio é apagado em definitivo; o texto continua no histórico, mas não será usado na futura geração da minuta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Manter transcrição</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDiscard()}>Descartar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={Boolean(replacement)} onOpenChange={(open) => {
         if (!open) {

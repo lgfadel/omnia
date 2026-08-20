@@ -39,7 +39,7 @@ ambiente `production`, com as três variáveis já configuradas.
 O worker não emite log em operação normal: ele consulta a fila a cada 5 s e só
 escreve em caso de erro. Um serviço silencioso é um serviço saudável.
 
-Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker usa `whisper-1` com idioma `pt`, divide gravações em blocos de 30 minutos e remove o objeto privado do Storage após concluir. Em caso de falha, mantém o áudio para uma nova tentativa.
+Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker usa `whisper-1` com idioma `pt` e divide gravações em blocos de 30 minutos. O objeto privado do Storage é **mantido** após concluir: é ele que alimenta o player de conferência da revisão, onde clicar num trecho toca aquele momento da gravação. O áudio só é removido quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha, o áudio também permanece para uma nova tentativa.
 
 ## Por que whisper-1 e não o modelo com diarização
 
@@ -50,4 +50,4 @@ Teste controlado em 19/08/2026, mesmo arquivo e mesmos bytes, variando apenas o 
 | `gpt-4o-transcribe-diarize` | 6,3% | Frases inventadas, como "The board is flat" repetido quatro vezes |
 | `whisper-1` | 0% | Português coerente, 9x mais rápido, mesmo preço |
 
-O `whisper-1` não separa falantes — era o único motivo de usar o outro modelo. Os nomes passam a ser atribuídos por quem revisa a ata. O áudio recebe `highpass`, `loudnorm` e compressão antes do envio, o que rendeu ~19% mais conteúdo transcrito em gravação de campo distante.
+O `whisper-1` não separa falantes — era o único motivo de usar o outro modelo. A atribuição manual de nomes trecho a trecho chegou a existir na tela e foi removida: não era prática em assembleia com dezenas de vozes. O áudio recebe `highpass`, `loudnorm` e compressão antes do envio, o que rendeu ~19% mais conteúdo transcrito em gravação de campo distante.
