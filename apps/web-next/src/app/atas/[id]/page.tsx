@@ -13,6 +13,7 @@ import { CommentsList } from "@/components/atas/CommentsList"
 import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
 import { AtaTranscriptionPanel } from "@/components/atas/AtaTranscriptionPanel"
+import { AtaMinutaPanel } from "@/components/atas/AtaMinutaPanel"
 import { FileUploader } from "@/components/atas/FileUploader"
 import { Edit, Clock, ChevronDown } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
@@ -34,6 +35,7 @@ const AtaDetail = () => {
   const [commentLoading, setCommentLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
   const [attachmentToDelete, setAttachmentToDelete] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('resumo')
 
   // Hook para fechar AlertDialog com ESC
   useEscapeKeyForAlert(() => setAttachmentToDelete(null), !!attachmentToDelete)
@@ -192,10 +194,11 @@ const AtaDetail = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="resumo" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="transcricao">Transcrição</TabsTrigger>
+            <TabsTrigger value="minuta">Minuta</TabsTrigger>
             <TabsTrigger value="anexos">
               Anexos ({(() => {
                 const directAttachments = ata.attachments?.length || 0;
@@ -295,7 +298,11 @@ const AtaDetail = () => {
           </TabsContent>
 
           <TabsContent value="transcricao">
-            <AtaTranscriptionPanel ataId={ata.id} />
+            <AtaTranscriptionPanel ataId={ata.id} onGenerateMinuta={() => setActiveTab('minuta')} />
+          </TabsContent>
+
+          <TabsContent value="minuta">
+            <AtaMinutaPanel ataId={ata.id} ataTitle={ata.title} />
           </TabsContent>
 
           <TabsContent value="anexos">

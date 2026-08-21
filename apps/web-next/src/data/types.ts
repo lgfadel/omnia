@@ -82,6 +82,62 @@ export interface AtaTranscription {
   isReviewed: boolean;
 }
 
+export type AtaMinutaStatus = 'generating' | 'ready' | 'failed'
+
+export type AtaMinutaVersionOrigin = 'generation' | 'chat' | 'manual'
+
+export type AtaMinutaMessageRole = 'user' | 'assistant'
+
+export type AtaMinutaDocumentKind = 'convocacao' | 'apuracao' | 'outro'
+
+export interface AtaMinuta {
+  id: string;
+  ataId: string;
+  transcriptionId?: string;
+  content: string;
+  status: AtaMinutaStatus;
+  errorMessage?: string;
+  model?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtaMinutaVersion {
+  id: string;
+  minutaId: string;
+  sequence: number;
+  content: string;
+  origin: AtaMinutaVersionOrigin;
+  createdAt: string;
+}
+
+export interface AtaMinutaMessage {
+  id: string;
+  minutaId: string;
+  sequence: number;
+  role: AtaMinutaMessageRole;
+  content: string;
+  versionId?: string;
+  createdAt: string;
+}
+
+export interface AtaMinutaDocument {
+  id: string;
+  ataId: string;
+  kind: AtaMinutaDocumentKind;
+  originalFilename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export type AtaMinutaReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+export interface AtaMinutaSettings {
+  model: string;
+  reasoningEffort: AtaMinutaReasoningEffort;
+  systemPrompt: string;
+}
+
 export interface Tarefa {
   id: string;
   title: string;

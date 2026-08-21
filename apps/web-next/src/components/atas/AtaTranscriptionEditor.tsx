@@ -10,6 +10,8 @@ interface AtaTranscriptionEditorProps {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
+  ariaLabel?: string
+  textareaClassName?: string
 }
 
 // Percorre o texto com indexOf em vez de RegExp: o que se digita na busca é
@@ -26,7 +28,7 @@ function findMatches(text: string, term: string, caseSensitive: boolean): number
   return matches
 }
 
-export function AtaTranscriptionEditor({ value, onChange, disabled }: AtaTranscriptionEditorProps) {
+export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 'Texto da transcrição', textareaClassName = 'min-h-72 font-mono text-sm leading-6' }: AtaTranscriptionEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [term, setTerm] = useState('')
   const [replacement, setReplacement] = useState('')
@@ -176,8 +178,8 @@ export function AtaTranscriptionEditor({ value, onChange, disabled }: AtaTranscr
         ref={textareaRef}
         value={value}
         onChange={(event) => { setUndoState(null); onChange(event.target.value) }}
-        className="min-h-72 font-mono text-sm leading-6"
-        aria-label="Texto da transcrição"
+        className={textareaClassName}
+        aria-label={ariaLabel}
         disabled={disabled}
       />
     </div>

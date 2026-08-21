@@ -30,6 +30,14 @@ provision() {
   cp "$repo_root/supabase/local-fixtures/config.toml" "$supabase_root/config.toml"
   supabase start --workdir "$environment_root"
   load_local_env
+
+  # A raiz do repo é o cofre local para as chaves da OpenAI (.env.local, gitignored,
+  # nunca reescrito por este script). Se o shell de quem roda o script já não trouxer a
+  # chave exportada, usa a da raiz como fallback — uma fonte só, sem passo manual.
+  if [[ -z "${OPENAI_ATA_MINUTA_API_KEY:-}" && -f "$repo_root/.env.local" ]]; then
+    OPENAI_ATA_MINUTA_API_KEY="$(grep -m1 '^OPENAI_ATA_MINUTA_API_KEY=' "$repo_root/.env.local" | cut -d'=' -f2- | tr -d '"')"
+  fi
+
   run_sql_file "$repo_root/supabase/local-fixtures/malotes-core.sql"
   run_sql_file "$repo_root/supabase/local-fixtures/app-core.sql"
   run_sql_file "$repo_root/supabase/local-fixtures/app-operational.sql"
@@ -39,6 +47,20 @@ provision() {
     run_sql_file "$repo_root/supabase/migrations/20260820150724_create_malotes_digitais.sql"
   else
     docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_malote_settings, public.omnia_malote_batches, public.omnia_malote_items, public.omnia_malote_attempts TO service_role"
+  fi
+
+  # Os fixtures consolidados (app-*.sql) foram capturados antes destas duas migrations:
+  # aplicadas direto, do mesmo jeito que a de malotes acima, até o próximo recorte dos fixtures.
+  context_text_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'omnia_ata_transcription_jobs' AND column_name = 'context_text')")"
+  if [[ "$context_text_present" != 't' ]]; then
+    run_sql_file "$repo_root/supabase/migrations/20260820190000_add_transcription_context_text.sql"
+  fi
+
+  ata_minutas_schema_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT to_regclass('public.omnia_ata_minutas') IS NOT NULL")"
+  if [[ "$ata_minutas_schema_present" != 't' ]]; then
+    run_sql_file "$repo_root/supabase/migrations/20260820210000_create_ata_minutas.sql"
+  else
+    docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_ata_minuta_settings, public.omnia_ata_minutas, public.omnia_ata_minuta_versions, public.omnia_ata_minuta_messages, public.omnia_ata_minuta_documents TO service_role"
   fi
 
   existing_auth_user_id="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT id FROM auth.users WHERE email = '$test_email' LIMIT 1")"
@@ -66,10 +88,15 @@ SQL
 
   run_sql_file "$repo_root/supabase/local-fixtures/seed.sql"
 
+  # Repassa a chave da OpenAI do shell de quem roda o script, se existir — sem isso a
+  # geração de minuta (e a importação de protocolo) não têm como chamar a API de verdade
+  # em ambiente local, e o .env.local é reescrito do zero a cada "up".
   printf '%s\n' \
     "NEXT_PUBLIC_SUPABASE_URL=\"$API_URL\"" \
     "NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$ANON_KEY\"" \
     "SUPABASE_SERVICE_ROLE_KEY=\"$SERVICE_ROLE_KEY\"" \
+    "OPENAI_API_KEY=\"${OPENAI_API_KEY:-}\"" \
+    "OPENAI_ATA_MINUTA_API_KEY=\"${OPENAI_ATA_MINUTA_API_KEY:-}\"" \
     'MALOTE_SMTP_HOST="127.0.0.1"' \
     'MALOTE_SMTP_PORT="55425"' \
     'MALOTE_SMTP_SECURE="false"' \

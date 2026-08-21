@@ -17,6 +17,7 @@ import { Download, FileAudio, FilePlus2, FileText, RefreshCcw, Sparkles, Triangl
 
 interface AtaTranscriptionPanelProps {
   ataId: string
+  onGenerateMinuta?: () => void
 }
 
 const activeStatuses = new Set<TranscriptionStatus>(['uploading', 'queued', 'processing'])
@@ -45,7 +46,7 @@ type AudioState =
   | { status: 'gone' }
   | { status: 'error' }
 
-export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
+export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscriptionPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const convocacaoRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -56,7 +57,6 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draftText, setDraftText] = useState('')
-  const [showMinutaNotice, setShowMinutaNotice] = useState(false)
   const [replacement, setReplacement] = useState<{ file: File; durationSeconds: number } | null>(null)
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
@@ -385,25 +385,15 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
                     : 'Edite o texto antes de usar o conteúdo na futura geração da minuta.'}
                 </CardDescription>
               </div>
-              <Button variant="outline" onClick={() => setShowMinutaNotice(true)}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Gerar minuta de ATA
-              </Button>
+              {onGenerateMinuta && (
+                <Button variant="outline" onClick={onGenerateMinuta}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Gerar minuta de ATA
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            {showMinutaNotice && (
-              <Alert>
-                <TriangleAlert className="h-4 w-4" />
-                <AlertTitle>{transcription.isReviewed ? 'Geração da minuta em breve' : 'Transcrição ainda não revisada'}</AlertTitle>
-                <AlertDescription>
-                  {transcription.isReviewed
-                    ? 'A fase de geração usará apenas esta transcrição salva e revisada.'
-                    : 'A futura minuta poderá ser gerada, mas deverá destacar que o conteúdo pode conter imprecisões.'}
-                </AlertDescription>
-              </Alert>
-            )}
-
             <AtaTranscriptionEditor
               value={draftText}
               onChange={setDraftText}

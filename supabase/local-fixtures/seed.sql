@@ -116,12 +116,34 @@ ON CONFLICT (id) DO UPDATE SET numero = EXCLUDED.numero, data_envio = EXCLUDED.d
 
 UPDATE public.omnia_balancetes SET protocolo_id = '54000000-0000-0000-0000-000000000001' WHERE id = '44000000-0000-0000-0000-000000000001';
 
-INSERT INTO public.omnia_ata_transcription_jobs (id, ata_id, status, original_filename, total_chunks, processed_chunks, stage, is_current)
-VALUES ('55000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'completed', 'assembleia-geral.mp3', 1, 1, 'completed', true)
-ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, processed_chunks = EXCLUDED.processed_chunks, stage = EXCLUDED.stage;
+INSERT INTO public.omnia_ata_transcription_jobs (id, ata_id, status, original_filename, total_chunks, processed_chunks, stage, is_current, context_text)
+VALUES (
+  '55000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'completed', 'assembleia-geral.mp3', 1, 1, 'completed', true,
+  $ctx$CONVOCAÇÃO
+Condomínio: Condomínio Jardim Paulista
+Síndico: Eduardo Marchetti
+Data: 15 de agosto de 2026
+
+ORDEM DO DIA
+1) Prestação de contas do exercício de 2025
+2) Eleição do síndico para o próximo mandato
+3) Aprovação da reforma da fachada$ctx$
+)
+ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, processed_chunks = EXCLUDED.processed_chunks, stage = EXCLUDED.stage, context_text = EXCLUDED.context_text;
 
 INSERT INTO public.omnia_ata_transcriptions (id, job_id, raw_text, revised_text, language, is_reviewed)
-VALUES ('55000000-0000-0000-0000-000000000002', '55000000-0000-0000-0000-000000000001', 'Texto sintético da assembleia.', 'Texto revisado da assembleia.', 'pt-BR', true)
+VALUES (
+  '55000000-0000-0000-0000-000000000002', '55000000-0000-0000-0000-000000000001',
+  'Texto sintético da assembleia.',
+  $tx$Boa noite a todos. Iniciamos a assembleia geral ordinária do Condomínio Jardim Paulista, convocada para tratar da prestação de contas do exercício de 2025, da eleição do síndico para o próximo mandato e da aprovação da reforma da fachada. Está presente quórum suficiente, com trinta e duas unidades representadas de um total de quarenta, o que corresponde a oitenta por cento das frações ideais.
+
+O síndico Eduardo Marchetti passa a palavra ao contador responsável, que apresenta a prestação de contas do exercício de 2025. O saldo em caixa em trinta e um de dezembro era de cento e oitenta e dois mil reais. As receitas totais do ano somaram novecentos e quarenta mil reais, e as despesas totalizaram oitocentos e setenta e cinco mil reais, resultando em superávit de sessenta e cinco mil reais. Um condômino da unidade 42 questiona o aumento de vinte por cento nas despesas de manutenção do elevador; o síndico explica que houve troca do motor de tração em março. Colocada em votação, a prestação de contas é aprovada por unanimidade dos presentes.
+
+Passa-se ao segundo item da pauta, a eleição do síndico. Eduardo Marchetti se recandidata como candidato único para o mandato de 2027 a 2028. Nenhum outro condômino se apresenta como candidato. Em votação nominal, Eduardo Marchetti é reeleito síndico com trinta votos favoráveis e duas abstenções, nenhum voto contrário.
+
+O terceiro item é a aprovação da reforma da fachada, orçada em duzentos e dez mil reais junto à empresa Fachadas São Paulo, com prazo de execução de noventa dias. O engenheiro responsável explica que a obra inclui reparo de trincas, pintura e impermeabilização das sacadas. Um condômino da unidade 15 sugere parcelar o custo em doze vezes no boleto condominial; a proposta é acolhida. Em votação, a reforma é aprovada por vinte e oito votos a favor e quatro abstenções. Nada mais havendo a tratar, o síndico agradece a presença de todos e encerra a assembleia às vinte e uma horas e trinta minutos.$tx$,
+  'pt-BR', true
+)
 ON CONFLICT (id) DO UPDATE SET raw_text = EXCLUDED.raw_text, revised_text = EXCLUDED.revised_text, is_reviewed = EXCLUDED.is_reviewed;
 
 INSERT INTO public.omnia_ata_transcription_segments (id, transcription_id, sequence, start_ms, end_ms, speaker_label, text)
