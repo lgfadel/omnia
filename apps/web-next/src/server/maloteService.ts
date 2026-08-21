@@ -14,6 +14,8 @@ import {
 import { sendMaloteEmail } from '@/server/maloteEmail'
 
 const DELIVERY_RESOLUTION_DELAY_MS = 30 * 60 * 1000
+// Acima da duração máxima de uma execução de envio (300s), para nunca condenar um lote em andamento.
+const ABANDONED_UPLOAD_DELAY_MS = 15 * 60 * 1000
 
 type AuthenticatedUser = { authUserId: string; omniaUserId: string; roles: string[] }
 type FileInput = { name: string; size: number; type: string }
@@ -263,8 +265,62 @@ export async function resolveMaloteDelivery(authHeader: string | null, itemId: s
   }
 }
 
+/**
+ * Um envio interrompido (F5, queda de rede, função encerrada) deixa anexos parados
+ * em pending/uploaded sem nenhuma tentativa de e-mail. Depois da janela de abandono
+ * eles viram falha, para o lote aparecer no histórico como falho e poder ser excluído.
+ * Itens em 'sending' ficam de fora: ali um e-mail pode ter saído, e essa incerteza
+ * continua sendo resolvida por resolveMaloteDelivery.
+ */
+async function failAbandonedItems(client: SupabaseClient) {
+  const cutoff = new Date(Date.now() - ABANDONED_UPLOAD_DELAY_MS).toISOString()
+  const { data: abandoned, error } = await client.from('omnia_malote_items')
+    .update({ status: 'failed' })
+    .in('status', ['pending', 'uploaded'])
+    .lt('created_at', cutoff)
+    .select('batch_id')
+  if (error) throw new Error(error.message)
+  const batchIds = [...new Set((abandoned ?? []).map((item: { batch_id: string }) => item.batch_id))]
+  for (const batchId of batchIds) {
+    const { count, error: countError } = await client.from('omnia_malote_items')
+      .select('id', { count: 'exact', head: true }).eq('batch_id', batchId).in('status', ['pending', 'uploaded', 'sending'])
+    if (countError) throw new Error(countError.message)
+    if (count === 0) {
+      const { error: completeError } = await client.from('omnia_malote_batches')
+        .update({ completed_at: new Date().toISOString() }).eq('id', batchId).is('completed_at', null)
+      if (completeError) throw new Error(completeError.message)
+    }
+  }
+}
+
+export async function deleteMalote(authHeader: string | null, batchId: string) {
+  const user = await currentUser(authHeader)
+  const client = admin()
+  const { data: batch, error: batchError } = await client.from('omnia_malote_batches')
+    .select('id, created_by').eq('id', batchId).single()
+  if (batchError || !batch) throw new Error('Malote não encontrado.')
+  if (batch.created_by !== user.omniaUserId && !user.roles.includes('ADMIN')) {
+    throw new Error('Somente quem criou o malote ou um administrador pode excluí-lo.')
+  }
+  const { data: items, error: itemsError } = await client.from('omnia_malote_items')
+    .select('storage_path, status').eq('batch_id', batchId)
+  if (itemsError) throw new Error(itemsError.message)
+  if ((items ?? []).some((item: { status: string }) => item.status === 'sending' || item.status === 'purging')) {
+    throw new Error('Este malote ainda tem uma entrega em andamento. Aguarde a conclusão para excluí-lo.')
+  }
+  const paths = (items ?? []).map((item: { storage_path: string }) => item.storage_path)
+  if (paths.length) {
+    const { error: removeError } = await client.storage.from('malote-attachments').remove(paths)
+    if (removeError) throw new Error(removeError.message)
+  }
+  // omnia_malote_items e omnia_malote_attempts saem por ON DELETE CASCADE.
+  const { error: deleteError } = await client.from('omnia_malote_batches').delete().eq('id', batchId)
+  if (deleteError) throw new Error(deleteError.message)
+}
+
 export async function listMalotes(authHeader: string | null) {
   await currentUser(authHeader)
+  await failAbandonedItems(admin())
   const { data, error } = await admin().from('omnia_malote_batches')
     .select('id, recipient_email, created_at, completed_at, condominium:omnia_condominiums(id, name), creator:omnia_users(name), items:omnia_malote_items(id, file_name, status, sent_at, created_at, attempts:omnia_malote_attempts(status, error_message, smtp_message_id, created_at))')
     .order('created_at', { ascending: false }).limit(100)

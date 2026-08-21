@@ -1,11 +1,21 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Inbox, RotateCcw, X } from 'lucide-react'
+import { Inbox, RotateCcw, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CondominiumSelect } from '@/components/condominiums/CondominiumSelect'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import {
@@ -48,6 +58,7 @@ type MaloteHistoryProps = {
   canResolveDelivery: boolean
   onRetry: (batchId: string, itemId: string) => void
   onResolveDelivery: (itemId: string) => void
+  onDelete: (batchId: string) => Promise<void>
 }
 
 const toneClasses: Record<MaloteBatchTone, string> = {
@@ -68,12 +79,18 @@ function formatDateTime(value: string) {
 }
 
 function latestError(item: MaloteHistoryItem) {
-  return item.attempts?.find((attempt) => attempt.error_message)?.error_message ?? null
+  const attemptError = item.attempts?.find((attempt) => attempt.error_message)?.error_message
+  if (attemptError) return attemptError
+  // Falha sem nenhuma tentativa registrada: o envio parou antes de o e-mail ser montado.
+  if (item.status === 'failed') return 'Envio interrompido antes da tentativa de e-mail.'
+  return null
 }
 
-export function MaloteHistory({ batches, condominiums, canResolveDelivery, onRetry, onResolveDelivery }: MaloteHistoryProps) {
+export function MaloteHistory({ batches, condominiums, canResolveDelivery, onRetry, onResolveDelivery, onDelete }: MaloteHistoryProps) {
   const [condominiumFilter, setCondominiumFilter] = useState('')
   const [openBatchId, setOpenBatchId] = useState<string | null>(null)
+  const [batchToDelete, setBatchToDelete] = useState<MaloteHistoryBatch | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Só oferecemos no filtro os condomínios que de fato aparecem no histórico.
   const filterableCondominiums = useMemo(() => {
@@ -209,10 +226,55 @@ export function MaloteHistory({ batches, condominiums, canResolveDelivery, onRet
                   )
                 })}
               </div>
+
+              <DialogFooter className="sm:justify-start">
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={(openBatch.items ?? []).some((item) => item.status === 'sending')}
+                  onClick={() => setBatchToDelete(openBatch)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />Excluir malote
+                </Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(batchToDelete)} onOpenChange={(open) => !open && setBatchToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este malote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O registro de {batchToDelete?.condominium?.name ?? 'condomínio removido'} de{' '}
+              {batchToDelete && formatDateTime(batchToDelete.created_at)} sai do histórico e os arquivos são apagados do
+              armazenamento. E-mails já entregues continuam na caixa do destinatário. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={async (event) => {
+                event.preventDefault()
+                if (!batchToDelete) return
+                setDeleting(true)
+                try {
+                  await onDelete(batchToDelete.id)
+                  setBatchToDelete(null)
+                  setOpenBatchId(null)
+                } finally {
+                  setDeleting(false)
+                }
+              }}
+            >
+              {deleting ? 'Excluindo…' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -30,10 +30,10 @@ describe('POST /api/malotes/[batchId]/send', () => {
   })
 
   it('fails with a status code when validation rejects before the first event', async () => {
-    streamMaloteSend.mockImplementation(async function* () {
-      if (streamMaloteSend) throw new Error('Malote não encontrado.')
-      yield { type: 'start', total: 0 }
-    })
+    // O gerador real lança na primeira chamada a next(), antes de qualquer yield.
+    streamMaloteSend.mockImplementation(() => ({
+      next: async () => { throw new Error('Malote não encontrado.') },
+    }))
 
     const response = await POST(request(), context)
 

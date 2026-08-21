@@ -133,6 +133,11 @@ export default function MalotesPage() {
     try { await apiStream(`/api/malotes/${batchId}/send`, JSON.stringify({ itemIds: [itemId] }), () => {}); toast({ title: 'Reenvio concluído' }); await loadData() }
     catch (error) { toast({ title: 'Falha no reenvio', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
   }
+  const deleteBatch = async (batchId: string) => {
+    try { await api(`/api/malotes/${batchId}`, { method: 'DELETE' }); toast({ title: 'Malote excluído' }); await loadData() }
+    catch (error) { toast({ title: 'Falha ao excluir malote', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
+  }
+
   const resolveDelivery = async (itemId: string) => {
     try { await api(`/api/malotes/items/${itemId}/resolve`, { method: 'POST', body: '{}' }); toast({ title: 'Entrega reconciliada', description: 'O histórico foi atualizado conforme a última tentativa registrada.' }); await loadData() }
     catch (error) { toast({ title: 'Falha ao resolver entrega', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
@@ -169,6 +174,7 @@ export default function MalotesPage() {
     canResolveDelivery={Boolean(userProfile?.roles.includes('ADMIN'))}
     onRetry={retry}
     onResolveDelivery={resolveDelivery}
+    onDelete={deleteBatch}
   />
 
   return <Layout><div className="mx-auto max-w-6xl space-y-6">
