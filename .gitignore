@@ -32,6 +32,16 @@ dist-ssr
 # Supabase
 supabase/.temp/
 
+# Estado de runtime do ambiente local de teste, criado por `npm run local:test:up`.
+# O próprio skill omnia-local-test registra que isto não pertence a commits, e o
+# stack fica de pé enquanto se testa — apagar quebraria o ambiente em uso.
+.context/local-test-env/
+
+# Permissões pessoais do Claude Code. A allowlist chega a liberar `python3 -c`,
+# que é execução arbitrária: compartilhar isso pelo repositório concederia o
+# mesmo poder, sem aviso, a quem clonar. Config de projeto vai em settings.json.
+.claude/settings.local.json
+
 # Temporary files
 # Gravações de assembleia ficam aqui durante testes. São dezenas de MB de áudio
 # confidencial de condomínio — um `git add -A` distraído as tornaria permanentes.
