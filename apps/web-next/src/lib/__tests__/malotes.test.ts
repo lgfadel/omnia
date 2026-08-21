@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   maloteItemStatusLabel,
+  maloteSendProgress,
   renderMaloteTemplate,
   resolveMaloteContentType,
   summarizeMaloteBatch,
@@ -106,5 +107,20 @@ describe('maloteItemStatusLabel', () => {
 
   it('falls back to the raw status for anything unmapped', () => {
     expect(maloteItemStatusLabel('desconhecido')).toBe('desconhecido')
+  })
+})
+
+describe('maloteSendProgress', () => {
+  it('conta upload e envio como metade do caminho cada', () => {
+    expect(maloteSendProgress(0, 0, 4)).toBe(0)
+    expect(maloteSendProgress(4, 0, 4)).toBe(50)
+    expect(maloteSendProgress(4, 2, 4)).toBe(75)
+    expect(maloteSendProgress(4, 4, 4)).toBe(100)
+  })
+
+  it('protege contra lote vazio e contagens fora da faixa', () => {
+    expect(maloteSendProgress(0, 0, 0)).toBe(0)
+    expect(maloteSendProgress(9, 9, 2)).toBe(100)
+    expect(maloteSendProgress(-1, 0, 2)).toBe(0)
   })
 })

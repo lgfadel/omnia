@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MaloteHistory, type MaloteHistoryBatch } from '@/components/malotes/MaloteHistory'
 import { useCondominiumStore } from '@/stores/condominiums.store'
 import { supabase } from '@/integrations/supabase/client'
-import { MALOTE_MAX_FILES_PER_BATCH, validateMaloteFile } from '@/lib/malotes'
+import { MALOTE_MAX_FILES_PER_BATCH, maloteSendProgress, validateMaloteFile, type MaloteSendEvent, type MaloteSendResult } from '@/lib/malotes'
+import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/components/auth/AuthProvider'
 
@@ -28,6 +29,42 @@ async function api(path: string, init?: RequestInit) {
   return body
 }
 
+/** Lê os eventos NDJSON do envio conforme o servidor despacha cada e-mail. */
+async function apiStream(path: string, payload: string, onEvent: (event: MaloteSendEvent) => void) {
+  const { data } = await supabase.auth.getSession()
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+    body: payload,
+  })
+  if (!response.ok || !response.body) {
+    const failure = await response.json().catch(() => ({})) as { error?: string }
+    throw new Error(failure.error ?? 'Não foi possível concluir a operação.')
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  const handle = (line: string) => {
+    if (!line.trim()) return
+    const event = JSON.parse(line) as MaloteSendEvent
+    if (event.type === 'error') throw new Error(event.message)
+    onEvent(event)
+  }
+  let buffer = ''
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) handle(line)
+    }
+    handle(buffer)
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 export default function MalotesPage() {
   const { condominiums, loadCondominiums } = useCondominiumStore()
   const { userProfile } = useAuth()
@@ -39,6 +76,7 @@ export default function MalotesPage() {
   const [files, setFiles] = useState<File[]>([])
   const [history, setHistory] = useState<MaloteHistoryBatch[]>([])
   const [sending, setSending] = useState(false)
+  const [progress, setProgress] = useState<{ uploaded: number; sent: number; total: number } | null>(null)
 
   const activeCondominiums = useMemo(() => condominiums.filter((item) => item.active !== false), [condominiums])
 
@@ -68,6 +106,7 @@ export default function MalotesPage() {
   const send = async () => {
     if (!condominiumId || files.length === 0) return toast({ title: 'Dados incompletos', description: 'Selecione o condomínio e ao menos um arquivo.', variant: 'destructive' })
     setSending(true)
+    setProgress({ uploaded: 0, sent: 0, total: files.length })
     try {
       const prepared = await api('/api/malotes/prepare', { method: 'POST', body: JSON.stringify({ condominiumId, subjectTemplate: subject, bodyTemplate: body, files: files.map(({ name, size, type }) => ({ name, size, type })) }) })
       for (let index = 0; index < files.length; index += 1) {
@@ -75,24 +114,36 @@ export default function MalotesPage() {
         const { error } = await supabase.storage.from('malote-attachments').uploadToSignedUrl(upload.path, upload.token, files[index])
         if (error) throw new Error(`Falha no upload de ${files[index].name}: ${error.message}`)
         await api(`/api/malotes/items/${upload.itemId}/uploaded`, { method: 'POST', body: '{}' })
+        setProgress((current) => (current ? { ...current, uploaded: index + 1 } : current))
       }
-      const result = await api(`/api/malotes/${prepared.batchId}/send`, { method: 'POST', body: '{}' })
-      const failed = (result.results as Array<{ status: string }>).filter((item) => item.status === 'failed').length
+      let results: MaloteSendResult[] = []
+      await apiStream(`/api/malotes/${prepared.batchId}/send`, '{}', (event) => {
+        if (event.type === 'item') setProgress((current) => (current ? { ...current, sent: current.sent + 1 } : current))
+        if (event.type === 'done') results = event.results
+      })
+      const failed = results.filter((item) => item.status === 'failed').length
       toast({ title: failed ? 'Malote enviado parcialmente' : 'Malote enviado', description: failed ? `${failed} arquivo(s) falharam; use o histórico para reenviar.` : `${files.length} e-mail(s) enviados com sucesso.` })
       setFiles([])
       await loadData()
     } catch (error) { toast({ title: 'Falha no envio', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
-    finally { setSending(false) }
+    finally { setSending(false); setProgress(null) }
   }
 
   const retry = async (batchId: string, itemId: string) => {
-    try { await api(`/api/malotes/${batchId}/send`, { method: 'POST', body: JSON.stringify({ itemIds: [itemId] }) }); toast({ title: 'Reenvio concluído' }); await loadData() }
+    try { await apiStream(`/api/malotes/${batchId}/send`, JSON.stringify({ itemIds: [itemId] }), () => {}); toast({ title: 'Reenvio concluído' }); await loadData() }
     catch (error) { toast({ title: 'Falha no reenvio', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
   }
   const resolveDelivery = async (itemId: string) => {
     try { await api(`/api/malotes/items/${itemId}/resolve`, { method: 'POST', body: '{}' }); toast({ title: 'Entrega reconciliada', description: 'O histórico foi atualizado conforme a última tentativa registrada.' }); await loadData() }
     catch (error) { toast({ title: 'Falha ao resolver entrega', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
   }
+
+  const sendPercent = progress ? maloteSendProgress(progress.uploaded, progress.sent, progress.total) : 0
+  const progressLabel = progress
+    ? progress.uploaded < progress.total
+      ? `Anexando arquivo ${progress.uploaded + 1} de ${progress.total}`
+      : `Enviando e-mail ${Math.min(progress.sent + 1, progress.total)} de ${progress.total}`
+    : null
 
   const formPanel = <div className="grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)]">
       <section className="space-y-5 rounded-xl border bg-card p-6 shadow-sm">
@@ -101,7 +152,13 @@ export default function MalotesPage() {
         {files.length > 0 && <div className="rounded-lg bg-muted/50 p-3 text-sm"><div className="mb-2 flex items-center gap-2 font-medium"><Upload className="h-4 w-4" />{files.length} arquivo(s) pronto(s)</div>{files.map((file) => <p key={`${file.name}-${file.size}`} className="truncate text-muted-foreground">{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB</p>)}</div>}
         <div className="space-y-2"><Label>Assunto</Label><Input value={subject} onChange={(event) => setSubject(event.target.value)} /></div>
         <div className="space-y-2"><Label>Mensagem</Label><Textarea value={body} onChange={(event) => setBody(event.target.value)} rows={8} /><p className="text-xs text-muted-foreground">Variáveis: {'{{condominio}}'}, {'{{data_envio}}'}, {'{{arquivo}}'}.</p></div>
-        <Button className="w-full sm:w-auto" onClick={send} disabled={sending || !settings?.recipient_email}>{sending ? 'Enviando arquivos…' : <><Send className="mr-2 h-4 w-4" />Enviar malote</>}</Button>
+        <div className="flex flex-wrap items-center gap-4">
+          <Button className="w-full sm:w-auto" onClick={send} disabled={sending || !settings?.recipient_email}>{sending ? `Enviando… ${sendPercent}%` : <><Send className="mr-2 h-4 w-4" />Enviar malote</>}</Button>
+          {progress && <div className="min-w-[200px] flex-1 space-y-1.5" role="status" aria-live="polite">
+            <Progress value={sendPercent} className="h-1.5" />
+            <p className="text-xs text-muted-foreground">{progressLabel}</p>
+          </div>}
+        </div>
       </section>
       <aside className="space-y-3 rounded-xl border border-dashed p-5"><FileText className="h-5 w-5 text-primary" /><h2 className="font-semibold">Como funciona</h2><ol className="space-y-2 text-sm text-muted-foreground"><li>1. Escolha o condomínio.</li><li>2. Revise a mensagem padrão.</li><li>3. Anexe até 20 arquivos.</li><li>4. Acompanhe cada envio no histórico.</li></ol></aside>
   </div>

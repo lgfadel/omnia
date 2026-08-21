@@ -4,6 +4,8 @@ import {
   MALOTE_MAX_FILES_PER_BATCH,
   MALOTE_MAX_FILE_SIZE_BYTES,
   maloteFileExtension,
+  type MaloteSendEvent,
+  type MaloteSendResult,
   renderMaloteTemplate,
   resolveMaloteContentType,
   validateMaloteFile,
@@ -167,7 +169,11 @@ function createGmailTransport() {
   return { transport: nodemailer.createTransport(options), sender }
 }
 
-export async function sendMalote(authHeader: string | null, batchId: string, itemIds?: string[]) {
+/**
+ * Emite um evento por anexo enquanto envia, para o cliente acompanhar o progresso
+ * sem abrir uma requisição por e-mail (o transporte SMTP é reaproveitado no lote).
+ */
+export async function* streamMaloteSend(authHeader: string | null, batchId: string, itemIds?: string[]): AsyncGenerator<MaloteSendEvent> {
   const user = await currentUser(authHeader)
   const client = admin()
   const { data: batch, error: batchError } = await client.from('omnia_malote_batches')
@@ -179,11 +185,16 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
   const { data: items, error: itemsError } = await itemsQuery
   if (itemsError || !items?.length) throw new Error('Não há anexos disponíveis para envio.')
   const mailer = createGmailTransport()
-  const results = []
+  const results: MaloteSendResult[] = []
+  yield { type: 'start', total: items.length }
   for (const item of items) {
     const { data: claimedItem, error: claimError } = await client.from('omnia_malote_items')
       .update({ status: 'sending' }).eq('id', item.id).in('status', ['uploaded', 'failed']).select('*').maybeSingle()
-    if (claimError || !claimedItem) { results.push({ itemId: item.id, status: 'skipped' }); continue }
+    if (claimError || !claimedItem) {
+      results.push({ itemId: item.id, status: 'skipped' })
+      yield { type: 'item', itemId: item.id, fileName: item.file_name, status: 'skipped' }
+      continue
+    }
     try {
       const { data: file, error: fileError } = await client.storage.from('malote-attachments').download(claimedItem.storage_path)
       if (fileError || !file) throw new Error(fileError?.message ?? 'Anexo não encontrado no armazenamento.')
@@ -197,9 +208,15 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
       if (startAttemptError || !attempt) throw new Error(startAttemptError?.message ?? 'Não foi possível registrar a tentativa de envio.')
       const sent = await sendMaloteEmail({ transport: mailer.transport, sender: mailer.sender, recipient: batch.recipient_email, subjectTemplate: batch.subject_template, bodyTemplate: batch.body_template, condominiumName: templateContext.condominium, fileName: claimedItem.file_name, fileContents, contentType: claimedItem.content_type, sentAt })
       const { data: sentAttempt, error: sentAttemptError } = await client.from('omnia_malote_attempts').update({ status: 'sent', smtp_message_id: sent.messageId }).eq('id', attempt.id).eq('status', 'sending').select('id').maybeSingle()
-      if (sentAttemptError || !sentAttempt) { results.push({ itemId: item.id, status: 'delivery_unknown' }); continue }
+      if (sentAttemptError || !sentAttempt) {
+        results.push({ itemId: item.id, status: 'delivery_unknown' })
+        yield { type: 'item', itemId: item.id, fileName: claimedItem.file_name, status: 'delivery_unknown' }
+        continue
+      }
       const { data: sentItem, error: sentUpdateError } = await client.from('omnia_malote_items').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', claimedItem.id).eq('status', 'sending').select('id').maybeSingle()
-      results.push({ itemId: item.id, status: sentUpdateError || !sentItem ? 'delivery_recorded' : 'sent' })
+      const settledStatus = sentUpdateError || !sentItem ? 'delivery_recorded' : 'sent'
+      results.push({ itemId: item.id, status: settledStatus })
+      yield { type: 'item', itemId: item.id, fileName: claimedItem.file_name, status: settledStatus }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha desconhecida ao enviar e-mail.'
       const { data: sendingAttempt } = await client.from('omnia_malote_attempts').select('id').eq('item_id', item.id).eq('status', 'sending').order('created_at', { ascending: false }).limit(1).maybeSingle()
@@ -207,13 +224,15 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
         ? await client.from('omnia_malote_attempts').update({ status: 'failed', error_message: message }).eq('id', sendingAttempt.id).eq('status', 'sending')
         : { error: null }
       const itemUpdate = await client.from('omnia_malote_items').update({ status: 'failed' }).eq('id', item.id).eq('status', 'sending')
-      results.push({ itemId: item.id, status: attemptUpdate.error || itemUpdate.error ? 'delivery_unknown' : 'failed', error: message })
+      const failedStatus = attemptUpdate.error || itemUpdate.error ? 'delivery_unknown' : 'failed'
+      results.push({ itemId: item.id, status: failedStatus, error: message })
+      yield { type: 'item', itemId: item.id, fileName: item.file_name, status: failedStatus, error: message }
     }
   }
   const { count: activeCount, error: activeCountError } = await client.from('omnia_malote_items').select('id', { count: 'exact', head: true }).eq('batch_id', batchId).in('status', ['pending', 'uploaded', 'sending'])
   if (activeCountError) throw new Error(activeCountError.message)
   if (activeCount === 0) await client.from('omnia_malote_batches').update({ completed_at: new Date().toISOString() }).eq('id', batchId)
-  return { batchId, results }
+  yield { type: 'done', batchId, results }
 }
 
 export async function resolveMaloteDelivery(authHeader: string | null, itemId: string) {

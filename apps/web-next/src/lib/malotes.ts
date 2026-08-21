@@ -10,6 +10,14 @@ export type MaloteTemplateContext = {
 
 export type MaloteFileInput = { name: string; size: number; type?: string | null }
 
+export type MaloteSendResult = { itemId: string; status: string; error?: string }
+
+export type MaloteSendEvent =
+  | { type: 'start'; total: number }
+  | { type: 'item'; itemId: string; fileName: string; status: string; error?: string }
+  | { type: 'done'; batchId: string; results: MaloteSendResult[] }
+  | { type: 'error'; message: string }
+
 export type MaloteItemStatus = 'pending' | 'uploaded' | 'sending' | 'sent' | 'failed' | 'purging' | 'purged'
 
 export type MaloteBatchTone = 'success' | 'danger' | 'progress' | 'neutral'
@@ -126,4 +134,11 @@ export function summarizeMaloteBatch(statuses: string[]): MaloteBatchSummary {
   }
   if (statuses.some((status) => status === 'sent')) return { label: 'Enviado', tone: 'success' }
   return { label: 'Expurgado', tone: 'neutral' }
+}
+
+/** Cada anexo conta dois passos — subir para o storage e sair por e-mail. */
+export function maloteSendProgress(uploaded: number, sent: number, total: number): number {
+  if (total <= 0) return 0
+  const steps = Math.max(0, Math.min(uploaded + sent, total * 2))
+  return Math.round((steps / (total * 2)) * 100)
 }
