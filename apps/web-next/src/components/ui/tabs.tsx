@@ -12,7 +12,11 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      // Uma barra com fio embaixo, e não uma pílula: o indicador da aba ativa
+      // assenta sobre esse fio. Antes o componente misturava os dois idiomas —
+      // fundo preenchido e sublinhado ao mesmo tempo — e o estado ativo ficava
+      // marcado três vezes assim que o anel de foco entrava por cima.
+      "flex w-full items-center justify-start gap-6 border-b border-border text-muted-foreground",
       className
     )}
     {...props}
@@ -27,7 +31,10 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-primary",
+      // A borda transparente no estado inativo reserva os 2px do indicador, senão
+      // o texto pula ao trocar de aba. O -mb-px faz o indicador cobrir o fio da
+      // lista em vez de flutuar acima dele.
+      "-mb-px inline-flex items-center justify-center whitespace-nowrap rounded-sm border-b-2 border-transparent px-1 pb-3 pt-2 text-sm font-medium ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-foreground",
       className
     )}
     {...props}
