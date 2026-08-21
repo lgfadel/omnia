@@ -6,7 +6,6 @@ import { RoleProtectedRoute } from '@/components/auth/RoleProtectedRoute'
 import { Layout } from '@/components/layout/Layout'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,6 +14,15 @@ import { useToast } from '@/hooks/use-toast'
 import type { AtaMinutaReasoningEffort } from '@/data/types'
 
 type Settings = { model: string; reasoning_effort: AtaMinutaReasoningEffort; system_prompt: string }
+
+// A família de modelos usada nesta feature — cada um é um id de API real, não um
+// apelido. Se a OpenAI liberar um novo irmão, ele entra aqui; até lá, "Testar modelo"
+// continua sendo a rede de segurança contra id errado.
+const modelOptions: { value: string; label: string }[] = [
+  { value: 'gpt-5.6-sol', label: 'Sol' },
+  { value: 'gpt-5.6-terra', label: 'Terra' },
+  { value: 'gpt-5.6-luna', label: 'Luna' },
+]
 
 const reasoningEffortLabels: Record<AtaMinutaReasoningEffort, string> = {
   none: 'Nenhum',
@@ -89,9 +97,22 @@ export default function ConfigAtasPage() {
 
           <section className="space-y-5 rounded-xl border bg-card p-6">
             <div className="space-y-2">
-              <Label>Id do modelo (OpenAI)</Label>
+              <Label>Modelo (OpenAI)</Label>
               <div className="flex gap-2">
-                <Input value={model} onChange={(event) => { setModel(event.target.value); setVerification(null) }} placeholder="gpt-5.6-sol" />
+                <Select value={model} onValueChange={(value) => { setModel(value); setVerification(null) }}>
+                  <SelectTrigger className="max-w-xs"><SelectValue placeholder="Selecione um modelo" /></SelectTrigger>
+                  <SelectContent>
+                    {/* Se o valor salvo não estiver na lista conhecida (config antiga, id
+                        digitado direto no banco), ele aparece do mesmo jeito — nunca
+                        escondido pela troca de input livre para dropdown. */}
+                    {!modelOptions.some((option) => option.value === model) && model && (
+                      <SelectItem value={model}>{model}</SelectItem>
+                    )}
+                    {modelOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label} — {option.value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button type="button" variant="outline" disabled={isVerifying || !model.trim()} onClick={testModel}>
                   {isVerifying ? 'Testando…' : 'Testar modelo'}
                 </Button>
