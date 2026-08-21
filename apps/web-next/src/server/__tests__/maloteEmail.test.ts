@@ -15,6 +15,7 @@ describe('sendMaloteEmail', () => {
       condominiumName: 'Condomínio Aurora',
       fileName: 'prestacao.pdf',
       fileContents: Buffer.from('%PDF-1.7 valid'),
+      contentType: 'application/pdf',
       sentAt: new Date('2026-08-20T12:00:00-03:00'),
     })
 

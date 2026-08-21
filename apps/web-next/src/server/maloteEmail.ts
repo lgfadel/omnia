@@ -1,4 +1,4 @@
-import { renderMaloteTemplate } from '@/lib/malotes'
+import { renderMaloteTemplate, resolveMaloteContentType } from '@/lib/malotes'
 
 export type MaloteMailTransport = {
   sendMail: (message: {
@@ -6,7 +6,7 @@ export type MaloteMailTransport = {
     to: string
     subject: string
     text: string
-    attachments: Array<{ filename: string; content: Buffer; contentType: 'application/pdf' }>
+    attachments: Array<{ filename: string; content: Buffer; contentType: string }>
   }) => Promise<{ messageId: string }>
 }
 
@@ -19,6 +19,7 @@ type SendMaloteEmailInput = {
   condominiumName: string
   fileName: string
   fileContents: Buffer
+  contentType: string
   sentAt: Date
 }
 
@@ -38,7 +39,7 @@ export async function sendMaloteEmail(input: SendMaloteEmailInput) {
     attachments: [{
       filename: input.fileName,
       content: input.fileContents,
-      contentType: 'application/pdf',
+      contentType: resolveMaloteContentType(input.contentType),
     }],
   })
 

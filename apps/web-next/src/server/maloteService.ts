@@ -1,9 +1,16 @@
 import nodemailer from 'nodemailer'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { MALOTE_MAX_FILE_SIZE_BYTES, renderMaloteTemplate, validateMaloteTemplate } from '@/lib/malotes'
+import {
+  MALOTE_MAX_FILES_PER_BATCH,
+  MALOTE_MAX_FILE_SIZE_BYTES,
+  maloteFileExtension,
+  renderMaloteTemplate,
+  resolveMaloteContentType,
+  validateMaloteFile,
+  validateMaloteTemplate,
+} from '@/lib/malotes'
 import { sendMaloteEmail } from '@/server/maloteEmail'
 
-const MAX_FILES_PER_BATCH = 20
 const DELIVERY_RESOLUTION_DELAY_MS = 30 * 60 * 1000
 
 type AuthenticatedUser = { authUserId: string; omniaUserId: string; roles: string[] }
@@ -52,16 +59,17 @@ function normalizeFileName(name: string) {
   return name.replace(/[\r\n]/g, '_').trim()
 }
 
+function storageSuffix(fileName: string) {
+  const extension = maloteFileExtension(fileName)
+  return extension ? `.${extension}` : ''
+}
+
 function assertFiles(files: FileInput[]) {
-  if (files.length === 0) throw new Error('Selecione ao menos um PDF.')
-  if (files.length > MAX_FILES_PER_BATCH) throw new Error('Envie no máximo 20 PDFs por malote.')
+  if (files.length === 0) throw new Error('Selecione ao menos um arquivo.')
+  if (files.length > MALOTE_MAX_FILES_PER_BATCH) throw new Error(`Envie no máximo ${MALOTE_MAX_FILES_PER_BATCH} arquivos por malote.`)
   for (const file of files) {
-    if (!file.name.toLowerCase().endsWith('.pdf') || file.type !== 'application/pdf') {
-      throw new Error(`O arquivo ${file.name} deve ser um PDF.`)
-    }
-    if (!file.size || file.size > MALOTE_MAX_FILE_SIZE_BYTES) {
-      throw new Error(`O arquivo ${file.name} excede o limite de 18 MB.`)
-    }
+    const validation = validateMaloteFile(file)
+    if (!validation.valid) throw new Error(validation.error)
   }
 }
 
@@ -113,8 +121,8 @@ export async function prepareMalote(authHeader: string | null, input: { condomin
     batch_id: batch.id,
     file_name: normalizeFileName(file.name),
     file_size_bytes: file.size,
-    content_type: 'application/pdf',
-    storage_path: `${user.authUserId}/${batch.id}/${crypto.randomUUID()}.pdf`,
+    content_type: resolveMaloteContentType(file.type),
+    storage_path: `${user.authUserId}/${batch.id}/${crypto.randomUUID()}${storageSuffix(file.name)}`,
   }))
   const { data: createdItems, error: itemError } = await client.from('omnia_malote_items').insert(items).select('id, storage_path')
   if (itemError || !createdItems) throw new Error(itemError?.message ?? 'Não foi possível preparar os anexos.')
@@ -135,9 +143,7 @@ export async function confirmMaloteUpload(authHeader: string | null, itemId: str
   if (error || !item) throw new Error('Anexo de malote não encontrado.')
   if (item.status !== 'pending') throw new Error('Este anexo não está aguardando confirmação de upload.')
   const { data: file, error: fileError } = await client.storage.from('malote-attachments').download(item.storage_path)
-  if (fileError || !file || file.size > MALOTE_MAX_FILE_SIZE_BYTES) throw new Error('O arquivo enviado não atende ao limite de malote.')
-  const header = new TextDecoder().decode((await file.arrayBuffer()).slice(0, 5))
-  if (header !== '%PDF-') throw new Error('O arquivo enviado não possui uma assinatura PDF válida.')
+  if (fileError || !file || !file.size || file.size > MALOTE_MAX_FILE_SIZE_BYTES) throw new Error('O arquivo enviado não atende ao limite de malote.')
   const { error: updateError } = await client.from('omnia_malote_items').update({ status: 'uploaded' }).eq('id', item.id).eq('status', 'pending')
   if (updateError) throw new Error(updateError.message)
 }
@@ -182,14 +188,14 @@ export async function sendMalote(authHeader: string | null, batchId: string, ite
       const { data: file, error: fileError } = await client.storage.from('malote-attachments').download(claimedItem.storage_path)
       if (fileError || !file) throw new Error(fileError?.message ?? 'Anexo não encontrado no armazenamento.')
       const fileContents = Buffer.from(await file.arrayBuffer())
-      if (fileContents.byteLength > MALOTE_MAX_FILE_SIZE_BYTES || fileContents.subarray(0, 5).toString() !== '%PDF-') throw new Error('Anexo armazenado não possui um PDF válido.')
+      if (!fileContents.byteLength || fileContents.byteLength > MALOTE_MAX_FILE_SIZE_BYTES) throw new Error('Anexo armazenado não atende ao limite de malote.')
       const sentAt = new Date()
       const templateContext = { condominium: (batch.condominium as any)?.name ?? 'Condomínio', fileName: claimedItem.file_name, sentAt }
       const renderedSubject = renderMaloteTemplate(batch.subject_template, templateContext)
       const renderedBody = renderMaloteTemplate(batch.body_template, templateContext)
       const { data: attempt, error: startAttemptError } = await client.from('omnia_malote_attempts').insert({ item_id: item.id, attempted_by: user.omniaUserId, recipient_email: batch.recipient_email, rendered_subject: renderedSubject, rendered_body: renderedBody, status: 'sending' }).select('id').single()
       if (startAttemptError || !attempt) throw new Error(startAttemptError?.message ?? 'Não foi possível registrar a tentativa de envio.')
-      const sent = await sendMaloteEmail({ transport: mailer.transport, sender: mailer.sender, recipient: batch.recipient_email, subjectTemplate: batch.subject_template, bodyTemplate: batch.body_template, condominiumName: templateContext.condominium, fileName: claimedItem.file_name, fileContents, sentAt })
+      const sent = await sendMaloteEmail({ transport: mailer.transport, sender: mailer.sender, recipient: batch.recipient_email, subjectTemplate: batch.subject_template, bodyTemplate: batch.body_template, condominiumName: templateContext.condominium, fileName: claimedItem.file_name, fileContents, contentType: claimedItem.content_type, sentAt })
       const { data: sentAttempt, error: sentAttemptError } = await client.from('omnia_malote_attempts').update({ status: 'sent', smtp_message_id: sent.messageId }).eq('id', attempt.id).eq('status', 'sending').select('id').maybeSingle()
       if (sentAttemptError || !sentAttempt) { results.push({ itemId: item.id, status: 'delivery_unknown' }); continue }
       const { data: sentItem, error: sentUpdateError } = await client.from('omnia_malote_items').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', claimedItem.id).eq('status', 'sending').select('id').maybeSingle()
@@ -241,7 +247,7 @@ export async function resolveMaloteDelivery(authHeader: string | null, itemId: s
 export async function listMalotes(authHeader: string | null) {
   await currentUser(authHeader)
   const { data, error } = await admin().from('omnia_malote_batches')
-    .select('id, recipient_email, created_at, completed_at, condominium:omnia_condominiums(name), creator:omnia_users(name), items:omnia_malote_items(id, file_name, status, sent_at, created_at, attempts:omnia_malote_attempts(status, error_message, smtp_message_id, created_at))')
+    .select('id, recipient_email, created_at, completed_at, condominium:omnia_condominiums(id, name), creator:omnia_users(name), items:omnia_malote_items(id, file_name, status, sent_at, created_at, attempts:omnia_malote_attempts(status, error_message, smtp_message_id, created_at))')
     .order('created_at', { ascending: false }).limit(100)
   if (error) throw new Error(error.message)
   return data ?? []
