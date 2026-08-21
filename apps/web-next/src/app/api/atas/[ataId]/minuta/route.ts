@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server'
 import { saveMinutaManualEdit, streamMinutaTurn } from '@/server/ataMinutaService'
 
 export const runtime = 'nodejs'
-export const maxDuration = 800
+// Teto do plano Hobby da Vercel para este projeto — 300 é o máximo aceito, não uma
+// escolha de conforto. Uma geração que ultrapassa isso é interrompida como qualquer
+// desconexão de cliente: o texto parcial fica salvo e "Continuar"/"Gerar de novo"
+// retomam sem perda (ver streamMinutaTurn).
+export const maxDuration = 300
 
 export async function POST(request: Request, context: { params: Promise<{ ataId: string }> }) {
   const { ataId } = await context.params
