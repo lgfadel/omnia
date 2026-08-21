@@ -82,13 +82,44 @@ ASSEMBLEIA GERAL EXTRAORDINÁRIA
 para deliberação dos seguintes assuntos em Pauta:
 1) DELIBERAÇÃO SOBRE A PADRONIZAÇÃO DA TEMPERATURA DO AR
 CONDICIONADO DA ACADEMIA DO CONDOMÍNIO;
-- Definição da temperatura padrão para garantir o conforto dos usuários.
 `
     const context = parseConvocacao(wrapped, 1)
 
     expect(context.pautaItems).toEqual([
       'DELIBERAÇÃO SOBRE A PADRONIZAÇÃO DA TEMPERATURA DO AR CONDICIONADO DA ACADEMIA DO CONDOMÍNIO',
-      'Definição da temperatura padrão para garantir o conforto dos usuários',
+    ])
+  })
+
+  it('does not count a "-" explanation line under a numbered item as a second pauta item', () => {
+    // A convocação da Florais usa "-" para detalhar o item 1, não para listar
+    // um item 2 — contar essa linha dobraria a pauta de 1 para 2 itens.
+    const withSubDetail = `
+para deliberação dos seguintes assuntos em Pauta:
+1) DELIBERAÇÃO SOBRE A PADRONIZAÇÃO DA TEMPERATURA DO AR
+CONDICIONADO DA ACADEMIA DO CONDOMÍNIO;
+- Definição da temperatura padrão para garantir o conforto dos usuários e o adequado
+funcionamento do ambiente.
+`
+    const context = parseConvocacao(withSubDetail, 1)
+
+    expect(context.pautaItems).toEqual([
+      'DELIBERAÇÃO SOBRE A PADRONIZAÇÃO DA TEMPERATURA DO AR CONDICIONADO DA ACADEMIA DO CONDOMÍNIO',
+    ])
+  })
+
+  it('still reads a pauta whose only bullet style is "-"', () => {
+    const dashOnly = `
+Convocamos os condôminos para a Assembleia Geral Ordinária a ser realizada em 12/09/2026.
+
+ORDEM DO DIA
+- Prestação de contas do exercício de 2025
+- Reforma da fachada e do hall social
+`
+    const context = parseConvocacao(dashOnly, 1)
+
+    expect(context.pautaItems).toEqual([
+      'Prestação de contas do exercício de 2025',
+      'Reforma da fachada e do hall social',
     ])
   })
 })

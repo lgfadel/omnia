@@ -93,10 +93,19 @@ function findData(text: string): string | undefined {
 // elevador social". É o que o modelo mais erra e o que a convocação mais ajuda.
 function findPautaItems(text: string): string[] {
   const items: string[] = []
-  const markerLine = /^\s*(?:[a-z]\)|\d{1,2}[).º°-]|[-•])\s*(.{1,120})$/i
+  const numberedMarker = /^\s*(?:[a-z]\)|\d{1,2}[).º°-])\s*(.{1,120})$/i
   const start = /ordem\s+do\s+dia|pauta/i.exec(text)
   const scope = start ? text.slice(start.index) : text
   const lines = scope.split('\n')
+
+  // "-"/"•" só abre um item novo quando a pauta inteira usa esse estilo. Se a
+  // pauta já é numerada, um "-" é sub-detalhe do item anterior (a convocação
+  // da Florais usa isso para explicar o item 1, não para listar um item 2) e
+  // contá-lo como item duplicaria a pauta.
+  const usesNumbering = lines.some((line) => numberedMarker.test(line))
+  const markerLine = usesNumbering
+    ? numberedMarker
+    : /^\s*(?:[a-z]\)|\d{1,2}[).º°-]|[-•])\s*(.{1,120})$/i
 
   for (let i = 0; i < lines.length && items.length < 20; i += 1) {
     const match = markerLine.exec(lines[i])
