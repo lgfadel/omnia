@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Send, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import SlidingTabs from "@/components/ui/sliding-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAttachmentUpload";
 import { BalancetesDashboard } from "@/components/balancetes/BalancetesDashboard";
 import { ProtocolosTab } from "@/components/balancetes/ProtocolosTab";
@@ -489,6 +489,14 @@ export default function BalancetesPage() {
         });
         toast({ title: "Balancete atualizado com sucesso!" });
       } else {
+        if (!userProfile?.id) {
+          toast({
+            title: "Sessão expirada",
+            description: "Entre novamente para cadastrar um balancete.",
+            variant: "destructive",
+          });
+          return;
+        }
         // Validado pelo BalanceteForm: received_at é obrigatório ao cadastrar um novo balancete.
         await createBalancete({
           condominium_id: data.condominium_id,
@@ -496,7 +504,7 @@ export default function BalancetesPage() {
           competencia: data.competencia,
           volumes: data.volumes,
           observations: data.observations || null,
-          created_by: userProfile?.id!,
+          created_by: userProfile.id,
         });
         toast({ title: "Balancete cadastrado com sucesso!" });
       }
@@ -519,142 +527,137 @@ export default function BalancetesPage() {
 
         <h1 className="text-3xl font-bold text-foreground">Balancetes</h1>
 
-        <SlidingTabs
-          defaultIndex={1}
-          items={[
-            {
-              key: "dashboard",
-              label: "Dashboard",
-              panel: (
-                <BalancetesDashboard
-                  balancetes={balancetes}
-                  condominiums={condominiums}
-                  onCondominiumClick={handleDashboardCondominiumClick}
-                />
-              ),
-            },
-            {
-              key: "lista",
-              label: "Lista",
-              panel: (
-                <div className="space-y-4">
-                  <div className="flex flex-col lg:flex-row gap-3">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        placeholder="Buscar balancetes..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
-                      />
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-10 px-3 flex items-center gap-2 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-                        >
-                          <Filter className="w-4 h-4" />
-                          <span className="text-xs font-medium">Filtros</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-52">
-                        <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
-                        <div className="space-y-1">
-                          <DropdownMenuCheckboxItem
-                            checked={statusEnvioFilter.has('enviados')}
-                            onCheckedChange={(checked) => toggleStatusEnvioFilter('enviados', checked === true)}
-                          >
-                            Enviados
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem
-                            checked={statusEnvioFilter.has('pendentes')}
-                            onCheckedChange={(checked) => toggleStatusEnvioFilter('pendentes', checked === true)}
-                          >
-                            Pendentes
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem
-                            checked={statusEnvioFilter.has('digital')}
-                            onCheckedChange={(checked) => toggleStatusEnvioFilter('digital', checked === true)}
-                          >
-                            Digital
-                          </DropdownMenuCheckboxItem>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Anexos</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
-                          <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="sem-anexo">Sem Anexo</DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+        <Tabs defaultValue="lista" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="lista">Lista</TabsTrigger>
+            <TabsTrigger value="protocolos">Protocolos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <BalancetesDashboard
+              balancetes={balancetes}
+              condominiums={condominiums}
+              onCondominiumClick={handleDashboardCondominiumClick}
+            />
+          </TabsContent>
+
+          <TabsContent value="lista">
+            <div className="space-y-4">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar balancetes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
+                  />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="h-10 px-4 gap-2"
-                      onClick={handleEnviarClick}
-                      disabled={selectedBalancetes.size === 0 || sendingBalancetes}
+                      size="sm"
+                      className="h-10 px-3 flex items-center gap-2 bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
                     >
-                      <Send className="w-4 h-4" />
-                      {sendingBalancetes ? "Enviando..." : `Enviar${selectedBalancetes.size > 0 ? ` (${selectedBalancetes.size})` : ""}`}
+                      <Filter className="w-4 h-4" />
+                      <span className="text-xs font-medium">Filtros</span>
                     </Button>
-                    <Button
-                      className="bg-primary hover:bg-primary/90 w-10 h-10 p-0 rounded-lg shrink-0"
-                      onClick={handleNew}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </Button>
-                  </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-52">
+                    <DropdownMenuLabel>Status de envio</DropdownMenuLabel>
+                    <div className="space-y-1">
+                      <DropdownMenuCheckboxItem
+                        checked={statusEnvioFilter.has('enviados')}
+                        onCheckedChange={(checked) => toggleStatusEnvioFilter('enviados', checked === true)}
+                      >
+                        Enviados
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={statusEnvioFilter.has('pendentes')}
+                        onCheckedChange={(checked) => toggleStatusEnvioFilter('pendentes', checked === true)}
+                      >
+                        Pendentes
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={statusEnvioFilter.has('digital')}
+                        onCheckedChange={(checked) => toggleStatusEnvioFilter('digital', checked === true)}
+                      >
+                        Digital
+                      </DropdownMenuCheckboxItem>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Anexos</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
+                      <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="sem-anexo">Sem Anexo</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="outline"
+                  className="h-10 px-4 gap-2"
+                  onClick={handleEnviarClick}
+                  disabled={selectedBalancetes.size === 0 || sendingBalancetes}
+                >
+                  <Send className="w-4 h-4" />
+                  {sendingBalancetes ? "Enviando..." : `Enviar${selectedBalancetes.size > 0 ? ` (${selectedBalancetes.size})` : ""}`}
+                </Button>
+                <Button
+                  className="bg-primary hover:bg-primary/90 w-10 h-10 p-0 rounded-lg shrink-0"
+                  onClick={handleNew}
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
 
-                  <div className="bg-white rounded-lg border overflow-hidden">
-                    {loading ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        Carregando...
-                      </div>
-                    ) : tableData.length === 0 ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        Nenhum balancete encontrado.
-                      </div>
-                    ) : (
-                      <TabelaOmnia
-                        columns={columns}
-                        data={sortedData}
-                        onView={handleView}
-                        onAttachmentClick={handleAttachmentClick}
-                        onDelete={(id) => {
-                          const balancete = balancetes.find((b) => b.id === String(id));
-                          if (balancete?.protocolo_id) {
-                            toast({
-                              title: "Não é possível excluir",
-                              description: "Balancetes enviados com protocolo não podem ser excluídos.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          handleDelete(id);
-                        }}
-                        selectable
-                        selectedIds={selectedBalancetes}
-                        onSelectionChange={setSelectedBalancetes}
-                        disabledIds={disabledIds}
-                        sortField={sortField ?? undefined}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                      />
-                    )}
+              <div className="bg-white rounded-lg border overflow-hidden">
+                {loading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    Carregando...
                   </div>
-                </div>
-              ),
-            },
-            {
-              key: "protocolos",
-              label: "Protocolos",
-              panel: <ProtocolosTab />,
-            },
-          ]}
-        />
+                ) : tableData.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Nenhum balancete encontrado.
+                  </div>
+                ) : (
+                  <TabelaOmnia
+                    columns={columns}
+                    data={sortedData}
+                    onView={handleView}
+                    onAttachmentClick={handleAttachmentClick}
+                    onDelete={(id) => {
+                      const balancete = balancetes.find((b) => b.id === String(id));
+                      if (balancete?.protocolo_id) {
+                        toast({
+                          title: "Não é possível excluir",
+                          description: "Balancetes enviados com protocolo não podem ser excluídos.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      handleDelete(id);
+                    }}
+                    selectable
+                    selectedIds={selectedBalancetes}
+                    onSelectionChange={setSelectedBalancetes}
+                    disabledIds={disabledIds}
+                    sortField={sortField ?? undefined}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="protocolos">
+            <ProtocolosTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <BalanceteForm

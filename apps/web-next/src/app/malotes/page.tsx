@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CondominiumSelect } from '@/components/condominiums/CondominiumSelect'
-import SlidingTabs from '@/components/ui/sliding-tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MaloteHistory, type MaloteHistoryBatch } from '@/components/malotes/MaloteHistory'
 import { useCondominiumStore } from '@/stores/condominiums.store'
 import { supabase } from '@/integrations/supabase/client'
@@ -94,8 +94,7 @@ export default function MalotesPage() {
     catch (error) { toast({ title: 'Falha ao resolver entrega', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' }) }
   }
 
-  const formPanel = <div className="pt-2">
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)]">
+  const formPanel = <div className="grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)]">
       <section className="space-y-5 rounded-xl border bg-card p-6 shadow-sm">
         <div><h2 className="font-semibold">Preparar envio</h2><p className="text-sm text-muted-foreground">Destinatário: {settings?.recipient_email || 'não configurado'}</p></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Condomínio</Label><CondominiumSelect condominiums={activeCondominiums} value={condominiumId} onValueChange={setCondominiumId} placeholder="Selecione o condomínio" /></div><div className="space-y-2"><Label htmlFor="malote-files">Arquivos</Label><label htmlFor="malote-files" className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary transition-colors hover:border-primary/50 hover:bg-primary/15 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"><Upload className="h-4 w-4" /><span className="truncate">{files.length ? `${files.length} arquivo(s) selecionado(s)` : 'Escolher arquivos'}</span><input id="malote-files" type="file" multiple className="sr-only" onChange={(event) => { selectFiles(event.target.files); event.target.value = '' }} /></label></div></div>
@@ -105,25 +104,27 @@ export default function MalotesPage() {
         <Button className="w-full sm:w-auto" onClick={send} disabled={sending || !settings?.recipient_email}>{sending ? 'Enviando arquivos…' : <><Send className="mr-2 h-4 w-4" />Enviar malote</>}</Button>
       </section>
       <aside className="space-y-3 rounded-xl border border-dashed p-5"><FileText className="h-5 w-5 text-primary" /><h2 className="font-semibold">Como funciona</h2><ol className="space-y-2 text-sm text-muted-foreground"><li>1. Escolha o condomínio.</li><li>2. Revise a mensagem padrão.</li><li>3. Anexe até 20 arquivos.</li><li>4. Acompanhe cada envio no histórico.</li></ol></aside>
-    </div>
   </div>
 
-  const historyPanel = <div className="pt-2">
-    <MaloteHistory
-      batches={history}
-      condominiums={condominiums}
-      canResolveDelivery={Boolean(userProfile?.roles.includes('ADMIN'))}
-      onRetry={retry}
-      onResolveDelivery={resolveDelivery}
-    />
-  </div>
+  const historyPanel = <MaloteHistory
+    batches={history}
+    condominiums={condominiums}
+    canResolveDelivery={Boolean(userProfile?.roles.includes('ADMIN'))}
+    onRetry={retry}
+    onResolveDelivery={resolveDelivery}
+  />
 
   return <Layout><div className="mx-auto max-w-6xl space-y-6">
     <BreadcrumbOmnia items={[{ label: 'Malotes', isActive: true }]} />
     <section className="border-b border-primary/15 pb-6"><h1 className="text-3xl font-semibold tracking-tight">Malotes digitais</h1></section>
-    <SlidingTabs items={[
-      { key: 'novo', label: 'Novo envio', panel: formPanel },
-      { key: 'historico', label: 'Histórico', panel: historyPanel },
-    ]} />
+    <Tabs defaultValue="novo" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="novo">Novo envio</TabsTrigger>
+        <TabsTrigger value="historico">Histórico</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="novo">{formPanel}</TabsContent>
+      <TabsContent value="historico">{historyPanel}</TabsContent>
+    </Tabs>
   </div></Layout>
 }

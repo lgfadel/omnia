@@ -76,16 +76,6 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
 }))
 
-vi.mock('@/components/ui/sliding-tabs', () => ({
-  default: ({ items }: any) => (
-    <div>
-      {items.map((item: any) => (
-        <section key={item.key}>{item.panel}</section>
-      ))}
-    </div>
-  ),
-}))
-
 vi.mock('@/components/balancetes/BalancetesDashboard', () => ({
   BalancetesDashboard: ({ onCondominiumClick }: any) => (
     <button onClick={() => onCondominiumClick?.('cond-1', '02/2026')}>Dashboard</button>
@@ -300,7 +290,9 @@ describe('BalancetesPage', () => {
   it('abre novo balancete pelo clique no condominio do dashboard com condominio travado', async () => {
     render(<BalancetesPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    // Radix ativa a aba no mousedown, não no click.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Dashboard' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dashboard' }))
 
     await waitFor(() => expect(screen.getByTestId('form-open')).toHaveTextContent('true'))
     expect(screen.getByTestId('form-condominium')).toHaveTextContent('cond-1')
