@@ -150,7 +150,12 @@ describe('AtaTranscriptionPanel · estado da revisão', () => {
     repo.load.mockResolvedValue(transcriptionWith('texto revisado à mão', true))
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-    expect(await screen.findByText('Revisada')).toBeInTheDocument()
+    // A revisão é anunciada uma única vez, no cabeçalho: antes o selo do topo
+    // dizia "Pronta para revisão" enquanto o de baixo já dizia "Revisada", e a
+    // mesma tela se contradizia.
+    expect(await screen.findByText('Revisado')).toBeInTheDocument()
+    expect(screen.queryByText('Pronta para revisão')).toBeNull()
+    expect(screen.queryByText('Revisada')).toBeNull()
     // Marcar de novo o que já está revisado, ou salvar rascunho de um texto
     // fechado, são botões que só confundem quem terminou a revisão.
     expect(screen.queryByRole('button', { name: 'Marcar como revisada' })).toBeNull()

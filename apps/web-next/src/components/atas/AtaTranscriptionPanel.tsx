@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,7 +13,7 @@ import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptio
 import { readConvocacao, type ConvocacaoContext } from '@/lib/convocacao'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
-import { CheckCircle2, Download, FileAudio, FilePlus2, FileText, RefreshCcw, Sparkles, TriangleAlert, X } from 'lucide-react'
+import { Download, FileAudio, FilePlus2, FileText, RefreshCcw, Sparkles, TriangleAlert, X } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
   ataId: string
@@ -245,7 +244,7 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               </CardTitle>
               <CardDescription>Envie a gravação para criar uma transcrição revisável, com marcação de horário em cada trecho.</CardDescription>
             </div>
-            {job && <AtaTranscriptionStatus status={job.status} />}
+            {job && <AtaTranscriptionStatus status={job.status} isReviewed={isReviewed} />}
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
@@ -379,12 +378,6 @@ export function AtaTranscriptionPanel({ ataId }: AtaTranscriptionPanelProps) {
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-lg">{isReviewed ? 'Transcrição revisada' : 'Transcrição para revisão'}</CardTitle>
-                  {isReviewed && (
-                    <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300" variant="outline">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Revisada
-                    </Badge>
-                  )}
                 </div>
                 <CardDescription>
                   {isReviewed
