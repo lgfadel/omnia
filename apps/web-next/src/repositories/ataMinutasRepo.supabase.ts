@@ -43,6 +43,8 @@ type DbVersion = {
   sequence: number
   content: string
   origin: AtaMinutaVersionOrigin
+  model: string | null
+  usage: Record<string, unknown> | null
   created_at: string
 }
 
@@ -80,7 +82,16 @@ function mapMinuta(row: DbMinuta): AtaMinuta {
 }
 
 function mapVersion(row: DbVersion): AtaMinutaVersion {
-  return { id: row.id, minutaId: row.minuta_id, sequence: row.sequence, content: row.content, origin: row.origin, createdAt: row.created_at }
+  return {
+    id: row.id,
+    minutaId: row.minuta_id,
+    sequence: row.sequence,
+    content: row.content,
+    origin: row.origin,
+    model: row.model ?? undefined,
+    usage: row.usage ?? undefined,
+    createdAt: row.created_at,
+  }
 }
 
 function mapMessage(row: DbMessage): AtaMinutaMessage {

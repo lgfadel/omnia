@@ -59,8 +59,13 @@ provision() {
   ata_minutas_schema_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT to_regclass('public.omnia_ata_minutas') IS NOT NULL")"
   if [[ "$ata_minutas_schema_present" != 't' ]]; then
     run_sql_file "$repo_root/supabase/migrations/20260820210000_create_ata_minutas.sql"
+    run_sql_file "$repo_root/supabase/migrations/20260821180000_add_minuta_version_model_usage.sql"
   else
     docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "GRANT SELECT, INSERT, UPDATE, DELETE ON public.omnia_ata_minuta_settings, public.omnia_ata_minutas, public.omnia_ata_minuta_versions, public.omnia_ata_minuta_messages, public.omnia_ata_minuta_documents TO service_role"
+    minuta_version_usage_present="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'omnia_ata_minuta_versions' AND column_name = 'usage')")"
+    if [[ "$minuta_version_usage_present" != 't' ]]; then
+      run_sql_file "$repo_root/supabase/migrations/20260821180000_add_minuta_version_model_usage.sql"
+    fi
   fi
 
   existing_auth_user_id="$(docker exec "$container_name" psql -At -U postgres -d postgres -c "SELECT id FROM auth.users WHERE email = '$test_email' LIMIT 1")"

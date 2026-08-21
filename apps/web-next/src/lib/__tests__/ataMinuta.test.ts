@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildMinutaResponsesInput,
   canAccessMinuta,
+  describeMinutaUsage,
   diffMinutaSections,
   getMinutaDocumentValidationError,
   MINUTA_DOCUMENT_MAX_SIZE_BYTES,
@@ -153,5 +154,22 @@ describe('buildMinutaResponsesInput', () => {
     expect(historyText).toContain('1. Corrija o nome do síndico.')
     expect(historyText).toContain('2. Remova o segundo parágrafo.')
     expect((input[4].content[0] as { text: string }).text).toContain('Deixe mais formal.')
+  })
+})
+
+describe('describeMinutaUsage', () => {
+  it('returns null when there is no usage recorded', () => {
+    expect(describeMinutaUsage(undefined)).toBeNull()
+    expect(describeMinutaUsage({})).toBeNull()
+  })
+
+  it('formats input and output tokens with the reasoning breakdown', () => {
+    const usage = { input_tokens: 20634, output_tokens: 5349, output_tokens_details: { reasoning_tokens: 3624 } }
+    expect(describeMinutaUsage(usage)).toBe('20.634 de entrada · 5.349 de saída (3.624 de raciocínio)')
+  })
+
+  it('omits the reasoning breakdown when there is none', () => {
+    const usage = { input_tokens: 100, output_tokens: 50 }
+    expect(describeMinutaUsage(usage)).toBe('100 de entrada · 50 de saída')
   })
 })

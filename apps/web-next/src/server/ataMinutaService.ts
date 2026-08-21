@@ -86,11 +86,13 @@ async function insertMinutaVersion(
   content: string,
   origin: 'generation' | 'chat' | 'manual',
   createdBy: string,
+  model?: string,
+  usage?: Record<string, unknown>,
 ): Promise<string> {
   const sequence = await nextSequence(client, 'omnia_ata_minuta_versions', minutaId)
   const { data, error } = await client
     .from('omnia_ata_minuta_versions')
-    .insert({ minuta_id: minutaId, sequence, content, origin, created_by: createdBy })
+    .insert({ minuta_id: minutaId, sequence, content, origin, created_by: createdBy, model: model ?? null, usage: usage ?? {} })
     .select('id')
     .single()
   if (error || !data) throw new Error(error?.message ?? 'Não foi possível salvar a versão da minuta.')
@@ -422,7 +424,7 @@ export async function* streamMinutaTurn(
 
     if (!accumulated.trim()) throw new Error('A OpenAI não devolveu texto para a minuta.')
 
-    const versionId = await insertMinutaVersion(client, minutaId, accumulated, instruction ? 'chat' : 'generation', user.omniaUserId)
+    const versionId = await insertMinutaVersion(client, minutaId, accumulated, instruction ? 'chat' : 'generation', user.omniaUserId, settingsRow.model, usage)
     if (instruction) {
       await insertMinutaMessage(client, minutaId, 'assistant', accumulated, user.omniaUserId, versionId)
     }

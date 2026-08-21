@@ -2,6 +2,7 @@
 
 import { History, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { describeMinutaUsage } from '@/lib/ataMinuta'
 import type { AtaMinutaVersion, AtaMinutaVersionOrigin } from '@/data/types'
 
 interface AtaMinutaVersionsProps {
@@ -35,8 +36,14 @@ export function AtaMinutaVersions({ versions, currentContent, disabled, onRestor
           return (
             <li key={version.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm">
               <div>
-                <p className="font-medium">Versão {version.sequence + 1} — {originLabels[version.origin]}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(version.createdAt)}</p>
+                <p className="font-medium">
+                  Versão {version.sequence + 1} — {originLabels[version.origin]}
+                  {version.model && <span className="font-normal text-muted-foreground"> · {version.model}</span>}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(version.createdAt)}
+                  {describeMinutaUsage(version.usage) && <span> · {describeMinutaUsage(version.usage)}</span>}
+                </p>
               </div>
               {isCurrent ? (
                 <span className="shrink-0 text-xs text-muted-foreground">Atual</span>

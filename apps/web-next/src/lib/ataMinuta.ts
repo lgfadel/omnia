@@ -1,5 +1,26 @@
 export const MINUTA_DOCUMENT_MAX_SIZE_BYTES = 25 * 1024 * 1024
 
+// O usage vem cru da Responses API (guardado por versão desde que o custo de duas
+// gerações com modelos diferentes na mesma minuta parou de se sobrescrever). Aqui só
+// lê os poucos campos que interessam pra tela, sem assumir o resto do formato.
+export function describeMinutaUsage(usage: Record<string, unknown> | undefined): string | null {
+  if (!usage) return null
+  const inputTokens = typeof usage.input_tokens === 'number' ? usage.input_tokens : undefined
+  const outputTokens = typeof usage.output_tokens === 'number' ? usage.output_tokens : undefined
+  if (inputTokens === undefined && outputTokens === undefined) return null
+
+  const outputDetails = usage.output_tokens_details as Record<string, unknown> | undefined
+  const reasoningTokens = typeof outputDetails?.reasoning_tokens === 'number' ? outputDetails.reasoning_tokens : undefined
+
+  const parts: string[] = []
+  if (inputTokens !== undefined) parts.push(`${inputTokens.toLocaleString('pt-BR')} de entrada`)
+  if (outputTokens !== undefined) {
+    const reasoningSuffix = reasoningTokens ? ` (${reasoningTokens.toLocaleString('pt-BR')} de raciocínio)` : ''
+    parts.push(`${outputTokens.toLocaleString('pt-BR')} de saída${reasoningSuffix}`)
+  }
+  return parts.join(' · ')
+}
+
 export interface MinutaSection {
   title: string
   body: string

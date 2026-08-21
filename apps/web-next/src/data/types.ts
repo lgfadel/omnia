@@ -108,6 +108,8 @@ export interface AtaMinutaVersion {
   sequence: number;
   content: string;
   origin: AtaMinutaVersionOrigin;
+  model?: string;
+  usage?: Record<string, unknown>;
   createdAt: string;
 }
 
