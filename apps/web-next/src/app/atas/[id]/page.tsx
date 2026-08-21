@@ -14,7 +14,7 @@ import { CommentInput } from "@/components/atas/CommentInput"
 import { AttachmentsList } from "@/components/atas/AttachmentsList"
 import { AtaTranscriptionPanel } from "@/components/atas/AtaTranscriptionPanel"
 import { FileUploader } from "@/components/atas/FileUploader"
-import { Edit, FileDown, Archive, Clock, ChevronDown } from "lucide-react"
+import { Edit, Clock, ChevronDown } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useAtasStore } from "@/stores/atas.store"
 import { useTagsStore } from "@/stores/tags.store"
@@ -100,14 +100,6 @@ const AtaDetail = () => {
 
   const handleEdit = () => {
     router.push(`/atas/${id}/edit`)
-  }
-
-  const handleExportPDF = () => {
-    alert("Funcionalidade de exportação será implementada")
-  }
-
-  const handleArchive = () => {
-    alert("Funcionalidade de arquivamento será implementada")
   }
 
   const handleStatusChange = async (statusId: string) => {
@@ -196,14 +188,6 @@ const AtaDetail = () => {
             <Button variant="outline" onClick={handleEdit}>
               <Edit className="w-4 h-4 mr-2" />
               Editar
-            </Button>
-            <Button variant="outline" onClick={handleExportPDF}>
-              <FileDown className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
-            <Button variant="outline" onClick={handleArchive}>
-              <Archive className="w-4 h-4 mr-2" />
-              Arquivar
             </Button>
           </div>
         </div>
