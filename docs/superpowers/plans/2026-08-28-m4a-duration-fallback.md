@@ -4,7 +4,7 @@
 
 **Goal:** Upload supported M4A recordings even when browser metadata does not expose a duration, while retaining the six-hour protection in the worker.
 
-**Architecture:** The browser supplies a duration only when it is finite and positive. The shared client validator treats an absent duration as unknown rather than invalid, and the upload repository accepts that optional value. The existing worker validates the stored audio with `ffprobe`, which remains the authoritative enforcement point.
+**Architecture:** The browser supplies a duration only when it is finite and positive. The shared client validator, repository, and Edge Function treat an absent duration as unknown rather than invalid; the nullable database field stores it as `NULL`. The existing worker validates the stored audio with `ffprobe`, which remains the authoritative enforcement point.
 
 **Tech Stack:** Next.js client component, TypeScript, Vitest, Supabase Storage upload, Node.js worker with FFmpeg.
 
@@ -66,12 +66,13 @@ git commit -m "fix(atas): allow M4A uploads with unavailable metadata"
 
 - Modify: `apps/web-next/src/components/atas/AtaTranscriptionPanel.tsx:25-171`
 - Modify: `apps/web-next/src/repositories/ataTranscriptionsRepo.supabase.ts:125-142`
+- Modify: `supabase/functions/ata-transcriptions/index.ts:162-214`
 - Test: `apps/web-next/src/components/atas/__tests__/AtaTranscriptionPanel.test.tsx`
 
 **Interfaces:**
 
 - Consumes: `readAudioDuration(file): Promise<number | null>` and `getAudioValidationError`.
-- Produces: `ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds: number | null, contextText?)`.
+- Produces: `ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds: number | null, contextText?)`; the Edge Function receives an optional duration and writes `duration_seconds: null` when unavailable.
 
 - [ ] **Step 1: Write the failing component test**
 
@@ -88,7 +89,10 @@ Expected: the duration error is shown and the upload repository is not called.
 
 After `loadedmetadata`, resolve `null` unless `audio.duration` is finite and
 positive. Update upload state and repository parameter types to `number | null`.
-Keep a genuine media-element error as a rejection.
+In the Edge Function, require a finite numeric duration only when one is
+provided, retain the six-hour limit for a provided duration, and persist
+`duration_seconds: null` when it is absent. Keep a genuine media-element error
+as a rejection.
 
 - [ ] **Step 4: Run focused tests to verify they pass**
 
@@ -97,7 +101,7 @@ Expected: all focused tests pass.
 
 - [ ] **Step 5: Run project verification**
 
-Run `npm run type-check && npm run test:run && npm run build`.
+Run `npm run type-check && npm run test:run && npm run build && deno check supabase/functions/ata-transcriptions/index.ts`.
 Expected: all commands exit 0.
 
 - [ ] **Step 6: Commit**

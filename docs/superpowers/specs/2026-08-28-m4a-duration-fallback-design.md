@@ -21,9 +21,10 @@ error.
 
 The client validation accepts a missing duration for a supported format. It
 continues to reject an explicit duration above six hours. The upload boundary
-accepts an optional duration and passes it through unchanged; the worker
-continues to read the uploaded object with `ffprobe` and rejects recordings
-above six hours before processing.
+and its Edge Function accept an optional duration and persist `NULL` when it
+is unknown; the table already permits this value. The worker continues to read
+the uploaded object with `ffprobe` and rejects recordings above six hours
+before processing.
 
 ## Error handling
 
