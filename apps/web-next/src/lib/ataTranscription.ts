@@ -10,7 +10,7 @@ export type AtaTranscriptionStatus =
 interface AudioValidationInput {
   name: string
   type: string
-  durationSeconds: number
+  durationSeconds: number | null
 }
 
 const acceptedExtensions = new Set(['mp3', 'm4a', 'wav', 'mp4', 'webm', 'aac', 'ogg', 'oga', 'opus'])
@@ -38,7 +38,7 @@ export function getAudioValidationError({ name, type, durationSeconds }: AudioVa
     return 'Formato não suportado. Envie MP3, M4A, AAC, WAV, MP4, WebM ou OGG.'
   }
 
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+  if (durationSeconds !== null && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) {
     return 'Não foi possível identificar a duração da gravação.'
   }
 

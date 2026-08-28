@@ -23,6 +23,14 @@ describe('getAudioValidationError', () => {
     })).toBeNull()
   })
 
+  it('accepts a supported M4A when the browser cannot report its duration', () => {
+    expect(getAudioValidationError({
+      name: 'Avenida Canadá.m4a',
+      type: 'audio/mp4',
+      durationSeconds: null,
+    })).toBeNull()
+  })
+
   it('rejects unsupported audio types', () => {
     expect(getAudioValidationError({
       name: 'assembleia.wma',
