@@ -22,14 +22,15 @@ interface AtaTranscriptionPanelProps {
 
 const activeStatuses = new Set<TranscriptionStatus>(['uploading', 'queued', 'processing'])
 
-function readAudioDuration(file: File): Promise<number> {
+function readAudioDuration(file: File): Promise<number | null> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const audio = document.createElement('audio')
     audio.preload = 'metadata'
     audio.onloadedmetadata = () => {
       URL.revokeObjectURL(url)
-      resolve(audio.duration)
+      const durationSeconds = audio.duration
+      resolve(Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : null)
     }
     audio.onerror = () => {
       URL.revokeObjectURL(url)
@@ -57,7 +58,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draftText, setDraftText] = useState('')
-  const [replacement, setReplacement] = useState<{ file: File; durationSeconds: number } | null>(null)
+  const [replacement, setReplacement] = useState<{ file: File; durationSeconds: number | null } | null>(null)
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
@@ -112,7 +113,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     return () => { cancelled = true }
   }, [job?.id, transcriptionId, isJobActive])
 
-  const uploadFile = async (file: File, durationSeconds: number) => {
+  const uploadFile = async (file: File, durationSeconds: number | null) => {
     try {
       setIsUploading(true)
       setJob({

@@ -165,14 +165,15 @@ Deno.serve(async (req: Request) => {
       fileName?: string
       mimeType?: string
       sizeBytes?: number
-      durationSeconds?: number
+      durationSeconds?: number | null
       jobId?: string
       contextText?: string
     }
     if (!isAction(payload.action)) return json({ error: 'Ação inválida.' }, 400)
 
     if (payload.action === 'create') {
-      if (!payload.ataId || !payload.fileName || typeof payload.sizeBytes !== 'number' || typeof payload.durationSeconds !== 'number' || !Number.isFinite(payload.sizeBytes) || !Number.isFinite(payload.durationSeconds)) {
+      const durationSeconds = payload.durationSeconds
+      if (!payload.ataId || !payload.fileName || typeof payload.sizeBytes !== 'number' || !Number.isFinite(payload.sizeBytes) || (durationSeconds != null && (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds)))) {
         return json({ error: 'Dados do áudio incompletos.' }, 400)
       }
       if (!ACCEPTED_MIME_TYPES.has(payload.mimeType ?? '')) {
@@ -185,7 +186,7 @@ Deno.serve(async (req: Request) => {
       if (payload.sizeBytes <= 0 || payload.sizeBytes > MAX_FILE_SIZE_BYTES) {
         return json({ error: 'O arquivo excede o limite de 1 GB.' }, 400)
       }
-      if (payload.durationSeconds <= 0 || payload.durationSeconds > MAX_DURATION_SECONDS) {
+      if (typeof durationSeconds === 'number' && (durationSeconds <= 0 || durationSeconds > MAX_DURATION_SECONDS)) {
         return json({ error: 'A gravação deve ter até 6 horas.' }, 400)
       }
 
@@ -209,7 +210,7 @@ Deno.serve(async (req: Request) => {
         original_filename: payload.fileName,
         mime_type: payload.mimeType,
         size_bytes: payload.sizeBytes,
-        duration_seconds: Math.ceil(payload.durationSeconds),
+        duration_seconds: typeof durationSeconds === 'number' ? Math.ceil(durationSeconds) : null,
         context_text: contextText,
         is_current: false,
       })

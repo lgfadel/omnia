@@ -122,7 +122,7 @@ export const ataTranscriptionsRepoSupabase = {
     }
   },
 
-  async upload(ataId: string, file: File, durationSeconds: number, contextText?: string): Promise<void> {
+  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string): Promise<void> {
     const { data, error } = await supabase.functions.invoke<StartUploadResponse>('ata-transcriptions', {
       body: {
         action: 'create',

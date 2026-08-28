@@ -42,7 +42,7 @@ export function getAudioValidationError({ name, type, durationSeconds }: AudioVa
     return 'Não foi possível identificar a duração da gravação.'
   }
 
-  if (durationSeconds > AUDIO_TRANSCRIPTION_MAX_DURATION_SECONDS) {
+  if (durationSeconds !== null && durationSeconds > AUDIO_TRANSCRIPTION_MAX_DURATION_SECONDS) {
     return 'A gravação ultrapassa o limite de 6 horas.'
   }
 
