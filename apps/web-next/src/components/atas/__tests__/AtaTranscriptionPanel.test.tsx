@@ -114,25 +114,34 @@ describe('AtaTranscriptionPanel · gravação', () => {
 
   it('sends a supported M4A with an unknown browser duration to the worker', async () => {
     const createObjectURL = vi.fn().mockReturnValue('blob:assembleia')
+    const durationDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'duration')
+    const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src')
     Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, writable: true, configurable: true })
     Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), writable: true, configurable: true })
-    Object.defineProperty(HTMLMediaElement.prototype, 'duration', { get: () => Number.NaN, configurable: true })
-    Object.defineProperty(HTMLMediaElement.prototype, 'src', {
-      set() {
-        queueMicrotask(() => this.dispatchEvent(new Event('loadedmetadata')))
-      },
-      configurable: true,
-    })
-    const file = new File(['audio'], 'assembleia.m4a', { type: 'audio/mp4' })
+    try {
+      Object.defineProperty(HTMLMediaElement.prototype, 'duration', { get: () => Number.NaN, configurable: true })
+      Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+        set() {
+          queueMicrotask(() => this.dispatchEvent(new Event('loadedmetadata')))
+        },
+        configurable: true,
+      })
+      const file = new File(['audio'], 'assembleia.m4a', { type: 'audio/mp4' })
 
-    repo.load.mockResolvedValue({ job: null, transcription: null })
-    render(<AtaTranscriptionPanel ataId="ata-1" />)
+      repo.load.mockResolvedValue({ job: null, transcription: null })
+      render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-    const audioInput = await screen.findByRole('button', { name: 'Selecionar gravação' })
-    fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
+      const audioInput = await screen.findByRole('button', { name: 'Selecionar gravação' })
+      fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
 
-    await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined))
-    expect(audioInput).toBeInTheDocument()
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined))
+      expect(audioInput).toBeInTheDocument()
+    } finally {
+      if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
+      else Reflect.deleteProperty(HTMLMediaElement.prototype, 'duration')
+      if (srcDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'src', srcDescriptor)
+      else Reflect.deleteProperty(HTMLMediaElement.prototype, 'src')
+    }
   })
 })
 
