@@ -88,11 +88,11 @@ Expected: the duration error is shown and the upload repository is not called.
 - [ ] **Step 3: Write the minimal implementation**
 
 After `loadedmetadata`, resolve `null` unless `audio.duration` is finite and
-positive. Update upload state and repository parameter types to `number | null`.
-In the Edge Function, require a finite numeric duration only when one is
-provided, retain the six-hour limit for a provided duration, and persist
-`duration_seconds: null` when it is absent. Keep a genuine media-element error
-as a rejection.
+positive. Also resolve `null` when a supported recording triggers a media
+metadata error. Update upload state and repository parameter types to
+`number | null`. In the Edge Function, require a finite numeric duration only
+when one is provided, retain the six-hour limit for a provided duration, and
+persist `duration_seconds: null` when it is absent.
 
 - [ ] **Step 4: Run focused tests to verify they pass**
 

@@ -16,8 +16,9 @@ metadata limitation into a blocking error before uploading the file.
 ## Design
 
 `readAudioDuration` returns `null` when metadata loads without a finite,
-positive duration. It still rejects when the media element reports a real load
-error.
+positive duration or when the media element cannot open the metadata. These are
+browser capability limits, not authoritative evidence that the recording is
+invalid.
 
 The client validation accepts a missing duration for a supported format. It
 continues to reject an explicit duration above six hours. The upload boundary
@@ -28,9 +29,9 @@ before processing.
 
 ## Error handling
 
-Unsupported formats remain blocked locally. A genuine browser media error keeps
-the existing user-facing error. The worker remains the authoritative duration
-check for metadata that the browser cannot inspect.
+Unsupported formats remain blocked locally. The worker remains the
+authoritative duration and media-validity check whenever the browser cannot
+inspect a supported recording.
 
 ## Testing
 

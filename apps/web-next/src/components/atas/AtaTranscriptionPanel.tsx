@@ -23,7 +23,7 @@ interface AtaTranscriptionPanelProps {
 const activeStatuses = new Set<TranscriptionStatus>(['uploading', 'queued', 'processing'])
 
 function readAudioDuration(file: File): Promise<number | null> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const audio = document.createElement('audio')
     audio.preload = 'metadata'
@@ -34,7 +34,10 @@ function readAudioDuration(file: File): Promise<number | null> {
     }
     audio.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('Não foi possível ler a duração desta gravação.'))
+      // Alguns M4A válidos não são decodificáveis pelo navegador, mas o worker
+      // usa FFmpeg para validar o arquivo enviado. Não bloquear a gravação por
+      // uma limitação de metadados do cliente.
+      resolve(null)
     }
     audio.src = url
   })

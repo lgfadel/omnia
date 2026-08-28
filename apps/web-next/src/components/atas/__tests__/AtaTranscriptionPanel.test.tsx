@@ -143,6 +143,37 @@ describe('AtaTranscriptionPanel · gravação', () => {
       else Reflect.deleteProperty(HTMLMediaElement.prototype, 'src')
     }
   })
+
+  it('sends a supported M4A when the browser cannot open its metadata', async () => {
+    const durationDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'duration')
+    const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src')
+    Object.defineProperty(URL, 'createObjectURL', { value: vi.fn().mockReturnValue('blob:assembleia'), writable: true, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), writable: true, configurable: true })
+    try {
+      Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+        set() {
+          queueMicrotask(() => this.dispatchEvent(new Event('error')))
+        },
+        configurable: true,
+      })
+      const file = new File(['audio'], 'assembleia.m4a', { type: 'audio/mp4' })
+
+      repo.load.mockResolvedValue({ job: null, transcription: null })
+      render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+      await screen.findByRole('button', { name: 'Selecionar gravação' })
+      const fileInput = document.querySelector('input[type="file"][accept*="audio"]')
+      expect(fileInput).not.toBeNull()
+      fireEvent.change(fileInput!, { target: { files: [file] } })
+
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined))
+    } finally {
+      if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
+      else Reflect.deleteProperty(HTMLMediaElement.prototype, 'duration')
+      if (srcDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'src', srcDescriptor)
+      else Reflect.deleteProperty(HTMLMediaElement.prototype, 'src')
+    }
+  })
 })
 
 describe('AtaTranscriptionPanel · download do texto', () => {
