@@ -5,8 +5,7 @@ import type {
   AtaTranscriptionJob,
   AtaTranscriptionStatus,
 } from '@/data/types'
-
-const AUDIO_BUCKET = 'ata-transcription-audio'
+import { uploadR2Multipart, type R2MultipartUploadPlan } from '@/lib/r2MultipartUpload'
 
 // supabase.functions.invoke devolve um FunctionsHttpError cuja mensagem é sempre
 // "Edge Function returned a non-2xx status code". A razão real está no corpo da
@@ -63,7 +62,7 @@ type DbTranscription = {
   is_reviewed: boolean
 }
 
-type StartUploadResponse = { jobId: string; path: string; token: string }
+type StartUploadResponse = { jobId: string; uploadId: string } & R2MultipartUploadPlan
 
 // The generated database type is refreshed after this migration is applied. Until then,
 // this scoped client preserves the existing repository pattern for newly introduced tables.
@@ -137,20 +136,17 @@ export const ataTranscriptionsRepoSupabase = {
     if (error || !data) throw await describeFunctionError(error, 'Não foi possível iniciar o envio do áudio.')
 
     try {
-      const { error: uploadError } = await supabase.storage
-        .from(AUDIO_BUCKET)
-        .uploadToSignedUrl(data.path, data.token, file)
-      if (uploadError) throw uploadError
+      const parts = await uploadR2Multipart(file, data)
 
       const { error: completeError } = await supabase.functions.invoke('ata-transcriptions', {
-        body: { action: 'complete', jobId: data.jobId },
+        body: { action: 'complete', jobId: data.jobId, uploadId: data.uploadId, parts },
       })
       if (completeError) throw await describeFunctionError(completeError, 'Não foi possível enfileirar a transcrição.')
     } catch (uploadError) {
       // Do not leave an orphaned upload job as the current transcription when the
       // browser loses the connection between signed upload and queueing.
       await supabase.functions.invoke('ata-transcriptions', {
-        body: { action: 'cancel', jobId: data.jobId },
+        body: { action: 'cancel', jobId: data.jobId, uploadId: data.uploadId },
       })
       throw uploadError
     }

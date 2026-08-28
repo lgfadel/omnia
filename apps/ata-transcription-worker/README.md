@@ -6,7 +6,7 @@ Serviço Railway que processa em background os trabalhos em `omnia_ata_transcrip
 
 1. Crie um serviço Railway apontando para este diretório (`apps/ata-transcription-worker`).
 2. O `Dockerfile` instala FFmpeg e sobe um servidor HTTP. Mantenha uma réplica; o lease de 45 minutos recupera trabalho abandonado após reinício.
-3. Configure, somente no Railway, as variáveis `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_ATA_TRANSCRIPTION_API_KEY` e `WORKER_WAKE_SECRET`.
+3. Configure, somente no Railway, as variáveis `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_ATA_TRANSCRIPTION_API_KEY`, `WORKER_WAKE_SECRET`, `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`.
 4. Habilite **serverless** no serviço e exponha um domínio. A edge function precisa das mesmas `TRANSCRIPTION_WORKER_URL` e `WORKER_WAKE_SECRET`.
 
 ## Por que ele dorme
@@ -59,6 +59,8 @@ O worker não emite log em operação normal: ele consulta a fila a cada 5 s e s
 escreve em caso de erro. Um serviço silencioso é um serviço saudável.
 
 Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker divide gravações em blocos de 30 minutos e transcreve cada bloco com `gpt-transcribe`. O objeto privado do Storage é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O áudio só é removido quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha, o áudio também permanece para uma nova tentativa.
+
+Os novos áudios ficam no bucket privado Cloudflare R2. As quatro variáveis R2 também precisam ser configuradas como segredos da Edge Function `ata-transcriptions`; não as cadastre no Vercel nem use nomes com `NEXT_PUBLIC_`.
 
 `TRANSCRIPTION_MODEL` é opcional e serve de válvula: apontá-la para `whisper-1` no Railway reverte o modelo sem deploy, e o worker monta a requisição correta para cada família.
 

@@ -10,6 +10,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { loadAtaContext } from './ataContext.js'
 import { buildCarryOver, mergeTranscribedChunks } from './transcript.js'
+import { createR2Client, downloadR2Audio } from './r2.js'
 
 // Medido em 19/08/2026: um bloco de 20 minutos leva ~635 s para retornar. Isso
 // estoura dois limites padrão de uma vez — o headersTimeout de 300 s do undici,
@@ -54,6 +55,7 @@ interface TranscriptionJob {
   id: string
   ata_id: string
   storage_path: string
+  storage_provider: 'supabase' | 'r2'
   status: 'queued' | 'processing' | 'completed' | 'failed'
   attempt_count: number
   context_text: string | null
@@ -95,6 +97,7 @@ function getEnvironment() {
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
     openAiApiKey: process.env.OPENAI_ATA_TRANSCRIPTION_API_KEY!,
     wakeSecret: process.env.WORKER_WAKE_SECRET!,
+    r2: createR2Client(),
     port: Number(process.env.PORT ?? 8080),
   }
 }
@@ -153,7 +156,7 @@ async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | n
 
   const { data: candidate, error: candidateError } = await supabase
     .from('omnia_ata_transcription_jobs')
-    .select('id, ata_id, storage_path, status, attempt_count')
+    .select('id, ata_id, storage_path, storage_provider, status, attempt_count')
     .eq('status', 'queued')
     .order('created_at', { ascending: true })
     .limit(1)
@@ -166,7 +169,7 @@ async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | n
     .update({ status: 'processing', started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
     .eq('id', candidate.id)
     .eq('status', 'queued')
-    .select('id, ata_id, storage_path, status, attempt_count, context_text')
+    .select('id, ata_id, storage_path, storage_provider, status, attempt_count, context_text')
     .maybeSingle()
   if (claimError) throw claimError
   return claimed as TranscriptionJob | null
@@ -176,6 +179,7 @@ async function processJob(
   job: TranscriptionJob,
   supabase: AdminClient,
   openai: OpenAI,
+  r2: ReturnType<typeof createR2Client>,
 ): Promise<void> {
   const workspace = await mkdtemp(join(tmpdir(), 'omnia-ata-transcription-'))
   try {
@@ -184,11 +188,16 @@ async function processJob(
     await supabase.from('omnia_ata_transcription_jobs')
       .update({ stage: 'downloading', processed_chunks: 0, total_chunks: null })
       .eq('id', job.id)
-    const { data: audio, error: downloadError } = await supabase.storage.from(AUDIO_BUCKET).download(job.storage_path)
-    if (downloadError || !audio) throw downloadError ?? new Error('Temporary audio was not found.')
+    const audio = job.storage_provider === 'r2'
+      ? await downloadR2Audio(r2.client, r2.bucket, job.storage_path)
+      : await (async () => {
+        const { data, error } = await supabase.storage.from(AUDIO_BUCKET).download(job.storage_path)
+        if (error || !data) throw error ?? new Error('Temporary audio was not found.')
+        return data.stream()
+      })()
 
     const inputPath = join(workspace, basename(job.storage_path))
-    await pipeline(audio.stream(), createWriteStream(inputPath))
+    await pipeline(audio as never, createWriteStream(inputPath))
     const durationSeconds = await readAudioDuration(inputPath)
     if (durationSeconds > MAX_DURATION_SECONDS) throw new Error('Audio exceeds the maximum duration.')
     await supabase.from('omnia_ata_transcription_jobs').update({ stage: 'splitting' }).eq('id', job.id)
@@ -304,7 +313,7 @@ async function runWorker() {
       const job = await claimNextJob(supabase)
       if (!job) return
       try {
-        await processJob(job, supabase, openai)
+        await processJob(job, supabase, openai, environment.r2)
       } catch (error) {
         console.error('Transcription job failed, continuing with the queue', error)
       }

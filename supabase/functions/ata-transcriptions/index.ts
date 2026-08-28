@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { abortR2MultipartUpload, completeR2MultipartUpload, createR2DownloadUrl, deleteR2Object, r2ObjectSize, startR2MultipartUpload } from './r2.ts'
 
 // O projeto ainda assina JWT com o segredo legado (HS256, sem "kid"), então
 // bibliotecas que verificam token via JWKS rejeitam toda credencial. A validação
@@ -167,6 +168,8 @@ Deno.serve(async (req: Request) => {
       sizeBytes?: number
       durationSeconds?: number | null
       jobId?: string
+      uploadId?: string
+      parts?: Array<{ partNumber: number; etag: string }>
       contextText?: string
     }
     if (!isAction(payload.action)) return json({ error: 'Ação inválida.' }, 400)
@@ -212,6 +215,7 @@ Deno.serve(async (req: Request) => {
         size_bytes: payload.sizeBytes,
         duration_seconds: typeof durationSeconds === 'number' ? Math.ceil(durationSeconds) : null,
         context_text: contextText,
+        storage_provider: 'r2',
         is_current: false,
       })
       if (insertError) {
@@ -219,8 +223,10 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Não foi possível criar o trabalho de transcrição.' }, 500)
       }
 
-      const { data: upload, error: uploadError } = await admin.storage.from(AUDIO_BUCKET).createSignedUploadUrl(storagePath)
-      if (uploadError || !upload) {
+      let upload: Awaited<ReturnType<typeof startR2MultipartUpload>>
+      try {
+        upload = await startR2MultipartUpload(storagePath, payload.mimeType ?? '', payload.sizeBytes)
+      } catch (uploadError) {
         await admin.from('omnia_ata_transcription_jobs').delete().eq('id', jobId)
         console.error('Unable to sign transcription upload', uploadError)
         return json({ error: 'Não foi possível preparar o envio do áudio.' }, 500)
@@ -228,7 +234,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: previousJob, error: previousJobError } = await admin
         .from('omnia_ata_transcription_jobs')
-        .select('id, storage_path')
+        .select('id, storage_path, storage_provider')
         .eq('ata_id', payload.ataId)
         .eq('is_current', true)
         .maybeSingle()
@@ -257,17 +263,21 @@ Deno.serve(async (req: Request) => {
       // A gravação anterior não é mais alcançável pela tela; só o texto dela
       // segue no histórico. Manter o arquivo custaria até 1 GB por substituição.
       if (previousJob?.storage_path) {
-        const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([previousJob.storage_path])
-        if (purgeError) console.error('Unable to purge replaced audio', purgeError)
+        if (previousJob.storage_provider === 'r2') {
+          await deleteR2Object(previousJob.storage_path).catch((error) => console.error('Unable to purge replaced R2 audio', error))
+        } else {
+          const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([previousJob.storage_path])
+          if (purgeError) console.error('Unable to purge replaced audio', purgeError)
+        }
       }
 
-      return json({ jobId, path: upload.path, token: upload.token }, 201)
+      return json({ jobId, ...upload, parts: upload.parts.map((url, index) => ({ partNumber: index + 1, url })) }, 201)
     }
 
     if (!payload.jobId) return json({ error: 'jobId é obrigatório.' }, 400)
     const { data: job, error: jobError } = await admin
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, storage_path, status, attempt_count')
+      .select('id, ata_id, storage_path, storage_provider, size_bytes, status, attempt_count')
       .eq('id', payload.jobId)
       .maybeSingle()
     if (jobError || !job) return json({ error: 'Trabalho não encontrado.' }, 404)
@@ -275,6 +285,14 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'complete') {
       if (job.status !== 'uploading') return json({ error: 'O áudio já foi enviado.' }, 409)
+      if (!payload.uploadId || !Array.isArray(payload.parts) || payload.parts.length === 0 || payload.parts.some((part) => !Number.isInteger(part.partNumber) || part.partNumber < 1 || !part.etag)) return json({ error: 'Partes do envio inválidas.' }, 400)
+      try {
+        await completeR2MultipartUpload(job.storage_path, payload.uploadId, payload.parts)
+        if (await r2ObjectSize(job.storage_path) !== Number(job.size_bytes)) throw new Error('R2 object size does not match job.')
+      } catch (error) {
+        console.error('Unable to complete R2 transcription upload', error)
+        return json({ error: 'Não foi possível concluir o envio do áudio.' }, 500)
+      }
       const { error } = await admin.from('omnia_ata_transcription_jobs').update({ status: 'queued', error_message: null }).eq('id', job.id)
       if (error) return json({ error: 'Não foi possível enfileirar a transcrição.' }, 500)
       await wakeWorker()
@@ -293,8 +311,12 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
       if (previousJobError) return json({ error: 'Não foi possível cancelar o envio.' }, 500)
 
-      const { error: removeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
-      if (removeError) console.error('Unable to remove cancelled audio', removeError)
+      if (job.storage_provider === 'r2' && payload.uploadId) await abortR2MultipartUpload(job.storage_path, payload.uploadId).catch((error) => console.error('Unable to abort R2 upload', error))
+      if (job.storage_provider === 'r2') await deleteR2Object(job.storage_path).catch(() => undefined)
+      else {
+        const { error: removeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
+        if (removeError) console.error('Unable to remove cancelled audio', removeError)
+      }
 
       const { error: deleteError } = await admin.from('omnia_ata_transcription_jobs').delete().eq('id', job.id)
       if (deleteError) return json({ error: 'Não foi possível cancelar o envio.' }, 500)
@@ -304,9 +326,11 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'audio') {
       if (job.status === 'uploading') return json({ url: null })
-      const { data, error } = await admin.storage
-        .from(AUDIO_BUCKET)
-        .createSignedUrl(job.storage_path, AUDIO_URL_TTL_SECONDS)
+      if (job.storage_provider === 'r2') {
+        try { return json({ url: await createR2DownloadUrl(job.storage_path, AUDIO_URL_TTL_SECONDS) }) }
+        catch (error) { console.error('Unable to sign R2 transcription audio', error); return json({ url: null }) }
+      }
+      const { data, error } = await admin.storage.from(AUDIO_BUCKET).createSignedUrl(job.storage_path, AUDIO_URL_TTL_SECONDS)
       // Transcrições anteriores à retenção do áudio não têm mais arquivo no
       // bucket. Isso não impede a revisão — apenas não há o que tocar —, então
       // a falha vira ausência de player, registrada no log para diagnóstico.
@@ -330,8 +354,11 @@ Deno.serve(async (req: Request) => {
         console.error('Unable to discard transcription', error)
         return json({ error: 'Não foi possível descartar a transcrição.' }, 500)
       }
-      const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
-      if (purgeError) console.error('Unable to purge discarded audio', purgeError)
+      if (job.storage_provider === 'r2') await deleteR2Object(job.storage_path).catch((error) => console.error('Unable to purge discarded R2 audio', error))
+      else {
+        const { error: purgeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
+        if (purgeError) console.error('Unable to purge discarded audio', purgeError)
+      }
       return json({ status: 'discarded' })
     }
 
