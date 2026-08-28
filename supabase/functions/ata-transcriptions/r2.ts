@@ -29,7 +29,10 @@ async function signingKey(secret: string, date: string) {
   return hmac(await hmac(await hmac(await hmac(`AWS4${secret}`, date), 'auto'), 's3'), 'aws4_request')
 }
 function canonicalQuery(entries: Record<string, string>) {
-  return Object.entries(entries).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')
+  // A assinatura S3 ordena pelo código do caractere percent-encoded, não pela
+  // collation do locale. `localeCompare` coloca `uploads` antes de `X-Amz-*`
+  // em alguns runtimes e invalida a assinatura enviada ao R2.
+  return Object.entries(entries).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')
 }
 async function signedUrl(method: string, key: string, query: Record<string, string> = {}, expires?: number) {
   const config = credentials(); const { amzDate, date } = timestamp(); const host = `${config.account}.r2.cloudflarestorage.com`
