@@ -17,6 +17,7 @@ import { useSecretariosStore } from "@/stores/secretarios.store"
 import { useTagsStore } from "@/stores/tags.store"
 import { useAuth } from '@/components/auth/AuthProvider'
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
+import { isTranscriptionActive } from "@/lib/ataTranscription"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -24,6 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 type AtaTableRow = {
   id: string;
   title: string;
+  transcriptionStatus?: 'uploading' | 'queued' | 'processing' | 'completed' | 'failed';
   secretary: { id: string; name: string; color?: string } | null;
   responsible: { id: string; name: string; color?: string } | null;
   secretaryName: string;
@@ -150,6 +152,19 @@ const Atas = () => {
           loadAtas(search, statusFilter)
         }
       )
+      // Transcrição em curso muda fora da ata: recarrega para ligar/desligar o selo
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'omnia_ata_transcription_jobs'
+        },
+        (payload) => {
+          logger.debug('Job de transcrição alterado:', payload)
+          loadAtas(search, statusFilter)
+        }
+      )
       .subscribe()
 
     return () => {
@@ -236,6 +251,19 @@ const Atas = () => {
   const filteredAtas = showOnlyMyAtas && userProfile 
     ? atas.filter(ata => ata.responsible?.id === userProfile.id)
     : atas
+
+  const hasActiveTranscription = filteredAtas.some(ata => isTranscriptionActive(ata.transcriptionStatus))
+
+  // Fallback caso o realtime ainda não esteja habilitado para os jobs:
+  // enquanto houver transcrição em curso, recarrega a lista a cada 15 s
+  // para ligar/desligar o selo sem ação manual.
+  useEffect(() => {
+    if (!hasActiveTranscription) return
+    const interval = window.setInterval(() => {
+      loadAtas(search, statusFilter)
+    }, 15_000)
+    return () => window.clearInterval(interval)
+  }, [hasActiveTranscription, search, statusFilter, loadAtas])
     
   const tableData = filteredAtas.map(ata => {
     const currentStatus = statuses.find(s => s.id === ata.statusId)
@@ -258,6 +286,7 @@ const Atas = () => {
     
     return {
       ...ata,
+      transcriptionStatus: ata.transcriptionStatus,
       secretary: ata.secretary ? { ...ata.secretary, color: secOverride?.color ?? ata.secretary.color } : null,
       responsible: ata.responsible ? { ...ata.responsible, color: resOverride?.color ?? ata.responsible.color } : null,
       secretaryName: ata.secretary?.name || "-",

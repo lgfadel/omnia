@@ -54,6 +54,7 @@ export interface Ata {
   commentCount?: number;
   attachments?: Attachment[];
   comments?: Comment[];
+  transcriptionStatus?: AtaTranscriptionStatus;
 }
 
 export type AtaTranscriptionStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed'

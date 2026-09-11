@@ -61,6 +61,16 @@ export function getTranscriptionStatusLabel(status: AtaTranscriptionStatus): str
   return labels[status]
 }
 
+export const TRANSCRIPTION_ACTIVE_STATUSES: ReadonlySet<AtaTranscriptionStatus> = new Set([
+  'uploading',
+  'queued',
+  'processing',
+])
+
+export function isTranscriptionActive(status?: AtaTranscriptionStatus | null): boolean {
+  return Boolean(status && TRANSCRIPTION_ACTIVE_STATUSES.has(status))
+}
+
 export type AtaTranscriptionStage = 'downloading' | 'splitting' | 'transcribing' | 'saving'
 
 interface TranscriptionProgressInput {

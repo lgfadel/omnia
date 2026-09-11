@@ -4,6 +4,7 @@ import {
   getAudioValidationError,
   getTranscriptionProgress,
   getTranscriptionStatusLabel,
+  isTranscriptionActive,
 } from '../ataTranscription'
 
 describe('getAudioValidationError', () => {
@@ -53,6 +54,21 @@ describe('getTranscriptionStatusLabel', () => {
     expect(getTranscriptionStatusLabel('queued')).toBe('Na fila')
     expect(getTranscriptionStatusLabel('processing')).toBe('Processando')
     expect(getTranscriptionStatusLabel('completed')).toBe('Pronta para revisão')
+  })
+})
+
+describe('isTranscriptionActive', () => {
+  it('marks uploading, queued and processing as in-progress for the atas list badge', () => {
+    expect(isTranscriptionActive('uploading')).toBe(true)
+    expect(isTranscriptionActive('queued')).toBe(true)
+    expect(isTranscriptionActive('processing')).toBe(true)
+  })
+
+  it('does not mark terminal or missing states as in-progress', () => {
+    expect(isTranscriptionActive('completed')).toBe(false)
+    expect(isTranscriptionActive('failed')).toBe(false)
+    expect(isTranscriptionActive(undefined)).toBe(false)
+    expect(isTranscriptionActive(null)).toBe(false)
   })
 })
 

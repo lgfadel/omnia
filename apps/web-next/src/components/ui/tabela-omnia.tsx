@@ -21,6 +21,22 @@ import { CommentsModal } from "@/components/ui/comments-modal"
 import { toast } from "@/components/ui/use-toast"
 import type { TarefaPrioridade } from "@/repositories/tarefasRepo.supabase"
 import { Input } from "@/components/ui/input"
+import { getTranscriptionStatusLabel, isTranscriptionActive, type AtaTranscriptionStatus } from "@/lib/ataTranscription"
+
+const transcriptionBadgeStyles: Record<string, { badge: string; dot: string }> = {
+  uploading: {
+    badge: "bg-sky-50 text-sky-700 border-sky-200",
+    dot: "bg-sky-500",
+  },
+  queued: {
+    badge: "bg-amber-50 text-amber-800 border-amber-200",
+    dot: "bg-amber-500",
+  },
+  processing: {
+    badge: "bg-violet-50 text-violet-700 border-violet-200",
+    dot: "bg-violet-500",
+  },
+}
 
 export interface TabelaOmniaColumn {
   key: string
@@ -921,6 +937,25 @@ export function TabelaOmnia({
           {row.isPrivate && (
             <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
           )}
+          {isTranscriptionActive(row.transcriptionStatus as AtaTranscriptionStatus | undefined) && (() => {
+            const status = row.transcriptionStatus as string
+            const styles = transcriptionBadgeStyles[status] ?? transcriptionBadgeStyles.processing
+            return (
+              <span
+                title="Transcrição em curso"
+                className={cn(
+                  "inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                  styles.badge
+                )}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", styles.dot)} />
+                  <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", styles.dot)} />
+                </span>
+                {getTranscriptionStatusLabel(row.transcriptionStatus as AtaTranscriptionStatus)}
+              </span>
+            )
+          })()}
           {row.recurrenceId && (
             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
               <Repeat className="w-3 h-3" />

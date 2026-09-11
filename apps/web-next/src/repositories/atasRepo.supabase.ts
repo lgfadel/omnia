@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
 import { logger } from '@/lib/logging'
-import { Ata, Comment, Attachment, Status, UserRef, Role } from "@/data/types"
+import { Ata, Comment, Attachment, Status, UserRef, Role, AtaTranscriptionStatus } from "@/data/types"
 
 // Database types for type safety
 interface DbAta {
@@ -60,6 +60,11 @@ interface DbStatus {
   is_default?: boolean;
 }
 
+interface DbTranscriptionJobRow {
+  ata_id: string;
+  status: AtaTranscriptionStatus;
+}
+
 interface DbAtaUpdate {
   title?: string;
   description?: string;
@@ -115,7 +120,7 @@ const mapDbAttachment = (att: DbAttachment): Attachment => ({
 })
 
 // Transform database record to Ata type
-const transformAtaFromDB = (dbAta: DbAta, statuses: Status[]): Ata => {
+const transformAtaFromDB = (dbAta: DbAta, statuses: Status[], transcriptionStatus?: AtaTranscriptionStatus): Ata => {
   const secretaryUser = Array.isArray(dbAta.omnia_users)
     ? dbAta.omnia_users[0]
     : dbAta.omnia_users
@@ -169,7 +174,8 @@ const transformAtaFromDB = (dbAta: DbAta, statuses: Status[]): Ata => {
     commentCount: dbAta.comment_count ?? 0,
     // Transform attachments
     attachments: (dbAta.omnia_attachments || []).map(mapDbAttachment),
-    comments: transformedComments
+    comments: transformedComments,
+    ...(transcriptionStatus ? { transcriptionStatus } : {}),
   }
 }
 
@@ -217,6 +223,7 @@ export const atasRepoSupabase = {
     const ataIds = data?.map(ata => ata.id) || []
     let attachments: DbAttachment[] = []
     let comments: DbComment[] = []
+    const transcriptionByAtaId = new Map<string, AtaTranscriptionStatus>()
     
     if (ataIds.length > 0) {
       const { data: attachmentsData } = await supabaseUntyped
@@ -234,12 +241,36 @@ export const atasRepoSupabase = {
       
       attachments = attachmentsData || []
       comments = commentsData || []
+
+      // Marca as atas com transcrição em curso (uploading/queued/processing).
+      // Falha aqui não pode quebrar a listagem: sem permissão de leitura dos
+      // jobs (RLS) a lista volta sem o indicador.
+      try {
+        const { data: jobsData } = await supabaseUntyped
+          .from('omnia_ata_transcription_jobs')
+          .select('ata_id,status')
+          .in('ata_id', ataIds)
+          .eq('is_current', true)
+          .in('status', ['uploading', 'queued', 'processing'])
+
+        for (const job of (jobsData as DbTranscriptionJobRow[] | null) || []) {
+          if (job?.ata_id && job?.status) {
+            transcriptionByAtaId.set(job.ata_id, job.status)
+          }
+        }
+      } catch {
+        // indicador opcional: segue sem ele
+      }
     }
 
     return data?.map(ata => {
       const ataAttachments = attachments.filter(att => att.ata_id === ata.id)
       const ataComments = comments.filter(comm => comm.ata_id === ata.id)
-      return transformAtaFromDB({ ...ata, omnia_attachments: ataAttachments, omnia_comments: ataComments }, statuses)
+      return transformAtaFromDB(
+        { ...ata, omnia_attachments: ataAttachments, omnia_comments: ataComments },
+        statuses,
+        transcriptionByAtaId.get(ata.id),
+      )
     }) || []
   },
 
@@ -287,11 +318,24 @@ export const atasRepoSupabase = {
       .eq('ata_id', data.id)
 
     logger.debug('AtasRepo: Found ata:', data)
+    let transcriptionStatus: AtaTranscriptionStatus | undefined
+    try {
+      const { data: jobData } = await supabaseUntyped
+        .from('omnia_ata_transcription_jobs')
+        .select('status')
+        .eq('ata_id', data.id)
+        .eq('is_current', true)
+        .in('status', ['uploading', 'queued', 'processing'])
+        .maybeSingle()
+      transcriptionStatus = (jobData as { status?: AtaTranscriptionStatus } | null)?.status
+    } catch {
+      // indicador opcional: segue sem ele
+    }
     return transformAtaFromDB({
       ...data,
       omnia_attachments: attachmentsData || [],
       omnia_comments: commentsData || []
-    }, statuses)
+    }, statuses, transcriptionStatus)
   },
 
   async create(data: Omit<Ata, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Ata> {
@@ -427,7 +471,21 @@ export const atasRepoSupabase = {
 
     const statuses = statusesData?.map(transformStatusFromDB) || []
 
-    return transformAtaFromDB(updatedAta, statuses)
+    let transcriptionStatus: AtaTranscriptionStatus | undefined = data.transcriptionStatus
+    try {
+      const { data: jobData } = await supabaseUntyped
+        .from('omnia_ata_transcription_jobs')
+        .select('status')
+        .eq('ata_id', id)
+        .eq('is_current', true)
+        .in('status', ['uploading', 'queued', 'processing'])
+        .maybeSingle()
+      transcriptionStatus = (jobData as { status?: AtaTranscriptionStatus } | null)?.status ?? transcriptionStatus
+    } catch {
+      // indicador opcional: segue sem ele
+    }
+
+    return transformAtaFromDB(updatedAta, statuses, transcriptionStatus)
   },
 
   async remove(id: string): Promise<boolean> {
