@@ -41,7 +41,13 @@ jobs:
 
   performance:
     runs-on: ubuntu-latest
-    
+
+    # Mesmas credenciais de mentira do CI: sem sessão, o middleware não consulta
+    # o Supabase, e o Lighthouse mede a tela de login contra o build real.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -69,8 +75,13 @@ jobs:
     - name: Start server for Lighthouse
       run: |
         npm run start &
-        sleep 10
-        curl -f http://localhost:3000 || exit 1
+        # Espera o servidor responder em vez de apostar num sleep fixo.
+        for attempt in $(seq 1 30); do
+          curl -sf -o /dev/null http://localhost:3000/auth && exit 0
+          sleep 1
+        done
+        echo "Server did not come up in 30 s" >&2
+        exit 1
     
     - name: Run Lighthouse CI
       run: lhci autorun
