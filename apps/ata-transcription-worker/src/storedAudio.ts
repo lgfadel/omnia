@@ -24,8 +24,9 @@ export type ReplaceStoredAudioOptions = {
   compactPath: string
   /** Tamanho do objeto que está no bucket hoje; quando ausente, a troca não é comparada. */
   originalSizeBytes?: number
-  readCompacted: (path: string) => Promise<Uint8Array>
-  upload: (key: string, body: Uint8Array, contentType: string) => Promise<void>
+  sizeOf: (path: string) => Promise<number>
+  /** Recebe o caminho, não o conteúdo: o arquivo sobe do disco em streaming. */
+  upload: (key: string, path: string, sizeBytes: number, contentType: string) => Promise<void>
   remove: (key: string) => Promise<void>
   persist: (record: StoredAudioRecord) => Promise<void>
 }
@@ -58,16 +59,16 @@ export async function replaceStoredAudio(options: ReplaceStoredAudioOptions): Pr
     return { replaced: false, reason: 'already-compacted' }
   }
 
-  const body = await options.readCompacted(options.compactPath)
+  const sizeBytes = await options.sizeOf(options.compactPath)
 
   // Um áudio já curto e muito comprimido na origem pode sair maior do encoder do
   // que entrou. Trocar nesse caso gastaria banda para ocupar mais espaço.
-  if (typeof options.originalSizeBytes === 'number' && body.byteLength >= options.originalSizeBytes) {
+  if (typeof options.originalSizeBytes === 'number' && sizeBytes >= options.originalSizeBytes) {
     return { replaced: false, reason: 'not-smaller' }
   }
 
-  await options.upload(compactedKey, body, COMPACTED_MIME_TYPE)
-  await options.persist({ storagePath: compactedKey, sizeBytes: body.byteLength, mimeType: COMPACTED_MIME_TYPE })
+  await options.upload(compactedKey, options.compactPath, sizeBytes, COMPACTED_MIME_TYPE)
+  await options.persist({ storagePath: compactedKey, sizeBytes, mimeType: COMPACTED_MIME_TYPE })
 
   // Daqui em diante o job já aponta para o objeto compactado, então o original é
   // apenas lixo. Falhar ao removê-lo custa espaço, não corretude — e transformar
@@ -78,5 +79,5 @@ export async function replaceStoredAudio(options: ReplaceStoredAudioOptions): Pr
     })
   }
 
-  return { replaced: true, storagePath: compactedKey, sizeBytes: body.byteLength }
+  return { replaced: true, storagePath: compactedKey, sizeBytes }
 }

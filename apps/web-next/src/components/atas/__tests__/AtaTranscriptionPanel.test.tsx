@@ -8,6 +8,7 @@ vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({
     load: vi.fn().mockResolvedValue({ job: null, transcription: null }),
     upload: vi.fn(),
     retry: vi.fn(),
+    wake: vi.fn().mockResolvedValue(true),
     saveReview: vi.fn(),
     discard: vi.fn(),
     audioUrl: vi.fn().mockResolvedValue(null),
@@ -245,5 +246,56 @@ describe('AtaTranscriptionPanel · estado da revisão', () => {
 
     // O pior desfecho possível é o botão piscar e a revisão não existir.
     expect(await screen.findByText('Não foi possível salvar a revisão.')).toBeInTheDocument()
+  })
+})
+
+describe('AtaTranscriptionPanel · worker fora do ar', () => {
+  function queuedJob(ageMs: number) {
+    return {
+      job: {
+        id: 'job-1',
+        ataId: 'ata-1',
+        status: 'queued' as const,
+        originalFilename: 'assembleia.m4a',
+        attemptCount: 1,
+        createdAt: new Date(Date.now() - ageMs).toISOString(),
+        processedChunks: 0,
+      },
+      transcription: null,
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.audioUrl.mockResolvedValue(null)
+  })
+
+  it('warns that the recording is safe when nobody answers for a job stuck in the queue', async () => {
+    repo.load.mockResolvedValue(queuedJob(5 * 60_000))
+    repo.wake.mockResolvedValue(false)
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    expect(await screen.findByText('O serviço de transcrição está fora do ar')).toBeInTheDocument()
+    expect(screen.getByText(/não é preciso enviar de novo/)).toBeInTheDocument()
+    expect(repo.wake).toHaveBeenCalledWith('job-1')
+  })
+
+  it('stays quiet when the worker answers the wake', async () => {
+    repo.load.mockResolvedValue(queuedJob(5 * 60_000))
+    repo.wake.mockResolvedValue(true)
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    await waitFor(() => expect(repo.wake).toHaveBeenCalledWith('job-1'))
+    expect(screen.queryByText('O serviço de transcrição está fora do ar')).not.toBeInTheDocument()
+  })
+
+  // O upload acabou de acordar o worker; perguntar de novo no mesmo segundo só
+  // duplicaria a chamada.
+  it('does not check a job that has only just entered the queue', async () => {
+    repo.load.mockResolvedValue(queuedJob(5_000))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    await screen.findByText('assembleia.m4a')
+    expect(repo.wake).not.toHaveBeenCalled()
   })
 })

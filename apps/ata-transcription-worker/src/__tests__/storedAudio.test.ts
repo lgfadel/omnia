@@ -6,7 +6,7 @@ function harness(overrides: Partial<Parameters<typeof replaceStoredAudio>[0]> = 
   const options = {
     key: 'ata/job/Gravacao.wav',
     compactPath: '/tmp/work/audio.mp3',
-    readCompacted: vi.fn(async () => { calls.push('read'); return Buffer.from('compacted') }),
+    sizeOf: vi.fn(async () => { calls.push('size'); return 9 }),
     upload: vi.fn(async () => { calls.push('upload') }),
     remove: vi.fn(async () => { calls.push('remove') }),
     persist: vi.fn(async () => { calls.push('persist') }),
@@ -22,12 +22,21 @@ describe('replaceStoredAudio', () => {
     expect(calls.indexOf('upload')).toBeLessThan(calls.indexOf('remove'))
   })
 
+  // O Free do Railway limita o contêiner a 0,5 GB, dividido com o ffmpeg. Uma
+  // gravação de 6 h compactada passa de 170 MB; carregá-la inteira em memória
+  // para subir ao bucket é o que derrubaria o worker.
+  it('hands the upload the file path and size instead of the file contents', async () => {
+    const { options } = harness()
+    await replaceStoredAudio(options)
+    expect(options.upload).toHaveBeenCalledWith('ata/job/Gravacao.compacted.mp3', '/tmp/work/audio.mp3', 9, 'audio/mpeg')
+  })
+
   it('records the new key, size and mime type before the original is removed', async () => {
     const { calls, options } = harness()
     const result = await replaceStoredAudio(options)
     expect(options.persist).toHaveBeenCalledWith({
       storagePath: 'ata/job/Gravacao.compacted.mp3',
-      sizeBytes: Buffer.from('compacted').byteLength,
+      sizeBytes: 9,
       mimeType: 'audio/mpeg',
     })
     expect(calls.indexOf('persist')).toBeLessThan(calls.indexOf('remove'))
@@ -53,7 +62,7 @@ describe('replaceStoredAudio', () => {
   })
 
   it('does nothing when the compacted audio is not smaller than the original', async () => {
-    const { options } = harness({ readCompacted: vi.fn(async () => Buffer.alloc(2048)) })
+    const { options } = harness({ sizeOf: vi.fn(async () => 2048) })
     const result = await replaceStoredAudio({ ...options, originalSizeBytes: 1024 })
     expect(result).toMatchObject({ replaced: false })
     expect(options.upload).not.toHaveBeenCalled()

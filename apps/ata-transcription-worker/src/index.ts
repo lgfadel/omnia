@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -169,8 +169,8 @@ async function compactStoredAudio(
     key: job.storage_path,
     compactPath,
     originalSizeBytes: Number(job.size_bytes),
-    readCompacted: (path) => readFile(path),
-    upload: (key, body, contentType) => uploadR2Object(r2.client, r2.bucket, key, body, contentType),
+    sizeOf: async (path) => (await stat(path)).size,
+    upload: (key, path, sizeBytes, contentType) => uploadR2Object(r2.client, r2.bucket, key, path, sizeBytes, contentType),
     remove: (key) => deleteR2Object(r2.client, r2.bucket, key),
     persist: async (record) => {
       const { error } = await supabase

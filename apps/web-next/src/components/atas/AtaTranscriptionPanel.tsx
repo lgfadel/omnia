@@ -22,6 +22,12 @@ interface AtaTranscriptionPanelProps {
 
 const activeStatuses = new Set<TranscriptionStatus>(['uploading', 'queued', 'processing'])
 
+// O upload e a nova tentativa já acordam o worker. Só um job que continua na fila
+// depois disso merece nova chamada, e uma por minuto basta: o painel atualiza a
+// cada 7,5 s, e acordar o worker nesse ritmo seria só ruído.
+const WAKE_GRACE_MS = 60_000
+const WAKE_INTERVAL_MS = 60_000
+
 function readAudioDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
@@ -67,6 +73,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
   const [convocacao, setConvocacao] = useState<ConvocacaoContext | null>(null)
   const [isReadingConvocacao, setIsReadingConvocacao] = useState(false)
+  const [workerUnavailable, setWorkerUnavailable] = useState(false)
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
   const transcriptionId = transcription?.id
   const isReviewed = Boolean(transcription?.isReviewed)
@@ -94,6 +101,29 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     const interval = window.setInterval(() => void refresh(), 7_500)
     return () => window.clearInterval(interval)
   }, [isJobActive, refresh])
+
+  // Sem isto, um worker fora do ar deixa a tela em "Na fila" para sempre, sem
+  // erro nenhum — foi assim que o trial expirado do Railway passou despercebido.
+  const queuedJobId = job?.status === 'queued' ? job.id : null
+  const queuedSince = job?.status === 'queued' ? job.createdAt : null
+  useEffect(() => {
+    if (!queuedJobId || !queuedSince) {
+      setWorkerUnavailable(false)
+      return
+    }
+    let cancelled = false
+    const check = async () => {
+      if (Date.now() - Date.parse(queuedSince) < WAKE_GRACE_MS) return
+      const available = await ataTranscriptionsRepoSupabase.wake(queuedJobId)
+      if (!cancelled) setWorkerUnavailable(!available)
+    }
+    void check()
+    const interval = window.setInterval(() => void check(), WAKE_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [queuedJobId, queuedSince])
 
   // A URL assinada é buscada uma vez por transcrição, e não a cada refresh: o
   // painel repete o load a cada 7,5 s enquanto há trabalho ativo.
@@ -128,8 +158,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         createdAt: new Date().toISOString(),
         processedChunks: 0,
       })
-      await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
+      const { workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
       await refresh()
+      setWorkerUnavailable(!workerAvailable)
     } catch (uploadError) {
       // refresh() zera o erro ao carregar com sucesso, então a mensagem precisa
       // ser definida depois dele — caso contrário a falha some da tela.
@@ -181,8 +212,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     if (!job) return
     setError(null)
     try {
-      await ataTranscriptionsRepoSupabase.retry(job.id)
+      const { workerAvailable } = await ataTranscriptionsRepoSupabase.retry(job.id)
       await refresh()
+      setWorkerUnavailable(!workerAvailable)
     } catch {
       setError('Não foi possível reenfileirar a transcrição.')
     }
@@ -350,6 +382,15 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
                   </>
                 )
               })()}
+              {job.status === 'queued' && workerUnavailable && (
+                <Alert className="border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 [&>svg]:text-amber-600">
+                  <TriangleAlert className="h-4 w-4" />
+                  <AlertTitle>O serviço de transcrição está fora do ar</AlertTitle>
+                  <AlertDescription>
+                    A gravação foi recebida e está guardada. A transcrição começa sozinha quando o serviço voltar — não é preciso enviar de novo. Avise o administrador do Omnia.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
 

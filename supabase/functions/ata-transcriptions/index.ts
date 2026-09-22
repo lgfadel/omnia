@@ -46,12 +46,12 @@ const ACCEPTED_MIME_TYPES = new Set([
   'audio/ogg', 'audio/opus',
 ])
 
-type Action = 'create' | 'complete' | 'retry' | 'cancel' | 'discard' | 'audio'
+type Action = 'create' | 'complete' | 'retry' | 'cancel' | 'discard' | 'audio' | 'wake'
 type TeamProfile = { id: string; roles: string[] | null }
 type AtaAccess = { responsible_id: string | null }
 
 function isAction(value: unknown): value is Action {
-  return value === 'create' || value === 'complete' || value === 'retry' || value === 'cancel' || value === 'discard' || value === 'audio'
+  return value === 'create' || value === 'complete' || value === 'retry' || value === 'cancel' || value === 'discard' || value === 'audio' || value === 'wake'
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -74,21 +74,36 @@ function jsonWithCors(body: unknown, status: number, corsHeaders: Record<string,
 // exato momento em que há trabalho. A falha do aviso não pode derrubar a
 // requisição do usuário — o áudio já está no Storage e o job já está enfileirado,
 // então o pior caso é atraso, não perda.
-async function wakeWorker(): Promise<void> {
+//
+// O que não pode é o atraso ser silencioso. Quando o Railway tira o serviço do ar
+// (trial expirado, crédito do mês esgotado), o endereço passa a responder 404
+// "Application not found" e o job fica em "Na fila" para sempre, sem erro na
+// tela. Por isso a função devolve se alcançou o worker, e o painel avisa.
+//
+// Só conta como fora do ar o que é definitivo: resposta de erro ou falha de rede.
+// Estourar o tempo é o caso normal de um serviço que o Railway está acordando, e
+// alarmar nele assustaria quem acabou de enviar uma gravação saudável.
+const WAKE_TIMEOUT_MS = 20_000
+
+async function wakeWorker(): Promise<boolean> {
   const url = Deno.env.get('TRANSCRIPTION_WORKER_URL')
   const secret = Deno.env.get('WORKER_WAKE_SECRET')
   if (!url || !secret) {
     console.error('Worker wake is not configured; the job will wait for the next wake')
-    return
+    return false
   }
   try {
     const response = await fetch(`${url}/wake`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(WAKE_TIMEOUT_MS),
     })
     if (!response.ok) console.error('Worker wake returned', response.status)
+    return response.ok
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') return true
     console.error('Unable to wake the transcription worker', error)
+    return false
   }
 }
 
@@ -148,10 +163,8 @@ Deno.serve(async (req: Request) => {
         console.error('Unable to load ata transcription', jobError ?? transcriptionError)
         return json({ error: 'Não foi possível carregar a transcrição.' }, 500)
       }
-      // Rede de segurança: se o aviso anterior se perdeu, o job ficaria em `queued`
-      // para sempre e a tela mostraria "Na fila" sem erro nenhum. O painel consulta
-      // este endpoint a cada 7,5 s enquanto há trabalho ativo, então é aqui que a
-      // tentativa perdida se recupera sozinha.
+      // Rede de segurança para quem ler por aqui. O painel não usa este endpoint —
+      // lê as tabelas direto e insiste pela ação `wake` enquanto o job espera.
       if (job?.status === 'queued' && Date.parse(job.created_at) < Date.now() - 60_000) {
         await wakeWorker()
       }
@@ -295,8 +308,15 @@ Deno.serve(async (req: Request) => {
       }
       const { error } = await admin.from('omnia_ata_transcription_jobs').update({ status: 'queued', error_message: null }).eq('id', job.id)
       if (error) return json({ error: 'Não foi possível enfileirar a transcrição.' }, 500)
-      await wakeWorker()
-      return json({ status: 'queued' })
+      return json({ status: 'queued', workerAvailable: await wakeWorker() })
+    }
+
+    if (payload.action === 'wake') {
+      // Substitui a rede de segurança do GET, que o painel nunca chamou: enquanto
+      // o job espera na fila, o painel insiste por aqui e fica sabendo se há
+      // alguém do outro lado para processá-lo.
+      if (job.status !== 'queued') return json({ workerAvailable: true })
+      return json({ workerAvailable: await wakeWorker() })
     }
 
     if (payload.action === 'cancel') {
@@ -375,8 +395,7 @@ Deno.serve(async (req: Request) => {
       processed_chunks: 0,
     }).eq('id', job.id)
     if (error) return json({ error: 'Não foi possível reenfileirar a transcrição.' }, 500)
-    await wakeWorker()
-    return json({ status: 'queued' })
+    return json({ status: 'queued', workerAvailable: await wakeWorker() })
   } catch (error) {
     console.error('Unhandled ata-transcriptions failure', error)
     return json({ error: 'Falha inesperada ao processar a solicitação.' }, 500)

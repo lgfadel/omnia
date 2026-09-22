@@ -1,3 +1,4 @@
+import { createReadStream } from 'node:fs'
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 type Environment = Record<string, string | undefined>
@@ -27,8 +28,11 @@ export async function downloadR2Audio(client: S3Client, bucket: string, key: str
   return (result.Body as { transformToWebStream(): ReadableStream }).transformToWebStream()
 }
 
-export async function uploadR2Object(client: S3Client, bucket: string, key: string, body: Uint8Array, contentType: string) {
-  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }))
+// O Free do Railway dá 0,5 GB ao contêiner inteiro, ffmpeg incluído. O arquivo
+// sobe do disco em streaming; o tamanho é declarado porque, sem ele, o SDK
+// precisaria ler o stream inteiro para descobri-lo antes de enviar.
+export async function uploadR2Object(client: S3Client, bucket: string, key: string, path: string, sizeBytes: number, contentType: string) {
+  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: createReadStream(path), ContentLength: sizeBytes, ContentType: contentType }))
 }
 
 export async function deleteR2Object(client: S3Client, bucket: string, key: string) {

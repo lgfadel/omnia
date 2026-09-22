@@ -1,3 +1,7 @@
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Readable } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { deleteR2Object, getR2Config, uploadR2Object } from '../r2.js'
 
@@ -22,13 +26,15 @@ describe('getR2Config', () => {
 })
 
 describe('uploadR2Object', () => {
-  it('stores the body under the requested key with its content type', async () => {
+  it('streams the file from disk with its declared length and content type', async () => {
     const { client, sent } = fakeClient()
-    const body = Buffer.from('audio')
+    const path = join(await mkdtemp(join(tmpdir(), 'r2-test-')), 'file.mp3')
+    await writeFile(path, 'audio')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await uploadR2Object(client as any, 'audio', 'ata/job/file.mp3', body, 'audio/mpeg')
+    await uploadR2Object(client as any, 'audio', 'ata/job/file.mp3', path, 5, 'audio/mpeg')
     expect(sent).toHaveLength(1)
-    expect(sent[0]).toMatchObject({ Bucket: 'audio', Key: 'ata/job/file.mp3', Body: body, ContentType: 'audio/mpeg' })
+    expect(sent[0]).toMatchObject({ Bucket: 'audio', Key: 'ata/job/file.mp3', ContentLength: 5, ContentType: 'audio/mpeg' })
+    expect(sent[0].Body).toBeInstanceOf(Readable)
   })
 })
 
