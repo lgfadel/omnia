@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 type Environment = Record<string, string | undefined>
 
@@ -25,4 +25,12 @@ export async function downloadR2Audio(client: S3Client, bucket: string, key: str
   const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
   if (!result.Body || typeof (result.Body as { transformToWebStream?: unknown }).transformToWebStream !== 'function') throw new Error('R2 audio object was not found.')
   return (result.Body as { transformToWebStream(): ReadableStream }).transformToWebStream()
+}
+
+export async function uploadR2Object(client: S3Client, bucket: string, key: string, body: Uint8Array, contentType: string) {
+  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }))
+}
+
+export async function deleteR2Object(client: S3Client, bucket: string, key: string) {
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
 }

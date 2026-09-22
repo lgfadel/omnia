@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -10,7 +10,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { loadAtaContext } from './ataContext.js'
 import { buildCarryOver, mergeTranscribedChunks } from './transcript.js'
-import { createR2Client, downloadR2Audio } from './r2.js'
+import { createR2Client, deleteR2Object, downloadR2Audio, uploadR2Object } from './r2.js'
+import { replaceStoredAudio } from './storedAudio.js'
 
 // Medido em 19/08/2026: um bloco de 20 minutos leva ~635 s para retornar. Isso
 // estoura dois limites padrão de uma vez — o headersTimeout de 300 s do undici,
@@ -56,6 +57,8 @@ interface TranscriptionJob {
   ata_id: string
   storage_path: string
   storage_provider: 'supabase' | 'r2'
+  size_bytes: number
+  mime_type: string
   status: 'queued' | 'processing' | 'completed' | 'failed'
   attempt_count: number
   context_text: string | null
@@ -133,16 +136,54 @@ function readAudioDuration(inputPath: string): Promise<number> {
   })
 }
 
-async function splitAudio(inputPath: string, workspace: string): Promise<string[]> {
+// O mesmo ffmpeg escreve dois destinos a partir de uma única decodificação e de
+// um único passe de filtros: os blocos que vão para o modelo e uma cópia
+// contínua que substitui o original no bucket. Rodar um segundo comando sobre o
+// mesmo arquivo custaria outra decodificação inteira — de até 1 GB — sem produzir
+// nada diferente, já que os dois destinos querem exatamente o mesmo áudio.
+async function splitAudio(inputPath: string, workspace: string): Promise<{ chunks: string[]; compactPath: string }> {
   const outputPattern = join(workspace, 'chunk-%03d.mp3')
+  const compactPath = join(workspace, 'compacted.mp3')
   await run('ffmpeg', [
     '-y', '-i', inputPath, '-vn', '-ac', '1', '-ar', '16000', '-af', AUDIO_FILTERS, '-b:a', '64k',
     '-f', 'segment', '-segment_time', String(CHUNK_SECONDS), '-reset_timestamps', '1', outputPattern,
+    '-vn', '-ac', '1', '-ar', '16000', '-af', AUDIO_FILTERS, '-b:a', '64k', compactPath,
   ])
-  return (await readdir(workspace))
+  const chunks = (await readdir(workspace))
     .filter((file) => file.startsWith('chunk-') && file.endsWith('.mp3'))
     .sort()
     .map((file) => join(workspace, file))
+  return { chunks, compactPath }
+}
+
+// Troca o objeto guardado no R2 pela versão compactada que o ffmpeg já produziu.
+// A lógica de ordem e de segurança contra falha parcial vive em `replaceStoredAudio`;
+// aqui ficam apenas as ligações com o disco, o bucket e o banco.
+async function compactStoredAudio(
+  job: TranscriptionJob,
+  compactPath: string,
+  supabase: AdminClient,
+  r2: ReturnType<typeof createR2Client>,
+): Promise<void> {
+  const result = await replaceStoredAudio({
+    key: job.storage_path,
+    compactPath,
+    originalSizeBytes: Number(job.size_bytes),
+    readCompacted: (path) => readFile(path),
+    upload: (key, body, contentType) => uploadR2Object(r2.client, r2.bucket, key, body, contentType),
+    remove: (key) => deleteR2Object(r2.client, r2.bucket, key),
+    persist: async (record) => {
+      const { error } = await supabase
+        .from('omnia_ata_transcription_jobs')
+        .update({ storage_path: record.storagePath, size_bytes: record.sizeBytes, mime_type: record.mimeType })
+        .eq('id', job.id)
+      if (error) throw error
+    },
+  })
+
+  if (result.replaced) {
+    console.log(`Compacted stored audio for job ${job.id}: ${job.size_bytes} -> ${result.sizeBytes} bytes`)
+  }
 }
 
 async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | null> {
@@ -156,7 +197,7 @@ async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | n
 
   const { data: candidate, error: candidateError } = await supabase
     .from('omnia_ata_transcription_jobs')
-    .select('id, ata_id, storage_path, storage_provider, status, attempt_count')
+    .select('id, ata_id, storage_path, storage_provider, size_bytes, mime_type, status, attempt_count')
     .eq('status', 'queued')
     .order('created_at', { ascending: true })
     .limit(1)
@@ -169,7 +210,7 @@ async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | n
     .update({ status: 'processing', started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
     .eq('id', candidate.id)
     .eq('status', 'queued')
-    .select('id, ata_id, storage_path, storage_provider, status, attempt_count, context_text')
+    .select('id, ata_id, storage_path, storage_provider, size_bytes, mime_type, status, attempt_count, context_text')
     .maybeSingle()
   if (claimError) throw claimError
   return claimed as TranscriptionJob | null
@@ -201,7 +242,7 @@ async function processJob(
     const durationSeconds = await readAudioDuration(inputPath)
     if (durationSeconds > MAX_DURATION_SECONDS) throw new Error('Audio exceeds the maximum duration.')
     await supabase.from('omnia_ata_transcription_jobs').update({ stage: 'splitting' }).eq('id', job.id)
-    const chunks = await splitAudio(inputPath, workspace)
+    const { chunks, compactPath } = await splitAudio(inputPath, workspace)
     if (chunks.length === 0) throw new Error('The audio could not be split into processable chunks.')
     await supabase.from('omnia_ata_transcription_jobs')
       .update({ stage: 'transcribing', total_chunks: chunks.length })
@@ -267,9 +308,19 @@ async function processJob(
     if (deleteSegmentsError) throw deleteSegmentsError
 
     // O áudio fica retido para permitir reprocessar a mesma gravação com outro
-    // modelo ou outro contexto, sem pedir o arquivo de novo a quem revisa. A
-    // limpeza acontece quando a transcrição deixa de ser a atual da ata —
-    // substituída ou descartada —, o que mantém no bucket um arquivo por ata.
+    // modelo ou outro contexto, sem pedir o arquivo de novo a quem revisa. O que
+    // fica, porém, é a versão compactada — a mesma que o modelo acabou de ouvir —,
+    // e não o arquivo que saiu do navegador. A limpeza definitiva continua
+    // acontecendo quando a transcrição deixa de ser a atual da ata, substituída
+    // ou descartada, o que mantém no bucket um arquivo por ata.
+    //
+    // Uma falha aqui não invalida a transcrição, que é o produto: o job segue para
+    // `completed` apontando para o áudio que ainda estiver no bucket.
+    if (job.storage_provider === 'r2') {
+      await compactStoredAudio(job, compactPath, supabase, r2).catch((error) => {
+        console.error(`Unable to compact stored audio for job ${job.id}`, error)
+      })
+    }
 
     const { error: completeError } = await supabase
       .from('omnia_ata_transcription_jobs')
