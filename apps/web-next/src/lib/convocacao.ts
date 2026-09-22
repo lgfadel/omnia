@@ -152,8 +152,11 @@ export async function readConvocacao(file: File): Promise<ConvocacaoContext> {
   const pdfjs = await import('pdfjs-dist')
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
-  const document = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
+  // Quem libera o worker é a tarefa de carregamento, não o documento: o
+  // pdfjs 6 tirou o destroy() do PDFDocumentProxy.
+  const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
   try {
+    const document = await loadingTask.promise
     const pages: string[] = []
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
@@ -170,6 +173,6 @@ export async function readConvocacao(file: File): Promise<ConvocacaoContext> {
     }
     return parseConvocacao(pages.join('\n'), document.numPages)
   } finally {
-    await document.destroy()
+    await loadingTask.destroy()
   }
 }
