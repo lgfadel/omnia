@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Navegação e CRUD', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080', { waitUntil: 'domcontentloaded' })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
   })
 
   test('deve permitir navegação entre páginas', async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Navegação e CRUD', () => {
   test('deve ter performance adequada', async ({ page }) => {
     const startTime = Date.now()
     
-    await page.goto('http://localhost:8080', { waitUntil: 'domcontentloaded' })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
     
     const loadTime = Date.now() - startTime
     

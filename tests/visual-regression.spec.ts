@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Visual Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080', { waitUntil: 'domcontentloaded' })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
     // Aguarda um pouco para garantir que todos os elementos carregaram
     await page.waitForTimeout(2000)
   })

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Permissões e Controle de Acesso', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080', { waitUntil: 'domcontentloaded' })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
   })
 
   test('deve carregar a aplicação sem erros de segurança', async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe('Permissões e Controle de Acesso', () => {
   })
 
   test('deve ter headers de segurança apropriados', async ({ page }) => {
-    const response = await page.goto('http://localhost:8080')
+    const response = await page.goto('/')
     
     // Verifica se a resposta foi bem-sucedida
     expect(response?.status()).toBeLessThan(400)
