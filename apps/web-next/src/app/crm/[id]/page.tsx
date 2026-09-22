@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import { TarefasOportunidade } from '@/components/TarefasOportunidade';
 import { useCrmLeadsStore } from '@/stores/crmLeads.store';
 import { CrmLead } from '@/repositories/crmLeadsRepo.supabase';
 import { toast } from '@/hooks/use-toast'
-import { logger } from '@/lib/logging';
 
 // Função para formatar telefone
 const formatPhone = (value: string) => {
@@ -52,46 +51,35 @@ export default function CrmLeadDetail() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const router = useRouter();
-  const { leads, fetchLeads, loading } = useCrmLeadsStore();
-  const [lead, setLead] = useState<CrmLead | null>(null);
+  const { leads, fetchLeadById } = useCrmLeadsStore();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [fetched, setFetched] = useState<{ id: string; lead: CrmLead } | null>(null);
 
-  const loadLead = useCallback(async () => {
-    if (!id) return;
-    
-    try {
-      const existingLead = leads.find(l => l.id === id);
-      if (existingLead) {
-        setLead(existingLead);
-      } else {
-        await fetchLeads();
-        const updatedLead = leads.find(l => l.id === id);
-        if (updatedLead) {
-          setLead(updatedLead);
-        } else {
-          toast({
-            title: 'Erro',
-            description: 'Lead não encontrado',
-            variant: 'destructive',
-          })
-          router.push('/crm');
-        }
-      }
-    } catch (error) {
-      logger.error(`Erro ao carregar lead: ${error}`);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar lead',
-        variant: 'destructive',
-      })
-    }
-  }, [id, leads, fetchLeads, router]);
+  // O que a lista já trouxe aparece na hora; a versão do banco substitui assim
+  // que chega. A busca é pelo id, e não pela lista: a lista aplica os filtros da
+  // tela de CRM, e um lead fora deles caía em "não encontrado" ao abrir o link.
+  const lead = (fetched?.id === id ? fetched.lead : null) ?? leads.find((l) => l.id === id) ?? null;
 
   useEffect(() => {
-    if (id) {
-      loadLead();
-    }
-  }, [id, refreshKey, loadLead]);
+    if (!id) return;
+    let cancelled = false;
+    fetchLeadById(id).then((found) => {
+      if (cancelled) return;
+      if (found) {
+        setFetched({ id, lead: found });
+        return;
+      }
+      toast({
+        title: 'Erro',
+        description: 'Lead não encontrado',
+        variant: 'destructive',
+      });
+      router.push('/crm');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, refreshKey, fetchLeadById, router]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -119,7 +107,7 @@ export default function CrmLeadDetail() {
     });
   };
 
-  if (loading || !lead) {
+  if (!lead) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">

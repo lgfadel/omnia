@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,21 +35,20 @@ export function AdmissaoStatusForm({
   onSubmit, 
   isLoading 
 }: AdmissaoStatusFormProps) {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(DEFAULT_COLORS[0]);
-  const [isDefault, setIsDefault] = useState(false);
+  const [name, setName] = useState(status?.name ?? '');
+  const [color, setColor] = useState(status?.color ?? DEFAULT_COLORS[0]);
+  const [isDefault, setIsDefault] = useState(status?.isDefault ?? false);
+  const [syncedWith, setSyncedWith] = useState({ status, open });
 
-  useEffect(() => {
-    if (status) {
-      setName(status.name);
-      setColor(status.color);
-      setIsDefault(status.isDefault || false);
-    } else {
-      setName('');
-      setColor(DEFAULT_COLORS[0]);
-      setIsDefault(false);
-    }
-  }, [status, open]);
+  // Abrir o diálogo ou trocar o status editado recarrega o formulário. Feito
+  // durante o render, e não num efeito, o formulário nunca pinta um quadro com
+  // os valores do status anterior.
+  if (syncedWith.status !== status || syncedWith.open !== open) {
+    setSyncedWith({ status, open });
+    setName(status?.name ?? '');
+    setColor(status?.color ?? DEFAULT_COLORS[0]);
+    setIsDefault(status?.isDefault ?? false);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

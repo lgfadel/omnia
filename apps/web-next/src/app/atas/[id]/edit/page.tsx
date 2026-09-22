@@ -6,7 +6,7 @@ import { AtaForm } from "@/components/atas/AtaForm"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
 import { useAtasStore } from "@/stores/atas.store"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { Ata } from "@/data/types"
 
 // Type for AtaForm data
@@ -28,24 +28,23 @@ const AtaEdit = () => {
   const router = useRouter()
   const { getAtaById, updateAta, loadStatuses, loading } = useAtasStore()
   
-  const [ata, setAta] = useState<Ata | null>(null)
-  const [loadingAta, setLoadingAta] = useState(true)
-
-  const loadAta = useCallback(async () => {
-    if (!id) return
-    
-    setLoadingAta(true)
-    const ataData = await getAtaById(id)
-    setAta(ataData)
-    setLoadingAta(false)
-  }, [id, getAtaById])
+  // A ata carregada guarda o id de onde veio: enquanto ele não bate com o da
+  // rota, a página está carregando — inclusive ao trocar de ata sem remontar.
+  const [loaded, setLoaded] = useState<{ id: string; ata: Ata | null } | null>(null)
+  const ata = loaded?.id === id ? loaded.ata : null
+  const loadingAta = loaded?.id !== id
 
   useEffect(() => {
     loadStatuses()
-    if (id) {
-      loadAta()
+    if (!id) return
+    let cancelled = false
+    getAtaById(id).then((ataData) => {
+      if (!cancelled) setLoaded({ id, ata: ataData })
+    })
+    return () => {
+      cancelled = true
     }
-  }, [id, loadStatuses, loadAta])
+  }, [id, loadStatuses, getAtaById])
 
   const handleSubmit = async (data: Omit<AtaFormData, 'tags'> & { tags: string[] }) => {
     if (!id) return

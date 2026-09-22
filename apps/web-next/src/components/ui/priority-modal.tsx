@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -30,18 +30,19 @@ export function PriorityModal({
   currentPriority, 
   taskTitle 
 }: PriorityModalProps) {
-  const [selectedPriority, setSelectedPriority] = useState<TarefaPrioridade>('NORMAL')
+  const [selectedPriority, setSelectedPriority] = useState<TarefaPrioridade>(currentPriority ?? 'NORMAL')
+  const [syncedWith, setSyncedWith] = useState({ isOpen, currentPriority })
 
   // Hook para fechar modal com ESC
   useEscapeKey(onClose, isOpen)
 
-  useEffect(() => {
-    if (isOpen && currentPriority) {
-      setSelectedPriority(currentPriority)
-    } else if (isOpen) {
-      setSelectedPriority('NORMAL')
-    }
-  }, [isOpen, currentPriority])
+  // Abrir o modal (ou trocar a tarefa com ele aberto) volta a seleção para a
+  // prioridade atual. Feito durante o render, o modal não pinta um quadro com a
+  // escolha da tarefa anterior.
+  if (syncedWith.isOpen !== isOpen || syncedWith.currentPriority !== currentPriority) {
+    setSyncedWith({ isOpen, currentPriority })
+    if (isOpen) setSelectedPriority(currentPriority ?? 'NORMAL')
+  }
 
   const handleSave = () => {
     onSave(selectedPriority)

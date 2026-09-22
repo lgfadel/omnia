@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from '@/lib/logging'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Filter, ChevronDown, User, Lock, Check } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -71,7 +71,6 @@ export default function Tickets() {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [filteredTickets, setFilteredTickets] = useState<Tarefa[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   
@@ -179,7 +178,9 @@ export default function Tickets() {
   }, [loadTarefas]);
 
   // Filter tasks based on search, status, and "my tasks" filter
-  useEffect(() => {
+  // Derivada dos filtros a cada render: guardada em estado e copiada num efeito,
+  // a lista pintava um quadro vazio antes de cada atualização.
+  const filteredTickets = useMemo<Tarefa[]>(() => {
     let filtered = tarefas;
 
     if (showOnlyMyTasks && userProfile) {
@@ -220,7 +221,7 @@ export default function Tickets() {
       );
     }
 
-    setFilteredTickets(filtered);
+    return filtered;
   }, [tarefas, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, selectedTagFilter, statuses]);
 
   const handleView = (id: string | number) => {

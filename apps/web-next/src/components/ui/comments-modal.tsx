@@ -41,11 +41,23 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
     }
   }, [ticketId, contextType]);
 
+  // A busca mora no próprio efeito para poder ser cancelada: trocar de ticket com
+  // o modal aberto não pode deixar a resposta do anterior sobrescrever a contagem.
   useEffect(() => {
-    if (isOpen && ticketId) {
-      loadCommentsCount();
-    }
-  }, [isOpen, ticketId, refreshKey, loadCommentsCount]);
+    if (!isOpen || !ticketId) return;
+    let cancelled = false;
+    const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
+    repo.list(ticketId)
+      .then((comments) => {
+        if (!cancelled) setCommentsCount(comments.length);
+      })
+      .catch((error) => {
+        logger.error('Erro ao carregar contagem de comentários:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, ticketId, contextType, refreshKey]);
 
   const handleCommentsChange = async () => {
     setRefreshKey(prev => prev + 1);

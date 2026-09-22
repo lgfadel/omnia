@@ -19,18 +19,24 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
     userProfile.roles.includes(role)
   )
 
-  useEffect(() => {
-    if (loading || (!user && !userProfile)) {
-      // Show timeout message after 7 seconds of loading
-      const timeoutId = setTimeout(() => {
-        setShowTimeout(true)
-      }, 7000)
+  const isWaiting = loading || (!user && !userProfile)
+  const [wasWaiting, setWasWaiting] = useState(isWaiting)
 
-      return () => clearTimeout(timeoutId)
-    } else {
-      setShowTimeout(false)
-    }
-  }, [loading, user, userProfile])
+  // O aviso de demora vale para uma espera só: zerá-lo na mudança, durante o
+  // render, evita que uma espera lenta deixe a próxima começar já com o aviso.
+  if (isWaiting !== wasWaiting) {
+    setWasWaiting(isWaiting)
+    if (!isWaiting) setShowTimeout(false)
+  }
+
+  useEffect(() => {
+    if (!isWaiting) return
+    // Show timeout message after 7 seconds of loading
+    const timeoutId = setTimeout(() => {
+      setShowTimeout(true)
+    }, 7000)
+    return () => clearTimeout(timeoutId)
+  }, [isWaiting, loading, user, userProfile])
 
   // Redirect to auth if no user session
   useEffect(() => {

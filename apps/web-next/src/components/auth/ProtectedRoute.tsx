@@ -131,18 +131,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [showTimeout, setShowTimeout] = useState(false)
+  const [wasLoading, setWasLoading] = useState(loading)
+
+  // O aviso de demora vale para um carregamento só. Zerá-lo aqui, na mudança de
+  // `loading`, e não num efeito, evita um render extra — e evita que um
+  // carregamento lento deixe o próximo começar já exibindo o aviso.
+  if (loading !== wasLoading) {
+    setWasLoading(loading)
+    if (!loading) setShowTimeout(false)
+  }
 
   useEffect(() => {
-    if (loading) {
-      // Show timeout message after 7 seconds of loading
-      const timeoutId = setTimeout(() => {
-        setShowTimeout(true)
-      }, 7000)
-
-      return () => clearTimeout(timeoutId)
-    } else {
-      setShowTimeout(false)
-    }
+    if (!loading) return
+    // Show timeout message after 7 seconds of loading
+    const timeoutId = setTimeout(() => {
+      setShowTimeout(true)
+    }, 7000)
+    return () => clearTimeout(timeoutId)
   }, [loading])
 
   // Redirect to auth if no user session

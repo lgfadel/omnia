@@ -49,13 +49,30 @@ const AtaDetail = () => {
     setLoading(false)
   }, [id, getAtaById])
 
+  // Trocar de ata sem remontar a página volta a mostrar o carregamento.
+  const [loadingFor, setLoadingFor] = useState(id)
+  if (loadingFor !== id) {
+    setLoadingFor(id)
+    setLoading(true)
+  }
+
+  // A carga inicial mora no efeito para poder ser cancelada: a resposta de uma
+  // ata anterior não pode sobrescrever a atual. As ações da página recarregam
+  // pelo loadAta.
   useEffect(() => {
     loadStatuses()
     loadTags()
-    if (id) {
-      loadAta()
+    if (!id) return
+    let cancelled = false
+    getAtaById(id).then((ataData) => {
+      if (cancelled) return
+      setAta(ataData)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
     }
-  }, [id, loadStatuses, loadTags, loadAta])
+  }, [id, loadStatuses, loadTags, getAtaById])
 
   const handleAddComment = async (body: string, attachments?: Attachment[]) => {
     if (!id) return

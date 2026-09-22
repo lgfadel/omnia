@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from '@/lib/logging'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Check, Lock, User } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,6 @@ export default function RescissoesPage() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
-  const [filteredRescisoes, setFilteredRescisoes] = useState<Rescisao[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   
@@ -148,7 +147,9 @@ export default function RescissoesPage() {
     };
   }, [loadRescisoes]);
 
-  useEffect(() => {
+  // Derivada dos filtros a cada render: guardada em estado e copiada num efeito,
+  // a lista pintava um quadro vazio antes de cada atualização.
+  const filteredRescisoes = useMemo<Rescisao[]>(() => {
     let filtered = rescisoes;
 
     if (showOnlyMyTasks && userProfile) {
@@ -189,7 +190,7 @@ export default function RescissoesPage() {
       );
     }
 
-    setFilteredRescisoes(filtered);
+    return filtered;
   }, [rescisoes, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, selectedTagFilter, statuses]);
 
   const handleView = (id: string | number) => {

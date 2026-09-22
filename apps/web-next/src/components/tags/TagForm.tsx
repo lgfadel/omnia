@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,8 +29,10 @@ interface TagFormProps {
 }
 
 export function TagForm({ tag, onSubmit, onCancel, loading }: TagFormProps) {
-  const [generatedColor, setGeneratedColor] = useState(tag?.color || '');
   const { tags } = useTagsStore();
+  // Tag nova recebe uma cor fora das já usadas, sorteada uma vez só: o
+  // inicializador lazy roda no primeiro render e nunca mais.
+  const [generatedColor] = useState(() => tag?.color || generateUniqueTagColor(tags.map(t => t.color)));
 
   const {
     register,
@@ -43,17 +45,6 @@ export function TagForm({ tag, onSubmit, onCancel, loading }: TagFormProps) {
       name: tag?.name || "",
     }
   });
-
-  // Gerar cor automática apenas para novas tags (não para edição)
-  useEffect(() => {
-    if (!tag && !generatedColor) {
-      logger.debug('🎨 TagForm: Generating automatic color for new tag...');
-      const usedColors = tags.map(t => t.color);
-      const newColor = generateUniqueTagColor(usedColors);
-      logger.debug('🎨 TagForm: Generated color:', newColor);
-      setGeneratedColor(newColor);
-    }
-  }, [tag, generatedColor, tags]);
 
   const onFormSubmit = (data: TagFormData) => {
     logger.debug('📝 TagForm: Submitting with data:', { data, color: generatedColor });

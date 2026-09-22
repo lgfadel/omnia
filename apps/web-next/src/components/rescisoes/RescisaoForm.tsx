@@ -55,12 +55,9 @@ export function RescisaoForm({ rescisao, mode }: RescisaoFormProps) {
     if (secretarios.length === 0) loadSecretarios();
   }, [statuses.length, secretarios.length, loadStatuses, loadSecretarios]);
 
-  useEffect(() => {
-    if (!statusId && statuses.length > 0) {
-      const defaultStatus = statuses.find(s => s.isDefault);
-      if (defaultStatus) setStatusId(defaultStatus.id);
-    }
-  }, [statuses, statusId]);
+  // Sem escolha explícita, vale o status padrão. Derivado a cada render, e não
+  // copiado num efeito, ele acompanha os status assim que terminam de carregar.
+  const effectiveStatusId = statusId || statuses.find(s => s.isDefault)?.id || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +67,7 @@ export function RescisaoForm({ rescisao, mode }: RescisaoFormProps) {
       return;
     }
 
-    if (!statusId) {
+    if (!effectiveStatusId) {
       toast({ title: 'Erro', description: 'Selecione um status', variant: 'destructive' });
       return;
     }
@@ -86,7 +83,7 @@ export function RescisaoForm({ rescisao, mode }: RescisaoFormProps) {
         priority,
         dueDate,
         ticketOcta: ticketOcta.trim() || undefined,
-        statusId,
+        statusId: effectiveStatusId,
         assignedTo: assignedTo ? {
           id: assignedTo.id,
           name: assignedTo.name,
@@ -150,7 +147,7 @@ export function RescisaoForm({ rescisao, mode }: RescisaoFormProps) {
             <div className="space-y-2">
               <Label>Status *</Label>
               <RescisaoStatusSelect
-                value={statusId}
+                value={effectiveStatusId}
                 onChange={setStatusId}
               />
             </div>

@@ -85,7 +85,7 @@ function buildPositionedCloudItems(
   const radiusY = dimensions.height * 0.28
 
   items.forEach((item, index) => {
-    let fontSize = item.fontSize
+    const fontSize = item.fontSize
     let placedItem: PositionedCloudItem | null = null
 
     for (let shrink = 0; shrink < 5 && !placedItem; shrink += 1) {

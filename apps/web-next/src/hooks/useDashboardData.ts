@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAdmissaoStatusStore } from '@/stores/admissaoStatus.store'
 import { useAdmissoesStore } from '@/stores/admissoes.store'
 import { useAtasStore } from '@/stores/atas.store'
@@ -67,13 +67,16 @@ export interface DashboardData extends DashboardMetrics {
   lastUpdated: Date | null
 }
 
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'ready'; lastUpdated: Date }
+  | { status: 'failed' }
+
 export function useDashboardData() {
-  const [dashboardData, setDashboardData] = useState<DashboardData>({
-    ...EMPTY_DASHBOARD_METRICS,
-    loading: true,
-    error: null,
-    lastUpdated: null,
-  })
+  // Tudo o mais é derivado das stores a cada render. Guardar métricas, loading e
+  // erro num estado copiado por efeitos custava um render extra a cada mudança e
+  // deixava as três cópias divergirem entre si.
+  const [load, setLoad] = useState<LoadState>({ status: 'loading' })
 
   const {
     atas,
@@ -140,11 +143,11 @@ export function useDashboardData() {
     loadCondominiums,
   } = useCondominiumStore()
 
-  const loadDashboardData = useCallback(async () => {
-    try {
-      setDashboardData((prev) => ({ ...prev, loading: true, error: null }))
-
-      await Promise.all([
+  // Resolve quando todas as stores terminam; quem chama decide o que marcar no
+  // estado, depois do await.
+  const fetchAll = useCallback(
+    () =>
+      Promise.all([
         loadAtas(),
         loadAtaStatuses(),
         loadTarefas(),
@@ -155,56 +158,69 @@ export function useDashboardData() {
         loadRescisaoStatuses(),
         loadBalancetes(),
         loadCondominiums(),
-      ])
+      ]),
+    [
+      loadAdmissoes,
+      loadAdmissaoStatuses,
+      loadAtas,
+      loadAtaStatuses,
+      loadBalancetes,
+      loadCondominiums,
+      loadRescisoes,
+      loadRescisaoStatuses,
+      loadTarefaStatuses,
+      loadTarefas,
+    ],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    fetchAll()
+      .then(() => {
+        if (!cancelled) setLoad({ status: 'ready', lastUpdated: new Date() })
+      })
+      .catch((error) => {
+        logger.error('Erro ao carregar dados do dashboard:', error)
+        if (!cancelled) setLoad({ status: 'failed' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [fetchAll])
+
+  const refresh = useCallback(async () => {
+    setLoad({ status: 'loading' })
+    try {
+      await fetchAll()
+      setLoad({ status: 'ready', lastUpdated: new Date() })
     } catch (error) {
       logger.error('Erro ao carregar dados do dashboard:', error)
-      setDashboardData((prev) => ({
-        ...prev,
-        loading: false,
-        error: 'Erro ao carregar dados do dashboard',
-      }))
+      setLoad({ status: 'failed' })
     }
-  }, [
-    loadAdmissoes,
-    loadAdmissaoStatuses,
-    loadAtas,
-    loadAtaStatuses,
-    loadBalancetes,
-    loadCondominiums,
-    loadRescisoes,
-    loadRescisaoStatuses,
-    loadTarefaStatuses,
-    loadTarefas,
-  ])
+  }, [fetchAll])
 
-  const calculateMetrics = useCallback(() => {
+  // Calculadas sempre a partir do que as stores têm. Enquanto algo carrega, a
+  // tela mostra o skeleton, então métricas parciais nunca chegam a aparecer.
+  const computed = useMemo((): { metrics: DashboardMetrics; error: string | null } => {
     try {
-      const metrics = buildDashboardMetrics({
-        atas,
-        atasStatuses,
-        tarefas,
-        tarefaStatuses,
-        admissoes,
-        admissaoStatuses,
-        rescisoes,
-        rescisaoStatuses,
-        balancetes,
-        condominiums,
-      })
-
-      setDashboardData({
-        ...metrics,
-        loading: false,
+      return {
+        metrics: buildDashboardMetrics({
+          atas,
+          atasStatuses,
+          tarefas,
+          tarefaStatuses,
+          admissoes,
+          admissaoStatuses,
+          rescisoes,
+          rescisaoStatuses,
+          balancetes,
+          condominiums,
+        }),
         error: null,
-        lastUpdated: new Date(),
-      })
+      }
     } catch (error) {
       logger.error('Erro ao calcular métricas do dashboard:', error)
-      setDashboardData((prev) => ({
-        ...prev,
-        loading: false,
-        error: 'Erro ao calcular métricas do dashboard',
-      }))
+      return { metrics: EMPTY_DASHBOARD_METRICS, error: 'Erro ao calcular métricas do dashboard' }
     }
   }, [
     admissaoStatuses,
@@ -219,82 +235,43 @@ export function useDashboardData() {
     tarefas,
   ])
 
-  useEffect(() => {
-    loadDashboardData()
-  }, [loadDashboardData])
+  const storesLoading =
+    atasLoading ||
+    tarefasLoading ||
+    tarefaStatusesLoading ||
+    admissoesLoading ||
+    admissaoStatusesLoading ||
+    rescisoesLoading ||
+    rescisaoStatusesLoading ||
+    balancetesLoading ||
+    condominiumsLoading
 
-  useEffect(() => {
-    if (
-      !atasLoading &&
-      !tarefasLoading &&
-      !tarefaStatusesLoading &&
-      !admissoesLoading &&
-      !admissaoStatusesLoading &&
-      !rescisoesLoading &&
-      !rescisaoStatusesLoading &&
-      !balancetesLoading &&
-      !condominiumsLoading
-    ) {
-      calculateMetrics()
-    }
-  }, [
-    admissaoStatusesLoading,
-    admissoesLoading,
-    atasLoading,
-    balancetesLoading,
-    calculateMetrics,
-    condominiumsLoading,
-    rescisoesLoading,
-    rescisaoStatusesLoading,
-    tarefaStatusesLoading,
-    tarefasLoading,
-  ])
+  const storeError =
+    atasError ||
+    tarefasError ||
+    tarefaStatusesError ||
+    admissoesError ||
+    admissaoStatusesError ||
+    rescisoesError ||
+    rescisaoStatusesError ||
+    balancetesError ||
+    condominiumsError
 
-  useEffect(() => {
-    const error =
-      atasError ||
-      tarefasError ||
-      tarefaStatusesError ||
-      admissoesError ||
-      admissaoStatusesError ||
-      rescisoesError ||
-      rescisaoStatusesError ||
-      balancetesError ||
-      condominiumsError
-
-    if (error) {
-      setDashboardData((prev) => ({
-        ...prev,
-        loading: false,
-        error,
-      }))
-    }
-  }, [
-    admissaoStatusesError,
-    admissoesError,
-    atasError,
-    balancetesError,
-    condominiumsError,
-    rescisoesError,
-    rescisaoStatusesError,
-    tarefaStatusesError,
-    tarefasError,
-  ])
+  const error =
+    (load.status === 'failed' ? 'Erro ao carregar dados do dashboard' : null) ?? storeError ?? computed.error
+  // Com erro, a tela sai do skeleton para mostrar a mensagem.
+  const loading = !error && (load.status === 'loading' || storesLoading)
+  const dashboardData: DashboardData = {
+    ...computed.metrics,
+    loading,
+    error: error || null,
+    lastUpdated: load.status === 'ready' ? load.lastUpdated : null,
+  }
 
   return {
     ...dashboardData,
-    refresh: loadDashboardData,
-    isLoading:
-      dashboardData.loading ||
-      atasLoading ||
-      tarefasLoading ||
-      tarefaStatusesLoading ||
-      admissoesLoading ||
-      admissaoStatusesLoading ||
-      rescisoesLoading ||
-      rescisaoStatusesLoading ||
-      balancetesLoading ||
-      condominiumsLoading,
+    refresh,
+    isLoading: loading || storesLoading,
   }
 }
 

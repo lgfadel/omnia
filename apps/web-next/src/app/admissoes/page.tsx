@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from '@/lib/logging'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Filter, ChevronDown, User, Lock, Check } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -69,7 +69,6 @@ export default function Admissoes() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showPrivateTasks, setShowPrivateTasks] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
-  const [filteredAdmissoes, setFilteredAdmissoes] = useState<Admissao[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   
@@ -177,7 +176,9 @@ export default function Admissoes() {
   }, [loadAdmissoes]);
 
   // Filter admissoes based on search query and filters
-  useEffect(() => {
+  // Derivada dos filtros a cada render: guardada em estado e copiada num efeito,
+  // a lista pintava um quadro vazio antes de cada atualização.
+  const filteredAdmissoes = useMemo<Admissao[]>(() => {
     let filtered = admissoes;
 
     if (showOnlyMyTasks && userProfile) {
@@ -218,7 +219,7 @@ export default function Admissoes() {
       );
     }
 
-    setFilteredAdmissoes(filtered);
+    return filtered;
   }, [admissoes, searchQuery, statusFilter, showOnlyMyTasks, userProfile, showCompletedTasks, showPrivateTasks, selectedTagFilter, statuses]);
 
   const handleView = (id: string | number) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { useMenuItemsStore } from '@/stores/menuItems.store'
 import { usePermissions } from '@/hooks/usePermissions'
 import { MenuItem } from '@/repositories/menuItemsRepo.supabase'
@@ -46,7 +46,6 @@ export function useMenuItems(): MenuItemsData {
     error: permissionsError
   } = usePermissions()
 
-  const [accessibleRootItems, setAccessibleRootItems] = useState<MenuItem[]>([])
 
   // Estados combinados
   const isLoading = menuLoading || permissionsLoading
@@ -68,14 +67,13 @@ export function useMenuItems(): MenuItemsData {
     loadInitialData()
   }, [loadInitialData])
 
-  // Filtrar itens raiz acessíveis quando os dados mudarem
-  useEffect(() => {
-    if (rootMenuItems.length > 0 && accessibleMenuItems.length > 0) {
-      const accessibleIds = new Set(accessibleMenuItems.map(item => item.id))
-      const filteredRootItems = rootMenuItems.filter(item => accessibleIds.has(item.id))
-      setAccessibleRootItems(filteredRootItems)
-    }
-  }, [rootMenuItems, accessibleMenuItems, setAccessibleRootItems])
+  // Itens raiz que o usuário pode acessar, derivados a cada mudança. Copiados
+  // num efeito que só atualizava com as duas listas cheias, eles sobreviviam à
+  // perda de todas as permissões e o menu antigo continuava na tela.
+  const accessibleRootItems = useMemo(() => {
+    const accessibleIds = new Set(accessibleMenuItems.map(item => item.id))
+    return rootMenuItems.filter(item => accessibleIds.has(item.id))
+  }, [rootMenuItems, accessibleMenuItems])
 
   // Função para obter filhos de um item
   const getChildren = useCallback(async (parentId: string): Promise<MenuItem[]> => {

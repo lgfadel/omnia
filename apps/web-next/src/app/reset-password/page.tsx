@@ -15,12 +15,9 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const { session } = useAuth();
   const [state, setState] = useState<PageState>("loading");
-
-  useEffect(() => {
-    if (session) {
-      setState("ready");
-    }
-  }, [session]);
+  // Uma sessão presente encerra a questão, e derivar daqui a garante acima do
+  // timeout de 7 s — que, copiada num efeito, ainda podia marcar "invalid" depois.
+  const pageState: PageState = session ? "ready" : state;
 
   useEffect(() => {
     let alive = true;
@@ -57,8 +54,6 @@ export default function ResetPasswordPage() {
         logger.error("Failed to initialize reset-password session", error);
         if (!alive) return;
         setState("invalid");
-      } finally {
-        if (!alive) return;
       }
     };
 
@@ -79,7 +74,7 @@ export default function ResetPasswordPage() {
     router.push("/auth");
   };
 
-  if (state === "loading") {
+  if (pageState === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
         <div className="w-full max-w-md">
@@ -91,7 +86,7 @@ export default function ResetPasswordPage() {
     );
   }
 
-  if (state === "invalid") {
+  if (pageState === "invalid") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
         <div className="w-full max-w-md space-y-4">
