@@ -36,6 +36,15 @@ export function usePermissions(): PermissionsData {
 
   const [permissionsCache, setPermissionsCache] = useState<Record<string, boolean>>({})
   const [pathPermissionsCache, setPathPermissionsCache] = useState<Record<string, boolean>>({})
+  const [cachedFrom, setCachedFrom] = useState({ currentUserPermissions, accessibleMenuItems })
+
+  // Permissões novas invalidam o cache no mesmo render. Limpo num efeito, ele
+  // ainda respondia um render inteiro com as permissões anteriores.
+  if (cachedFrom.currentUserPermissions !== currentUserPermissions || cachedFrom.accessibleMenuItems !== accessibleMenuItems) {
+    setCachedFrom({ currentUserPermissions, accessibleMenuItems })
+    setPermissionsCache({})
+    setPathPermissionsCache({})
+  }
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -138,11 +147,6 @@ export function usePermissions(): PermissionsData {
     await loadInitialData()
   }, [clearError, loadInitialData])
 
-  // Limpar cache quando as permissões mudarem
-  useEffect(() => {
-    setPermissionsCache({})
-    setPathPermissionsCache({})
-  }, [currentUserPermissions, accessibleMenuItems])
 
   return {
     canAccess,

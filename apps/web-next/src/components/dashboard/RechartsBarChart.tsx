@@ -21,6 +21,37 @@ interface BarTooltipProps {
   label?: string;
 }
 
+// Fora do componente: declarado dentro dele, o tooltip vira um tipo novo a cada
+// render e o React o desmonta e remonta sempre que o gráfico atualiza.
+function BarTooltip({ active, payload, label, color }: BarTooltipProps & { color: string }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="custom-tooltip" style={{
+        backgroundColor: 'white',
+        padding: '12px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+      }}>
+        <p className="label" style={{ 
+          fontWeight: 'bold', 
+          marginBottom: '8px', 
+          fontSize: '14px',
+          color: color
+        }}>
+          {label}
+        </p>
+        <p>
+          Quantidade: <strong>{payload[0].value}</strong>
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function RechartsBarChart({ 
   data, 
   title, 
@@ -33,36 +64,6 @@ export default function RechartsBarChart({
     name: item.category,
     value: item.value
   }));
-
-  // Componente personalizado para o tooltip
-  const CustomTooltip = ({ active, payload, label }: BarTooltipProps) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip" style={{
-          backgroundColor: 'white',
-          padding: '12px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-        }}>
-          <p className="label" style={{ 
-            fontWeight: 'bold', 
-            marginBottom: '8px', 
-            fontSize: '14px',
-            color: color
-          }}>
-            {label}
-          </p>
-          <p>
-            Quantidade: <strong>{payload[0].value}</strong>
-          </p>
-        </div>
-      );
-    }
-
-    return null;
-  };
 
   return (
     <div className="w-full">
@@ -85,7 +86,7 @@ export default function RechartsBarChart({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis dataKey="name" type="category" />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<BarTooltip color={color} />} />
               <Bar dataKey="value" fill={color} name="Quantidade" />
             </BarChart>
           ) : (
@@ -101,7 +102,7 @@ export default function RechartsBarChart({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<BarTooltip color={color} />} />
               <Bar dataKey="value" fill={color} name="Quantidade" />
             </BarChart>
           )}

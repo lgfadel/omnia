@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect } from "react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
@@ -37,13 +37,12 @@ const colorPresets = [
 ]
 
 export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: TicketStatusFormProps) {
-  const [selectedColor, setSelectedColor] = useState(status?.color || colorPresets[0])
-
   const {
     register,
     handleSubmit,
     setValue,
     reset,
+    control,
     formState: { errors },
   } = useForm<TicketStatusFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,16 +53,18 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
     },
   })
 
+  // A cor mora só no formulário. Um useState paralelo precisava ser copiado a
+  // cada troca de status e já divergiu do valor submetido.
+  const selectedColor = useWatch({ control, name: "color" })
+
   // Update form when status prop changes
   useEffect(() => {
     if (status) {
-      setSelectedColor(status.color)
       reset({
         name: status.name,
         color: status.color,
       })
     } else {
-      setSelectedColor(colorPresets[0])
       reset({
         name: "",
         color: colorPresets[0],
@@ -72,7 +73,6 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
   }, [status, reset])
 
   const handleColorSelect = (color: string) => {
-    setSelectedColor(color)
     setValue("color", color)
   }
 
@@ -80,7 +80,6 @@ export function TicketStatusForm({ status, onSubmit, onCancel, isLoading }: Tick
     await onSubmit(data)
     if (!status) {
       // Reset form for new status
-      setSelectedColor(colorPresets[0])
       setValue("name", "")
       setValue("color", colorPresets[0])
     }
