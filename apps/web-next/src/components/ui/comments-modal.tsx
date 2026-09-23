@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,10 +8,7 @@ import {
 import { TicketCommentsList } from '@/components/tickets/TicketCommentsList';
 import { TicketCommentInput } from '@/components/tickets/TicketCommentInput';
 import { MessageCircle } from 'lucide-react';
-import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
-import { ataCommentsRepoSupabase } from '@/repositories/ataCommentsRepo.supabase';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { logger } from '../../lib/logging';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -29,55 +26,17 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
   // Hook para fechar modal com ESC
   useEscapeKey(onClose, isOpen);
 
-  const loadCommentsCount = useCallback(async () => {
-    if (!ticketId) return;
-    
-    try {
-      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
-      const comments = await repo.list(ticketId);
-      setCommentsCount(comments.length);
-    } catch (error) {
-      logger.error('Erro ao carregar contagem de comentários:', error);
-    }
-  }, [ticketId, contextType]);
+  // A lista já busca os comentários a cada abertura, adição, edição e exclusão;
+  // ela informa o total e o modal só o exibe e repassa. Antes o modal buscava a
+  // mesma lista por conta própria — cinco vezes a cada comentário adicionado.
+  const handleCountChange = useCallback((count: number) => {
+    setCommentsCount(count);
+    onCommentCountChange?.(count);
+  }, [onCommentCountChange]);
 
-  // A busca mora no próprio efeito para poder ser cancelada: trocar de ticket com
-  // o modal aberto não pode deixar a resposta do anterior sobrescrever a contagem.
-  useEffect(() => {
-    if (!isOpen || !ticketId) return;
-    let cancelled = false;
-    const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
-    repo.list(ticketId)
-      .then((comments) => {
-        if (!cancelled) setCommentsCount(comments.length);
-      })
-      .catch((error) => {
-        logger.error('Erro ao carregar contagem de comentários:', error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, ticketId, contextType, refreshKey]);
-
-  const handleCommentsChange = async () => {
-    setRefreshKey(prev => prev + 1);
-    await loadCommentsCount();
-    // Notifica o componente pai sobre a mudança no contador
-    if (onCommentCountChange) {
-      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
-      const comments = await repo.list(ticketId);
-      onCommentCountChange(comments.length);
-    }
-  };
-
+  // Remontar a lista é o que a faz recarregar com o comentário novo.
   const handleCommentAdded = async () => {
-    await handleCommentsChange();
-    // Notifica o componente pai sobre a mudança no contador
-    if (onCommentCountChange) {
-      const repo = contextType === 'ata' ? ataCommentsRepoSupabase : ticketCommentsRepoSupabase;
-      const comments = await repo.list(ticketId);
-      onCommentCountChange(comments.length);
-    }
+    setRefreshKey(prev => prev + 1);
     // Não fecha o modal após adicionar comentário para permitir adicionar mais
   };
 
@@ -102,7 +61,7 @@ export function CommentsModal({ isOpen, onClose, ticketId, ticketTitle, onCommen
             <TicketCommentsList 
               key={refreshKey}
               ticketId={ticketId} 
-              onCommentsChange={handleCommentsChange}
+              onCountChange={handleCountChange}
               contextType={contextType}
             />
           </div>
