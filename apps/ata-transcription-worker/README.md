@@ -5,7 +5,7 @@ Serviço Railway que processa em background os trabalhos em `omnia_ata_transcrip
 ## Deploy
 
 1. Crie um serviço Railway apontando para este diretório (`apps/ata-transcription-worker`).
-2. O `Dockerfile` instala FFmpeg e sobe um servidor HTTP. Mantenha uma réplica; o lease de 45 minutos recupera trabalho abandonado após reinício.
+2. O `Dockerfile` compila o TypeScript num estágio separado, instala FFmpeg e sobe um servidor HTTP com `node dist/index.js`. Mantenha uma réplica. Enquanto processa, o worker publica sinal de vida a cada minuto; um job sem sinal há 5 minutos perdeu o container e volta para a fila na próxima vez que um worker acordar, até 3 tentativas no total.
 3. Configure, somente no Railway, as variáveis `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_ATA_TRANSCRIPTION_API_KEY`, `WORKER_WAKE_SECRET`, `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`.
 4. Habilite **serverless** no serviço e exponha um domínio. A edge function precisa das mesmas `TRANSCRIPTION_WORKER_URL` e `WORKER_WAKE_SECRET`.
 
@@ -55,10 +55,25 @@ ambiente `production`, com as três variáveis já configuradas.
 > (`omnia`, `dcbcd4eb-79c7-4963-a048-4703a09cdb23`), e sem ele o deploy vai
 > parar no serviço errado.
 
-O worker não emite log em operação normal: ele consulta a fila a cada 5 s e só
-escreve em caso de erro. Um serviço silencioso é um serviço saudável.
+O worker quase não emite log em operação normal: escreve ao compactar um áudio,
+ao retomar um job abandonado e em caso de erro.
 
-Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker divide gravações em blocos de 30 minutos e transcreve cada bloco com `gpt-transcribe`. O áudio é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O que fica guardado, porém, é a versão compactada — mono, 16 kHz, 64 kbps, a mesma que o modelo ouviu —, e não o arquivo que saiu do navegador; o mesmo ffmpeg que corta os blocos escreve essa cópia contínua, sem custo de decodificação extra. Em WAV e em gravações longas isso corta de 80% a 90% do arquivo; em M4A que já chega leve, o ganho é pequeno. Medido em 22/09/2026: o bucket caiu de 1,73 GB para 0,53 GB. A troca preserva o reprocessamento por inteiro, já que o original nunca chegou ao modelo. O preço é o player de conferência tocar áudio processado, com timbre achatado. A troca é feita na ordem subir, registrar, apagar, de modo que qualquer falha deixe dois objetos e nunca nenhum; se ela falhar, o job conclui normalmente apontando para o áudio que estiver no bucket. A remoção definitiva continua acontecendo quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha da transcrição, o áudio também permanece para uma nova tentativa.
+### Memória: por que um bloco de cada vez
+
+O plano Free do Railway dá 512 MB ao container, e o cache de disco dos arquivos
+do job entra nessa conta. Em 23/09/2026 uma gravação de 2h50 (Evidence) bateu o
+teto: o fluxo antigo baixava o arquivo inteiro e gerava todos os blocos e a cópia
+compactada no disco antes de transcrever, e o Railway encerrou o container no meio
+do job. O upload aceita arquivos de até 1 GB, então esse fluxo não tinha como caber.
+
+Hoje o ffmpeg lê cada janela de 30 minutos direto do R2, por URL assinada e range
+requests; o bloco é transcrito, enviado ao bucket como parte do multipart que
+monta o áudio compactado, e apagado. O disco nunca guarda mais que um bloco (~15
+MB), e o pico fica em ~265 MB (Node ~90, ffmpeg ~165, um bloco) para qualquer
+duração ou tamanho de arquivo. Os blocos saem sem cabeçalho ID3/Xing para que a
+concatenação das partes seja um MP3 contínuo e íntegro.
+
+Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker transcreve a gravação em blocos de 30 minutos com `gpt-transcribe`. O áudio é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O que fica guardado, porém, é a versão compactada — mono, 16 kHz, 64 kbps, a mesma que o modelo ouviu —, e não o arquivo que saiu do navegador; ela é montada no R2 a partir dos próprios blocos transcritos, sem decodificação extra. Em WAV e em gravações longas isso corta de 80% a 90% do arquivo; em M4A que já chega leve, o ganho é pequeno. Medido em 22/09/2026: o bucket caiu de 1,73 GB para 0,53 GB. A troca preserva o reprocessamento por inteiro, já que o original nunca chegou ao modelo. O preço é o player de conferência tocar áudio processado, com timbre achatado. A troca é feita na ordem completar o upload, registrar, apagar, de modo que qualquer falha deixe dois objetos e nunca nenhum; se ela falhar, o job conclui normalmente apontando para o áudio que estiver no bucket. A remoção definitiva continua acontecendo quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha da transcrição, o áudio também permanece para uma nova tentativa.
 
 Os novos áudios ficam no bucket privado Cloudflare R2. As quatro variáveis R2 também precisam ser configuradas como segredos da Edge Function `ata-transcriptions`; não as cadastre no Vercel nem use nomes com `NEXT_PUBLIC_`.
 
