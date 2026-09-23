@@ -20,14 +20,16 @@ All colors MUST be HSL.
   --popover-foreground: 215 28% 17%;
 
   /* OMNIA Blue as Primary */
-  --primary: 214 84% 56%;
+  /* 45%: texto branco passa de 4,5:1 inclusive no hover bg-primary/90 (56% dava 3,78). */
+  --primary: 214 84% 45%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 40% 96%;
   --secondary-foreground: 215 28% 17%;
 
   --muted: 210 40% 98%;
-  --muted-foreground: 215 15% 58%;
+  /* 44%: 4,5:1 até sobre --accent; 58% dava 2,91 e reprovava AA no app inteiro. */
+  --muted-foreground: 215 15% 44%;
 
   --accent: 210 40% 96%;
   --accent-foreground: 215 28% 17%;
@@ -37,7 +39,7 @@ All colors MUST be HSL.
 
   --border: 220 13% 91%;
   --input: 220 13% 91%;
-  --ring: 214 84% 56%;
+  --ring: 214 84% 45%;
 
   /* OMNIA Yellow Status Colors */
   --warning: 43 96% 56%;
