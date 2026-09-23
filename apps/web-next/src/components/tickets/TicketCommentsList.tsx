@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +36,8 @@ import { logger } from '../../lib/logging';
 interface TicketCommentsListProps {
   ticketId: string;
   onCommentsChange?: () => void;
+  /** Chamado a cada carga com o total de comentários, para quem exibe a contagem não buscar de novo. */
+  onCountChange?: (count: number) => void;
   contextType?: 'ticket' | 'ata';
 }
 
@@ -52,7 +54,7 @@ type CommentWithAttachments = CommentSource & {
   };
 }
 
-export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = 'ticket' }: TicketCommentsListProps) => {
+export const TicketCommentsList = ({ ticketId, onCommentsChange, onCountChange, contextType = 'ticket' }: TicketCommentsListProps) => {
   const { userProfile } = useAuth();
   const [comments, setComments] = useState<CommentWithAttachments[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,14 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
   const [editBody, setEditBody] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [userNameById, setUserNameById] = useState<Record<string, string>>({});
+
+  // Quem recebe a contagem costuma passar uma arrow inline, nova a cada render.
+  // Pela ref, a identidade do callback nunca recarrega a lista — senão cada
+  // carga faria o pai renderizar e disparar outra, sem fim.
+  const onCountChangeRef = useRef(onCountChange);
+  useEffect(() => {
+    onCountChangeRef.current = onCountChange;
+  }, [onCountChange]);
 
   const loadComments = useCallback(async () => {
     try {
@@ -112,6 +122,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, contextType = '
       });
       
       setComments(commentsWithAttachments);
+      onCountChangeRef.current?.(commentsWithAttachments.length);
     } catch (error) {
       logger.error('Erro ao carregar comentários:', error);
       toast({
