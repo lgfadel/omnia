@@ -72,6 +72,8 @@ export interface AtaTranscriptionJob {
   totalChunks?: number;
   processedChunks: number;
   stage?: AtaTranscriptionStage;
+  /** Último sinal de vida do worker enquanto processa. */
+  heartbeatAt?: string;
 }
 
 export interface AtaTranscription {

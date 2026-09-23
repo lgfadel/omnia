@@ -27,6 +27,16 @@ const activeStatuses = new Set<TranscriptionStatus>(['uploading', 'queued', 'pro
 // cada 7,5 s, e acordar o worker nesse ritmo seria só ruído.
 const WAKE_GRACE_MS = 60_000
 const WAKE_INTERVAL_MS = 60_000
+// O worker publica sinal de vida a cada minuto enquanto processa; cinco sem
+// nenhum significam que o container morreu no meio do job. Precisa bater com
+// STALE_LEASE_MINUTES do worker e STALE_LEASE_MS da Edge Function.
+const STALE_HEARTBEAT_MS = 5 * 60_000
+
+type WorkerHealth = 'ok' | 'unavailable' | 'stalled'
+// Um aviso vale para o job e o estado em que foi emitido. Guardá-lo com esse
+// contexto, e derivar o que mostrar, faz um sinal de vida novo ou a saída da
+// fila encerrarem o aviso sem efeito nenhum para limpá-lo.
+type HealthReport = { jobId: string; status: TranscriptionStatus; since?: string; value: WorkerHealth }
 
 function readAudioDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
@@ -73,7 +83,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [audio, setAudio] = useState<AudioState>({ status: 'loading' })
   const [convocacao, setConvocacao] = useState<ConvocacaoContext | null>(null)
   const [isReadingConvocacao, setIsReadingConvocacao] = useState(false)
-  const [workerUnavailable, setWorkerUnavailable] = useState(false)
+  const [healthReport, setHealthReport] = useState<HealthReport | null>(null)
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
   const transcriptionId = transcription?.id
   const isReviewed = Boolean(transcription?.isReviewed)
@@ -104,18 +114,28 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
 
   // Sem isto, um worker fora do ar deixa a tela em "Na fila" para sempre, sem
   // erro nenhum — foi assim que o trial expirado do Railway passou despercebido.
-  const queuedJobId = job?.status === 'queued' ? job.id : null
-  const queuedSince = job?.status === 'queued' ? job.createdAt : null
+  // E um container encerrado no meio do job deixava "Preparando o áudio" parado
+  // para sempre: foi assim que a Evidence ficou travada em 23/09/2026. Nos dois
+  // casos o painel insiste no wake; um worker novo retoma o job sozinho.
+  const watchedJobId = job && (job.status === 'queued' || job.status === 'processing') ? job.id : null
+  const watchedStatus = job?.status
+  // Na fila, conta desde a criação; processando, desde o último sinal de vida.
+  const watchedSince = job?.status === 'processing' ? (job.heartbeatAt ?? job.createdAt) : job?.createdAt
   useEffect(() => {
-    if (!queuedJobId || !queuedSince) {
-      setWorkerUnavailable(false)
-      return
-    }
+    if (!watchedJobId || !watchedSince) return
     let cancelled = false
     const check = async () => {
-      if (Date.now() - Date.parse(queuedSince) < WAKE_GRACE_MS) return
-      const available = await ataTranscriptionsRepoSupabase.wake(queuedJobId)
-      if (!cancelled) setWorkerUnavailable(!available)
+      const silentFor = Date.now() - Date.parse(watchedSince)
+      const due = watchedStatus === 'processing' ? silentFor >= STALE_HEARTBEAT_MS : silentFor >= WAKE_GRACE_MS
+      if (!due) return
+      const { workerAvailable, stalled } = await ataTranscriptionsRepoSupabase.wake(watchedJobId)
+      if (cancelled) return
+      setHealthReport({
+        jobId: watchedJobId,
+        status: watchedStatus!,
+        since: watchedSince,
+        value: !workerAvailable ? 'unavailable' : stalled ? 'stalled' : 'ok',
+      })
     }
     void check()
     const interval = window.setInterval(() => void check(), WAKE_INTERVAL_MS)
@@ -123,7 +143,12 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [queuedJobId, queuedSince])
+  }, [watchedJobId, watchedStatus, watchedSince])
+
+  const workerHealth: WorkerHealth =
+    !healthReport || healthReport.jobId !== job?.id || healthReport.status !== job?.status ? 'ok'
+      : healthReport.value === 'stalled' && healthReport.since !== watchedSince ? 'ok'
+        : healthReport.value
 
   // A URL assinada é buscada uma vez por transcrição, e não a cada refresh: o
   // painel repete o load a cada 7,5 s enquanto há trabalho ativo.
@@ -158,9 +183,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         createdAt: new Date().toISOString(),
         processedChunks: 0,
       })
-      const { workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
+      const { jobId, workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
       await refresh()
-      setWorkerUnavailable(!workerAvailable)
+      setHealthReport({ jobId, status: 'queued', value: workerAvailable ? 'ok' : 'unavailable' })
     } catch (uploadError) {
       // refresh() zera o erro ao carregar com sucesso, então a mensagem precisa
       // ser definida depois dele — caso contrário a falha some da tela.
@@ -214,7 +239,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     try {
       const { workerAvailable } = await ataTranscriptionsRepoSupabase.retry(job.id)
       await refresh()
-      setWorkerUnavailable(!workerAvailable)
+      setHealthReport({ jobId: job.id, status: 'queued', value: workerAvailable ? 'ok' : 'unavailable' })
     } catch {
       setError('Não foi possível reenfileirar a transcrição.')
     }
@@ -382,7 +407,16 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
                   </>
                 )
               })()}
-              {job.status === 'queued' && workerUnavailable && (
+              {workerHealth === 'stalled' && (
+                <Alert className="border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 [&>svg]:text-amber-600">
+                  <RefreshCcw className="h-4 w-4" />
+                  <AlertTitle>O processamento foi interrompido</AlertTitle>
+                  <AlertDescription>
+                    A transcrição está sendo retomada automaticamente. A gravação está guardada — não é preciso enviar de novo.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {workerHealth === 'unavailable' && (
                 <Alert className="border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 [&>svg]:text-amber-600">
                   <TriangleAlert className="h-4 w-4" />
                   <AlertTitle>O serviço de transcrição está fora do ar</AlertTitle>

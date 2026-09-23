@@ -51,6 +51,7 @@ type DbJob = {
   total_chunks: number | null
   processed_chunks: number | null
   stage: AtaTranscriptionStage | null
+  heartbeat_at: string | null
 }
 
 type DbTranscription = {
@@ -81,6 +82,7 @@ function mapJob(job: DbJob): AtaTranscriptionJob {
     totalChunks: job.total_chunks ?? undefined,
     processedChunks: job.processed_chunks ?? 0,
     stage: job.stage ?? undefined,
+    heartbeatAt: job.heartbeat_at ?? undefined,
   }
 }
 
@@ -99,7 +101,7 @@ export const ataTranscriptionsRepoSupabase = {
   async load(ataId: string): Promise<{ job: AtaTranscriptionJob | null; transcription: AtaTranscription | null }> {
     const { data: job, error: jobError } = await untypedSupabase
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, status, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage')
+      .select('id, ata_id, status, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage, heartbeat_at')
       .eq('ata_id', ataId)
       .eq('is_current', true)
       .maybeSingle()
@@ -124,7 +126,7 @@ export const ataTranscriptionsRepoSupabase = {
   // `workerAvailable` diz se a Edge Function alcançou o worker ao enfileirar. O
   // áudio já está salvo de qualquer jeito; o valor só decide se o painel avisa
   // que a transcrição vai esperar o serviço voltar.
-  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string): Promise<{ workerAvailable: boolean }> {
+  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string): Promise<{ jobId: string; workerAvailable: boolean }> {
     const { data, error } = await supabase.functions.invoke<StartUploadResponse>('ata-transcriptions', {
       body: {
         action: 'create',
@@ -145,7 +147,7 @@ export const ataTranscriptionsRepoSupabase = {
         body: { action: 'complete', jobId: data.jobId, uploadId: data.uploadId, parts },
       })
       if (completeError) throw await describeFunctionError(completeError, 'Não foi possível enfileirar a transcrição.')
-      return { workerAvailable: completed?.workerAvailable !== false }
+      return { jobId: data.jobId, workerAvailable: completed?.workerAvailable !== false }
     } catch (uploadError) {
       // Do not leave an orphaned upload job as the current transcription when the
       // browser loses the connection between signed upload and queueing.
@@ -164,15 +166,15 @@ export const ataTranscriptionsRepoSupabase = {
     return { workerAvailable: data?.workerAvailable !== false }
   },
 
-  // Acorda o worker de novo para um job parado na fila e diz se ele respondeu.
-  // Uma falha da própria chamada não é prova de que o worker caiu, então não
-  // dispara o aviso — só a resposta explícita da Edge Function dispara.
-  async wake(jobId: string): Promise<boolean> {
-    const { data, error } = await supabase.functions.invoke<{ workerAvailable?: boolean }>('ata-transcriptions', {
+  // Acorda o worker para um job que espera na fila ou que parou no meio do
+  // processamento, e diz o que encontrou. Uma falha da própria chamada não é
+  // prova de nada, então não dispara aviso — só a resposta da Edge Function.
+  async wake(jobId: string): Promise<{ workerAvailable: boolean; stalled: boolean }> {
+    const { data, error } = await supabase.functions.invoke<{ workerAvailable?: boolean; stalled?: boolean }>('ata-transcriptions', {
       body: { action: 'wake', jobId },
     })
-    if (error) return true
-    return data?.workerAvailable !== false
+    if (error) return { workerAvailable: true, stalled: false }
+    return { workerAvailable: data?.workerAvailable !== false, stalled: data?.stalled === true }
   },
 
   // O update precisa devolver a linha. Sem isso, uma revisão barrada pela RLS
