@@ -40,6 +40,10 @@ const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024
 // página no meio do trabalho.
 const AUDIO_URL_TTL_SECONDS = 4 * 60 * 60
 
+// Precisa bater com STALE_LEASE_MINUTES do worker: o worker publica sinal de
+// vida a cada minuto, e cinco sem nenhum significam que ele morreu.
+const STALE_LEASE_MS = 5 * 60 * 1000
+
 const ACCEPTED_MIME_TYPES = new Set([
   'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac',
   'audio/wav', 'audio/x-wav', 'video/mp4', 'audio/webm', 'video/webm',
@@ -290,7 +294,7 @@ Deno.serve(async (req: Request) => {
     if (!payload.jobId) return json({ error: 'jobId é obrigatório.' }, 400)
     const { data: job, error: jobError } = await admin
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, storage_path, storage_provider, size_bytes, status, attempt_count')
+      .select('id, ata_id, storage_path, storage_provider, size_bytes, status, attempt_count, heartbeat_at')
       .eq('id', payload.jobId)
       .maybeSingle()
     if (jobError || !job) return json({ error: 'Trabalho não encontrado.' }, 404)
@@ -315,8 +319,14 @@ Deno.serve(async (req: Request) => {
       // Substitui a rede de segurança do GET, que o painel nunca chamou: enquanto
       // o job espera na fila, o painel insiste por aqui e fica sabendo se há
       // alguém do outro lado para processá-lo.
-      if (job.status !== 'queued') return json({ workerAvailable: true })
-      return json({ workerAvailable: await wakeWorker() })
+      //
+      // Um job em processamento sem sinal de vida perdeu o worker — o Railway
+      // encerra o container sem aviso. Acordar um worker novo é o que o devolve
+      // à fila (ver reclaimStaleJobs no worker), então o painel insiste também aí.
+      const stalled = job.status === 'processing' &&
+        (!job.heartbeat_at || Date.parse(job.heartbeat_at) < Date.now() - STALE_LEASE_MS)
+      if (job.status !== 'queued' && !stalled) return json({ workerAvailable: true, stalled: false })
+      return json({ workerAvailable: await wakeWorker(), stalled })
     }
 
     if (payload.action === 'cancel') {

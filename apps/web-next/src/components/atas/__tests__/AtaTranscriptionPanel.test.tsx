@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AtaTranscriptionPanel } from '../AtaTranscriptionPanel'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
@@ -8,7 +8,7 @@ vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({
     load: vi.fn().mockResolvedValue({ job: null, transcription: null }),
     upload: vi.fn(),
     retry: vi.fn(),
-    wake: vi.fn().mockResolvedValue(true),
+    wake: vi.fn().mockResolvedValue({ workerAvailable: true, stalled: false }),
     saveReview: vi.fn(),
     discard: vi.fn(),
     audioUrl: vi.fn().mockResolvedValue(null),
@@ -272,7 +272,7 @@ describe('AtaTranscriptionPanel · worker fora do ar', () => {
 
   it('warns that the recording is safe when nobody answers for a job stuck in the queue', async () => {
     repo.load.mockResolvedValue(queuedJob(5 * 60_000))
-    repo.wake.mockResolvedValue(false)
+    repo.wake.mockResolvedValue({ workerAvailable: false, stalled: false })
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
     expect(await screen.findByText('O serviço de transcrição está fora do ar')).toBeInTheDocument()
@@ -282,7 +282,7 @@ describe('AtaTranscriptionPanel · worker fora do ar', () => {
 
   it('stays quiet when the worker answers the wake', async () => {
     repo.load.mockResolvedValue(queuedJob(5 * 60_000))
-    repo.wake.mockResolvedValue(true)
+    repo.wake.mockResolvedValue({ workerAvailable: true, stalled: false })
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
     await waitFor(() => expect(repo.wake).toHaveBeenCalledWith('job-1'))
@@ -297,5 +297,53 @@ describe('AtaTranscriptionPanel · worker fora do ar', () => {
 
     await screen.findByText('assembleia.m4a')
     expect(repo.wake).not.toHaveBeenCalled()
+  })
+
+  function processingJob(silentMs: number) {
+    const job = queuedJob(60 * 60_000).job
+    return {
+      job: { ...job, status: 'processing' as const, stage: 'splitting' as const, heartbeatAt: new Date(Date.now() - silentMs).toISOString() },
+      transcription: null,
+    }
+  }
+
+  // Foi o que aconteceu com a Evidence em 23/09/2026: o container morreu no meio
+  // do job e a tela ficou em "Preparando o áudio" sem erro nenhum.
+  it('wakes the worker and says the job is being resumed when processing stops sending signs of life', async () => {
+    repo.load.mockResolvedValue(processingJob(6 * 60_000))
+    repo.wake.mockResolvedValue({ workerAvailable: true, stalled: true })
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    expect(await screen.findByText('O processamento foi interrompido')).toBeInTheDocument()
+    expect(screen.getByText(/retomada automaticamente/)).toBeInTheDocument()
+    expect(repo.wake).toHaveBeenCalledWith('job-1')
+  })
+
+  it('leaves a job that is still sending signs of life alone', async () => {
+    repo.load.mockResolvedValue(processingJob(30_000))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+
+    await screen.findByText('assembleia.m4a')
+    expect(repo.wake).not.toHaveBeenCalled()
+  })
+
+  // A mesma tela, sem remontar: o sinal de vida novo chega pelo polling.
+  it('drops the warning as soon as the polled job sends a new sign of life', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      repo.load.mockResolvedValue(processingJob(6 * 60_000))
+      repo.wake.mockResolvedValue({ workerAvailable: true, stalled: true })
+      render(<AtaTranscriptionPanel ataId="ata-1" />)
+      await screen.findByText('O processamento foi interrompido')
+
+      repo.load.mockResolvedValue(processingJob(0))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(8_000)
+      })
+
+      expect(screen.queryByText('O processamento foi interrompido')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
