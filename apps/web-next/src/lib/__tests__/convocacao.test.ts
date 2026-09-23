@@ -74,6 +74,25 @@ Síndico
     expect(context.sindico).toBe('Ronaldo João Zandomenighi')
   })
 
+  it('stops the síndico name at the end of its line', () => {
+    // Um nome de pessoa nunca atravessa a quebra de linha. Sem esse limite, o
+    // rótulo seguinte ("Data", em maiúscula) virava sobrenome e entrava nas
+    // keywords da transcrição.
+    const campos = `
+EDITAL DE CONVOCAÇÃO
+Condomínio: Residencial Jardim das Flores
+Síndico: Eduardo Marchetti
+Data: 15/10/2026
+
+ORDEM DO DIA
+1) Aprovação das contas do exercício anterior;
+2) Reforma da fachada e rateio do elevador social;
+`
+    const context = parseConvocacao(campos, 1)
+
+    expect(context.sindico).toBe('Eduardo Marchetti')
+  })
+
   it('joins a pauta item back together when the PDF wraps it across lines', () => {
     // pdfjs quebra a linha no meio da frase; o marcador numérico não vem
     // seguido de pontuação até a linha seguinte terminar o item.
