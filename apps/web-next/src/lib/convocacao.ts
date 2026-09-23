@@ -40,7 +40,9 @@ function findLabeled(text: string, labels: string[]): string | undefined {
 // convoca os senhores condôminos..." é uma frase inteira, e guardar a frase
 // inteira como nome envenenaria as keywords. O nome é a sequência em caixa
 // alta inicial, com os conectivos que os nomes brasileiros usam.
-const NAME_SHAPE = "([A-ZÀ-Ú][\\wà-ú'.-]+(?:\\s+(?:d[aeo]s?\\s+)?[A-ZÀ-Ú][\\wà-ú'.-]+){0,4})"
+// As partes são separadas por espaço, nunca por quebra de linha: um nome não
+// atravessa linhas, e "Síndico: Fulano\nData: ..." faria de "Data" sobrenome.
+const NAME_SHAPE = "([A-ZÀ-Ú][\\wà-ú'.-]+(?:[ \\t]+(?:d[aeo]s?[ \\t]+)?[A-ZÀ-Ú][\\wà-ú'.-]+){0,4})"
 
 // O rótulo é procurado sem diferenciar caixa, o nome não: com o flag "i" a
 // forma "começa em maiúscula" deixa de significar coisa alguma e o nome passa a
