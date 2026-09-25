@@ -190,15 +190,25 @@ export const ataMinutasRepoSupabase = {
   },
 
   async uploadDocument(ataId: string, file: File, kind: AtaMinutaDocumentKind): Promise<AtaMinutaDocument> {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('kind', kind)
+    const uploadResponse = await fetch(`/api/atas/${ataId}/minuta/documents/upload-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
+      body: JSON.stringify({ fileName: file.name, kind, sizeBytes: file.size }),
+    })
+    if (!uploadResponse.ok) throw await describeResponseError(uploadResponse, 'Não foi possível preparar o envio do documento.')
+    const upload = await uploadResponse.json() as { path: string; token: string }
+
+    const { error: uploadError } = await supabase.storage
+      .from('ata-minuta-documents')
+      .uploadToSignedUrl(upload.path, upload.token, new File([file], file.name, { type: 'application/pdf' }))
+    if (uploadError) throw new Error(`Falha no upload do PDF: ${uploadError.message}`)
+
     const response = await fetch(`/api/atas/${ataId}/minuta/documents`, {
       method: 'POST',
-      headers: { Authorization: await authHeader() },
-      body: formData,
+      headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
+      body: JSON.stringify({ fileName: file.name, kind, sizeBytes: file.size, storagePath: upload.path }),
     })
-    if (!response.ok) throw await describeResponseError(response, 'Não foi possível enviar o documento.')
+    if (!response.ok) throw await describeResponseError(response, 'O PDF foi enviado, mas não foi possível vinculá-lo à minuta.')
     return mapDocument(await response.json())
   },
 

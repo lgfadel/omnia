@@ -1,0 +1,15 @@
+# Private local workspace artifacts are not needed to build the web app.
+/.claude
+/.worktrees
+/temp
+/graphify-out
+/.context
+/.superpowers
+/.windsurf
+/.agents
+/docs
+/supabase
+/tests
+/test-results
+/playwright.config.ts
+/playwright.visual.config.ts

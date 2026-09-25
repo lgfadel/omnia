@@ -163,42 +163,98 @@ export async function verifyMinutaModel(authHeader: string | null, modelId: stri
 
 // ---- Documentos de apoio (convocação, apuração de votação) ----
 
-export async function uploadMinutaDocument(
+export async function createMinutaDocumentUpload(
   authHeader: string | null,
   ataId: string,
-  input: { fileName: string; kind: MinutaDocumentKind; bytes: Uint8Array },
+  input: { fileName: string; sizeBytes: number },
 ) {
   const user = await currentUser(authHeader)
   const client = admin()
   const ata = await loadAtaForAccess(client, ataId)
   assertMinutaAccess(user, ata)
 
-  const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: input.bytes.byteLength })
+  const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: input.sizeBytes })
   if (validationError) throw new Error(validationError)
 
-  const storagePath = `${ataId}/${randomUUID()}-${sanitizeFileName(input.fileName)}`
-  const { error: uploadError } = await client.storage
+  const storagePath = `${ataId}/${user.omniaUserId}/${randomUUID()}-${sanitizeFileName(input.fileName)}`
+  const { data, error } = await client.storage
     .from(MINUTA_DOCUMENTS_BUCKET)
-    .upload(storagePath, input.bytes, { contentType: 'application/pdf', upsert: false })
-  if (uploadError) throw new Error(uploadError.message)
+    .createSignedUploadUrl(storagePath)
+  if (error || !data) throw new Error(error?.message ?? 'Não foi possível preparar o envio do documento.')
+  return { path: storagePath, token: data.token }
+}
+
+export async function confirmMinutaDocumentUpload(
+  authHeader: string | null,
+  ataId: string,
+  input: { fileName: string; kind: MinutaDocumentKind; sizeBytes: number; storagePath: string },
+) {
+  const user = await currentUser(authHeader)
+  const client = admin()
+  const ata = await loadAtaForAccess(client, ataId)
+  assertMinutaAccess(user, ata)
+
+  const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: input.sizeBytes })
+  if (validationError) throw new Error(validationError)
+
+  const expectedPrefix = `${ataId}/${user.omniaUserId}/`
+  const safeFileName = sanitizeFileName(input.fileName)
+  if (
+    !input.storagePath.startsWith(expectedPrefix)
+    || input.storagePath.split('/').length !== 3
+    || !input.storagePath.endsWith(`-${safeFileName}`)
+  ) {
+    throw new Error('O caminho do documento enviado é inválido.')
+  }
+
+  const { data: existing, error: existingError } = await client
+    .from('omnia_ata_minuta_documents')
+    .select('id, ata_id, kind, original_filename, size_bytes, created_at, created_by')
+    .eq('storage_path', input.storagePath)
+    .maybeSingle()
+  if (existingError) throw new Error(existingError.message)
+  if (existing) {
+    const row = existing as {
+      id: string
+      ata_id: string
+      kind: MinutaDocumentKind
+      original_filename: string
+      size_bytes: number
+      created_at: string
+      created_by: string
+    }
+    if (row.ata_id !== ataId || row.created_by !== user.omniaUserId) throw new Error('Documento não encontrado.')
+    return {
+      id: row.id,
+      ata_id: row.ata_id,
+      kind: row.kind,
+      original_filename: row.original_filename,
+      size_bytes: row.size_bytes,
+      created_at: row.created_at,
+    }
+  }
+
+  const { data: file, error: fileError } = await client.storage.from(MINUTA_DOCUMENTS_BUCKET).download(input.storagePath)
+  if (fileError || !file) throw new Error('O upload do documento não foi concluído. Tente enviar o PDF novamente.')
+  if (file.size !== input.sizeBytes) {
+    await client.storage.from(MINUTA_DOCUMENTS_BUCKET).remove([input.storagePath])
+    throw new Error('O arquivo enviado não corresponde ao tamanho informado.')
+  }
 
   const { data, error } = await client
     .from('omnia_ata_minuta_documents')
     .insert({
       ata_id: ataId,
       kind: input.kind,
-      storage_path: storagePath,
+      storage_path: input.storagePath,
       original_filename: input.fileName,
-      size_bytes: input.bytes.byteLength,
+      size_bytes: input.sizeBytes,
       created_by: user.omniaUserId,
     })
-    .select('id, kind, original_filename, size_bytes, created_at')
+    .select('id, ata_id, kind, original_filename, size_bytes, created_at')
     .single()
 
-  if (error || !data) {
-    await client.storage.from(MINUTA_DOCUMENTS_BUCKET).remove([storagePath])
-    throw new Error(error?.message ?? 'Não foi possível salvar o documento.')
-  }
+  if (error || !data) throw new Error(error?.message ?? 'Não foi possível salvar o documento.')
   return data
 }
 
