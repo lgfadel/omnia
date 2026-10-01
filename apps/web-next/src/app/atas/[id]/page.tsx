@@ -19,6 +19,7 @@ import { Edit, Clock, ChevronDown } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useAtasStore } from "@/stores/atas.store"
 import { useTagsStore } from "@/stores/tags.store"
+import { supabase } from "@/integrations/supabase/client"
 import { useEffect, useState, useCallback } from "react"
 import { Ata, Attachment } from "@/data/types"
 import { useEscapeKeyForAlert } from "@/hooks/useEscapeKeyForAlert"
@@ -73,6 +74,32 @@ const AtaDetail = () => {
       cancelled = true
     }
   }, [id, loadStatuses, loadTags, getAtaById])
+
+  useEffect(() => {
+    if (!id) return
+
+    const channel = supabase
+      .channel(`ata-status-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'omnia_atas',
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          const nextStatusId = (payload.new as { status_id?: string }).status_id
+          if (!nextStatusId) return
+          setAta(current => current?.id === id ? { ...current, statusId: nextStatusId } : current)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [id])
 
   const handleAddComment = async (body: string, attachments?: Attachment[]) => {
     if (!id) return

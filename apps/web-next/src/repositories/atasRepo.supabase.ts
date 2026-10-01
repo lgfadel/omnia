@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
 import { logger } from '@/lib/logging'
-import { Ata, Comment, Attachment, Status, UserRef, Role, AtaTranscriptionStatus } from "@/data/types"
+import { Ata, Comment, Attachment, Status, UserRef, Role, AtaTranscriptionStatus, type AtaWorkflowKey } from "@/data/types"
 
 // Database types for type safety
 interface DbAta {
@@ -58,6 +58,7 @@ interface DbStatus {
   color: string;
   order_position: number;
   is_default?: boolean;
+  workflow_key?: AtaWorkflowKey | null;
 }
 
 interface DbTranscriptionJobRow {
@@ -185,7 +186,8 @@ const transformStatusFromDB = (dbStatus: DbStatus): Status => ({
   name: dbStatus.name,
   color: dbStatus.color,
   order: dbStatus.order_position,
-  isDefault: dbStatus.is_default
+  isDefault: dbStatus.is_default,
+  workflowKey: dbStatus.workflow_key ?? undefined
 })
 
 export const atasRepoSupabase = {

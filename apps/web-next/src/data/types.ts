@@ -3,12 +3,15 @@ import type { TarefaPrioridade } from '@/repositories/tarefasRepo.supabase'
 
 export type Role = 'ADMIN' | 'SECRETARIO' | 'USUARIO'
 
+export type AtaWorkflowKey = 'not_started' | 'transcription' | 'minuta' | 'review'
+
 export interface Status {
   id: string;
   name: string;
   color: string;
   order: number;
   isDefault?: boolean;
+  workflowKey?: AtaWorkflowKey;
 }
 
 export interface UserRef {

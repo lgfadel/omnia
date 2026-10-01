@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import { Status } from "@/data/types"
+import { Status, type AtaWorkflowKey } from "@/data/types"
 import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
 
@@ -10,7 +10,8 @@ const transformStatusFromDB = (dbStatus: Tables<'omnia_statuses'>): Status => ({
   name: dbStatus.name,
   color: dbStatus.color,
   order: dbStatus.order_position,
-  isDefault: dbStatus.is_default ?? undefined
+  isDefault: dbStatus.is_default ?? undefined,
+  workflowKey: (dbStatus.workflow_key as AtaWorkflowKey | null) ?? undefined
 })
 
 export const statusRepoSupabase = {

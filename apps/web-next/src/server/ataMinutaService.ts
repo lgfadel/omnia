@@ -484,7 +484,15 @@ export async function* streamMinutaTurn(
     if (instruction) {
       await insertMinutaMessage(client, minutaId, 'assistant', accumulated, user.omniaUserId, versionId)
     }
-    await client.from('omnia_ata_minutas').update({ status: 'ready', content: accumulated, usage: usage ?? {} }).eq('id', minutaId)
+    const { data: readyMinuta, error: readyError } = await client
+      .from('omnia_ata_minutas')
+      .update({ status: 'ready', content: accumulated, usage: usage ?? {} })
+      .eq('id', minutaId)
+      .select('id')
+      .maybeSingle()
+    if (readyError || !readyMinuta) {
+      throw new Error(readyError?.message ?? 'Não foi possível finalizar a minuta.')
+    }
     settled = true
 
     yield { type: 'done', content: accumulated }

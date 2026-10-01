@@ -52,6 +52,7 @@ export function AtaForm({
   const {
     statuses
   } = useAtasStore();
+  const notStartedStatus = statuses.find(status => status.workflowKey === "not_started");
   const { loadTags } = useTagsStore();
   const {
     condominiums,
@@ -110,12 +111,21 @@ export function AtaForm({
       meetingDate: ata?.meetingDate || "",
       secretaryId: ata?.secretary?.id || "",
       responsibleId: ata?.responsible?.id || "",
-      statusId: ata?.statusId || statuses.find(s => s.isDefault)?.id || "",
+      statusId: ata?.statusId || notStartedStatus?.id || statuses.find(s => s.isDefault)?.id || "",
       condominiumId: ata?.condominiumId || "",
       ticket: ata?.ticket || "",
       tags: ""
     }
   });
+
+  const statusId = watch("statusId");
+
+  useEffect(() => {
+    if (!ata && notStartedStatus && statusId !== notStartedStatus.id) {
+      setValue("statusId", notStartedStatus.id, { shouldValidate: true });
+    }
+  }, [ata, notStartedStatus, setValue, statusId]);
+
   const handleCondominiumCreated = (condominiumId: string) => {
     // Recarrega a lista de condomínios
     loadCondominiums();
@@ -209,7 +219,26 @@ export function AtaForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status *</Label>
-                <StatusSelect statuses={statuses} value={watch("statusId")} onValueChange={value => setValue("statusId", value)} className="w-full" />
+                {ata ? (
+                  <StatusSelect statuses={statuses} value={statusId} onValueChange={value => setValue("statusId", value)} className="w-full" />
+                ) : (
+                  <div className="flex h-10 items-center gap-2">
+                    {notStartedStatus ? (
+                      <>
+                        <Badge
+                          variant="secondary"
+                          style={{ backgroundColor: `${notStartedStatus.color}20`, color: notStartedStatus.color }}
+                          className="border-0"
+                        >
+                          {notStartedStatus.name}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">Automático</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Carregando status inicial...</span>
+                    )}
+                  </div>
+                )}
                 {errors.statusId && <p className="text-sm text-destructive">{errors.statusId.message}</p>}
               </div>
 
@@ -268,7 +297,7 @@ export function AtaForm({
             <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || (!ata && !notStartedStatus)}>
               {loading ? "Salvando..." : ata ? "Atualizar" : "Criar Ata"}
             </Button>
           </div>

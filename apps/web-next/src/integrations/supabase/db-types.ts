@@ -1397,6 +1397,7 @@ export type Database = {
           name: string
           order_position: number
           updated_at: string
+          workflow_key: string | null
         }
         Insert: {
           color: string
@@ -1406,6 +1407,7 @@ export type Database = {
           name: string
           order_position: number
           updated_at?: string
+          workflow_key?: string | null
         }
         Update: {
           color?: string
@@ -1415,6 +1417,7 @@ export type Database = {
           name?: string
           order_position?: number
           updated_at?: string
+          workflow_key?: string | null
         }
         Relationships: []
       }

@@ -88,6 +88,11 @@ function SortableStatusItem({ status, onEdit, onDelete, isLoading }: SortableSta
               Padrão
             </Badge>
           )}
+          {status.workflowKey && (
+            <Badge variant="outline" className="text-xs">
+              Automático
+            </Badge>
+          )}
           <span className="text-sm text-muted-foreground">
             Ordem: {status.order}
           </span>
@@ -103,7 +108,7 @@ function SortableStatusItem({ status, onEdit, onDelete, isLoading }: SortableSta
             <Pencil className="w-4 h-4" />
           </Button>
           
-          {!status.isDefault && (
+          {!status.isDefault && !status.workflowKey && (
             <Button
               variant="outline"
               size="sm"
