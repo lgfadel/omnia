@@ -10,9 +10,8 @@ CREATE UNIQUE INDEX omnia_statuses_workflow_key_unique
   ON public.omnia_statuses (workflow_key)
   WHERE workflow_key IS NOT NULL;
 
--- Reuse the existing initial status where possible. The historical name was
--- "Não iniciado"; the aliases cover databases where it was renamed or seeded
--- with the feminine form. Create the three later stages when absent.
+-- Reuse existing workflow statuses where possible. In particular, the
+-- review stage is the existing "Revisão/Correções" status, not a new row.
 DO $$
 DECLARE
   workflow record;
@@ -24,7 +23,7 @@ BEGIN
       ('not_started', 'Não iniciado', ARRAY['não iniciado', 'não iniciada', 'nao iniciado', 'nao iniciada']::text[], '#F59E0B'),
       ('transcription', 'Transcrição', ARRAY['transcrição', 'transcricao']::text[], '#3B82F6'),
       ('minuta', 'Minuta', ARRAY['minuta']::text[], '#8B5CF6'),
-      ('review', 'Revisão', ARRAY['revisão', 'revisao']::text[], '#10B981')
+      ('review', 'Revisão/Correções', ARRAY['revisão/correções', 'revisao/correcoes', 'revisão', 'revisao']::text[], '#FBBF24')
     ) AS stages(workflow_key, name, aliases, color)
   LOOP
     SELECT id INTO workflow_status_id
@@ -38,6 +37,11 @@ BEGIN
       WHERE workflow_key IS NULL
         AND lower(btrim(name)) = ANY (workflow.aliases)
       ORDER BY
+        CASE
+          WHEN workflow.workflow_key = 'review'
+            AND lower(btrim(name)) IN ('revisão/correções', 'revisao/correcoes') THEN 0
+          ELSE 1
+        END,
         CASE WHEN workflow.workflow_key = 'not_started' AND is_default IS TRUE THEN 0 ELSE 1 END,
         order_position,
         created_at,
