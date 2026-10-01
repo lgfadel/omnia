@@ -4,14 +4,21 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from 'node:http'
 import { Agent, setGlobalDispatcher } from 'undici'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { loadAtaContext } from './ataContext.js'
 import { buildCarryOver, mergeTranscribedChunks } from './transcript.js'
 import { extractChunk, readAudioDuration } from './audio.js'
 import { planChunks } from './chunkPlan.js'
 import { createCompactedUpload } from './compactedUpload.js'
-import { HEARTBEAT_SECONDS, STALE_LEASE_MINUTES, reclaimDecision } from './jobLease.js'
+import {
+  claimCurrentQueuedJob,
+  HEARTBEAT_SECONDS,
+  isCurrentProcessingJob,
+  STALE_LEASE_MINUTES,
+  reclaimDecision,
+  type TranscriptionWorkerClient,
+} from './jobLease.js'
 import { createR2Client, deleteR2Object, presignR2Get } from './r2.js'
 import { commitCompactedAudio } from './storedAudio.js'
 
@@ -86,7 +93,7 @@ type TranscriptionRequest = {
 
 type SdkTranscriptionParams = Parameters<OpenAI['audio']['transcriptions']['create']>[0]
 
-type AdminClient = SupabaseClient<any, 'public', any, any, any>
+type AdminClient = TranscriptionWorkerClient
 
 const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_ATA_TRANSCRIPTION_API_KEY', 'WORKER_WAKE_SECRET'] as const
 
@@ -150,26 +157,7 @@ async function reclaimStaleJobs(supabase: AdminClient): Promise<void> {
 
 async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | null> {
   await reclaimStaleJobs(supabase)
-
-  const { data: candidate, error: candidateError } = await supabase
-    .from('omnia_ata_transcription_jobs')
-    .select('id')
-    .eq('status', 'queued')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  if (candidateError) throw candidateError
-  if (!candidate) return null
-
-  const { data: claimed, error: claimError } = await supabase
-    .from('omnia_ata_transcription_jobs')
-    .update({ status: 'processing', started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
-    .eq('id', candidate.id)
-    .eq('status', 'queued')
-    .select('id, ata_id, storage_path, storage_provider, size_bytes, mime_type, status, attempt_count, context_text')
-    .maybeSingle()
-  if (claimError) throw claimError
-  return claimed as TranscriptionJob | null
+  return claimCurrentQueuedJob<TranscriptionJob>(supabase)
 }
 
 // O sinal de vida sai num intervalo próprio, e não entre etapas: uma resposta do
@@ -238,9 +226,16 @@ async function processJob(
           response_format: 'json',
         }
 
+      if (!await isCurrentProcessingJob(supabase, job.id)) {
+        throw new Error(`Transcription job ${job.id} was superseded before chunk ${window.index + 1}.`)
+      }
+
       const result = await openai.audio.transcriptions.create(
         request as unknown as SdkTranscriptionParams,
       ) as unknown as OpenAITranscription
+      if (!await isCurrentProcessingJob(supabase, job.id)) {
+        throw new Error(`Transcription job ${job.id} was superseded during chunk ${window.index + 1}.`)
+      }
       const text = result.text ?? ''
       chunkResults.push({ chunkIndex: window.index + 1, text })
       carryOver = buildCarryOver(text)
@@ -269,6 +264,9 @@ async function processJob(
       .update({ stage: 'saving' })
       .eq('id', job.id)
     const merged = mergeTranscribedChunks(chunkResults)
+    if (!await isCurrentProcessingJob(supabase, job.id)) {
+      throw new Error(`Transcription job ${job.id} was superseded before transcript persistence.`)
+    }
     const { data: transcription, error: transcriptError } = await supabase
       .from('omnia_ata_transcriptions')
       .upsert({ ata_id: job.ata_id, job_id: job.id, raw_text: merged.rawText, language: 'pt-BR' }, { onConflict: 'job_id' })
@@ -314,11 +312,17 @@ async function processJob(
         })
     }
 
-    const { error: completeError } = await supabase
+    const { data: completedJob, error: completeError } = await supabase
       .from('omnia_ata_transcription_jobs')
       .update({ status: 'completed', completed_at: new Date().toISOString(), heartbeat_at: null, stage: null, usage: { chunks: usages } })
       .eq('id', job.id)
-    if (completeError) throw completeError
+      .eq('status', 'processing')
+      .eq('is_current', true)
+      .select('id')
+      .maybeSingle()
+    if (completeError || !completedJob) {
+      throw completeError ?? new Error(`Transcription job ${job.id} was superseded before completion.`)
+    }
   } catch (error) {
     // Keep provider and infrastructure details in Railway logs only. The application
     // exposes a safe, actionable error to ATA users.
