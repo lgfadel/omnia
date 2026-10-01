@@ -22,6 +22,7 @@ const modelOptions: { value: string; label: string }[] = [
   { value: 'gpt-5.6-sol', label: 'Sol' },
   { value: 'gpt-5.6-terra', label: 'Terra' },
   { value: 'gpt-5.6-luna', label: 'Luna' },
+  { value: 'gpt-6-luna', label: 'GPT-6 Luna' },
 ]
 
 const reasoningEffortLabels: Record<AtaMinutaReasoningEffort, string> = {
