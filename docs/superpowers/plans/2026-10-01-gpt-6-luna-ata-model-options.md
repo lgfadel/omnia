@@ -26,7 +26,7 @@
 - Consumes: `modelOptions: { value: string; label: string }[]`, rendered by the existing `SelectItem` mapping.
 - Produces: a selectable `{ value: 'gpt-6-luna', label: 'GPT-6 Luna' }` option; the settings API and Responses generation flow continue consuming the same model ID string.
 
-- [ ] **Step 1: Add the model option**
+- [x] **Step 1: Add the model option**
 
 Append this entry to `modelOptions`, after the existing GPT-5.6 entries:
 
@@ -36,25 +36,25 @@ Append this entry to `modelOptions`, after the existing GPT-5.6 entries:
 
 Do not change the state initialization, database default, or transcription worker.
 
-- [ ] **Step 2: Check the patch**
+- [x] **Step 2: Check the patch**
 
 Run: `git diff --check`
 
 Expected: no whitespace errors; the only application change is the new model option.
 
-- [ ] **Step 3: Type-check and build the web app**
+- [x] **Step 3: Type-check and build the web app**
 
 Run: `npm run type-check && npm run build`
 
 Expected: both commands exit successfully.
 
-- [ ] **Step 4: Run the existing test suite**
+- [x] **Step 4: Run the existing test suite**
 
 Run: `npm run test:run`
 
 Expected: the existing Vitest suite passes. Do not add a test that only mirrors the new static option entry.
 
-- [ ] **Step 5: Commit the implementation**
+- [x] **Step 5: Commit the implementation**
 
 ```bash
 git add apps/web-next/src/app/config/atas/page.tsx
