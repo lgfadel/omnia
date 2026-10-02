@@ -9,6 +9,7 @@ import type {
   AtaMinutaVersionOrigin,
 } from '@/data/types'
 import type { AtaMinutaStreamEvent } from '@/lib/ataMinuta'
+import { MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
 
 // A tabela ainda não entrou no gerador de tipos do Supabase — mesma situação da
 // transcrição, resolvida do mesmo jeito em ataTranscriptionsRepo.supabase.ts.
@@ -23,6 +24,15 @@ async function authHeader(): Promise<string> {
 async function describeResponseError(response: Response, fallback: string): Promise<Error> {
   const body = await response.json().catch(() => ({})) as { error?: string }
   return new Error(body.error ?? fallback)
+}
+
+function isUploadTransportError(error: { name: string; message: string }): boolean {
+  // Storage wraps browser fetch rejections. HTTP policy/size/token errors have a
+  // different name and must keep their original validation failure.
+  return error.name === 'StorageUnknownError'
+    && 'originalError' in error
+    && error.originalError instanceof TypeError
+    && /^(Failed to fetch|Load failed|NetworkError when attempting to fetch resource\.?|Network request failed)$/i.test(error.message)
 }
 
 type DbMinuta = {
@@ -198,10 +208,26 @@ export const ataMinutasRepoSupabase = {
     if (!uploadResponse.ok) throw await describeResponseError(uploadResponse, 'Não foi possível preparar o envio do documento.')
     const upload = await uploadResponse.json() as { path: string; token: string }
 
+    const pdf = new File([file], file.name, { type: 'application/pdf' })
     const { error: uploadError } = await supabase.storage
       .from('ata-minuta-documents')
-      .uploadToSignedUrl(upload.path, upload.token, new File([file], file.name, { type: 'application/pdf' }))
-    if (uploadError) throw new Error(`Falha no upload do PDF: ${uploadError.message}`)
+      .uploadToSignedUrl(upload.path, upload.token, pdf)
+    if (uploadError) {
+      if (file.size <= MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES && isUploadTransportError(uploadError)) {
+        const form = new FormData()
+        form.append('file', pdf)
+        form.append('kind', kind)
+        form.append('storagePath', upload.path)
+        const recovery = await fetch(`/api/atas/${ataId}/minuta/documents/upload`, {
+          method: 'POST',
+          headers: { Authorization: await authHeader() },
+          body: form,
+        })
+        if (!recovery.ok) throw await describeResponseError(recovery, 'Não foi possível concluir o envio do PDF. Tente novamente.')
+        return mapDocument(await recovery.json())
+      }
+      throw new Error(`Falha no upload do PDF: ${uploadError.message}`)
+    }
 
     const response = await fetch(`/api/atas/${ataId}/minuta/documents`, {
       method: 'POST',

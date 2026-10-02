@@ -3,6 +3,8 @@
 export const MINUTA_DOCUMENT_MAX_SIZE_MB = 45
 export const MINUTA_DOCUMENT_MAX_SIZE_BYTES = MINUTA_DOCUMENT_MAX_SIZE_MB * 1024 * 1024
 export const MINUTA_DOCUMENT_TOTAL_MAX_SIZE_BYTES = MINUTA_DOCUMENT_MAX_SIZE_BYTES
+// A recuperação pelo app precisa caber no limite de corpo da função Vercel.
+export const MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES = 4 * 1024 * 1024
 
 type SizedDocument = { sizeBytes: number }
 

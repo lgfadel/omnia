@@ -9,7 +9,7 @@ import {
 } from '@/lib/ataMinuta'
 import type { AtaMinutaReasoningEffort } from '@/data/types'
 import { parseSseBlock, splitSseBlocks } from '@/lib/openaiResponsesStream'
-import { getMinutaDocumentsValidationError } from '@/lib/ataMinutaDocuments'
+import { getMinutaDocumentsValidationError, MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const MINUTA_DOCUMENTS_BUCKET = 'ata-minuta-documents'
@@ -74,6 +74,35 @@ function assertMinutaAccess(user: AuthenticatedUser, ata: { responsible_id: stri
 
 function sanitizeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-160)
+}
+
+function assertMinutaDocumentStoragePath(ataId: string, userId: string, fileName: string, storagePath: string): void {
+  const segments = storagePath.split('/')
+  if (
+    segments.length !== 3
+    || segments[0] !== ataId
+    || segments[1] !== userId
+    || !/^[a-zA-Z0-9._-]+$/.test(segments[2])
+    || !segments[2].endsWith(`-${sanitizeFileName(fileName)}`)
+  ) {
+    throw new Error('O caminho do documento enviado é inválido.')
+  }
+}
+
+async function isMissingMinutaDocument(error: unknown): Promise<boolean> {
+  if (!error || typeof error !== 'object') return false
+  const storageError = error as { status?: number; statusCode?: string; originalError?: unknown }
+  if (storageError.status === 404 || storageError.statusCode === '404' || storageError.statusCode === 'NoSuchKey') return true
+  // download() usa noResolveJson: algumas versões encapsulam até erros HTTP num
+  // StorageUnknownError. O serviço pode devolver HTTP 400 com NoSuchKey/404 no JSON.
+  const original = storageError.originalError as { status?: number; json?: () => Promise<unknown> } | undefined
+  if (!original || ![400, 404].includes(original.status ?? 0) || typeof original.json !== 'function') return false
+  try {
+    const payload = await original.json() as { code?: unknown; statusCode?: unknown }
+    return payload.code === 'NoSuchKey' && payload.statusCode === '404'
+  } catch {
+    return false
+  }
 }
 
 async function nextSequence(client: SupabaseClient, table: string, minutaId: string): Promise<number> {
@@ -208,23 +237,18 @@ export async function confirmMinutaDocumentUpload(
   const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: input.sizeBytes })
   if (validationError) throw new Error(validationError)
 
-  const expectedPrefix = `${ataId}/${user.omniaUserId}/`
-  const safeFileName = sanitizeFileName(input.fileName)
-  if (
-    !input.storagePath.startsWith(expectedPrefix)
-    || input.storagePath.split('/').length !== 3
-    || !input.storagePath.endsWith(`-${safeFileName}`)
-  ) {
-    throw new Error('O caminho do documento enviado é inválido.')
-  }
+  assertMinutaDocumentStoragePath(ataId, user.omniaUserId, input.fileName, input.storagePath)
 
-  const { data: existing, error: existingError } = await client
-    .from('omnia_ata_minuta_documents')
-    .select('id, ata_id, kind, original_filename, size_bytes, created_at, created_by')
-    .eq('storage_path', input.storagePath)
-    .maybeSingle()
-  if (existingError) throw new Error(existingError.message)
-  if (existing) {
+  const findExisting = async () => {
+    const { data: existing, error: existingError } = await client
+      .from('omnia_ata_minuta_documents')
+      .select('id, ata_id, kind, original_filename, size_bytes, created_at, created_by')
+      .eq('storage_path', input.storagePath)
+      .maybeSingle()
+    if (existingError) throw new Error(existingError.message)
+    return existing
+  }
+  const existingResponse = (existing: Record<string, unknown>) => {
     const row = existing as {
       id: string
       ata_id: string
@@ -244,6 +268,8 @@ export async function confirmMinutaDocumentUpload(
       created_at: row.created_at,
     }
   }
+  const existing = await findExisting()
+  if (existing) return existingResponse(existing)
 
   await assertMinutaDocumentBudget(client, ataId, input.sizeBytes)
 
@@ -267,8 +293,73 @@ export async function confirmMinutaDocumentUpload(
     .select('id, ata_id, kind, original_filename, size_bytes, created_at')
     .single()
 
+  if (error?.code === '23505') {
+    const concurrent = await findExisting()
+    if (concurrent) return existingResponse(concurrent)
+  }
   if (error || !data) throw new Error(error?.message ?? 'Não foi possível salvar o documento.')
   return data
+}
+
+// Recupera apenas PDFs pequenos cuja conexão direta do navegador falhou. Reusa o
+// caminho assinado para não duplicar um arquivo que tenha chegado sem resposta.
+export async function uploadMinutaDocument(
+  authHeader: string | null,
+  ataId: string,
+  input: { fileName: string; kind: MinutaDocumentKind; bytes: Uint8Array; storagePath: string },
+) {
+  const user = await currentUser(authHeader)
+  const client = admin()
+  const ata = await loadAtaForAccess(client, ataId)
+  assertMinutaAccess(user, ata)
+
+  if (!input.fileName.toLowerCase().endsWith('.pdf')) throw new Error('Formato não suportado. Envie um PDF.')
+  if (!['convocacao', 'apuracao', 'outro'].includes(input.kind)) throw new Error('Tipo de documento inválido.')
+  const sizeBytes = input.bytes.byteLength
+  const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: sizeBytes })
+  if (validationError) throw new Error(validationError)
+  if (sizeBytes > MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES) throw new Error('A recuperação do envio aceita PDFs de até 4 MB.')
+  assertMinutaDocumentStoragePath(ataId, user.omniaUserId, input.fileName, input.storagePath)
+
+  const { data: existing, error: existingError } = await client
+    .from('omnia_ata_minuta_documents')
+    .select('id, ata_id, created_by, original_filename, size_bytes')
+    .eq('storage_path', input.storagePath)
+    .maybeSingle()
+  if (existingError) throw new Error(existingError.message)
+  if (existing) {
+    if (existing.ata_id !== ataId || existing.created_by !== user.omniaUserId) throw new Error('Documento não encontrado.')
+    if (existing.original_filename !== input.fileName || existing.size_bytes !== sizeBytes) throw new Error('O arquivo enviado não corresponde ao documento existente.')
+  } else {
+    await assertMinutaDocumentBudget(client, ataId, sizeBytes)
+  }
+
+  const storage = client.storage.from(MINUTA_DOCUMENTS_BUCKET)
+  const verifyBytes = async (file: Blob) => {
+    if (file.size !== sizeBytes) throw new Error('O arquivo enviado não corresponde ao documento existente.')
+    const storedBytes = new Uint8Array(await file.arrayBuffer())
+    if (!storedBytes.every((byte, index) => byte === input.bytes[index])) throw new Error('O arquivo enviado não corresponde ao documento existente.')
+  }
+  const { data: stored, error: storedError } = await storage.download(input.storagePath)
+  if (stored) {
+    await verifyBytes(stored)
+  } else {
+    if (!(await isMissingMinutaDocument(storedError))) {
+      throw new Error(storedError?.message ?? 'Não foi possível verificar o envio do documento.')
+    }
+    const { error: uploadError } = await storage.upload(input.storagePath, input.bytes, { contentType: 'application/pdf', upsert: false })
+    if (uploadError) {
+      // O upload direto pode ter concluído entre a consulta acima e esta escrita.
+      const { data: raced } = await storage.download(input.storagePath)
+      if (!raced) throw new Error(uploadError.message)
+      await verifyBytes(raced)
+    }
+  }
+
+  // Um outro pedido pode estar confirmando o mesmo caminho neste momento. Mantém
+  // o PDF verificado se a confirmação falhar, pois consultar e depois remover não
+  // é atômico e poderia apagar um arquivo vinculado por essa outra requisição.
+  return confirmMinutaDocumentUpload(authHeader, ataId, { fileName: input.fileName, kind: input.kind, sizeBytes, storagePath: input.storagePath })
 }
 
 export async function deleteMinutaDocument(authHeader: string | null, ataId: string, documentId: string): Promise<void> {
