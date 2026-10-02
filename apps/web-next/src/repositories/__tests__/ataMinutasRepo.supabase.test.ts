@@ -23,6 +23,7 @@ const calls: Array<{ url: string; init: RequestInit }> = []
 let storageFailure: Error | Response | null
 let recoveryResponse: Response
 let confirmationResponse: Response
+let onSigning: (() => void) | undefined
 
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
@@ -31,7 +32,10 @@ function json(value: unknown, status = 200) {
 function pdf(size = 57_600) {
   const bytes = new Uint8Array(size).fill(32)
   bytes.set([37, 80, 68, 70, 45, 49, 46, 55])
-  return new File([bytes], row.original_filename, { type: '' })
+  const file = new File([bytes], row.original_filename, { type: '' })
+  // jsdom implements FileReader but not Blob.arrayBuffer.
+  Object.defineProperty(file, 'arrayBuffer', { configurable: true, value: async () => (await readBytes(file)).buffer })
+  return file
 }
 
 function readBytes(blob: Blob): Promise<Uint8Array> {
@@ -49,13 +53,17 @@ describe('minuta supporting PDF upload', () => {
     storageFailure = null
     recoveryResponse = json(row)
     confirmationResponse = json(row)
+    onSigning = undefined
     vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
       data: { session: { access_token: 'user-session' } }, error: null,
     } as Awaited<ReturnType<typeof supabase.auth.getSession>>)
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init: RequestInit = {}) => {
       const url = String(input)
       calls.push({ url, init })
-      if (url.endsWith('/documents/upload-url')) return json({ path: storagePath, token: 'signed-upload-token' })
+      if (url.endsWith('/documents/upload-url')) {
+        onSigning?.()
+        return json({ path: storagePath, token: 'signed-upload-token' })
+      }
       if (url.startsWith('https://storage.example.test/storage/v1/object/upload/sign/')) {
         if (storageFailure instanceof Error) throw storageFailure
         if (storageFailure) return storageFailure
@@ -82,6 +90,48 @@ describe('minuta supporting PDF upload', () => {
     ])
     const form = calls[1].init.body as FormData
     expect((form.get('') as File).type).toBe('application/pdf')
+  })
+
+  it('reads a stable PDF snapshot before signing and sends those exact bytes', async () => {
+    const file = pdf()
+    const expected = await readBytes(file)
+    let snapshotRead = false
+    let sourceChanged = false
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => {
+      if (sourceChanged) throw new DOMException('File changed on disk', 'NotReadableError')
+      snapshotRead = true
+      return expected.buffer
+    } })
+    onSigning = () => {
+      expect(snapshotRead).toBe(true)
+      sourceChanged = true
+    }
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).resolves.toMatchObject({ id: 'document-1' })
+    expect(await readBytes((calls[1].init.body as FormData).get('') as File)).toEqual(expected)
+  })
+
+  it('reports an unreadable PDF before starting either upload route', async () => {
+    const file = pdf()
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => { throw new DOMException('Permission denied', 'NotReadableError') } })
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('Não foi possível ler o PDF')
+    expect(calls).toEqual([])
+  })
+
+  it('refuses an incomplete file read before signing', async () => {
+    const file = pdf()
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => new ArrayBuffer(10) })
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('Não foi possível ler o PDF')
+    expect(calls).toEqual([])
+  })
+
+  it('rejects oversized files before reading them into memory', async () => {
+    const file = pdf()
+    Object.defineProperty(file, 'size', { value: 47_185_921 })
+    const read = vi.fn(async () => { throw new Error('Must not read an oversized file') })
+    Object.defineProperty(file, 'arrayBuffer', { value: read })
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('limite de 45 MB')
+    expect(read).not.toHaveBeenCalled()
+    expect(calls).toEqual([])
   })
 
   it.each(['Failed to fetch', 'Load failed', 'NetworkError when attempting to fetch resource.'])(

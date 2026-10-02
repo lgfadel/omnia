@@ -8,7 +8,7 @@ import type {
   AtaMinutaVersion,
   AtaMinutaVersionOrigin,
 } from '@/data/types'
-import type { AtaMinutaStreamEvent } from '@/lib/ataMinuta'
+import { getMinutaDocumentValidationError, type AtaMinutaStreamEvent } from '@/lib/ataMinuta'
 import { MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
 
 // A tabela ainda não entrou no gerador de tipos do Supabase — mesma situação da
@@ -200,6 +200,20 @@ export const ataMinutasRepoSupabase = {
   },
 
   async uploadDocument(ataId: string, file: File, kind: AtaMinutaDocumentKind): Promise<AtaMinutaDocument> {
+    const validationError = getMinutaDocumentValidationError(file)
+    if (validationError) throw new Error(validationError)
+
+    // Read before any network await. Wrapping a disk-backed File in another File
+    // keeps its filesystem reference, which can change while signing completes.
+    let bytes: ArrayBuffer
+    try {
+      bytes = await file.arrayBuffer()
+      if (bytes.byteLength !== file.size) throw new Error('Incomplete file read')
+    } catch {
+      throw new Error('Não foi possível ler o PDF. Salve uma cópia em uma pasta local, como Downloads, e selecione o arquivo novamente.')
+    }
+    const pdf = new File([bytes], file.name, { type: 'application/pdf' })
+
     const uploadResponse = await fetch(`/api/atas/${ataId}/minuta/documents/upload-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
@@ -208,7 +222,6 @@ export const ataMinutasRepoSupabase = {
     if (!uploadResponse.ok) throw await describeResponseError(uploadResponse, 'Não foi possível preparar o envio do documento.')
     const upload = await uploadResponse.json() as { path: string; token: string }
 
-    const pdf = new File([file], file.name, { type: 'application/pdf' })
     const { error: uploadError } = await supabase.storage
       .from('ata-minuta-documents')
       .uploadToSignedUrl(upload.path, upload.token, pdf)
