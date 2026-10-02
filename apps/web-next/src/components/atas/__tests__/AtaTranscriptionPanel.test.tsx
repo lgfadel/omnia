@@ -113,6 +113,32 @@ describe('AtaTranscriptionPanel · gravação', () => {
     expect(document.querySelector('audio')).toBeNull()
   })
 
+  it('continues uploading when the browser never responds with audio metadata', async () => {
+    const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src')
+    const revoke = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { value: vi.fn().mockReturnValue('blob:assembleia'), writable: true, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revoke, writable: true, configurable: true })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      Object.defineProperty(HTMLMediaElement.prototype, 'src', { set() {}, configurable: true })
+      const file = new File(['audio'], 'assembleia.m4a', { type: 'audio/mp4' })
+      repo.load.mockResolvedValue({ job: null, transcription: null })
+      repo.upload.mockResolvedValue({ jobId: 'job-1', workerAvailable: true })
+      render(<AtaTranscriptionPanel ataId="ata-1" />)
+      await screen.findByRole('button', { name: 'Selecionar gravação' })
+      fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
+      expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeDisabled()
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+      expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined)
+      expect(revoke).toHaveBeenCalledWith('blob:assembleia')
+      expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeEnabled()
+    } finally {
+      vi.useRealTimers()
+      if (srcDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'src', srcDescriptor)
+      else Reflect.deleteProperty(HTMLMediaElement.prototype, 'src')
+    }
+  })
+
   it('sends a supported M4A with an unknown browser duration to the worker', async () => {
     const createObjectURL = vi.fn().mockReturnValue('blob:assembleia')
     const durationDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'duration')
@@ -225,7 +251,7 @@ describe('AtaTranscriptionPanel · estado da revisão', () => {
     expect(screen.queryByRole('button', { name: 'Marcar como revisada' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Salvar rascunho' })).toBeNull()
     expect(screen.getByRole('button', { name: /Baixar \.txt/ })).toBeEnabled()
-    expect(screen.getByLabelText('Texto da transcrição')).toBeDisabled()
+    expect(screen.getByLabelText('Texto da transcrição')).toHaveAttribute('readonly')
   })
 
   it('reopens a closed review for editing', async () => {
@@ -246,6 +272,90 @@ describe('AtaTranscriptionPanel · estado da revisão', () => {
 
     // O pior desfecho possível é o botão piscar e a revisão não existir.
     expect(await screen.findByText('Não foi possível salvar a revisão.')).toBeInTheDocument()
+  })
+})
+
+describe('AtaTranscriptionPanel · workspace actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.load.mockResolvedValue(transcriptionWith())
+    repo.audioUrl.mockResolvedValue(null)
+    repo.saveReview.mockResolvedValue(undefined)
+  })
+
+  it('saves dirty text before opening the minuta', async () => {
+    const onGenerateMinuta = vi.fn()
+    let finishSave!: () => void
+    repo.saveReview.mockImplementation(() => new Promise(resolve => { finishSave = resolve }))
+    render(<AtaTranscriptionPanel ataId="ata-1" onGenerateMinuta={onGenerateMinuta} />)
+    fireEvent.change(await screen.findByLabelText('Texto da transcrição'), { target: { value: 'Nome corrigido e votação conferida.' } })
+    expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar e preparar minuta' }))
+    expect(repo.saveReview).toHaveBeenCalledWith('transcription-1', 'Nome corrigido e votação conferida.', false)
+    expect(onGenerateMinuta).not.toHaveBeenCalled()
+    await act(async () => finishSave())
+    expect(onGenerateMinuta).toHaveBeenCalledOnce()
+  })
+
+  it('keeps dirty text and stays on transcription if saving before the minuta fails', async () => {
+    const onGenerateMinuta = vi.fn()
+    repo.saveReview.mockRejectedValue(new Error('Falha ao salvar'))
+    render(<AtaTranscriptionPanel ataId="ata-1" onGenerateMinuta={onGenerateMinuta} />)
+    fireEvent.change(await screen.findByLabelText('Texto da transcrição'), { target: { value: 'Texto corrigido.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar e preparar minuta' }))
+    expect(await screen.findByText('Não foi possível salvar a revisão.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Texto da transcrição')).toHaveValue('Texto corrigido.')
+    expect(onGenerateMinuta).not.toHaveBeenCalled()
+  })
+
+  it('does not permit closing an empty review', async () => {
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    fireEvent.change(await screen.findByLabelText('Texto da transcrição'), { target: { value: '  ' } })
+    expect(screen.getByRole('button', { name: 'Marcar como revisada' })).toBeDisabled()
+    expect(repo.saveReview).not.toHaveBeenCalled()
+  })
+
+  it('offers a retry when loading the recording fails without blocking text editing', async () => {
+    repo.audioUrl.mockRejectedValueOnce(new Error('URL temporariamente indisponível'))
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    const retry = await screen.findByRole('button', { name: 'Carregar áudio novamente' })
+    expect(screen.getByLabelText('Texto da transcrição')).not.toHaveAttribute('readonly')
+    repo.audioUrl.mockResolvedValue('https://storage.example/assembleia.m4a')
+    fireEvent.click(retry)
+    await waitFor(() => expect(document.querySelector('audio')).not.toBeNull())
+    expect(repo.audioUrl).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows progress in the processing stage with no edit or replacement actions', async () => {
+    repo.load.mockResolvedValue({
+      job: { ...transcriptionWith().job, status: 'processing', stage: 'transcribing', totalChunks: 4, processedChunks: 1, heartbeatAt: new Date().toISOString() },
+      transcription: null,
+    })
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    expect(await screen.findByText('Transcrevendo bloco 2 de 4')).toBeInTheDocument()
+    expect(screen.getByLabelText('Etapas da transcrição')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Texto da transcrição')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Enviar nova gravação' })).not.toBeInTheDocument()
+  })
+
+  it('ignores an older poll that arrives after review and editing have started', async () => {
+    const processing = { job: { ...transcriptionWith().job, status: 'processing' as const, heartbeatAt: new Date().toISOString() }, transcription: null }
+    let finishOldPoll!: (data: typeof processing) => void
+    repo.load.mockResolvedValueOnce(processing)
+      .mockImplementationOnce(() => new Promise((resolve) => { finishOldPoll = resolve }))
+      .mockResolvedValueOnce(transcriptionWith())
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      render(<AtaTranscriptionPanel ataId="ata-1" />)
+      await screen.findByText('assembleia.m4a')
+      await act(async () => { await vi.advanceTimersByTimeAsync(15_000) })
+      fireEvent.change(screen.getByLabelText('Texto da transcrição'), { target: { value: 'Correção que deve ser preservada.' } })
+      await act(async () => { finishOldPoll(processing) })
+      expect(screen.getByLabelText('Texto da transcrição')).toHaveValue('Correção que deve ser preservada.')
+      expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

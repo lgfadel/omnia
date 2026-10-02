@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,8 +28,10 @@ function findMatches(text: string, term: string, caseSensitive: boolean): number
   return matches
 }
 
-export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 'Texto da transcrição', textareaClassName = 'min-h-72 font-mono text-sm leading-6' }: AtaTranscriptionEditorProps) {
+export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 'Texto da transcrição', textareaClassName = 'min-h-96 resize-y px-4 py-4 text-base leading-7 sm:px-5' }: AtaTranscriptionEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const searchToolsId = useId()
+  const [searchToolsOpen, setSearchToolsOpen] = useState(false)
   const [term, setTerm] = useState('')
   const [replacement, setReplacement] = useState('')
   const [caseSensitive, setCaseSensitive] = useState(false)
@@ -53,6 +55,7 @@ export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 
   }
 
   const applyChange = (next: string, count: number) => {
+    if (disabled) return
     setUndoState({ text: value, count })
     onChange(next)
   }
@@ -75,100 +78,123 @@ export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 
   }
 
   const undo = () => {
-    if (!undoState) return
+    if (disabled || !undoState) return
     onChange(undoState.text)
     setUndoState(null)
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
-        <div className="relative min-w-52 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={term}
-            onChange={(event) => { setTerm(event.target.value); setCurrent(0) }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
-              event.preventDefault()
-              selectMatch(event.shiftKey ? activeIndex - 1 : activeIndex + 1)
-            }}
-            placeholder="Localizar"
-            aria-label="Localizar no texto"
-            className="h-9 pl-8 pr-20"
-            disabled={disabled}
-          />
-          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-muted-foreground">
-            {term ? (matches.length === 0 ? 'nenhuma' : `${activeIndex + 1} de ${matches.length}`) : ''}
-          </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-9 gap-2 px-2 text-muted-foreground hover:text-foreground"
+        aria-expanded={searchToolsOpen}
+        aria-controls={searchToolsId}
+        onClick={() => setSearchToolsOpen((previous) => !previous)}
+      >
+        <Search className="h-4 w-4" aria-hidden="true" />
+        Localizar e substituir
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${searchToolsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </Button>
+
+      {searchToolsOpen && (
+        <div id={searchToolsId} role="group" aria-label="Ferramentas de localização e substituição" className="space-y-3 rounded-xl border bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full min-w-0 sm:flex-1">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={term}
+                onChange={(event) => { setTerm(event.target.value); setCurrent(0) }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  selectMatch(event.shiftKey ? activeIndex - 1 : activeIndex + 1)
+                }}
+                placeholder="Localizar"
+                aria-label="Localizar no texto"
+                className="h-9 pl-8"
+              />
+            </div>
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+              <span role="status" className="min-w-16 text-xs tabular-nums text-muted-foreground">
+                {term ? (matches.length === 0 ? 'nenhuma' : `${activeIndex + 1} de ${matches.length}`) : ''}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant={caseSensitive ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  aria-pressed={caseSensitive}
+                  aria-label="Diferenciar maiúsculas de minúsculas"
+                  title="Diferenciar maiúsculas de minúsculas"
+                  onClick={() => setCaseSensitive((previous) => !previous)}
+                >
+                  <CaseSensitive className="h-4 w-4" aria-hidden="true" />
+                </Button>
+
+                <div className="flex shrink-0 items-center">
+                  <Button
+                    type="button" variant="ghost" size="icon" className="h-9 w-9"
+                    aria-label="Ocorrência anterior" title="Ocorrência anterior"
+                    disabled={matches.length === 0}
+                    onClick={() => selectMatch(activeIndex - 1)}
+                  >
+                    <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button" variant="ghost" size="icon" className="h-9 w-9"
+                    aria-label="Próxima ocorrência" title="Próxima ocorrência"
+                    disabled={matches.length === 0}
+                    onClick={() => selectMatch(activeIndex + 1)}
+                  >
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <Input
+              value={replacement}
+              onChange={(event) => setReplacement(event.target.value)}
+              placeholder="Substituir por"
+              aria-label="Substituir por"
+              className="h-9 min-w-0"
+              disabled={disabled}
+            />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button" variant="outline" size="sm" className="h-9 flex-1 sm:flex-none"
+                disabled={disabled || matches.length === 0}
+                onClick={replaceCurrent}
+              >
+                Substituir
+              </Button>
+              <Button
+                type="button" variant="outline" size="sm" className="h-9 flex-1 sm:flex-none"
+                disabled={disabled || matches.length === 0}
+                onClick={replaceAll}
+              >
+                <ReplaceAll className="h-4 w-4" aria-hidden="true" />
+                Tudo
+              </Button>
+            </div>
+          </div>
         </div>
-
-        <Input
-          value={replacement}
-          onChange={(event) => setReplacement(event.target.value)}
-          placeholder="Substituir por"
-          aria-label="Substituir por"
-          className="h-9 min-w-44 flex-1"
-          disabled={disabled}
-        />
-
-        <Button
-          type="button"
-          variant={caseSensitive ? 'secondary' : 'ghost'}
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          aria-pressed={caseSensitive}
-          aria-label="Diferenciar maiúsculas de minúsculas"
-          title="Diferenciar maiúsculas de minúsculas"
-          disabled={disabled}
-          onClick={() => setCaseSensitive((previous) => !previous)}
-        >
-          <CaseSensitive className="h-4 w-4" />
-        </Button>
-
-        <div className="flex shrink-0 items-center">
-          <Button
-            type="button" variant="ghost" size="icon" className="h-9 w-9"
-            aria-label="Ocorrência anterior" title="Ocorrência anterior"
-            disabled={disabled || matches.length === 0}
-            onClick={() => selectMatch(activeIndex - 1)}
-          >
-            <ChevronUp className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button" variant="ghost" size="icon" className="h-9 w-9"
-            aria-label="Próxima ocorrência" title="Próxima ocorrência"
-            disabled={disabled || matches.length === 0}
-            onClick={() => selectMatch(activeIndex + 1)}
-          >
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <Button
-          type="button" variant="outline" size="sm" className="h-9 shrink-0"
-          disabled={disabled || matches.length === 0}
-          onClick={replaceCurrent}
-        >
-          Substituir
-        </Button>
-        <Button
-          type="button" variant="outline" size="sm" className="h-9 shrink-0"
-          disabled={disabled || matches.length === 0}
-          onClick={replaceAll}
-        >
-          <ReplaceAll className="mr-2 h-4 w-4" />
-          Tudo
-        </Button>
-      </div>
+      )}
 
       {undoState && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2 text-sm dark:border-violet-900 dark:bg-violet-950/20">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
           <span>
             {undoState.count === 1 ? '1 ocorrência substituída.' : `${undoState.count} ocorrências substituídas.`}
           </span>
-          <Button type="button" variant="ghost" size="sm" className="h-8" onClick={undo}>
-            <Undo2 className="mr-2 h-4 w-4" />
+          <Button type="button" variant="ghost" size="sm" className="h-8" disabled={disabled} onClick={undo}>
+            <Undo2 className="h-4 w-4" aria-hidden="true" />
             Desfazer
           </Button>
         </div>
@@ -177,10 +203,14 @@ export function AtaTranscriptionEditor({ value, onChange, disabled, ariaLabel = 
       <Textarea
         ref={textareaRef}
         value={value}
-        onChange={(event) => { setUndoState(null); onChange(event.target.value) }}
+        onChange={(event) => {
+          if (disabled) return
+          setUndoState(null)
+          onChange(event.target.value)
+        }}
         className={textareaClassName}
         aria-label={ariaLabel}
-        disabled={disabled}
+        readOnly={disabled}
       />
     </div>
   )

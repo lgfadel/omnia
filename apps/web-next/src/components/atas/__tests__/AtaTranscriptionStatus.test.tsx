@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { AtaTranscriptionStatus } from '../AtaTranscriptionStatus'
 
 describe('AtaTranscriptionStatus', () => {
+  it('announces the current status as it moves from processing to reviewed', () => {
+    const { rerender } = render(<AtaTranscriptionStatus status="processing" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('A gravação está sendo preparada e transcrita em segundo plano.')
+    rerender(<AtaTranscriptionStatus status="completed" isReviewed />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Revisado')
+    expect(screen.queryByText('A gravação está sendo preparada e transcrita em segundo plano.')).toBeNull()
+  })
+
   it('announces the review instead of still asking for it once the text is closed', () => {
     render(<AtaTranscriptionStatus status="completed" isReviewed />)
 

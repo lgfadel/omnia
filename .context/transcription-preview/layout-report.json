@@ -1,0 +1,222 @@
+[
+  {
+    "state": "empty",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [],
+    "textarea": null,
+    "audio": null,
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "empty",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [],
+    "textarea": null,
+    "audio": null,
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "processing",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [
+      "DIV.h-full w-full flex-1 bg-primary transition-all"
+    ],
+    "textarea": null,
+    "audio": null,
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "processing",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [
+      "DIV.h-full w-full flex-1 bg-primary transition-all"
+    ],
+    "textarea": null,
+    "audio": null,
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "review",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [],
+    "textarea": {
+      "x": 57,
+      "width": 1002,
+      "height": 576,
+      "readOnly": false
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "review-expanded",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [],
+    "textarea": {
+      "x": 57,
+      "width": 1002,
+      "height": 576,
+      "readOnly": false
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "review",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [],
+    "textarea": {
+      "x": 33,
+      "width": 324,
+      "height": 448,
+      "readOnly": false
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "review-expanded",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [],
+    "textarea": {
+      "x": 33,
+      "width": 324,
+      "height": 448,
+      "readOnly": false
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "reviewed",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [],
+    "textarea": {
+      "x": 57,
+      "width": 1002,
+      "height": 576,
+      "readOnly": true
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "reviewed-expanded",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "overflowElements": [],
+    "textarea": {
+      "x": 57,
+      "width": 1002,
+      "height": 576,
+      "readOnly": true
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "reviewed",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [],
+    "textarea": {
+      "x": 33,
+      "width": 324,
+      "height": 448,
+      "readOnly": true
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  },
+  {
+    "state": "reviewed-expanded",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowElements": [],
+    "textarea": {
+      "x": 33,
+      "width": 324,
+      "height": 448,
+      "readOnly": true
+    },
+    "audio": {
+      "readyState": 4,
+      "duration": 1,
+      "error": null
+    },
+    "errors": [],
+    "externalRequests": []
+  }
+]

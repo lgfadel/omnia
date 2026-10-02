@@ -33,6 +33,14 @@
     "documentWidth": 1440
   },
   {
+    "state": "ready-editor-tools",
+    "device": "desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "bodyWidth": 1440,
+    "errors": []
+  },
+  {
     "state": "ready",
     "device": "mobile",
     "viewport": 390,
@@ -46,5 +54,13 @@
     "device": "mobile",
     "viewport": 390,
     "documentWidth": 390
+  },
+  {
+    "state": "ready-editor-tools",
+    "device": "mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "errors": []
   }
 ]
