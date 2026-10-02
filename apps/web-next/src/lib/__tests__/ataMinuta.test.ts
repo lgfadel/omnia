@@ -85,7 +85,7 @@ describe('getMinutaDocumentValidationError', () => {
 
   it('rejects a file over the size limit', () => {
     expect(getMinutaDocumentValidationError({ name: 'apuracao.pdf', type: 'application/pdf', size: MINUTA_DOCUMENT_MAX_SIZE_BYTES + 1 }))
-      .toBe('O arquivo ultrapassa o limite de 25 MB.')
+      .toBe('O arquivo ultrapassa o limite de 45 MB.')
   })
 
   it('rejects an empty file', () => {
@@ -120,6 +120,27 @@ describe('buildMinutaResponsesInput', () => {
     const input = buildMinutaResponsesInput('prompt', baseContext)
     const filePart = input[1].content.find((part) => part.type === 'input_file')
     expect(filePart).toEqual({ type: 'input_file', filename: 'apuracao.pdf', file_data: 'data:application/pdf;base64,QUJD' })
+  })
+
+  it('applies optional initial instructions without inventing a prior assistant draft', () => {
+    const input = buildMinutaResponsesInput('prompt', {
+      ...baseContext,
+      instruction: 'Registre os votos exatos da apuração e identifique cada pauta.',
+    })
+
+    expect(input.some((message) => message.role === 'assistant')).toBe(false)
+    const finalMessage = input.at(-1)!
+    expect(finalMessage.role).toBe('user')
+    expect((finalMessage.content[0] as { text: string }).text).toContain('Registre os votos exatos da apuração')
+    expect((finalMessage.content[0] as { text: string }).text).not.toContain('minuta acima')
+    expect(input[1].content).toContainEqual({ type: 'input_file', filename: 'apuracao.pdf', file_data: 'data:application/pdf;base64,QUJD' })
+  })
+
+  it('omits initial instructions containing only whitespace', () => {
+    const input = buildMinutaResponsesInput('prompt', { ...baseContext, instruction: ' \n  ' })
+
+    expect(input).toHaveLength(2)
+    expect(input.some((message) => message.role === 'assistant')).toBe(false)
   })
 
   it('omits the convocação block when there is no context text', () => {

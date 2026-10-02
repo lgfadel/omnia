@@ -146,7 +146,7 @@ export const ataMinutasRepoSupabase = {
     }
   },
 
-  // Gera (sem instrução) ou refina (com instrução) a minuta, repassando cada trecho de
+  // Gera a primeira minuta com orientações opcionais ou refina a existente, repassando cada trecho de
   // texto conforme o servidor escreve. onEvent recebe os deltas e o evento final.
   async streamTurn(ataId: string, instruction: string | undefined, onEvent: (event: AtaMinutaStreamEvent) => void): Promise<void> {
     const response = await fetch(`/api/atas/${ataId}/minuta`, {

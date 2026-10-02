@@ -1,4 +1,6 @@
-export const MINUTA_DOCUMENT_MAX_SIZE_BYTES = 25 * 1024 * 1024
+import { MINUTA_DOCUMENT_MAX_SIZE_BYTES, MINUTA_DOCUMENT_MAX_SIZE_MB } from './ataMinutaDocuments'
+
+export { MINUTA_DOCUMENT_MAX_SIZE_BYTES } from './ataMinutaDocuments'
 
 // O usage vem cru da Responses API (guardado por versão desde que o custo de duas
 // gerações com modelos diferentes na mesma minuta parou de se sobrescrever). Aqui só
@@ -87,8 +89,11 @@ export function getMinutaDocumentValidationError(file: { name: string; type: str
   if (file.size <= 0) {
     return 'Este arquivo está vazio.'
   }
+  if (!Number.isSafeInteger(file.size)) {
+    return 'Tamanho do arquivo inválido.'
+  }
   if (file.size > MINUTA_DOCUMENT_MAX_SIZE_BYTES) {
-    return 'O arquivo ultrapassa o limite de 25 MB.'
+    return `O arquivo ultrapassa o limite de ${MINUTA_DOCUMENT_MAX_SIZE_MB} MB.`
   }
   return null
 }
@@ -117,6 +122,7 @@ export interface MinutaGenerationContext {
   transcriptionText: string
   convocacaoContextText?: string
   documents: MinutaDocumentInput[]
+  instruction?: string
 }
 
 export interface MinutaRefinementContext extends MinutaGenerationContext {
@@ -167,7 +173,7 @@ function buildContextMessage(context: MinutaGenerationContext): ResponsesInputMe
   return { role: 'user', content: parts }
 }
 
-// A geração inicial manda só o contexto: transcrição, convocação e PDFs de apoio. Um
+// A geração inicial manda o contexto e as orientações iniciais opcionais. Um
 // turno de refinamento reenvia o mesmo contexto e acrescenta a minuta ATUAL vinda do
 // banco (não a última resposta do modelo) como se fosse a fala anterior do assistente —
 // assim uma edição manual feita entre dois turnos do chat é respeitada, e não descartada
@@ -178,7 +184,19 @@ export function buildMinutaResponsesInput(systemPrompt: string, context: MinutaG
     buildContextMessage(context),
   ]
 
-  if (!('instruction' in context)) return messages
+  if (!('currentContent' in context)) {
+    const instruction = context.instruction?.trim()
+    if (instruction) {
+      messages.push({
+        role: 'user',
+        content: [{
+          type: 'input_text',
+          text: `Gere a minuta inteira a partir do contexto fornecido, no formato de seções ("## Título" seguido de parágrafos), aplicando estas orientações iniciais: ${instruction}`,
+        }],
+      })
+    }
+    return messages
+  }
 
   messages.push({ role: 'assistant', content: [{ type: 'output_text', text: context.currentContent }] })
 

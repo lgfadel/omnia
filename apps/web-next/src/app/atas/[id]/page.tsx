@@ -15,7 +15,7 @@ import { AttachmentsList } from "@/components/atas/AttachmentsList"
 import { AtaTranscriptionPanel } from "@/components/atas/AtaTranscriptionPanel"
 import { AtaMinutaPanel } from "@/components/atas/AtaMinutaPanel"
 import { FileUploader } from "@/components/atas/FileUploader"
-import { Edit, Clock, ChevronDown } from "lucide-react"
+import { CalendarDays, ChevronDown, Edit, FileAudio, FileText, LayoutList, Paperclip, UserRound, UsersRound } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useAtasStore } from "@/stores/atas.store"
 import { useTagsStore } from "@/stores/tags.store"
@@ -180,10 +180,16 @@ const AtaDetail = () => {
   }
 
   const status = statuses.find(s => s.id === ata.statusId)
+  const attachmentCount = (ata.attachments?.length ?? 0) + (ata.comments?.reduce(
+    (total, comment) => total + (comment.attachments?.length ?? 0), 0,
+  ) ?? 0)
+  const meetingDate = ata.meetingDate
+    ? new Date(ata.meetingDate + 'T00:00:00').toLocaleDateString('pt-BR')
+    : null
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <BreadcrumbOmnia 
           items={[
             { label: "Início", href: "/" },
@@ -192,124 +198,127 @@ const AtaDetail = () => {
           ]}
         />
         
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">{ata.title}</h1>
-            {status && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-auto p-0 hover:bg-transparent"
-                  >
-                    <Badge 
-                      style={{ backgroundColor: status.color, color: 'white' }}
-                      className="border-none cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h1 className="min-w-0 break-words text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{ata.title}</h1>
+              {status && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-auto rounded-full p-0 hover:bg-transparent"
+                      aria-label={`Alterar status: ${status.name}`}
                     >
-                      {status.name}
-                      <ChevronDown className="w-3 h-3" />
-                    </Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {statuses.map((statusOption) => (
-                    <DropdownMenuItem
-                      key={statusOption.id}
-                      onClick={() => handleStatusChange(statusOption.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: statusOption.color }}
-                      />
-                      {statusOption.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                      <Badge variant="secondary" className="flex items-center gap-2 rounded-full border border-border bg-muted/50 px-2.5 py-1 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden="true" />
+                        {status.name}
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                      </Badge>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {statuses.map((statusOption) => (
+                      <DropdownMenuItem
+                        key={statusOption.id}
+                        onClick={() => handleStatusChange(statusOption.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: statusOption.color }}
+                          aria-hidden="true"
+                        />
+                        {statusOption.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <dl className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              {meetingDate && (
+                <div className="flex items-center gap-2">
+                  <dt className="sr-only">Data da assembleia</dt>
+                  <dd className="flex items-center gap-2"><CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />{meetingDate}</dd>
+                </div>
+              )}
+              {ata.secretary && (
+                <div className="flex min-w-0 items-center gap-2">
+                  <dt className="flex shrink-0 items-center gap-2"><UsersRound className="h-4 w-4" aria-hidden="true" />Secretário:</dt>
+                  <dd className="min-w-0 break-words text-foreground">{ata.secretary.name}</dd>
+                </div>
+              )}
+              {ata.responsible && (
+                <div className="flex min-w-0 items-center gap-2">
+                  <dt className="flex shrink-0 items-center gap-2"><UserRound className="h-4 w-4" aria-hidden="true" />Responsável:</dt>
+                  <dd className="min-w-0 break-words text-foreground">{ata.responsible.name}</dd>
+                </div>
+              )}
+            </dl>
           </div>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleEdit}>
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
-            </Button>
-          </div>
-        </div>
+
+          <Button variant="outline" onClick={handleEdit} className="shrink-0 self-start">
+            <Edit className="mr-2 h-4 w-4" aria-hidden="true" />
+            Editar dados
+          </Button>
+        </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            <TabsTrigger value="transcricao">Transcrição</TabsTrigger>
-            <TabsTrigger value="minuta">Minuta</TabsTrigger>
-            <TabsTrigger value="anexos">
-              Anexos ({(() => {
-                const directAttachments = ata.attachments?.length || 0;
-                const commentAttachments = ata.comments?.reduce((total, comment) => 
-                  total + (comment.attachments?.length || 0), 0) || 0;
-                return directAttachments + commentAttachments;
-              })()})
-            </TabsTrigger>
-          </TabsList>
+          <div className="min-w-0 overflow-x-auto pb-1">
+            <TabsList aria-label="Seções da ata" className="min-w-max gap-4 sm:gap-6">
+              <TabsTrigger value="resumo" className="gap-2"><LayoutList className="h-4 w-4" aria-hidden="true" />Resumo</TabsTrigger>
+              <TabsTrigger value="transcricao" className="gap-2"><FileAudio className="h-4 w-4" aria-hidden="true" />Transcrição</TabsTrigger>
+              <TabsTrigger value="minuta" className="gap-2"><FileText className="h-4 w-4" aria-hidden="true" />Minuta</TabsTrigger>
+              <TabsTrigger value="anexos" className="gap-2"><Paperclip className="h-4 w-4" aria-hidden="true" />Anexos ({attachmentCount})</TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="resumo">
-            <Card>
+          <TabsContent value="resumo" className="space-y-6">
+            <Card className="shadow-none">
               <CardHeader>
                 <CardTitle className="text-lg">Informações Gerais</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-6 text-sm">
+              <CardContent className="space-y-5">
+                <dl className="grid grid-cols-1 gap-x-8 gap-y-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   {ata.ticket && (
-                    <div>
-                      <label className="font-medium text-muted-foreground">Ticket</label>
-                      <p>{ata.ticket}</p>
+                    <div className="space-y-1 border-b pb-3">
+                      <dt className="text-muted-foreground">Ticket</dt>
+                      <dd className="break-words font-medium">{ata.ticket}</dd>
                     </div>
                   )}
                   
-                  {ata.meetingDate && (
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <label className="font-semibold text-blue-800">Data da Assembleia</label>
-                      <p className="flex items-center gap-2 text-blue-700 font-medium">
-                        {new Date(ata.meetingDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-                      </p>
+                  {meetingDate && (
+                    <div className="space-y-1 border-b pb-3">
+                      <dt className="text-muted-foreground">Data da Assembleia</dt>
+                      <dd className="font-medium">{meetingDate}</dd>
                     </div>
                   )}
                   
                   {ata.secretary && (
-                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                      <label className="font-semibold text-green-800">Secretário</label>
-                      <p className="flex items-center gap-2 text-green-700 font-medium">
-                        {ata.secretary.name}
-                      </p>
+                    <div className="space-y-1 border-b pb-3">
+                      <dt className="text-muted-foreground">Secretário</dt>
+                      <dd className="break-words font-medium">{ata.secretary.name}</dd>
                     </div>
                   )}
                   
                   {ata.responsible && (
-                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                      <label className="font-semibold text-purple-800">Responsável</label>
-                      <p className="flex items-center gap-2 text-purple-700 font-medium">
-                        {ata.responsible.name}
-                      </p>
+                    <div className="space-y-1 border-b pb-3">
+                      <dt className="text-muted-foreground">Responsável</dt>
+                      <dd className="break-words font-medium">{ata.responsible.name}</dd>
                     </div>
                   )}
-                </div>
+                </dl>
                 
                 {ata.tags && ata.tags.length > 0 && (
                   <div>
-                    <label className="font-medium text-muted-foreground">Tags</label>
-                    <div className="flex gap-1 mt-1">
+                    <p className="text-sm text-muted-foreground">Tags</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {ata.tags.map((tagName) => {
                         const tagData = tags.find(t => t.name === tagName)
                         return (
-                          <Badge 
-                            key={tagName} 
-                            style={{ 
-                              backgroundColor: tagData?.color || '#6366f1', 
-                              color: 'white' 
-                            }}
-                            className="border-none"
-                          >
+                          <Badge key={tagName} variant="secondary" className="gap-1.5 border-none font-medium">
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary" style={{ backgroundColor: tagData?.color }} aria-hidden="true" />
                             {tagName}
                           </Badge>
                         )
@@ -320,7 +329,7 @@ const AtaDetail = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-none">
               <CardHeader>
                 <CardTitle className="text-lg">Comentários ({ata.commentCount || 0})</CardTitle>
               </CardHeader>
@@ -342,11 +351,11 @@ const AtaDetail = () => {
           </TabsContent>
 
           <TabsContent value="transcricao">
-            <AtaTranscriptionPanel ataId={ata.id} onGenerateMinuta={() => setActiveTab('minuta')} />
+            <AtaTranscriptionPanel key={ata.id} ataId={ata.id} onGenerateMinuta={() => setActiveTab('minuta')} />
           </TabsContent>
 
           <TabsContent value="minuta">
-            <AtaMinutaPanel ataId={ata.id} ataTitle={ata.title} />
+            <AtaMinutaPanel key={ata.id} ataId={ata.id} ataTitle={ata.title} onOpenTranscription={() => setActiveTab('transcricao')} />
           </TabsContent>
 
           <TabsContent value="anexos">

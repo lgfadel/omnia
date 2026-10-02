@@ -9,6 +9,7 @@ import {
 } from '@/lib/ataMinuta'
 import type { AtaMinutaReasoningEffort } from '@/data/types'
 import { parseSseBlock, splitSseBlocks } from '@/lib/openaiResponsesStream'
+import { getMinutaDocumentsValidationError } from '@/lib/ataMinutaDocuments'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const MINUTA_DOCUMENTS_BUCKET = 'ata-minuta-documents'
@@ -163,6 +164,14 @@ export async function verifyMinutaModel(authHeader: string | null, modelId: stri
 
 // ---- Documentos de apoio (convocação, apuração de votação) ----
 
+async function assertMinutaDocumentBudget(client: SupabaseClient, ataId: string, additionalSizeBytes: number): Promise<void> {
+  const { data, error } = await client.from('omnia_ata_minuta_documents').select('size_bytes').eq('ata_id', ataId)
+  if (error) throw new Error(error.message)
+  const documents = ((data ?? []) as Array<{ size_bytes: number }>).map((row) => ({ sizeBytes: row.size_bytes }))
+  const validationError = getMinutaDocumentsValidationError(documents, additionalSizeBytes)
+  if (validationError) throw new Error(validationError)
+}
+
 export async function createMinutaDocumentUpload(
   authHeader: string | null,
   ataId: string,
@@ -175,6 +184,8 @@ export async function createMinutaDocumentUpload(
 
   const validationError = getMinutaDocumentValidationError({ name: input.fileName, type: 'application/pdf', size: input.sizeBytes })
   if (validationError) throw new Error(validationError)
+
+  await assertMinutaDocumentBudget(client, ataId, input.sizeBytes)
 
   const storagePath = `${ataId}/${user.omniaUserId}/${randomUUID()}-${sanitizeFileName(input.fileName)}`
   const { data, error } = await client.storage
@@ -233,6 +244,8 @@ export async function confirmMinutaDocumentUpload(
       created_at: row.created_at,
     }
   }
+
+  await assertMinutaDocumentBudget(client, ataId, input.sizeBytes)
 
   const { data: file, error: fileError } = await client.storage.from(MINUTA_DOCUMENTS_BUCKET).download(input.storagePath)
   if (fileError || !file) throw new Error('O upload do documento não foi concluído. Tente enviar o PDF novamente.')
@@ -305,23 +318,34 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
 async function downloadDocumentsAsBase64(client: SupabaseClient, ataId: string) {
   const { data: rows, error } = await client
     .from('omnia_ata_minuta_documents')
-    .select('storage_path, original_filename')
+    .select('storage_path, original_filename, size_bytes')
     .eq('ata_id', ataId)
   if (error) throw new Error(error.message)
 
-  return Promise.all(
-    ((rows ?? []) as Array<{ storage_path: string; original_filename: string }>).map(async (row) => {
-      const { data: file, error: downloadError } = await client.storage.from(MINUTA_DOCUMENTS_BUCKET).download(row.storage_path)
-      if (downloadError || !file) throw new Error(`Não foi possível carregar o documento ${row.original_filename}.`)
-      const buffer = Buffer.from(await file.arrayBuffer())
-      return { originalFilename: row.original_filename, base64: buffer.toString('base64') }
-    }),
-  )
+  const documents = (rows ?? []) as Array<{ storage_path: string; original_filename: string; size_bytes: number }>
+  const validationError = getMinutaDocumentsValidationError(documents.map((row) => ({ sizeBytes: row.size_bytes })))
+  if (validationError) throw new Error(validationError)
+
+  const inputs = [] as Array<{ originalFilename: string; base64: string }>
+  // Processar um PDF de cada vez evita manter todos os blobs e buffers em memória
+  // ao mesmo tempo. O teto agregado também é conferido antes do primeiro download.
+  for (const row of documents) {
+    const { data: file, error: downloadError } = await client.storage.from(MINUTA_DOCUMENTS_BUCKET).download(row.storage_path)
+    if (downloadError || !file) throw new Error(`Não foi possível carregar o documento ${row.original_filename}.`)
+    const fileValidationError = getMinutaDocumentValidationError({ name: row.original_filename, type: 'application/pdf', size: file.size })
+    if (fileValidationError) throw new Error(fileValidationError)
+    if (file.size !== row.size_bytes) {
+      throw new Error(`O documento ${row.original_filename} não corresponde ao tamanho informado.`)
+    }
+    const buffer = Buffer.from(await file.arrayBuffer())
+    inputs.push({ originalFilename: row.original_filename, base64: buffer.toString('base64') })
+  }
+  return inputs
 }
 
-// Um turno por vez: sem instrução é geração (do zero, supera a minuta atual); com
-// instrução é refinamento (parte da minuta atual salva no banco, não da última
-// resposta do modelo — assim uma edição manual feita entre dois turnos é respeitada).
+// Um turno por vez: sem instrução é geração (do zero, supera a minuta atual).
+// Instruções sem minuta escrita orientam a geração inicial; com texto existente,
+// refinam a minuta atual salva no banco, respeitando também as edições manuais.
 export async function* streamMinutaTurn(
   authHeader: string | null,
   ataId: string,
@@ -366,6 +390,25 @@ export async function* streamMinutaTurn(
     .maybeSingle()
   const currentMinuta = currentMinutaRow as { id: string; content: string; status: string; updated_at: string } | null
 
+  let turnInstruction = instruction?.trim() || undefined
+  const hasCurrentContent = Boolean(currentMinuta?.content.trim())
+  const isRefinement = Boolean(turnInstruction && hasCurrentContent)
+  if (currentMinuta?.status === 'generating' && Date.now() - new Date(currentMinuta.updated_at).getTime() < GENERATION_STALE_MS) {
+    throw new Error('Uma geração já está em andamento para esta minuta.')
+  }
+  // Refazer uma geração interrompida mantém as orientações já fornecidas. Uma
+  // string vazia explícita permite apagar essas orientações antes de tentar de novo.
+  if (instruction === undefined && currentMinuta && (currentMinuta.status === 'failed' || currentMinuta.status === 'generating')) {
+    const { data: messageRows, error: messagesError } = await client
+      .from('omnia_ata_minuta_messages')
+      .select('content')
+      .eq('minuta_id', currentMinuta.id)
+      .eq('role', 'user')
+      .order('sequence', { ascending: true })
+    if (messagesError) throw new Error(messagesError.message)
+    turnInstruction = (messageRows as Array<{ content: string }> | null)?.map(row => row.content.trim()).filter(Boolean).join('\n') || undefined
+  }
+
   const baseContext: MinutaGenerationContext = {
     ataTitle: ata.title,
     condominiumName: condominium?.name,
@@ -378,11 +421,7 @@ export async function* streamMinutaTurn(
   let minutaId: string
   let input: ReturnType<typeof buildMinutaResponsesInput>
 
-  if (instruction) {
-    if (!currentMinuta) throw new Error('Gere a minuta antes de pedir correções.')
-    if (currentMinuta.status === 'generating' && Date.now() - new Date(currentMinuta.updated_at).getTime() < GENERATION_STALE_MS) {
-      throw new Error('Uma geração já está em andamento para esta minuta.')
-    }
+  if (isRefinement && currentMinuta && turnInstruction) {
     minutaId = currentMinuta.id
     const { data: messageRows } = await client
       .from('omnia_ata_minuta_messages')
@@ -396,11 +435,11 @@ export async function* streamMinutaTurn(
       ...baseContext,
       currentContent: currentMinuta.content,
       priorInstructions,
-      instruction,
+      instruction: turnInstruction,
     })
 
     await client.from('omnia_ata_minutas').update({ status: 'generating', error_message: null }).eq('id', minutaId)
-    await insertMinutaMessage(client, minutaId, 'user', instruction, user.omniaUserId)
+    await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
   } else {
     if (currentMinuta) await client.from('omnia_ata_minutas').update({ is_current: false }).eq('id', currentMinuta.id)
     const { data: created, error: createError } = await client
@@ -416,7 +455,8 @@ export async function* streamMinutaTurn(
       .single()
     if (createError || !created) throw new Error(createError?.message ?? 'Não foi possível iniciar a minuta.')
     minutaId = (created as { id: string }).id
-    input = buildMinutaResponsesInput(settingsRow.system_prompt, baseContext)
+    input = buildMinutaResponsesInput(settingsRow.system_prompt, { ...baseContext, instruction: turnInstruction })
+    if (turnInstruction) await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
   }
 
   // Se quem chamou parar de consumir o stream no meio (aba fechada, wifi caiu), o
@@ -480,8 +520,8 @@ export async function* streamMinutaTurn(
 
     if (!accumulated.trim()) throw new Error('A OpenAI não devolveu texto para a minuta.')
 
-    const versionId = await insertMinutaVersion(client, minutaId, accumulated, instruction ? 'chat' : 'generation', user.omniaUserId, settingsRow.model, usage)
-    if (instruction) {
+    const versionId = await insertMinutaVersion(client, minutaId, accumulated, isRefinement ? 'chat' : 'generation', user.omniaUserId, settingsRow.model, usage)
+    if (turnInstruction) {
       await insertMinutaMessage(client, minutaId, 'assistant', accumulated, user.omniaUserId, versionId)
     }
     const { data: readyMinuta, error: readyError } = await client

@@ -295,12 +295,12 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-violet-50 via-background to-background dark:from-violet-950/20">
+      <Card className="overflow-hidden shadow-none">
+        <CardHeader className="border-b p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <FileAudio className="h-5 w-5 text-violet-600" />
+                <FileAudio className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                 Áudio da assembleia
               </CardTitle>
               <CardDescription>Envie a gravação para criar uma transcrição revisável, com marcação de horário em cada trecho.</CardDescription>
@@ -308,7 +308,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
             {job && <AtaTranscriptionStatus status={job.status} isReviewed={isReviewed} />}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-5 p-5 sm:p-6">
           {error && (
             <Alert variant="destructive">
               <TriangleAlert className="h-4 w-4" />
@@ -321,6 +321,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
             ref={inputRef}
             className="hidden"
             type="file"
+            aria-label="Selecionar arquivo de gravação"
             accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,video/mp4,audio/webm,video/webm,audio/ogg,.mp3,.m4a,.wav,.mp4,.webm,.aac,.ogg,.oga,.opus"
             onChange={(event) => {
               const file = event.target.files?.[0]
@@ -332,6 +333,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
             ref={convocacaoRef}
             className="hidden"
             type="file"
+            aria-label="Selecionar convocação em PDF"
             accept="application/pdf,.pdf"
             onChange={(event) => {
               const file = event.target.files?.[0]
@@ -340,60 +342,63 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
           />
 
           {!job && (
-            <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/50 p-6 text-center dark:border-violet-900 dark:bg-violet-950/10">
-              <FilePlus2 className="mx-auto mb-3 h-7 w-7 text-violet-600" />
-              <p className="font-medium">Envie uma gravação de até 6 horas</p>
-              <p className="mt-1 text-sm text-muted-foreground">MP3, M4A, AAC, WAV, MP4, WebM ou OGG. O envio começa assim que você escolher o arquivo, e o processamento continua mesmo se você sair desta tela.</p>
-              <Button className="mt-4" onClick={() => inputRef.current?.click()} disabled={isUploading || isReadingConvocacao}>
-                <FilePlus2 className="mr-2 h-4 w-4" />
-                {isUploading ? 'Enviando…' : 'Selecionar gravação'}
-              </Button>
-
-              <div className="mt-6 border-t border-dashed border-violet-200 pt-4 text-left dark:border-violet-900">
+            <div className="space-y-5">
+              <div className="border-b pb-5">
                 {convocacao ? (
-                  <div className="rounded-lg border bg-background p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2">
-                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
-                        <div className="space-y-1 text-sm">
-                          <p className="font-medium">Convocação lida</p>
-                          <ul className="text-muted-foreground">
-                            {convocacao.condominio && <li>Condomínio: {convocacao.condominio}</li>}
-                            {convocacao.sindico && <li>Síndico: {convocacao.sindico}</li>}
-                            {convocacao.data && <li>Data: {convocacao.data}</li>}
-                            <li>
-                              {convocacao.pautaItems.length > 0
-                                ? `${convocacao.pautaItems.length} ${convocacao.pautaItems.length === 1 ? 'item de pauta' : 'itens de pauta'}`
-                                : 'Pauta não identificada — o texto da convocação será usado assim mesmo'}
-                            </li>
-                          </ul>
-                        </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <div className="space-y-1 break-words text-sm">
+                        <p className="font-medium">Convocação lida</p>
+                        <ul className="text-muted-foreground">
+                          {convocacao.condominio && <li>Condomínio: {convocacao.condominio}</li>}
+                          {convocacao.sindico && <li>Síndico: {convocacao.sindico}</li>}
+                          {convocacao.data && <li>Data: {convocacao.data}</li>}
+                          <li>
+                            {convocacao.pautaItems.length > 0
+                              ? `${convocacao.pautaItems.length} ${convocacao.pautaItems.length === 1 ? 'item de pauta' : 'itens de pauta'}`
+                              : 'Pauta não identificada — o texto da convocação será usado assim mesmo'}
+                          </li>
+                        </ul>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Remover convocação" onClick={() => setConvocacao(null)}>
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Remover convocação" onClick={() => setConvocacao(null)}>
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-                    <span className="text-muted-foreground">
-                      Tem a convocação em PDF? Ela ancora o nome do condomínio, do síndico e a pauta na transcrição.
-                    </span>
-                    <Button variant="outline" size="sm" disabled={isReadingConvocacao || isUploading} onClick={() => convocacaoRef.current?.click()}>
-                      <FileText className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+                    <div className="max-w-xl space-y-1 text-sm">
+                      <p className="font-medium">Convocação <span className="font-normal text-muted-foreground">· opcional</span></p>
+                      <p className="text-muted-foreground">Anexe antes da gravação para orientar os nomes do condomínio, do síndico e os itens da pauta.</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-auto" disabled={isReadingConvocacao || isUploading} onClick={() => convocacaoRef.current?.click()}>
+                      <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
                       {isReadingConvocacao ? 'Lendo…' : 'Anexar convocação (opcional)'}
                     </Button>
                   </div>
                 )}
+              </div>
+              <div className="rounded-lg border border-dashed bg-muted/20 p-5 sm:p-6">
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <div className="max-w-xl space-y-2">
+                    <p className="font-medium">Envie uma gravação de até 6 horas</p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">MP3, M4A, AAC, WAV, MP4, WebM ou OGG. O envio começa assim que você escolher o arquivo, e o processamento continua mesmo se você sair desta tela.</p>
+                  </div>
+                  <Button className="shrink-0" onClick={() => inputRef.current?.click()} disabled={isUploading || isReadingConvocacao}>
+                    <FilePlus2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {isUploading ? 'Enviando…' : 'Selecionar gravação'}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
           {job && isJobActive && (
             <div className="space-y-3 rounded-lg border bg-muted/25 p-4">
-              <div className="flex items-center justify-between gap-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="truncate font-medium">{job.originalFilename}</span>
-                <span className="shrink-0 text-muted-foreground">Execução em background</span>
+                <span className="text-muted-foreground">Em segundo plano</span>
               </div>
               {(() => {
                 const { percent, label } = getTranscriptionProgress(job)
@@ -451,8 +456,8 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       </Card>
 
       {transcription && (
-        <Card>
-          <CardHeader>
+        <Card className="shadow-none">
+          <CardHeader className="p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -461,18 +466,18 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
                 <CardDescription>
                   {isReviewed
                     ? 'O texto está fechado. Reabra para editar, ou baixe o .txt para usar fora daqui.'
-                    : 'Edite o texto antes de usar o conteúdo na futura geração da minuta.'}
+                    : 'Confira os nomes e as decisões antes de preparar a minuta.'}
                 </CardDescription>
               </div>
               {onGenerateMinuta && (
                 <Button variant="outline" onClick={onGenerateMinuta}>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Gerar minuta de ATA
+                  Preparar minuta
                 </Button>
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-5 px-5 pb-5 sm:px-6 sm:pb-6">
             <AtaTranscriptionEditor
               value={draftText}
               onChange={setDraftText}

@@ -18,6 +18,17 @@ function message(overrides: Partial<AtaMinutaMessage>): AtaMinutaMessage {
 }
 
 describe('AtaMinutaChat', () => {
+  it('identifies the initial generated response instead of reporting an unchanged revision', () => {
+    const messages = [
+      message({ id: 'm1', role: 'user', content: 'Destaque as votações.' }),
+      message({ id: 'm2', role: 'assistant', content: initialContent, versionId: 'generation-1', sequence: 1 }),
+    ]
+    render(<AtaMinutaChat messages={messages} initialContent={initialContent} initialVersionId="generation-1" isSending={false} onSend={vi.fn()} />)
+
+    expect(screen.getByText('Primeira minuta gerada com suas orientações.')).toBeInTheDocument()
+    expect(screen.queryByText('Nenhuma seção foi alterada.')).not.toBeInTheDocument()
+  })
+
   it('shows the user instruction verbatim', () => {
     render(<AtaMinutaChat messages={[message({ role: 'user', content: 'Corrija o nome do síndico.' })]} initialContent={initialContent} isSending={false} onSend={vi.fn()} />)
 

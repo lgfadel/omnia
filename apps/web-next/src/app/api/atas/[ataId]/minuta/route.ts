@@ -10,8 +10,11 @@ export const maxDuration = 300
 
 export async function POST(request: Request, context: { params: Promise<{ ataId: string }> }) {
   const { ataId } = await context.params
-  const body = await request.json().catch(() => ({})) as { instruction?: string }
-  const events = streamMinutaTurn(request.headers.get('Authorization'), ataId, body.instruction?.trim() || undefined)
+  const body = await request.json().catch(() => ({})) as { instruction?: unknown }
+  if (body.instruction !== undefined && typeof body.instruction !== 'string') {
+    return NextResponse.json({ error: 'As instruções devem ser um texto.' }, { status: 400 })
+  }
+  const events = streamMinutaTurn(request.headers.get('Authorization'), ataId, typeof body.instruction === 'string' ? body.instruction.trim() : undefined)
 
   // O corpo do gerador só roda no primeiro next(): autenticação, autorização e a
   // validação de contexto (transcrição ausente, modelo não configurado) ainda falham
