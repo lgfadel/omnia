@@ -586,7 +586,8 @@
           "title": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 500
+            "maxLength": 500,
+            "description": "Leading and trailing whitespace is trimmed before validation; an empty result is rejected, then the 500-character limit applies."
           },
           "description": {
             "anyOf": [
@@ -677,7 +678,7 @@
           "title"
         ],
         "additionalProperties": false,
-        "description": "Standalone for API/MCP keys. Recurrence is accepted only for a verified browser user."
+        "description": "Standalone for API/MCP keys. Recurrence is accepted only for a verified browser user. A non-null recurrence sets the first task dueDate to recurrence.startDate, overriding any supplied dueDate. If the next slot exceeds ON_DATE or AFTER_COUNT bounds, the series starts inactive with nextOccurrenceDate:null. Standalone creation preserves the supplied dueDate."
       },
       "TaskPatch": {
         "type": "object",
@@ -685,7 +686,8 @@
           "title": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 500
+            "maxLength": 500,
+            "description": "Leading and trailing whitespace is trimmed before validation; an empty result is rejected, then the 500-character limit applies."
           },
           "description": {
             "anyOf": [
@@ -955,7 +957,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Leading and trailing whitespace is trimmed before validation; an empty result is rejected, then the 100-character limit applies."
           },
           "audience": {
             "type": "string",

@@ -95,8 +95,8 @@ export async function tasksApiRequest<T>(path: string, init: RequestInit = {}): 
   let response: Response
   try { response = await request() }
   catch (transportError) {
-    if (!(transportError instanceof TypeError) || !init.body) throw transportError
-    // Idempotency-Key remains identical during a transport retry.
+    if (!(transportError instanceof TypeError) || !init.body || !new Headers(headers).get('Idempotency-Key')) throw transportError
+    // Only writes with the idempotency contract can retry; keep the same key.
     response = await request()
   }
   const result = await response.json() as { data?: T; error?: {code:string;message:string} }

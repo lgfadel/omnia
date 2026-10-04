@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { tarefasRepoSupabase, taskWritePayload, type Tarefa } from '../tarefasRepo.supabase'
+import { integrationKeysRepo } from '../integrationKeysRepo.api'
 
 const { getSession } = vi.hoisted(() => ({getSession:vi.fn()}))
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession }, from: vi.fn() } }))
@@ -68,9 +69,36 @@ describe('official task adapter', () => {
 
   it('reuses one idempotency key on a transport retry', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('network')).mockResolvedValueOnce(json(task()))
-    await tarefasRepoSupabase.create({title:'Tarefa',priority:'NORMAL',statusId:task().statusId,tags:[],isPrivate:false})
+    const created = await tarefasRepoSupabase.create({title:'Tarefa',priority:'NORMAL',statusId:task().statusId,tags:[],isPrivate:false})
+    expect(created.id).toBe(task().id)
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0][1].headers['Idempotency-Key']).toBeTruthy()
     expect(fetchMock.mock.calls[0][1].headers['Idempotency-Key']).toBe(fetchMock.mock.calls[1][1].headers['Idempotency-Key'])
+    expect(fetchMock.mock.calls[0][1].body).toBe(fetchMock.mock.calls[1][1].body)
+  })
+
+  it('retries a task update with the same key, body and exact version', async () => {
+    fetchMock.mockResolvedValueOnce(json(task()))
+    const original = await tarefasRepoSupabase.get(task().id) as Tarefa
+    fetchMock.mockRejectedValueOnce(new TypeError('response lost')).mockResolvedValueOnce(json(task({title:'Edited'})))
+    const updated = await tarefasRepoSupabase.update(original.id,{title:'Edited'},original)
+    expect(updated?.title).toBe('Edited')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    const first = fetchMock.mock.calls[1][1]
+    const retry = fetchMock.mock.calls[2][1]
+    expect(first.headers['Idempotency-Key']).toBeTruthy()
+    expect(retry.headers['Idempotency-Key']).toBe(first.headers['Idempotency-Key'])
+    expect(retry.headers['If-Match']).toBe(first.headers['If-Match'])
+    expect(retry.body).toBe(first.body)
+  })
+
+  it('does not repeat non-idempotent key issuance when its response is lost', async () => {
+    const lostResponse = new TypeError('response lost after issuance')
+    fetchMock.mockRejectedValueOnce(lostResponse).mockResolvedValueOnce(json({token:'unexpected-second-key'}))
+    await expect(integrationKeysRepo.create({name:'Automation',audience:'api',scopes:['tasks:read']})).rejects.toBe(lostResponse)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/integration-keys')
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST')
   })
 
   it('sends explicit null clears and an idempotency key', async () => {

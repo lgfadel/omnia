@@ -236,10 +236,11 @@ DECLARE r public.omnia_ticket_recurrences%ROWTYPE; v_start date; v_end date; lim
     is_private=CASE WHEN p_patch ? 'isPrivate' THEN coalesce(p_task.is_private,false) ELSE r.is_private END,
     ticket_octa=CASE WHEN p_patch ? 'ticketOcta' THEN p_task.ticket_octa ELSE r.ticket_octa END WHERE id=r.id;
  ELSE
+   next_date:=public.add_ticket_recurrence_interval(v_start,(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count);
+   next_active:=active_flag AND NOT ((coalesce(p_config->>'endType','NEVER')='AFTER_COUNT' AND limit_count=1) OR (coalesce(p_config->>'endType','NEVER')='ON_DATE' AND next_date>v_end));
    INSERT INTO public.omnia_ticket_recurrences(template_ticket_id,frequency,interval,start_date,end_type,end_date,occurrence_limit,generated_occurrences,next_occurrence_date,is_active,title,description,priority,status_id,assigned_to,created_by,oportunidade_id,tags,is_private,ticket_octa)
    VALUES(p_task.id,(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count,v_start,coalesce(p_config->>'endType','NEVER')::public.ticket_recurrence_end_type,v_end,limit_count,1,
-    CASE WHEN active_flag AND NOT (coalesce(p_config->>'endType','NEVER')='AFTER_COUNT' AND limit_count=1) THEN public.add_ticket_recurrence_interval(v_start,(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count) END,
-    active_flag AND NOT (coalesce(p_config->>'endType','NEVER')='AFTER_COUNT' AND limit_count=1),p_task.title,p_task.description,p_task.priority,p_task.status_id,p_task.assigned_to,p_task.created_by,p_task.oportunidade_id,coalesce(p_task.tags,'{}'),coalesce(p_task.is_private,false),p_task.ticket_octa) RETURNING id INTO series_id;
+    CASE WHEN next_active THEN next_date END,next_active,p_task.title,p_task.description,p_task.priority,p_task.status_id,p_task.assigned_to,p_task.created_by,p_task.oportunidade_id,coalesce(p_task.tags,'{}'),coalesce(p_task.is_private,false),p_task.ticket_octa) RETURNING id INTO series_id;
  END IF;
  RETURN series_id;
 END $$;
@@ -287,6 +288,10 @@ BEGIN
     ON CONFLICT(actor_id,window_start) DO UPDATE SET requests=tasks_api_private.rate_limits.requests+1 RETURNING requests INTO rate_count;
     IF rate_count>120 THEN PERFORM tasks_api_private.fail(429,'RATE_LIMITED','Task request rate exceeded'); END IF;
   END IF;
+  -- Typed business failures roll back all resource/audit/replay writes, but
+  -- keep the authenticated actor's debit in the enclosing block. A threshold
+  -- rejection above still rolls its increment back, preserving the stored 120.
+  BEGIN
   IF p_operation IN ('tasks.create','tasks.update') THEN
     IF p_idempotency_key IS NULL OR length(p_idempotency_key) NOT BETWEEN 1 AND 200 THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','A write idempotency key is required'); END IF;
     PERFORM pg_advisory_xact_lock(hashtextextended(actor.id::text||v_principal||p_operation||p_idempotency_key,0));
@@ -372,7 +377,7 @@ BEGIN
     CASE WHEN p_payload ? 'tags' THEN ARRAY(SELECT jsonb_array_elements_text(p_payload->'tags')) ELSE '{}'::text[] END,coalesce((p_payload->>'isPrivate')::boolean,false),(p_payload->>'oportunidadeId')::uuid) RETURNING * INTO v_task;
     IF p_payload ? 'recurrence' AND p_payload->'recurrence'<>'null'::jsonb THEN
       new_series:=tasks_api_private.set_recurrence(v_task,p_payload->'recurrence');
-      UPDATE public.omnia_tickets SET recurrence_id=new_series,recurrence_occurrence=1,due_date=coalesce(v_task.due_date,(p_payload#>>'{recurrence,startDate}')::date) WHERE id=v_task.id RETURNING * INTO v_task;
+      UPDATE public.omnia_tickets SET recurrence_id=new_series,recurrence_occurrence=1,due_date=(p_payload#>>'{recurrence,startDate}')::date WHERE id=v_task.id RETURNING * INTO v_task;
     END IF;
     result:=tasks_api_private.task_dto(v_task);
    WHEN 'tasks.update' THEN
@@ -419,6 +424,14 @@ BEGIN
    END IF;
   END IF;
   IF p_token_digest IS NOT NULL THEN UPDATE tasks_api_private.credentials SET last_used_at=clock_timestamp() WHERE id=cred.id; END IF;
+  EXCEPTION WHEN OTHERS THEN
+   GET STACKED DIAGNOSTICS err_detail=PG_EXCEPTION_DETAIL,err_state=RETURNED_SQLSTATE,err_message=MESSAGE_TEXT;
+   IF err_state='P0001' AND err_detail LIKE '{%' THEN response:=err_detail::jsonb;
+   ELSIF err_state IN ('22P02','22007','22008','22003','23502','23503','23514') THEN response:=jsonb_build_object('status',400,'error',jsonb_build_object('code','VALIDATION_ERROR','message','Invalid input or reference'));
+   ELSIF err_state='23505' THEN response:=jsonb_build_object('status',409,'error',jsonb_build_object('code','CONFLICT','message','Resource already exists'));
+   ELSIF err_state='42501' THEN response:=jsonb_build_object('status',403,'error',jsonb_build_object('code','FORBIDDEN','message','Operation is denied'));
+   ELSE RAISE; END IF;
+  END;
  EXCEPTION WHEN OTHERS THEN
   GET STACKED DIAGNOSTICS err_detail=PG_EXCEPTION_DETAIL,err_state=RETURNED_SQLSTATE,err_message=MESSAGE_TEXT;
   IF err_state='P0001' AND err_detail LIKE '{%' THEN response:=err_detail::jsonb;
