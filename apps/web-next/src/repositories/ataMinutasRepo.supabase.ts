@@ -210,7 +210,7 @@ export const ataMinutasRepoSupabase = {
       bytes = await file.arrayBuffer()
       if (bytes.byteLength !== file.size) throw new Error('Incomplete file read')
     } catch {
-      throw new Error('Não foi possível ler o PDF. Salve uma cópia em uma pasta local, como Downloads, e selecione o arquivo novamente.')
+      throw new Error('Não foi possível ler o PDF na pasta de origem. Se ele estiver no Google Drive, verifique se a sincronização está ativa e selecione-o novamente nessa mesma pasta.')
     }
     const pdf = new File([bytes], file.name, { type: 'application/pdf' })
 

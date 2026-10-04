@@ -113,7 +113,7 @@ describe('minuta supporting PDF upload', () => {
   it('reports an unreadable PDF before starting either upload route', async () => {
     const file = pdf()
     Object.defineProperty(file, 'arrayBuffer', { value: async () => { throw new DOMException('Permission denied', 'NotReadableError') } })
-    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('Não foi possível ler o PDF')
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('Não foi possível ler o PDF na pasta de origem. Se ele estiver no Google Drive, verifique se a sincronização está ativa e selecione-o novamente nessa mesma pasta.')
     expect(calls).toEqual([])
   })
 
