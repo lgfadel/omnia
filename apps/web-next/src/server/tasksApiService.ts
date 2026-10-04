@@ -12,7 +12,7 @@ export type DispatchArgs = {
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
 }
 export type DispatchResult = {status:number;data?:unknown;error?:{code:string;message:string}}
-export type TasksApiConfig = {readEnabled:boolean;writeEnabled:boolean;exchangeSecret?:string}
+export type TasksApiConfig = {readEnabled:boolean;writeEnabled:boolean;exchangeSecret?:string;isVercel?:boolean}
 export type TasksApiDependencies = {
   verifyBrowser:(token:string)=>Promise<string|null>;
   dispatch:(args:DispatchArgs)=>Promise<DispatchResult>;
@@ -25,6 +25,7 @@ const errors:Record<string,{status:number;message:string}> = {
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
   INVALID_AUDIENCE:{status:403,message:'Credential audience is not allowed'},FORBIDDEN:{status:403,message:'Access denied'},
   INSUFFICIENT_SCOPE:{status:403,message:'Required scope is missing'},VALIDATION_ERROR:{status:400,message:'Invalid request'},
+  UNSUPPORTED_PRECONDITION_HEADER:{status:400,message:'Use X-Omnia-If-Match instead of If-Match on this deployment'},
   NOT_FOUND:{status:404,message:'Resource not found'},CONFLICT:{status:409,message:'Resource conflict'},
   IDEMPOTENCY_CONFLICT:{status:409,message:'Idempotency key was used for another request'},PRECONDITION_REQUIRED:{status:428,message:'Strong If-Match is required'},
   PRECONDITION_FAILED:{status:412,message:'Task changed; reload before updating'},RATE_LIMITED:{status:429,message:'Request limit exceeded'},
@@ -119,6 +120,9 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
     try {
       if(request.method!==methods[operation])fail('METHOD_NOT_ALLOWED')
       const token=bearer(request)
+      const standardMatch=request.headers.get('if-match')
+      // Reject before any dispatch: Vercel can fail standard conditionals after a committed write.
+      if(standardMatch!==null && deps.config().isVercel)fail('UNSUPPORTED_PRECONDITION_HEADER')
       const isExchange=operation==='mcp.exchange'
       const isManagement=operation.startsWith('credentials.')
       let authUserId:string|null=null,tokenDigest:string|null=null,rawToken:string|undefined
@@ -159,7 +163,9 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
           if(operation==='tasks.create'||operation==='tasks.update'){
             idempotencyKey=idempotency(request)
             if(operation==='tasks.update'){
-              const match=request.headers.get('if-match');if(!match)fail('PRECONDITION_REQUIRED')
+              const transportMatch=request.headers.get('x-omnia-if-match')
+              if(standardMatch!==null && transportMatch!==null && standardMatch!==transportMatch)fail('VALIDATION_ERROR')
+              const match=transportMatch??standardMatch;if(!match)fail('PRECONDITION_REQUIRED')
               try {payload.expectedUpdatedAt=taskUpdatedAtFromEtag(match)}catch{fail('VALIDATION_ERROR')}
             }
             const body=await jsonBody(request)

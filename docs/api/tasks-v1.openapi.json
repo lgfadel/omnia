@@ -3,7 +3,7 @@
   "info": {
     "title": "Omnia Tasks API",
     "version": "1.0.0",
-    "description": "Implemented /api/v1 task and personal integration-key routes. Integration read/write switches default closed. Responses processed by implemented handlers use no-store and an X-Request-Id; unsupported verbs can receive the Next.js framework default 405 response."
+    "description": "Implemented /api/v1 task and personal integration-key routes. Integration read/write switches default closed. Responses processed by implemented handlers use no-store and an X-Request-Id; unsupported verbs can receive the Next.js framework default 405 response. On Vercel (VERCEL=1), any standard If-Match request header on any implemented API operation is rejected before dispatch or persistence with JSON 400 UNSUPPORTED_PRECONDITION_HEADER. Use X-Omnia-If-Match for conditional task updates; successful task responses retain ETag. Outside Vercel the standard header remains compatible."
   },
   "servers": [
     {
@@ -1224,7 +1224,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -1473,7 +1473,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -1783,7 +1783,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -1998,8 +1998,18 @@
           {
             "name": "If-Match",
             "in": "header",
-            "required": true,
-            "description": "Exact strong ETag returned by GET/POST/PATCH, preserving the database updatedAt string. No wildcard or weak ETag.",
+            "required": false,
+            "description": "Compatibility transport outside Vercel for the exact strong ETag. Supply this or X-Omnia-If-Match; equal values required if both are sent. On Vercel, any If-Match header returns JSON 400 UNSUPPORTED_PRECONDITION_HEADER before mutation: send only X-Omnia-If-Match. No wildcard or weak ETag.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[A-Za-z0-9_-]+\"$"
+            }
+          },
+          {
+            "name": "X-Omnia-If-Match",
+            "in": "header",
+            "required": false,
+            "description": "Required version transport on Vercel; recommended elsewhere. Exact strong ETag from GET/POST/PATCH, preserving the full database updatedAt string. Outside Vercel this or If-Match is required, with equal values if both are present. Missing version returns 428. No wildcard or weak ETag.",
             "schema": {
               "type": "string",
               "pattern": "^\"[A-Za-z0-9_-]+\"$"
@@ -2075,7 +2085,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -2368,7 +2378,8 @@
               }
             }
           }
-        }
+        },
+        "description": "A strong version is required in X-Omnia-If-Match. Outside Vercel, If-Match is also accepted; if both are present they must be equal, otherwise 400. Both carry the exact ETag returned by GET/POST/PATCH and enforce the same database compare-and-swap. Missing version returns 428; a stale version returns JSON 412. On Vercel (VERCEL=1), any standard If-Match header is rejected with JSON 400 UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation, including when the alias is also present and equal. Send only X-Omnia-If-Match there. Successful responses retain ETag."
       }
     },
     "/api/v1/task-statuses": {
@@ -2444,7 +2455,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -2689,7 +2700,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -2908,7 +2919,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -3078,7 +3089,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -3322,7 +3333,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {
@@ -3519,7 +3530,7 @@
             }
           },
           "400": {
-            "description": "Malformed or invalid input",
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
             "headers": {
               "X-Request-Id": {
                 "schema": {

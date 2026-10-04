@@ -51,13 +51,14 @@ describe('official task adapter', () => {
     expect(new URL(fetchMock.mock.calls[0][0],'http://localhost').searchParams.get('query')).toBe('123')
   })
 
-  it('sends only changed recurrence config, keeping completed status out of the patch and exact If-Match', async () => {
+  it('sends only changed recurrence config with the exact version alias and no transport If-Match', async () => {
     fetchMock.mockResolvedValueOnce(json(task({recurrence:{id:'55555555-5555-4555-8555-555555555555',templateTicketId:null,frequency:'WEEKLY',interval:1,startDate:'2026-10-04',endType:'NEVER',endDate:null,occurrenceLimit:null,generatedOccurrences:3,nextOccurrenceDate:'2026-10-25',isActive:true}})))
     const original = await tarefasRepoSupabase.get(task().id) as Tarefa
     fetchMock.mockResolvedValueOnce(json(task()))
     await tarefasRepoSupabase.update(original.id,{...original,recurrence:{...original.recurrence!,interval:2}},original)
     const [,init] = fetchMock.mock.calls[1]
-    expect(init.headers['If-Match']).toBe('"MjAyNi0xMC0wNFQxMDowMDowMC4xMjM0NTYrMDA6MDA"')
+    expect(init.headers['X-Omnia-If-Match']).toBe('"MjAyNi0xMC0wNFQxMDowMDowMC4xMjM0NTYrMDA6MDA"')
+    expect(init.headers).not.toHaveProperty('If-Match')
     expect(JSON.parse(init.body)).toEqual({recurrence:{frequency:'WEEKLY',interval:2,startDate:'2026-10-04',endType:'NEVER',endDate:null,occurrenceLimit:null,isActive:true}})
   })
 
@@ -88,7 +89,9 @@ describe('official task adapter', () => {
     const retry = fetchMock.mock.calls[2][1]
     expect(first.headers['Idempotency-Key']).toBeTruthy()
     expect(retry.headers['Idempotency-Key']).toBe(first.headers['Idempotency-Key'])
-    expect(retry.headers['If-Match']).toBe(first.headers['If-Match'])
+    expect(first.headers['X-Omnia-If-Match']).toBe('"MjAyNi0xMC0wNFQxMDowMDowMC4xMjM0NTYrMDA6MDA"')
+    expect(retry.headers['X-Omnia-If-Match']).toBe(first.headers['X-Omnia-If-Match'])
+    expect(retry.headers).not.toHaveProperty('If-Match')
     expect(retry.body).toBe(first.body)
   })
 

@@ -114,6 +114,79 @@ describe('official task HTTP service', () => {
     const patched = await h.handle(request('tasks/'+taskId,'PATCH',{description:null},{'Idempotency-Key':'retry','If-Match':etag}), 'tasks.update',taskId)
     expect(patched.status).toBe(200); expect(h.calls.at(-1)?.p_payload).toEqual({id:taskId,expectedUpdatedAt:updatedAt,patch:{description:null}})
   })
+  const exactVersion='"MjAyNi0xMC0wNFQxMDoyMDozMC4xMjM0NTYrMDA6MDA"'
+  it.each([
+    {'If-Match':exactVersion},
+    {'X-Omnia-If-Match':exactVersion},
+    {'If-Match':exactVersion,'X-Omnia-If-Match':exactVersion},
+  ] as Record<string,string>[])('accepts exact task version headers %j without changing the CAS timestamp', async headers => {
+    const h=harness()
+    const response=await h.handle(request('tasks/'+taskId,'PATCH',{description:null},{...headers,'Idempotency-Key':'alias'}),'tasks.update',taskId)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('ETag')).toBe(exactVersion)
+    expect(h.calls[0]?.p_payload).toEqual({id:taskId,expectedUpdatedAt:updatedAt,patch:{description:null}})
+  })
+  it.each([
+    [{},428],
+    [{'X-Omnia-If-Match':''},428],
+    [{'X-Omnia-If-Match':'W/'+exactVersion},400],
+    [{'X-Omnia-If-Match':'"abc"'},400],
+    [{'If-Match':exactVersion,'X-Omnia-If-Match':'"MjAyNi0xMC0wNFQxMDoyMTowMC42NTQzMjErMDA6MDA"'},400],
+    [{'If-Match':exactVersion,'X-Omnia-If-Match':''},400],
+    [{'If-Match':'W/'+exactVersion,'X-Omnia-If-Match':exactVersion},400],
+    [{'If-Match':'W/'+exactVersion,'X-Omnia-If-Match':'W/'+exactVersion},400],
+  ] as [Record<string,string>,number][])('rejects missing, weak or conflicting version headers %j with %s before dispatch', async (headers,status) => {
+    const h=harness()
+    const response=await h.handle(request('tasks/'+taskId,'PATCH',{description:null},{...headers,'Idempotency-Key':'invalid-alias'}),'tasks.update',taskId)
+    expect(response.status).toBe(status)
+    expect(h.calls).toHaveLength(0)
+  })
+  it('preserves stale alias PATCH as a typed JSON 412', async () => {
+    const h=harness({dispatch:async()=>({status:412,error:{code:'PRECONDITION_FAILED',message:'Task changed'}})})
+    const response=await h.handle(request('tasks/'+taskId,'PATCH',{title:'Changed'},{'Idempotency-Key':'stale-alias','X-Omnia-If-Match':exactVersion}),'tasks.update',taskId)
+    expect(response.status).toBe(412)
+    expect(response.headers.get('Content-Type')).toContain('application/json')
+    const json=await response.json()
+    expect(json.error.code).toBe('PRECONDITION_FAILED')
+    expect(json.requestId).toBe(response.headers.get('X-Request-Id'))
+  })
+  it.each([
+    {'If-Match':exactVersion},
+    {'If-Match':exactVersion,'X-Omnia-If-Match':exactVersion},
+    {'If-Match':''},
+  ] as Record<string,string>[])('rejects standard conditional headers %j on Vercel before dispatch', async headers => {
+    const h=harness({config:()=>({readEnabled:true,writeEnabled:true,isVercel:true})})
+    const response=await h.handle(request('tasks/'+taskId,'PATCH',{description:null},{...headers,'Idempotency-Key':'standard-on-vercel'}),'tasks.update',taskId)
+    expect(response.status).toBe(400)
+    expect(h.calls).toHaveLength(0)
+    const json=await response.json()
+    expect(json.error.code).toBe('UNSUPPORTED_PRECONDITION_HEADER')
+    expect(json.error.message).toContain('X-Omnia-If-Match')
+    expect(json.requestId).toBe(response.headers.get('X-Request-Id'))
+  })
+  it('accepts only the version alias on Vercel with the exact same CAS timestamp', async () => {
+    const h=harness({config:()=>({readEnabled:true,writeEnabled:true,isVercel:true})})
+    const response=await h.handle(request('tasks/'+taskId,'PATCH',{description:null},{'X-Omnia-If-Match':exactVersion,'Idempotency-Key':'alias-on-vercel'}),'tasks.update',taskId)
+    expect(response.status).toBe(200)
+    expect(h.calls[0]?.p_payload.expectedUpdatedAt).toBe(updatedAt)
+    expect(response.headers.get('ETag')).toBe(exactVersion)
+  })
+  it.each([
+    {operation:'tasks.create',path:'tasks',method:'POST',body:{title:'Task'}},
+    {operation:'tasks.list',path:'tasks',method:'GET',body:undefined},
+    {operation:'tasks.get',path:'tasks/'+taskId,method:'GET',body:undefined},
+    {operation:'credentials.create',path:'integration-keys',method:'POST',body:{name:'Key',audience:'api',scopes:['tasks:read']}},
+    {operation:'credentials.revoke',path:'integration-keys/'+taskId,method:'DELETE',body:undefined},
+    {operation:'mcp.exchange',path:'mcp/exchange',method:'POST',body:{mcpKey}},
+  ] as const)('rejects standard conditional transport for $operation on Vercel before any dispatch', async ({operation,path,method,body}) => {
+    const h=harness({config:()=>({readEnabled:true,writeEnabled:true,isVercel:true,exchangeSecret:'backend-secret'})})
+    const response=await h.handle(request(path,method,body,{'If-Match':exactVersion,'Idempotency-Key':'blocked-operation',...(operation==='mcp.exchange'?{Authorization:'Bearer backend-secret'}:{})}),operation,taskId)
+    expect(response.status).toBe(400)
+    expect(h.calls).toHaveLength(0)
+    const json=await response.json()
+    expect(json.error).toMatchObject({code:'UNSUPPORTED_PRECONDITION_HEADER',message:expect.stringContaining('X-Omnia-If-Match')})
+    expect(json.requestId).toBe(response.headers.get('X-Request-Id'))
+  })
   it.each(['tasks?mine=true&mine=false','tasks?actor='+actor,'tasks?cursor=broken','tasks?limit=0'])('rejects ambiguous query %s', async path => {
     const h = harness(); expect((await h.handle(request(path),'tasks.list')).status).toBe(400); expect(h.calls).toHaveLength(0)
   })

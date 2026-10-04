@@ -185,7 +185,7 @@ export const tarefasRepoSupabase = {
     if (Object.keys(body).length === 0) return basis
     if (!basis.wireUpdatedAt) throw new TasksApiError('Recarregue a tarefa antes de salvar.',428,'PRECONDITION_REQUIRED')
     return tarefaFromApi(await tasksApiRequest<TaskDTO>(`/api/v1/tasks/${encodeURIComponent(id)}`,{
-      method:'PATCH',headers:{'If-Match':taskEtag(basis.wireUpdatedAt),'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify(body),
+      method:'PATCH',headers:{'X-Omnia-If-Match':taskEtag(basis.wireUpdatedAt),'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify(body),
     }))
   },
   // Deletion has no v1 API route and retains its existing authorized Supabase path.

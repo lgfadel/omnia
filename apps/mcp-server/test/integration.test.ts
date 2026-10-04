@@ -19,6 +19,8 @@ const task = {
   updatedAt: '2026-10-04T12:00:00.123456+00:00', assignedTo: null, createdBy: null, recurrence: null,
 }
 const version = '"MjAyNi0xMC0wNFQxMjowMDowMC4xMjM0NTYrMDA6MDA"'
+const updatedVersion = '"MjAyNi0xMC0wNFQxMjowMTowMC42NTQzMjErMDA6MDA"'
+const updatedTask = {...task,title:'Changed',updatedAt:'2026-10-04T12:01:00.654321+00:00'}
 let api: Server, mcp: Server, apiPort: number, mcpPort: number
 let requests: Array<{method:string;path:string;authorization:string|undefined;body:unknown;headers:Record<string,string|undefined>}>
 let revoked = false
@@ -36,7 +38,7 @@ before(async () => {
     for await (const chunk of req) chunks.push(Buffer.from(chunk))
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined
     const path = req.url ?? ''
-    requests.push({method:req.method ?? '',path,authorization:req.headers.authorization,body,headers:{'if-match':String(req.headers['if-match']??''),'idempotency-key':String(req.headers['idempotency-key']??'')}})
+    requests.push({method:req.method ?? '',path,authorization:req.headers.authorization,body,headers:{'if-match':String(req.headers['if-match']??''),'x-omnia-if-match':String(req.headers['x-omnia-if-match']??''),'idempotency-key':String(req.headers['idempotency-key']??'')}})
     res.setHeader('Content-Type','application/json')
     res.setHeader('X-Request-Id',uid)
     // Model a compression layer that weakens entity tags for encoded responses.
@@ -51,8 +53,10 @@ before(async () => {
     }
     if (path === `/api/v1/tasks/${uid}` && req.method === 'GET') {res.setHeader('ETag',badEtag?'"YWJj"':responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path === `/api/v1/tasks/${uid}` && req.method === 'PATCH') {
+      // Model the platform rejecting a response after a valid standard conditional request.
+      if(req.headers['if-match']) {res.statusCode=412;res.removeHeader('X-Request-Id');res.setHeader('Content-Type','text/plain');res.end('PRECONDITION_FAILED');return}
       if(staleVersion) {res.statusCode=412;res.end(JSON.stringify({error:{code:'PRECONDITION_FAILED',message:'Task changed; reload before updating'},requestId:uid}));return}
-      res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:{...task,title:'Changed'},requestId:uid}));return
+      res.setHeader('ETag',req.headers['accept-encoding']==='identity'?updatedVersion:`W/${updatedVersion}`);res.end(JSON.stringify({data:updatedTask,requestId:uid}));return
     }
     if (path === '/api/v1/tasks' && req.method === 'POST') {res.statusCode=201;res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path.startsWith('/api/v1/tasks?')) {res.end(JSON.stringify({data:{items:oversizedList?Array.from({length:11},(_,i)=>({...task,id:i===0?uid:`${String(i).padStart(8,'0')}-1111-4111-8111-111111111111`,description:'x'.repeat(50000)})):[task],nextCursor:null},requestId:uid}));return}
@@ -109,7 +113,7 @@ test('legacy client can list, create, and query status and assignee routes', asy
   } finally {await client.close()}
 })
 
-test('get preserves the strong version through a compression layer for a subsequent update', async () => {
+test('updates use the exact version alias through conditional and compression layers, including the next version', async () => {
   const client = await clientFor()
   try {
     const get = await client.callTool({name:'get_task',arguments:{id:uid}})
@@ -118,12 +122,18 @@ test('get preserves the strong version through a compression layer for a subsequ
     assert.equal(receivedVersion,version)
     const update = await client.callTool({name:'update_task',arguments:{id:uid,version:receivedVersion,idempotencyKey:'caller-key-1',patch:{title:'Changed'}}})
     assert.equal(update.isError,undefined)
-    assert.equal((update.structuredContent as {version:string}).version,version)
+    assert.equal((update.structuredContent as {version:string}).version,updatedVersion)
     const call = [...requests].reverse().find(r=>r.method==='PATCH')
     assert.equal(call?.authorization,`Bearer ${cap}`)
-    assert.equal(call?.headers['if-match'],version)
+    assert.equal(call?.headers['if-match'],'')
+    assert.equal(call?.headers['x-omnia-if-match'],version)
     assert.equal(call?.headers['idempotency-key'],'caller-key-1')
     assert.deepEqual(call?.body,{title:'Changed'})
+    const next=await client.callTool({name:'update_task',arguments:{id:uid,version:(update.structuredContent as {version:string}).version,idempotencyKey:'caller-key-2',patch:{description:'Next change'}}})
+    assert.equal(next.isError,undefined)
+    const nextCall=[...requests].reverse().find(r=>r.method==='PATCH')
+    assert.equal(nextCall?.headers['if-match'],'')
+    assert.equal(nextCall?.headers['x-omnia-if-match'],updatedVersion)
   } finally {await client.close()}
 })
 

@@ -10,6 +10,7 @@ export function getTasksApiConfig():TasksApiConfig {
   return {
     readEnabled:process.env.OMNIA_INTEGRATIONS_READ_ENABLED==='true',
     writeEnabled:process.env.OMNIA_INTEGRATIONS_WRITE_ENABLED==='true',
+    isVercel:process.env.VERCEL==='1',
     exchangeSecret:process.env.OMNIA_MCP_EXCHANGE_SECRET,
   }
 }

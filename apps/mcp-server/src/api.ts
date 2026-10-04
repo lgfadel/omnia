@@ -78,7 +78,7 @@ export function createApiClient(config:Config) {
     const url=new URL(path,base)
     const headers:Record<string,string>={Authorization:`Bearer ${token}`,'X-Request-Id':requestId,Accept:'application/json','Accept-Encoding':'identity'}
     if(options?.body !== undefined) headers['Content-Type']='application/json'
-    if(options?.version) headers['If-Match']=options.version
+    if(options?.version) headers['X-Omnia-If-Match']=options.version
     if(options?.idempotencyKey) headers['Idempotency-Key']=options.idempotencyKey
     let response:Response
     try {

@@ -22,6 +22,11 @@ it('kill switches fail closed unless exactly true',()=>{
   expect(getTasksApiConfig()).toMatchObject({readEnabled:false,writeEnabled:false})
   vi.stubEnv('OMNIA_INTEGRATIONS_READ_ENABLED','true');expect(getTasksApiConfig().readEnabled).toBe(true)
 })
+it('blocks standard conditional transport only when the Vercel runtime marker is exactly 1',()=>{
+  vi.stubEnv('VERCEL','1');expect(getTasksApiConfig()).toMatchObject({isVercel:true})
+  vi.stubEnv('VERCEL','true');expect(getTasksApiConfig()).toMatchObject({isVercel:false})
+  vi.stubEnv('VERCEL','');expect(getTasksApiConfig()).toMatchObject({isVercel:false})
+})
 it('validates browser getUser result and calls the service-only RPC without table access',async()=>{
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://example.test');vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY','anon');vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY','service')
   transport.getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}},error:null})

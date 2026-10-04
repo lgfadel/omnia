@@ -116,7 +116,12 @@ for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}']) {
   for (const [method,operation] of Object.entries(spec.paths[route])) {
     if (method==='post'||method==='patch') yes(header(operation,'Idempotency-Key')?.required,`${method} ${route} idempotency required`)
     if (method==='patch') {
-      yes(header(operation,'If-Match')?.required,`${method} ${route} version required`)
+      const standard=header(operation,'If-Match')
+      const alias=header(operation,'X-Omnia-If-Match')
+      yes(standard && alias,`${method} ${route} version transports documented`)
+      equal(standard.required,false,`${method} ${route} standard version header may be replaced by alias`)
+      equal(alias.required,false,`${method} ${route} alias may be replaced by standard header`)
+      equal(alias.schema,standard.schema,`${method} ${route} identical strong version schemas`)
       yes(result(operation,412) && result(operation,428),`${method} ${route} stale/missing version errors`)
     }
     if (route.includes('{id}')||method==='post') yes(result(operation,method==='post'?201:200).headers.ETag,`${method} ${route} ETag header`)
