@@ -30,6 +30,26 @@ describe('official task adapter', () => {
     expect(items[1].assignedTo?.roles).toEqual([])
   })
 
+  it('keeps API cursor order when creation times differ only in microseconds', async () => {
+    const earlierId = '11111111-1111-4111-8111-111111111111'
+    const laterId = '99999999-9999-4999-8999-999999999999'
+    fetchMock.mockResolvedValueOnce(json({
+      items:[task({id:earlierId,createdAt:'2026-10-04T10:00:00.123456+00:00'})],
+      nextCursor:'after-first',
+    })).mockResolvedValueOnce(json({
+      items:[task({id:laterId,createdAt:'2026-10-04T10:00:00.123123+00:00'})],
+      nextCursor:null,
+    }))
+
+    expect((await tarefasRepoSupabase.list()).map(item => item.id)).toEqual([earlierId,laterId])
+  })
+
+  it('searches a leading hash ticket number with its canonical numeric API query', async () => {
+    fetchMock.mockResolvedValueOnce(json({items:[],nextCursor:null}))
+    await tarefasRepoSupabase.search('#00123')
+    expect(new URL(fetchMock.mock.calls[0][0],'http://localhost').searchParams.get('query')).toBe('123')
+  })
+
   it('sends only changed recurrence config, keeping completed status out of the patch and exact If-Match', async () => {
     fetchMock.mockResolvedValueOnce(json(task({recurrence:{id:'55555555-5555-4555-8555-555555555555',templateTicketId:null,frequency:'WEEKLY',interval:1,startDate:'2026-10-04',endType:'NEVER',endDate:null,occurrenceLimit:null,generatedOccurrences:3,nextOccurrenceDate:'2026-10-25',isActive:true}})))
     const original = await tarefasRepoSupabase.get(task().id) as Tarefa

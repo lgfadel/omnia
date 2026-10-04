@@ -160,7 +160,9 @@ async function listAll(filters: TaskFilters = {}): Promise<Tarefa[]> {
     items.push(...page.items.map(tarefaFromApi))
     cursor = page.nextCursor
   } while (cursor)
-  return items.sort((a,b) => b.createdAt.getTime()-a.createdAt.getTime() || b.id.localeCompare(a.id))
+  // The cursor API already orders by the full PostgreSQL timestamp and ID.
+  // Re-sorting Date values would collapse microseconds and change that order.
+  return items
 }
 
 export const tarefasRepoSupabase = {
@@ -193,7 +195,12 @@ export const tarefasRepoSupabase = {
     return true
   },
   getMyTasks:(_userId:string) => listAll({mine:true}),
-  search:(query:string) => query.trim() ? listAll({query:query.trim()}) : Promise.resolve([]),
+  search:(query:string) => {
+    const trimmed = query.trim()
+    if (!trimmed) return Promise.resolve([])
+    const searchQuery = /^#\d+$/.test(trimmed) ? BigInt(trimmed.slice(1)).toString() : trimmed
+    return listAll({query:searchQuery})
+  },
 }
 
 export async function listTaskAssignees(query?: string): Promise<UserRef[]> {

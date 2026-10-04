@@ -24,3 +24,9 @@ The baseline ticket `updated_at` trigger calls `clock_timestamp()` (`supabase/te
 ## Remaining scope and risks
 
 Status administration CRUD, task deletion, comments and attachments remain on their separate existing Supabase paths because v1 does not include equivalent operations. The task assignee endpoint caps each result at 100; the picker uses server search to reach users beyond its initial set. The integration page has no live end-to-end authentication/deployment smoke in this task. The SQL regression validates the authorized dummy baseline only; deployment and any production trigger behavior remain for the release owner to verify.
+
+## Review fix round 1 — cursor order and numbered search
+
+The Task 3 review identified that the compatibility adapter re-sorted API pages with `Date.getTime()`, collapsing PostgreSQL microseconds. `listAll` now returns the already ordered cursor pages in their original sequence, preserving the server's full-precision `(createdAt,id)` order. `search` normalizes leading-hash numeric ticket queries, including `#00123` to `123`, before sending `query` to the API. Non-numeric hash queries remain unchanged. The dormant `getMyTasks` assignment behavior was left as requested by the root plan.
+
+RED: `npm run test:run -- src/repositories/__tests__/tarefasRepo.api.test.ts` failed 2 of 7 tests: a same-millisecond, different-microsecond pair reversed by ID, and `#00123` reached the API without normalization. GREEN: the same scoped command passed 7/7. `npm run type-check`, scoped ESLint for the adapter and its tests, and `git diff --check` each exited 0. No production service or data was contacted.
