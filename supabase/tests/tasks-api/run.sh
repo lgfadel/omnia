@@ -16,6 +16,7 @@ if [[ "${1:-}" != '--baseline-only' ]]; then
 fi
 docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/regression.sql
 if [[ "${1:-}" != '--baseline-only' ]]; then
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/review-regression.sql
   mkdir -p .context/tasks-api-mcp
   # Two real PostgreSQL connections race the same principal, operation and key.
   for connection in 1 2; do

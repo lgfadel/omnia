@@ -177,7 +177,7 @@ DECLARE k text; BEGIN
    IF p_value ? k AND jsonb_typeof(p_value->k) NOT IN ('string','null') THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid text field'); END IF;
  END LOOP;
  IF p_value ? 'title' AND (jsonb_typeof(p_value->'title') IS DISTINCT FROM 'string' OR length(btrim(p_value->>'title')) NOT BETWEEN 1 AND 500) THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Title must contain 1 to 500 characters'); END IF;
- IF p_value ? 'priority' AND coalesce(p_value->>'priority','') NOT IN ('ALTA','NORMAL','BAIXA') THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid priority'); END IF;
+ IF p_value ? 'priority' AND coalesce(p_value->>'priority','') NOT IN ('URGENTE','ALTA','NORMAL','BAIXA') THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid priority'); END IF;
  IF p_value ? 'isPrivate' AND jsonb_typeof(p_value->'isPrivate') IS DISTINCT FROM 'boolean' THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid privacy flag'); END IF;
  IF p_value ? 'tags' THEN
    IF jsonb_typeof(p_value->'tags') IS DISTINCT FROM 'array' THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid tags'); END IF;
@@ -189,8 +189,9 @@ DECLARE k text; BEGIN
  IF p_value->>'oportunidadeId' IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.omnia_crm_leads WHERE id=(p_value->>'oportunidadeId')::uuid) THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Unknown opportunity'); END IF;
 END $$;
 
-CREATE FUNCTION tasks_api_private.set_recurrence(p_task public.omnia_tickets,p_config jsonb) RETURNS uuid LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE r public.omnia_ticket_recurrences%ROWTYPE; v_start date; v_end date; limit_count integer; interval_count integer; active_flag boolean; series_id uuid; BEGIN
+CREATE FUNCTION tasks_api_private.set_recurrence(p_task public.omnia_tickets,p_config jsonb,p_patch jsonb DEFAULT '{}') RETURNS uuid LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE r public.omnia_ticket_recurrences%ROWTYPE; v_start date; v_end date; limit_count integer; interval_count integer; active_flag boolean; series_id uuid;
+ next_date date; next_active boolean; occurrence_idx integer; BEGIN
  PERFORM tasks_api_private.keys(p_config,ARRAY['frequency','interval','startDate','endType','endDate','occurrenceLimit','isActive']);
  IF coalesce(p_config->>'frequency','') NOT IN ('DAILY','WEEKLY','MONTHLY') OR coalesce(p_config->>'endType','NEVER') NOT IN ('NEVER','ON_DATE','AFTER_COUNT') THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Invalid recurrence configuration'); END IF;
  IF jsonb_typeof(p_config->'startDate') IS DISTINCT FROM 'string' OR p_config->>'startDate' !~ '^\d{4}-\d{2}-\d{2}$' THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Recurrence start date required'); END IF;
@@ -204,12 +205,35 @@ DECLARE r public.omnia_ticket_recurrences%ROWTYPE; v_start date; v_end date; lim
    SELECT * INTO r FROM public.omnia_ticket_recurrences WHERE id=p_task.recurrence_id FOR UPDATE;
    IF NOT FOUND THEN PERFORM tasks_api_private.fail(404,'NOT_FOUND','Recurrence not found'); END IF;
    series_id:=r.id;
+   next_active:=active_flag AND NOT (coalesce(p_config->>'endType','NEVER')='AFTER_COUNT' AND r.generated_occurrences>=limit_count);
+   -- The persisted pending date is authoritative, even after cadence/start
+   -- changes. The new cadence applies after that pending occurrence. Individual
+   -- ticket deadlines never participate in series scheduling.
+   next_date:=r.next_occurrence_date;
+   IF next_active AND next_date IS NULL THEN
+     -- Reactivating a paused/exhausted series has no pending cursor. Rebuild its
+     -- next nominal slot from series configuration and the persisted count.
+     -- Iterate months to preserve Jan 31 -> Feb 28 -> Mar 28 clamp semantics.
+     next_date:=v_start;
+     FOR occurrence_idx IN 1..r.generated_occurrences LOOP
+       next_date:=public.add_ticket_recurrence_interval(next_date,(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count);
+     END LOOP;
+   END IF;
+   IF coalesce(p_config->>'endType','NEVER')='ON_DATE' AND next_date>v_end THEN next_active:=false; END IF;
    UPDATE public.omnia_ticket_recurrences SET frequency=(p_config->>'frequency')::public.ticket_recurrence_frequency,interval=interval_count,start_date=v_start,
     end_type=coalesce(p_config->>'endType','NEVER')::public.ticket_recurrence_end_type,end_date=v_end,occurrence_limit=limit_count,
-    is_active=active_flag AND NOT (coalesce(p_config->>'endType','NEVER')='AFTER_COUNT' AND r.generated_occurrences>=limit_count),
-    next_occurrence_date=CASE WHEN active_flag THEN public.add_ticket_recurrence_interval(coalesce((SELECT max(t.due_date) FROM public.omnia_tickets t WHERE t.recurrence_id=r.id),v_start),(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count) ELSE NULL END,
-    title=p_task.title,description=p_task.description,priority=p_task.priority,status_id=p_task.status_id,assigned_to=p_task.assigned_to,
-    oportunidade_id=p_task.oportunidade_id,tags=coalesce(p_task.tags,'{}'),is_private=coalesce(p_task.is_private,false),ticket_octa=p_task.ticket_octa WHERE id=r.id;
+    is_active=next_active,next_occurrence_date=CASE WHEN next_active THEN next_date ELSE NULL END,
+    -- Occurrence edits are independent. Only fields explicitly submitted with
+    -- this recurrence edit may change the future template, including null clears.
+    title=CASE WHEN p_patch ? 'title' THEN p_task.title ELSE r.title END,
+    description=CASE WHEN p_patch ? 'description' THEN p_task.description ELSE r.description END,
+    priority=CASE WHEN p_patch ? 'priority' THEN p_task.priority ELSE r.priority END,
+    status_id=CASE WHEN p_patch ? 'statusId' THEN p_task.status_id ELSE r.status_id END,
+    assigned_to=CASE WHEN p_patch ? 'assignedToId' THEN p_task.assigned_to ELSE r.assigned_to END,
+    oportunidade_id=CASE WHEN p_patch ? 'oportunidadeId' THEN p_task.oportunidade_id ELSE r.oportunidade_id END,
+    tags=CASE WHEN p_patch ? 'tags' THEN coalesce(p_task.tags,'{}') ELSE r.tags END,
+    is_private=CASE WHEN p_patch ? 'isPrivate' THEN coalesce(p_task.is_private,false) ELSE r.is_private END,
+    ticket_octa=CASE WHEN p_patch ? 'ticketOcta' THEN p_task.ticket_octa ELSE r.ticket_octa END WHERE id=r.id;
  ELSE
    INSERT INTO public.omnia_ticket_recurrences(template_ticket_id,frequency,interval,start_date,end_type,end_date,occurrence_limit,generated_occurrences,next_occurrence_date,is_active,title,description,priority,status_id,assigned_to,created_by,oportunidade_id,tags,is_private,ticket_octa)
    VALUES(p_task.id,(p_config->>'frequency')::public.ticket_recurrence_frequency,interval_count,v_start,coalesce(p_config->>'endType','NEVER')::public.ticket_recurrence_end_type,v_end,limit_count,1,
@@ -376,7 +400,7 @@ BEGIN
       IF v_patch->'recurrence'='null'::jsonb THEN
         IF v_task.recurrence_id IS NOT NULL THEN UPDATE public.omnia_ticket_recurrences SET is_active=false,next_occurrence_date=NULL WHERE id=v_task.recurrence_id; END IF;
       ELSE
-        new_series:=tasks_api_private.set_recurrence(v_task,v_patch->'recurrence');
+        new_series:=tasks_api_private.set_recurrence(v_task,v_patch->'recurrence',v_patch);
         IF v_task.recurrence_id IS NULL THEN UPDATE public.omnia_tickets SET recurrence_id=new_series,recurrence_occurrence=1 WHERE id=v_task.id RETURNING * INTO v_task; END IF;
       END IF;
     END IF;

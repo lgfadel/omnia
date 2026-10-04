@@ -17,7 +17,7 @@ DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='omnia_tasks_worker')
   REVOKE EXECUTE ON FUNCTION auth.uid(),auth.role() FROM omnia_tasks_worker;
 END IF; END $$;
 SET ROLE postgres;
-CREATE TYPE public.ticket_priority AS ENUM ('ALTA','NORMAL','BAIXA');
+CREATE TYPE public.ticket_priority AS ENUM ('URGENTE','ALTA','NORMAL','BAIXA');
 CREATE TYPE public.ticket_recurrence_frequency AS ENUM ('DAILY','WEEKLY','MONTHLY');
 CREATE TYPE public.ticket_recurrence_end_type AS ENUM ('NEVER','ON_DATE','AFTER_COUNT');
 CREATE TABLE public.omnia_menu_items (
