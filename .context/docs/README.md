@@ -4,6 +4,9 @@
 Welcome to the repository knowledge base. Start with the project overview, then dive into specific guides as needed.
 
 ## Core Guides
+- [API oficial de tarefas v1](../../docs/api/tasks-v1.md) e [OpenAPI 3.1](../../docs/api/tasks-v1.openapi.json) — contrato versionado implementado.
+- [Integração com Grok Bot](../../docs/integrations/grok-bot-tasks.md) — arquitetura, configuração e aceite operacional.
+- [Índice público de documentação](../../docs/README.md) — ponto de entrada para guias do repositório.
 - [Malotes digitais](../../docs/malotes-digitais.md) — operação, configuração SMTP e ambiente local de testes.
 - [Baseline local de testes](../../docs/local-test-environment.md) — schema, dados dummy e smoke test autenticado.
 - [Project Overview](./project-overview.md)
