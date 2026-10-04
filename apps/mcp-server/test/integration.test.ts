@@ -39,6 +39,8 @@ before(async () => {
     requests.push({method:req.method ?? '',path,authorization:req.headers.authorization,body,headers:{'if-match':String(req.headers['if-match']??''),'idempotency-key':String(req.headers['idempotency-key']??'')}})
     res.setHeader('Content-Type','application/json')
     res.setHeader('X-Request-Id',uid)
+    // Model a compression layer that weakens entity tags for encoded responses.
+    const responseVersion = req.headers['accept-encoding']==='identity'?version:`W/${version}`
     if (path === '/api/v1/mcp/exchange') {
       if (revoked) {res.statusCode=401;res.end(JSON.stringify({error:{code:'INVALID_CREDENTIAL',message:'Invalid or expired credential'},requestId:uid}));return}
       if (rateLimitExchange) {res.statusCode=429;res.setHeader('Retry-After','60');res.end(JSON.stringify({error:{code:'RATE_LIMITED',message:'Request limit exceeded'},requestId:uid}));return}
@@ -47,12 +49,12 @@ before(async () => {
       res.end(JSON.stringify({data:{id:uid,audience:'api',scopes:['tasks:read','tasks:create','tasks:update'],expiresAt:'2999-10-04T13:00:00Z',token:body.mcpKey===otherKey?otherCap:cap},requestId:uid}))
       return
     }
-    if (path === `/api/v1/tasks/${uid}` && req.method === 'GET') {res.setHeader('ETag',badEtag?'"YWJj"':version);res.end(JSON.stringify({data:task,requestId:uid}));return}
+    if (path === `/api/v1/tasks/${uid}` && req.method === 'GET') {res.setHeader('ETag',badEtag?'"YWJj"':responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path === `/api/v1/tasks/${uid}` && req.method === 'PATCH') {
       if(staleVersion) {res.statusCode=412;res.end(JSON.stringify({error:{code:'PRECONDITION_FAILED',message:'Task changed; reload before updating'},requestId:uid}));return}
-      res.setHeader('ETag',version);res.end(JSON.stringify({data:{...task,title:'Changed'},requestId:uid}));return
+      res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:{...task,title:'Changed'},requestId:uid}));return
     }
-    if (path === '/api/v1/tasks' && req.method === 'POST') {res.statusCode=201;res.setHeader('ETag',version);res.end(JSON.stringify({data:task,requestId:uid}));return}
+    if (path === '/api/v1/tasks' && req.method === 'POST') {res.statusCode=201;res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path.startsWith('/api/v1/tasks?')) {res.end(JSON.stringify({data:{items:oversizedList?Array.from({length:11},(_,i)=>({...task,id:i===0?uid:`${String(i).padStart(8,'0')}-1111-4111-8111-111111111111`,description:'x'.repeat(50000)})):[task],nextCursor:null},requestId:uid}));return}
     if (path === '/api/v1/task-statuses') {
       if(slowStatusBody) {res.flushHeaders();setTimeout(()=>res.end(JSON.stringify({data:[],requestId:uid})),100);return}
@@ -95,6 +97,7 @@ test('legacy client can list, create, and query status and assignee routes', asy
     const list=await client.callTool({name:'list_tasks',arguments:{limit:2,mine:true,tags:['urgent']}})
     assert.equal((list.structuredContent as {data:{items:unknown[]}}).data.items.length,1)
     const created=await client.callTool({name:'create_task',arguments:{title:'Test task',idempotencyKey:'create-key-1'}})
+    assert.equal(created.isError,undefined)
     assert.equal((created.structuredContent as {version:string}).version,version)
     await client.callTool({name:'list_task_statuses',arguments:{}})
     await client.callTool({name:'search_task_assignees',arguments:{query:'Jo',limit:3}})
@@ -106,13 +109,16 @@ test('legacy client can list, create, and query status and assignee routes', asy
   } finally {await client.close()}
 })
 
-test('get returns exact version and update forwards version and caller idempotency key', async () => {
+test('get preserves the strong version through a compression layer for a subsequent update', async () => {
   const client = await clientFor()
   try {
     const get = await client.callTool({name:'get_task',arguments:{id:uid}})
-    assert.equal((get.structuredContent as {version:string}).version,version)
-    const update = await client.callTool({name:'update_task',arguments:{id:uid,version,idempotencyKey:'caller-key-1',patch:{title:'Changed'}}})
+    assert.equal(get.isError,undefined)
+    const receivedVersion = (get.structuredContent as {version:string}).version
+    assert.equal(receivedVersion,version)
+    const update = await client.callTool({name:'update_task',arguments:{id:uid,version:receivedVersion,idempotencyKey:'caller-key-1',patch:{title:'Changed'}}})
     assert.equal(update.isError,undefined)
+    assert.equal((update.structuredContent as {version:string}).version,version)
     const call = [...requests].reverse().find(r=>r.method==='PATCH')
     assert.equal(call?.authorization,`Bearer ${cap}`)
     assert.equal(call?.headers['if-match'],version)

@@ -39,3 +39,5 @@ The public endpoint for a Grok Team Bot custom MCP connection is `https://<your-
 ## Network and size limits
 
 Only the fixed API origin and six fixed resource routes can be called; redirects are rejected. Outbound requests time out after 5 seconds, including response-body reads. MCP request bodies are limited to 64 KiB, API JSON response bodies to 512 KiB, and rendered tool output to 256 KiB. A legitimate wide list can hit either response limit; lower `limit` or narrow filters and retry. HTTP exchange occurs for initialize, tool discovery, and every tool call, so a revoked key is rejected on the next request. Public unknown paths return 404 before authentication or exchange.
+
+Upstream requests send `Accept-Encoding: identity` to preserve the API's strong task ETags through compression layers. The returned version retains the exact `updatedAt` precision and is forwarded unchanged in `If-Match` for updates.
