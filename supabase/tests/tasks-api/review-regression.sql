@@ -2,6 +2,12 @@
 -- Each case exercises the public finite RPC using a real service role and a
 -- verified human identity. Dates and expected statuses are hand-derived.
 INSERT INTO public.omnia_crm_leads(id) VALUES ('50000000-0000-0000-0000-000000000001');
+BEGIN;
+INSERT INTO public.omnia_ticket_statuses(id,name,color,order_position,is_default,is_final) VALUES
+('40000000-0000-0000-0000-000000000003','Legacy null default','#000000',0,NULL,false);
+SET LOCAL ROLE service_role;
+SELECT public.test_assert(public.tasks_api_dispatch('tasks.create','{"title":"Default status despite null"}','20000000-0000-0000-0000-000000000001',NULL,'review-default-null')#>>'{data,statusId}'='40000000-0000-0000-0000-000000000001','null default cannot outrank true default');
+ROLLBACK;
 SET ROLE service_role;
 DO $$
 DECLARE created jsonb; updated jsonb; BEGIN

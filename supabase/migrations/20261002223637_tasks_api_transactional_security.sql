@@ -367,7 +367,7 @@ BEGIN
     IF NOT p_payload ? 'title' THEN PERFORM tasks_api_private.fail(400,'VALIDATION_ERROR','Title is required'); END IF;
     IF p_payload ? 'recurrence' AND cred.id IS NOT NULL THEN PERFORM tasks_api_private.fail(403,'FORBIDDEN','Integration keys cannot configure recurrence'); END IF;
     INSERT INTO public.omnia_tickets(title,description,priority,due_date,ticket_octa,status_id,assigned_to,created_by,tags,is_private,oportunidade_id)
-    VALUES(btrim(p_payload->>'title'),p_payload->>'description',coalesce(p_payload->>'priority','NORMAL')::public.ticket_priority,(p_payload->>'dueDate')::date,p_payload->>'ticketOcta',coalesce((p_payload->>'statusId')::uuid,(SELECT id FROM public.omnia_ticket_statuses ORDER BY is_default DESC,order_position,id LIMIT 1)),(p_payload->>'assignedToId')::uuid,actor.id,
+    VALUES(btrim(p_payload->>'title'),p_payload->>'description',coalesce(p_payload->>'priority','NORMAL')::public.ticket_priority,(p_payload->>'dueDate')::date,p_payload->>'ticketOcta',coalesce((p_payload->>'statusId')::uuid,(SELECT id FROM public.omnia_ticket_statuses ORDER BY coalesce(is_default,false) DESC,order_position,id LIMIT 1)),(p_payload->>'assignedToId')::uuid,actor.id,
     CASE WHEN p_payload ? 'tags' THEN ARRAY(SELECT jsonb_array_elements_text(p_payload->'tags')) ELSE '{}'::text[] END,coalesce((p_payload->>'isPrivate')::boolean,false),(p_payload->>'oportunidadeId')::uuid) RETURNING * INTO v_task;
     IF p_payload ? 'recurrence' AND p_payload->'recurrence'<>'null'::jsonb THEN
       new_series:=tasks_api_private.set_recurrence(v_task,p_payload->'recurrence');
