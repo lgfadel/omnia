@@ -13,9 +13,10 @@ import { TagInput } from '@/components/atas/TagInput';
 import { FileUploader } from '@/components/atas/FileUploader';
 import { AttachmentsList } from '@/components/atas/AttachmentsList';
 import { TicketStatusSelect } from './TicketStatusSelect';
+import { TicketAssigneeSelect } from './TicketAssigneeSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
+import { Tarefa, TarefaPrioridade, taskDateValue, localTaskDate } from '@/repositories/tarefasRepo.supabase';
 import { TarefaStatus } from '@/repositories/tarefaStatusRepo.supabase';
 import { UserRef, Attachment } from '@/data/types';
 import { useTarefaStatusStore } from '@/stores/tarefaStatus.store';
@@ -81,6 +82,7 @@ interface TicketFormProps {
 export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps) {
   const [tags, setTags] = useState<string[]>(ticket?.tags || []);
   const [attachments, setAttachments] = useState<Attachment[]>(ticket?.attachments || []);
+  const [selectedAssignee, setSelectedAssignee] = useState<UserRef | undefined>(ticket?.assignedTo);
   const { statuses, loadStatuses } = useTarefaStatusStore();
   const { userProfile } = useAuth();
 
@@ -99,7 +101,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       title: ticket?.title || '',
       description: ticket?.description || '',
       priority: ticket?.priority || 'NORMAL',
-      dueDate: ticket?.dueDate ? ticket.dueDate.toISOString().split('T')[0] : '',
+      dueDate: ticket?.dueDate ? taskDateValue(ticket.dueDate)! : '',
       ticketOcta: ticket?.ticketOcta || '',
       statusId: ticket?.statusId || '',
       assignedTo: ticket?.assignedTo?.id || '',
@@ -109,10 +111,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       recurrenceFrequency: ticket?.recurrence?.frequency || 'WEEKLY',
       recurrenceInterval: ticket?.recurrence?.interval || 1,
       recurrenceStartDate: ticket?.recurrence?.startDate
-        ? ticket.recurrence.startDate.toISOString().split('T')[0]
-        : (ticket?.dueDate ? ticket.dueDate.toISOString().split('T')[0] : ''),
+        ? taskDateValue(ticket.recurrence.startDate)!
+        : (ticket?.dueDate ? taskDateValue(ticket.dueDate)! : ''),
       recurrenceEndType: ticket?.recurrence?.endType || 'NEVER',
-      recurrenceEndDate: ticket?.recurrence?.endDate ? ticket.recurrence.endDate.toISOString().split('T')[0] : '',
+      recurrenceEndDate: ticket?.recurrence?.endDate ? taskDateValue(ticket.recurrence.endDate)! : '',
       recurrenceOccurrenceLimit: ticket?.recurrence?.occurrenceLimit,
     },
   });
@@ -131,13 +133,11 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
 
   // Set logged user as default assignee for new tickets
   useEffect(() => {
-    if (!ticket && userProfile?.id && users.length > 0) {
-      const userExists = users.find(u => u.id === userProfile.id);
-      if (userExists) {
-        setValue('assignedTo', userProfile.id);
-      }
+    if (!ticket && userProfile?.id) {
+      setSelectedAssignee(userProfile);
+      setValue('assignedTo', userProfile.id);
     }
-  }, [userProfile, users, ticket, setValue]);
+  }, [userProfile, ticket, setValue]);
 
   // Force re-render when assignedTo changes
   const assignedToValue = watch('assignedTo');
@@ -149,10 +149,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
       title: data.title,
       description: data.description || undefined,
       priority: data.priority as TarefaPrioridade,
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      dueDate: data.dueDate ? localTaskDate(data.dueDate) : undefined,
       ticketOcta: data.ticketOcta || undefined,
       statusId: data.statusId,
-      assignedTo: data.assignedTo ? users.find(u => u.id === data.assignedTo) : undefined,
+      assignedTo: data.assignedTo ? (selectedAssignee?.id === data.assignedTo ? selectedAssignee : users.find(u => u.id === data.assignedTo)) : undefined,
       oportunidadeId: data.oportunidadeId || undefined,
       tags,
       attachments,
@@ -162,13 +162,10 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
         enabled: true,
         frequency: data.recurrenceFrequency,
         interval: data.recurrenceInterval,
-        startDate: new Date(data.recurrenceStartDate || data.dueDate!),
+        startDate: localTaskDate(data.recurrenceStartDate || data.dueDate!)!,
         endType: data.recurrenceEndType,
-        endDate: data.recurrenceEndDate ? new Date(data.recurrenceEndDate) : undefined,
+        endDate: data.recurrenceEndDate ? localTaskDate(data.recurrenceEndDate) : undefined,
         occurrenceLimit: data.recurrenceOccurrenceLimit,
-        generatedOccurrences: ticket?.recurrence?.generatedOccurrences,
-        nextOccurrenceDate: ticket?.recurrence?.nextOccurrenceDate,
-        isActive: ticket?.recurrence?.isActive,
       } : (ticket?.recurrence ? { ...ticket.recurrence, enabled: false } : undefined),
     };
 
@@ -273,23 +270,12 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Responsável</Label>
-                <Select
-                  value={assignedToValue || ''}
-                  onValueChange={(value) => setValue('assignedTo', value || '')}
+                <TicketAssigneeSelect
+                  users={users}
+                  selected={selectedAssignee?.id === assignedToValue ? selectedAssignee : ticket?.assignedTo?.id === assignedToValue ? ticket?.assignedTo : users.find(user => user.id === assignedToValue)}
+                  onChange={(user) => { setSelectedAssignee(user); setValue('assignedTo', user.id); }}
                   disabled={watch('isPrivate')}
-                >
-
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
                 {watch('isPrivate') && (
                   <p className="text-xs text-muted-foreground">Tarefas privadas são automaticamente atribuídas ao criador</p>
                 )}
@@ -318,6 +304,7 @@ export function TicketForm({ ticket, users, onSubmit, loading }: TicketFormProps
                   // Se marcar como privada, define o usuário corrente como responsável
                   if (checked && userProfile) {
                     setValue('assignedTo', userProfile.id);
+                    setSelectedAssignee(userProfile);
                   }
                 }}
               />

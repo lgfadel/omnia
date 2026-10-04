@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { supabase } from '@/integrations/supabase/client'
+import { tarefasRepoSupabase } from '@/repositories/tarefasRepo.supabase'
 import { toast } from '@/hooks/use-toast'
 
 const formatToastTitle = (type: string) => {
@@ -28,13 +29,8 @@ const resolveNotificationContext = async (n: {
   ticket_comment_id: string | null
 }): Promise<{ label: string; title: string } | null> => {
   if (n.ticket_id) {
-    const { data } = await supabase
-      .from('omnia_tickets')
-      .select('id, title')
-      .eq('id', n.ticket_id)
-      .maybeSingle()
-
-    return data?.title ? { label: 'Tarefa', title: data.title } : null
+    const task = await tarefasRepoSupabase.get(n.ticket_id)
+    return task?.title ? { label: 'Tarefa', title: task.title } : null
   }
 
   const ataId =
@@ -96,6 +92,7 @@ export function NotificationsBootstrap() {
       initStartedRef.current = false
       prevLoadingRef.current = false
       knownIdsRef.current = new Set()
+      contextCacheRef.current = new Map()
     }
 
     if (!initStartedRef.current) return

@@ -4,9 +4,8 @@ import { Layout } from "@/components/layout/Layout";
 import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TicketForm } from "@/components/tickets/TicketForm";
 import { useTarefasStore } from "@/stores/tarefas.store";
-import { useSecretariosStore } from "@/stores/secretarios.store";
 import { ticketAttachmentsRepoSupabase } from "@/repositories/ticketAttachmentsRepo.supabase";
-import { Tarefa } from "@/repositories/tarefasRepo.supabase";
+import { Tarefa, TasksApiError, listTaskAssignees } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -22,17 +21,16 @@ export default function TicketEdit() {
   const id = params?.id;
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [ticket, setTicket] = useState<Tarefa | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const { getTarefaById, updateTarefa } = useTarefasStore();
-  const { secretarios, loadSecretarios } = useSecretariosStore();
-
-  useEffect(() => {
-    loadSecretarios();
-  }, [loadSecretarios]);
+  const [users, setUsers] = useState<UserRef[]>([]);
+  useEffect(() => { void listTaskAssignees().then(setUsers).catch(() => {
+    toast({title:'Não foi possível carregar os responsáveis',variant:'destructive'});
+  }); }, [toast]);
 
   useEffect(() => {
     const loadTicket = async () => {
@@ -58,15 +56,6 @@ export default function TicketEdit() {
     loadTicket();
   }, [id, getTarefaById, router, toast]);
 
-  const users: UserRef[] = secretarios.map(secretario => ({
-    id: secretario.id,
-    name: secretario.name,
-    email: secretario.email,
-    roles: secretario.roles,
-    avatarUrl: secretario.avatarUrl,
-    color: secretario.color,
-  }));
-
   const handleSubmit = async (ticketData: Partial<Tarefa>) => {
     if (!ticket) return;
     
@@ -79,13 +68,13 @@ export default function TicketEdit() {
         dueDate: ticketData.dueDate,
         ticketOcta: ticketData.ticketOcta,
         statusId: ticketData.statusId,
-        assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
+        assignedTo: ticketData.isPrivate ? userProfile ?? undefined : ticketData.assignedTo,
         tags: ticketData.tags,
         attachments: ticketData.attachments,
         isPrivate: ticketData.isPrivate,
         oportunidadeId: ticketData.oportunidadeId,
         recurrence: ticketData.recurrence,
-      });
+      }, ticket);
 
       // Salvar novos anexos (aqueles que não têm id no banco ainda)
       if (ticketData.attachments && ticketData.attachments.length > 0) {
@@ -127,7 +116,7 @@ export default function TicketEdit() {
       );
       toast({
         title: 'Erro ao atualizar tarefa',
-        description: treatedError.message,
+        description: error instanceof TasksApiError ? error.message : treatedError.message,
         variant: 'destructive',
       });
     } finally {

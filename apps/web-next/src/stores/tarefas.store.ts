@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { tarefasRepoSupabase, type Tarefa } from '@/repositories/tarefasRepo.supabase';
+import { tarefasRepoSupabase, TasksApiError, type Tarefa } from '@/repositories/tarefasRepo.supabase';
 import { handleSupabaseError, createErrorContext } from '@/lib/errorHandler';
 import { logger } from '../lib/logging';
 
@@ -12,7 +12,7 @@ interface TarefasStore {
   loadTarefas: () => Promise<void>;
   getTarefaById: (id: string) => Promise<Tarefa | null>;
   createTarefa: (tarefa: Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>) => Promise<Tarefa>;
-  updateTarefa: (id: string, tarefa: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>) => Promise<Tarefa | null>;
+  updateTarefa: (id: string, tarefa: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>, original?: Tarefa) => Promise<Tarefa | null>;
   deleteTarefa: (id: string) => Promise<boolean>;
   searchTarefas: (query: string) => Promise<Tarefa[]>;
   clearError: () => void;
@@ -35,7 +35,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('read', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
     }
@@ -54,7 +54,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('read', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
       return null;
@@ -78,17 +78,17 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('create', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
       throw error;
     }
   },
 
-  updateTarefa: async (id: string, tarefaData: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>) => {
+  updateTarefa: async (id: string, tarefaData: Partial<Omit<Tarefa, 'id' | 'createdAt' | 'updatedAt' | 'commentCount' | 'attachmentCount'>>, original?: Tarefa) => {
     set({ loading: true, error: null });
     try {
-      const updatedTarefa = await tarefasRepoSupabase.update(id, tarefaData);
+      const updatedTarefa = await tarefasRepoSupabase.update(id, tarefaData, original ?? get().tarefas.find(tarefa => tarefa.id === id));
       if (updatedTarefa) {
         const currentTarefas = get().tarefas;
         const updatedTarefas = currentTarefas.map(tarefa => 
@@ -107,7 +107,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('update', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
       throw error;
@@ -132,7 +132,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('delete', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
       throw error;
@@ -152,7 +152,7 @@ export const useTarefasStore = create<TarefasStore>((set, get) => ({
         createErrorContext('read', 'tarefa', 'omnia_tarefas')
       );
       set({ 
-        error: treatedError.message,
+        error: error instanceof TasksApiError ? error.message : treatedError.message,
         loading: false 
       });
       return [];

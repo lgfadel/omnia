@@ -18,7 +18,7 @@ vi.mock('@/components/auth/AuthProvider', () => ({
 
 vi.mock('@/hooks/useRoles', () => ({
   useRoles: () => ({
-    canAccessConfig: () => true,
+    canAccessConfig: () => false,
   }),
 }))
 
@@ -55,6 +55,11 @@ vi.mock('@/hooks/useMenuItems', () => ({
 }))
 
 describe('AppSidebar', () => {
+  it('shows personal integrations without task or admin access', () => {
+    render(<SidebarProvider><AppSidebar /></SidebarProvider>)
+    expect(screen.getByRole('link',{name:'Integrações'})).toHaveAttribute('href','/integracoes')
+  })
+
   it('orders the Configurações submenu alphabetically', () => {
     const { container } = render(
       <SidebarProvider>

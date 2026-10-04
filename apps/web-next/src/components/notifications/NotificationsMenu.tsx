@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { supabase } from '@/integrations/supabase/client'
+import { tarefasRepoSupabase } from '@/repositories/tarefasRepo.supabase'
 
 const formatActionLabel = (type: string) => {
   switch (type) {
@@ -91,13 +92,11 @@ export function NotificationsMenu() {
         const commentToAtaId: Record<string, string> = {}
 
         if (ticketIds.length > 0) {
-          const { data } = await supabase
-            .from('omnia_tickets')
-            .select('id, title')
-            .in('id', ticketIds)
-
-          ;(data ?? []).forEach((t: { id?: string; title?: string }) => {
-            if (t?.id && t?.title) ticketTitleById[t.id] = t.title
+          const results = await Promise.allSettled(ticketIds.map((id) => tarefasRepoSupabase.get(id)))
+          results.forEach((result) => {
+            if (result.status === 'fulfilled' && result.value?.title) {
+              ticketTitleById[result.value.id] = result.value.title
+            }
           })
         }
 

@@ -5,35 +5,24 @@ import { BreadcrumbOmnia } from "@/components/ui/breadcrumb-omnia";
 import { TicketForm } from "@/components/tickets/TicketForm";
 import { useRouter } from "next/navigation";
 import { useTarefasStore } from "@/stores/tarefas.store";
-import { useSecretariosStore } from "@/stores/secretarios.store";
 import { ticketAttachmentsRepoSupabase } from "@/repositories/ticketAttachmentsRepo.supabase";
-import { Tarefa } from "@/repositories/tarefasRepo.supabase";
+import { Tarefa, TasksApiError, listTaskAssignees } from "@/repositories/tarefasRepo.supabase";
 import { UserRef } from "@/data/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { handleSupabaseError, createErrorContext } from "@/lib/errorHandler";
 import { logger } from '@/lib/logging';
 
 export default function TicketNew() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { createTarefa, loading } = useTarefasStore();
-  const { secretarios, loadSecretarios } = useSecretariosStore();
-
-  useEffect(() => {
-    loadSecretarios();
-  }, [loadSecretarios]);
-
-  const users: UserRef[] = secretarios.map(secretario => ({
-    id: secretario.id,
-    name: secretario.name,
-    email: secretario.email,
-    roles: secretario.roles,
-    avatarUrl: secretario.avatarUrl,
-    color: secretario.color,
-  }));
+  const [users, setUsers] = useState<UserRef[]>([]);
+  useEffect(() => { void listTaskAssignees().then(setUsers).catch(() => {
+    toast({title:'Não foi possível carregar os responsáveis',variant:'destructive'});
+  }); }, [toast]);
 
   const handleSubmit = async (ticketData: Partial<Tarefa>) => {
     try {
@@ -44,7 +33,7 @@ export default function TicketNew() {
         dueDate: ticketData.dueDate,
         ticketOcta: ticketData.ticketOcta,
         statusId: ticketData.statusId!,
-        assignedTo: ticketData.isPrivate ? users.find(u => u.id === user?.id) : ticketData.assignedTo,
+        assignedTo: ticketData.isPrivate ? userProfile ?? undefined : ticketData.assignedTo,
         tags: ticketData.tags || [],
         attachments: ticketData.attachments || [],
         isPrivate: Boolean(ticketData.isPrivate),
@@ -84,7 +73,7 @@ export default function TicketNew() {
       );
       toast({
         title: "Erro ao criar tarefa",
-        description: treatedError.message,
+        description: error instanceof TasksApiError ? error.message : treatedError.message,
         variant: "destructive"
       });
     }

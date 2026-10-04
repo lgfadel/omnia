@@ -18,6 +18,18 @@ DECLARE created jsonb; updated jsonb; BEGIN
  PERFORM public.test_assert(updated->>'status'='200' AND updated#>>'{data,priority}'='URGENTE','existing URGENTE priority accepted on update');
 END $$;
 DO $$
+DECLARE created jsonb; completed jsonb; series_id uuid; template public.omnia_ticket_recurrences%ROWTYPE;
+BEGIN
+ created:=public.tasks_api_dispatch('tasks.create','{"title":"Human completion with recurrence","recurrence":{"frequency":"DAILY","startDate":"2026-10-04"}}','20000000-0000-0000-0000-000000000001',NULL,'review-human-final-create');
+ PERFORM public.test_assert(created->>'status'='201','human recurrence completion fixture created');
+ series_id:=(created#>>'{data,recurrenceId}')::uuid;
+ completed:=public.tasks_api_dispatch('tasks.update',jsonb_build_object('id',created#>>'{data,id}','expectedUpdatedAt',created#>>'{data,updatedAt}','patch','{"title":"Human completion edited","statusId":"40000000-0000-0000-0000-000000000002","recurrence":{"frequency":"DAILY","startDate":"2026-10-04"}}'::jsonb),'20000000-0000-0000-0000-000000000001',NULL,'review-human-final-update');
+ PERFORM public.test_assert(completed->>'status'='200' AND completed#>>'{data,statusId}'='40000000-0000-0000-0000-000000000002','human form completion keeps final status on edited occurrence');
+ SELECT * INTO template FROM public.omnia_ticket_recurrences WHERE id=series_id;
+ PERFORM public.test_assert(template.status_id='40000000-0000-0000-0000-000000000001' AND template.title='Human completion edited','human form keeps pending template status while syncing other fields');
+ PERFORM public.test_assert(EXISTS(SELECT 1 FROM public.omnia_tickets WHERE recurrence_id=series_id AND recurrence_occurrence=2 AND status_id='40000000-0000-0000-0000-000000000001' AND title='Human completion edited'),'human completion generates pending next occurrence');
+END $$;
+DO $$
 DECLARE created jsonb; changed jsonb; configured jsonb; completed jsonb;
  series_id uuid; second_task public.omnia_tickets%ROWTYPE; template public.omnia_ticket_recurrences%ROWTYPE;
 BEGIN

@@ -228,7 +228,8 @@ DECLARE r public.omnia_ticket_recurrences%ROWTYPE; v_start date; v_end date; lim
     title=CASE WHEN p_patch ? 'title' THEN p_task.title ELSE r.title END,
     description=CASE WHEN p_patch ? 'description' THEN p_task.description ELSE r.description END,
     priority=CASE WHEN p_patch ? 'priority' THEN p_task.priority ELSE r.priority END,
-    status_id=CASE WHEN p_patch ? 'statusId' THEN p_task.status_id ELSE r.status_id END,
+    -- Completing this occurrence must not make future occurrences final.
+    status_id=CASE WHEN p_patch ? 'statusId' AND NOT coalesce((SELECT is_final FROM public.omnia_ticket_statuses WHERE id=p_task.status_id),false) THEN p_task.status_id ELSE r.status_id END,
     assigned_to=CASE WHEN p_patch ? 'assignedToId' THEN p_task.assigned_to ELSE r.assigned_to END,
     oportunidade_id=CASE WHEN p_patch ? 'oportunidadeId' THEN p_task.oportunidade_id ELSE r.oportunidade_id END,
     tags=CASE WHEN p_patch ? 'tags' THEN coalesce(p_task.tags,'{}') ELSE r.tags END,
