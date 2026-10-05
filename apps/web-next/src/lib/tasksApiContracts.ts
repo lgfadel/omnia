@@ -55,7 +55,8 @@ export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optio
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
   scopes:z.array(taskScopeSchema).min(1).max(4).refine(value => new Set(value).size === value.length),
-  expiresAt:taskTimestampSchema.optional(),
+  // Omitted keeps the 90-day default; an explicit null creates a key that never expires.
+  expiresAt:taskTimestampSchema.nullable().optional(),
 }).strict()
 const commentBody = z.string().trim().min(1).max(10000)
 export const commentCreateSchema = z.object({body:commentBody}).strict()
@@ -76,7 +77,7 @@ export const taskSchema = z.object({
 }).strict()
 export const commentSchema = z.object({id:uuid,taskId:uuid,body:z.string(),authorId:uuid,author:taskUserRefSchema.nullable(),createdAt:taskTimestampSchema}).strict()
 export const taskStatusSchema = z.object({id:uuid,name:z.string(),color:z.string().nullable(),order:z.number().int(),isDefault:z.boolean().nullable().transform(value => value ?? false),isFinal:z.boolean()}).strict()
-export const credentialSchema = z.object({id:uuid,name:z.string(),audience:z.enum(['api','mcp']),scopes:z.array(taskScopeSchema),createdAt:taskTimestampSchema,expiresAt:taskTimestampSchema,revokedAt:taskTimestampSchema.nullable(),lastUsedAt:taskTimestampSchema.nullable()}).strict()
+export const credentialSchema = z.object({id:uuid,name:z.string(),audience:z.enum(['api','mcp']),scopes:z.array(taskScopeSchema),createdAt:taskTimestampSchema,expiresAt:taskTimestampSchema.nullable(),revokedAt:taskTimestampSchema.nullable(),lastUsedAt:taskTimestampSchema.nullable()}).strict()
 export const mcpCapabilitySchema = z.object({id:uuid,audience:z.literal('api'),scopes:z.array(taskScopeSchema),expiresAt:taskTimestampSchema}).strict()
 export type TaskDTO = z.infer<typeof taskSchema>
 export type TaskCreateDTO = z.infer<typeof taskCreateSchema>

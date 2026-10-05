@@ -840,9 +840,17 @@
             "description": "Offset timestamp; preserve the original fractional seconds (including microseconds)."
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Offset timestamp; preserve the original fractional seconds (including microseconds)."
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Offset timestamp; preserve the original fractional seconds (including microseconds)."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Instant after which the key stops working, or null for a key created without deadline, which only revocation ends."
           },
           "revokedAt": {
             "anyOf": [
@@ -982,9 +990,17 @@
             "uniqueItems": true
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Offset timestamp; preserve the original fractional seconds (including microseconds)."
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Offset timestamp in the future and at most 365 days ahead; preserve the original fractional seconds (including microseconds)."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit for the default of 90 days. Send null for a key without deadline, valid until it is revoked. The web interface offers 7, 30 and 90 days or no deadline."
           }
         },
         "required": [
