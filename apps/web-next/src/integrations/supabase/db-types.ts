@@ -575,6 +575,51 @@ export type Database = {
           },
         ]
       }
+      omnia_condominium_aliases: {
+        Row: {
+          alias_normalized: string
+          alias_original: string
+          condominium_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          alias_normalized: string
+          alias_original: string
+          condominium_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          alias_normalized?: string
+          alias_original?: string
+          condominium_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omnia_condominium_aliases_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "omnia_condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omnia_condominium_aliases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "omnia_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omnia_condominiums: {
         Row: {
           active: boolean

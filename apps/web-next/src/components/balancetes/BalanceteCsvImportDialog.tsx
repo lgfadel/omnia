@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
-import { FileUp, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { FileUp, Loader2, AlertTriangle, CheckCircle2, ChevronDown, Pencil } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,17 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CondominiumSelect } from '@/components/condominiums/CondominiumSelect'
-import { buildBalanceteCsvImportPreview, type BalanceteCsvPreviewRow } from '@/lib/balanceteCsvImport'
+import { balanceteRowKey, buildBalanceteCsvImportPreview, type BalanceteCsvRowStatus } from '@/lib/balanceteCsvImport'
+import {
+  buildReviewRowViews,
+  createReviewRows,
+  summarizeReview,
+  type BalanceteCsvReviewRow,
+  type BalanceteCsvReviewRowView,
+  type ExistingBalanceteSnapshot,
+} from '@/lib/balanceteCsvImportReview'
 import { balanceteCsvImportsRepoSupabase, type BalanceteCsvCommitResult } from '@/repositories/balanceteCsvImportsRepo.supabase'
-import type { Balancete } from '@/repositories/balancetesRepo.supabase'
+import { condominiumAliasesRepoSupabase } from '@/repositories/condominiumAliasesRepo.supabase'
 import type { Condominium } from '@/repositories/condominiumsRepo.supabase'
 import { useToast } from '@/hooks/use-toast'
 
@@ -25,46 +33,82 @@ interface BalanceteCsvImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   condominiums: Condominium[]
-  balancetes: Balancete[]
   createdBy?: string
   onImportSuccess?: () => Promise<void> | void
 }
 
-interface ReviewRow extends BalanceteCsvPreviewRow {
-  selectedCondominiumId: string
-  ignored: boolean
+const STATUS_LABEL: Record<BalanceteCsvRowStatus, string> = {
+  new: 'Novo',
+  update: 'Atualiza',
+  unchanged: 'Já em dia',
 }
 
-function hasExistingBalancete(balancetes: Balancete[], condominiumId: string, competencia: string): boolean {
-  return balancetes.some((b) => b.condominium_id === condominiumId && b.competencia === competencia)
+function MatchBadge({ row }: { row: BalanceteCsvReviewRow }) {
+  if (row.userConfirmed) {
+    return (
+      <span className="flex items-center gap-1 text-xs text-green-700">
+        <CheckCircle2 className="w-3.5 h-3.5" />
+        Confirmado
+      </span>
+    )
+  }
+
+  const label =
+    row.matchSource === 'alias' ? 'Memorizado' : row.matchSource === 'exact' ? 'Nome idêntico' : 'Match automático'
+
+  return (
+    <span className="flex items-center gap-1 text-xs text-green-700">
+      <CheckCircle2 className="w-3.5 h-3.5" />
+      {label}
+    </span>
+  )
 }
 
 export function BalanceteCsvImportDialog({
   open,
   onOpenChange,
   condominiums,
-  balancetes,
   createdBy,
   onImportSuccess,
 }: BalanceteCsvImportDialogProps) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [reviewRows, setReviewRows] = useState<ReviewRow[]>([])
+  const [reviewRows, setReviewRows] = useState<BalanceteCsvReviewRow[]>([])
+  const [existingByKey, setExistingByKey] = useState<Map<string, ExistingBalanceteSnapshot>>(new Map())
   const [parseErrors, setParseErrors] = useState<string[]>([])
   const [parsing, setParsing] = useState(false)
   const [committing, setCommitting] = useState(false)
+  const [showUnchanged, setShowUnchanged] = useState(false)
   const [result, setResult] = useState<BalanceteCsvCommitResult | null>(null)
 
   const activeCondominiums = useMemo(() => condominiums.filter((c) => c.active !== false), [condominiums])
   const condominiumById = useMemo(() => new Map(condominiums.map((c) => [c.id, c])), [condominiums])
 
+  const views = useMemo(
+    () =>
+      buildReviewRowViews(reviewRows, {
+        isDigitalCondominium: (id) => condominiumById.get(id)?.balancete_digital === true,
+        existingByKey,
+      }),
+    [reviewRows, condominiumById, existingByKey]
+  )
+  const summary = useMemo(() => summarizeReview(views), [views])
+  const pendingViews = views.filter((view) => view.group === 'pending')
+  const writeViews = views.filter((view) => view.group === 'write')
+  const unchangedViews = views.filter((view) => view.group === 'unchanged')
+  const suggestionsToConfirm = pendingViews.filter(
+    (view) => !view.row.ignored && view.row.selectedCondominiumId
+  ).length
+
   const resetState = () => {
     setSelectedFile(null)
     setReviewRows([])
+    setExistingByKey(new Map())
     setParseErrors([])
     setParsing(false)
     setCommitting(false)
+    setShowUnchanged(false)
     setResult(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -74,6 +118,9 @@ export function BalanceteCsvImportDialog({
     onOpenChange(nextOpen)
   }
 
+  const updateRow = (rowNumber: number, patch: Partial<BalanceteCsvReviewRow>) =>
+    setReviewRows((current) => current.map((r) => (r.rowNumber === rowNumber ? { ...r, ...patch } : r)))
+
   const handleFileSelected = async (file: File) => {
     setSelectedFile(file)
     setResult(null)
@@ -81,19 +128,35 @@ export function BalanceteCsvImportDialog({
 
     try {
       const csvText = await file.text()
+
+      let aliases = new Map<string, string>()
+      try {
+        aliases = await condominiumAliasesRepoSupabase.listMap()
+      } catch {
+        toast({
+          title: 'Não foi possível carregar os nomes memorizados',
+          description: 'Os condomínios serão sugeridos só pela semelhança do nome. Revise com atenção.',
+          variant: 'destructive',
+        })
+      }
+
       const preview = buildBalanceteCsvImportPreview(
         csvText,
-        activeCondominiums.map((c) => ({ id: c.id, name: c.name }))
+        activeCondominiums.map((c) => ({ id: c.id, name: c.name })),
+        aliases
       )
 
-      setParseErrors(preview.parseErrors.map((e) => `Linha ${e.rowNumber}: ${e.message}`))
-      setReviewRows(
-        preview.rows.map((row) => ({
-          ...row,
-          selectedCondominiumId: row.condominiumId ?? '',
-          ignored: false,
-        }))
+      // Qualquer condomínio ativo pode ser escolhido na revisão, então carregamos o que já existe para todos.
+      const existing = await balanceteCsvImportsRepoSupabase.loadExisting(
+        activeCondominiums.map((c) => c.id),
+        Array.from(new Set(preview.rows.map((row) => row.competencia)))
       )
+
+      setExistingByKey(
+        new Map(existing.map((balancete) => [balanceteRowKey(balancete.condominium_id, balancete.competencia), balancete]))
+      )
+      setParseErrors(preview.parseErrors.map((e) => `Linha ${e.rowNumber}: ${e.message}`))
+      setReviewRows(createReviewRows(preview.rows))
     } catch (error) {
       toast({
         title: 'Erro ao ler o arquivo CSV',
@@ -106,22 +169,41 @@ export function BalanceteCsvImportDialog({
     }
   }
 
-  const rowsToImport = useMemo(() => reviewRows.filter((row) => !row.ignored), [reviewRows])
-  const rowsNeedingCondominium = useMemo(
-    () => rowsToImport.filter((row) => !row.selectedCondominiumId),
-    [rowsToImport]
-  )
-  const canImport = selectedFile && rowsToImport.length > 0 && rowsNeedingCondominium.length === 0
+  const hasWrites = summary.writeRows.length > 0
+  const canSubmit =
+    selectedFile !== null &&
+    summary.pendingCount === 0 &&
+    summary.duplicateKeys.length === 0 &&
+    (hasWrites || summary.aliasesToSave.length > 0)
 
   const handleCommit = async () => {
-    if (!selectedFile || !canImport) return
+    if (!selectedFile || !canSubmit) return
 
     try {
       setCommitting(true)
+
+      if (!hasWrites) {
+        // Tudo já estava em dia; só havia nomes novos para memorizar.
+        const savedCount = await condominiumAliasesRepoSupabase.upsertMany(summary.aliasesToSave, createdBy)
+        toast({
+          title: 'Correspondências memorizadas',
+          description: `${savedCount} nome(s) serão reconhecidos automaticamente nos próximos arquivos.`,
+        })
+        handleDialogOpenChange(false)
+        return
+      }
+
+      if (!createdBy) {
+        throw new Error('Não foi possível identificar o usuário logado. Recarregue a página e tente novamente.')
+      }
+
       const commitResult = await balanceteCsvImportsRepoSupabase.commit({
         originalFilename: selectedFile.name,
-        createdBy: createdBy!,
-        rows: rowsToImport.map((row) => ({
+        createdBy,
+        ignoredCount: summary.ignoredCount,
+        unchangedCount: summary.unchangedCount,
+        aliasesToSave: summary.aliasesToSave,
+        rows: summary.writeRows.map(({ row }) => ({
           condominiumId: row.selectedCondominiumId,
           competencia: row.competencia,
           dataCriacaoIso: row.dataCriacaoIso,
@@ -145,15 +227,43 @@ export function BalanceteCsvImportDialog({
     }
   }
 
+  const renderRowHeader = (view: BalanceteCsvReviewRowView, trailing: ReactNode) => {
+    const { row, status } = view
+    const selectedCondominium = row.selectedCondominiumId
+      ? condominiumById.get(row.selectedCondominiumId)
+      : undefined
+
+    return (
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <Checkbox
+            checked={!row.ignored}
+            onCheckedChange={(checked) => updateRow(row.rowNumber, { ignored: checked !== true })}
+          />
+          <span className="text-sm font-medium truncate">{row.nomeCondominioCsv}</span>
+          <Badge variant="outline">{row.competencia}</Badge>
+          {selectedCondominium && (
+            <Badge variant="secondary">{selectedCondominium.balancete_digital ? 'Digital' : 'Físico'}</Badge>
+          )}
+          {status && <Badge variant="outline">{STATUS_LABEL[status]}</Badge>}
+        </div>
+        {trailing}
+      </div>
+    )
+  }
+
+  const nothingNewInFile = reviewRows.length > 0 && pendingViews.length === 0 && writeViews.length === 0
+
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Importar Último Balancete (CSV)</DialogTitle>
           <DialogDescription>
-            Envie o CSV com a última competência disponível por condomínio. Condomínios digitais são
-            marcados como recebidos automaticamente; condomínios físicos ficam com o digital pronto,
-            aguardando o recebimento do físico.
+            Envie o CSV com a última competência disponível por condomínio. Só aparece o que pede ação: nomes
+            novos para confirmar e balancetes novos ou desatualizados. O que já está em dia fica de fora, e os
+            nomes que você confirmar são memorizados para os próximos arquivos. Condomínios digitais são marcados
+            como recebidos automaticamente; os físicos ficam com o digital pronto, aguardando o físico.
           </DialogDescription>
         </DialogHeader>
 
@@ -210,80 +320,172 @@ export function BalanceteCsvImportDialog({
           )}
 
           {reviewRows.length > 0 && !result && (
-            <div className="space-y-3">
-              {rowsNeedingCondominium.length > 0 && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  {rowsNeedingCondominium.length} linha(s) precisam que você selecione o condomínio correspondente.
-                </div>
-              )}
-              <div className="space-y-2">
-                {reviewRows.map((row) => {
-                  const selectedCondominium = row.selectedCondominiumId
-                    ? condominiumById.get(row.selectedCondominiumId)
-                    : undefined
-                  const isDigital = selectedCondominium?.balancete_digital ?? false
-                  const willUpdate =
-                    row.selectedCondominiumId &&
-                    hasExistingBalancete(balancetes, row.selectedCondominiumId, row.competencia)
+            <div className="space-y-5">
+              {pendingViews.length > 0 && (
+                <section className="space-y-2">
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-center justify-between gap-3 flex-wrap">
+                    <span>
+                      {summary.pendingCount > 0
+                        ? `${summary.pendingCount} nome(s) novos precisam da sua confirmação. Depois de confirmados, não serão perguntados de novo.`
+                        : 'Todos os nomes foram confirmados.'}
+                    </span>
+                    {suggestionsToConfirm > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setReviewRows((current) =>
+                            current.map((r) =>
+                              !r.ignored && !r.confirmed && r.selectedCondominiumId
+                                ? { ...r, confirmed: true, userConfirmed: true }
+                                : r
+                            )
+                          )
+                        }
+                      >
+                        Confirmar sugestões ({suggestionsToConfirm})
+                      </Button>
+                    )}
+                  </div>
 
-                  return (
-                    <div
-                      key={row.rowNumber}
-                      className={`rounded-lg border p-3 space-y-2 ${row.ignored ? 'opacity-50' : ''}`}
-                    >
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Checkbox
-                            checked={!row.ignored}
-                            onCheckedChange={(checked) =>
-                              setReviewRows((current) =>
-                                current.map((r) =>
-                                  r.rowNumber === row.rowNumber ? { ...r, ignored: checked !== true } : r
-                                )
-                              )
-                            }
-                          />
-                          <span className="text-sm font-medium truncate">{row.nomeCondominioCsv}</span>
-                          <Badge variant="outline">{row.competencia}</Badge>
-                          {selectedCondominium && (
-                            <Badge variant="secondary">{isDigital ? 'Digital' : 'Físico'}</Badge>
-                          )}
-                          {willUpdate && <Badge variant="outline">Atualiza existente</Badge>}
-                        </div>
-                        {row.needsReview ? (
+                  {pendingViews.map((view) => {
+                    const { row } = view
+                    return (
+                      <div
+                        key={row.rowNumber}
+                        className={`rounded-lg border p-3 space-y-2 ${row.ignored ? 'opacity-50' : ''}`}
+                      >
+                        {renderRowHeader(
+                          view,
                           <div className="flex items-center gap-1 text-xs text-amber-700">
                             <AlertTriangle className="w-3.5 h-3.5" />
                             Confirme o condomínio
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-xs text-green-700">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Match automático
+                        )}
+                        {!row.ignored && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <CondominiumSelect
+                                condominiums={activeCondominiums}
+                                value={row.selectedCondominiumId}
+                                onValueChange={(value) =>
+                                  updateRow(row.rowNumber, {
+                                    selectedCondominiumId: value,
+                                    confirmed: value !== '',
+                                    userConfirmed: value !== '',
+                                  })
+                                }
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={!row.selectedCondominiumId}
+                              onClick={() => updateRow(row.rowNumber, { confirmed: true, userConfirmed: true })}
+                            >
+                              Confirmar
+                            </Button>
                           </div>
                         )}
                       </div>
-                      {!row.ignored && (
-                        <CondominiumSelect
-                          condominiums={activeCondominiums}
-                          value={row.selectedCondominiumId}
-                          onValueChange={(value) =>
-                            setReviewRows((current) =>
-                              current.map((r) =>
-                                r.rowNumber === row.rowNumber ? { ...r, selectedCondominiumId: value } : r
-                              )
-                            )
-                          }
-                        />
-                      )}
+                    )
+                  })}
+                </section>
+              )}
+
+              {writeViews.length > 0 && (
+                <section className="space-y-2">
+                  <p className="text-sm font-medium">Serão gravados ({summary.writeRows.length})</p>
+                  {writeViews.map((view) => {
+                    const { row } = view
+                    return (
+                      <div
+                        key={row.rowNumber}
+                        className={`rounded-lg border p-3 space-y-1 ${row.ignored ? 'opacity-50' : ''}`}
+                      >
+                        {renderRowHeader(
+                          view,
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MatchBadge row={row} />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => updateRow(row.rowNumber, { confirmed: false, userConfirmed: false })}
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1" />
+                              Alterar
+                            </Button>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground pl-6 truncate">
+                          {condominiumById.get(row.selectedCondominiumId)?.name}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </section>
+              )}
+
+              {summary.duplicateKeys.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Duas linhas apontam para o mesmo condomínio e competência. Desmarque uma delas ou use
+                  &quot;Alterar&quot; para corrigir o condomínio.
+                </div>
+              )}
+
+              {nothingNewInFile && (
+                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  Nada novo neste arquivo. Os {unchangedViews.length} balancete(s) já estão em dia.
+                </div>
+              )}
+
+              {unchangedViews.length > 0 && (
+                <section className="space-y-2">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowUnchanged((current) => !current)}
+                    aria-expanded={showUnchanged}
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${showUnchanged ? '' : '-rotate-90'}`}
+                    />
+                    {unchangedViews.length} balancete(s) já estão em dia e ficam de fora
+                  </button>
+                  {showUnchanged && (
+                    <div className="rounded-lg border divide-y">
+                      {unchangedViews.map(({ row }) => (
+                        <div
+                          key={row.rowNumber}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm text-muted-foreground"
+                        >
+                          <span className="truncate">{row.nomeCondominioCsv}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge variant="outline">{row.competencia}</Badge>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => updateRow(row.rowNumber, { confirmed: false, userConfirmed: false })}
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1" />
+                              Alterar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+                </section>
+              )}
             </div>
           )}
 
           {result && (
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <div className="rounded-lg border p-4">
                 <p className="text-xs uppercase text-muted-foreground">Criados</p>
                 <p className="text-2xl font-semibold text-green-700">{result.createdCount}</p>
@@ -293,8 +495,14 @@ export function BalanceteCsvImportDialog({
                 <p className="text-2xl font-semibold text-blue-700">{result.updatedCount}</p>
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-xs uppercase text-muted-foreground">Sem alteração</p>
-                <p className="text-2xl font-semibold text-muted-foreground">{result.noopCount}</p>
+                <p className="text-xs uppercase text-muted-foreground">Já em dia</p>
+                <p className="text-2xl font-semibold text-muted-foreground">
+                  {result.noopCount + summary.unchangedCount}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-xs uppercase text-muted-foreground">Nomes memorizados</p>
+                <p className="text-2xl font-semibold">{result.aliasesSavedCount}</p>
               </div>
             </div>
           )}
@@ -305,14 +513,16 @@ export function BalanceteCsvImportDialog({
             Fechar
           </Button>
           {!result && (
-            <Button type="button" onClick={handleCommit} disabled={!canImport || committing}>
+            <Button type="button" onClick={handleCommit} disabled={!canSubmit || committing}>
               {committing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Importando...
                 </>
+              ) : hasWrites ? (
+                `Confirmar Importação (${summary.writeRows.length})`
               ) : (
-                `Confirmar Importação${rowsToImport.length > 0 ? ` (${rowsToImport.length})` : ''}`
+                `Memorizar correspondências${summary.aliasesToSave.length > 0 ? ` (${summary.aliasesToSave.length})` : ''}`
               )}
             </Button>
           )}

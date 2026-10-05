@@ -413,7 +413,6 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         condominiums={condominiums}
-        balancetes={balancetes}
         createdBy={userProfile?.id}
         onImportSuccess={async () => {
           await loadBalancetes()
