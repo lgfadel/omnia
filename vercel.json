@@ -2,5 +2,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": "apps/web-next/.next",
-  "installCommand": "npm install --workspace apps/web-next --include-workspace-root"
+  "installCommand": "npm install --workspace apps/web-next --include-workspace-root",
+  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- ':(top)' ':(top,exclude)apps/mcp-server' ':(top,exclude)apps/ata-transcription-worker'"
 }
