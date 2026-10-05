@@ -19,6 +19,7 @@ import {
 import { CondominiumSelect } from "@/components/condominiums/CondominiumSelect";
 import type { Condominium } from "@/repositories/condominiumsRepo.supabase";
 import type { Balancete } from "@/repositories/balancetesRepo.supabase";
+import { todayInSaoPaulo } from "@/lib/brazilDate";
 
 function buildBalanceteSchema(requireReceivedAt: boolean) {
   return z
@@ -67,10 +68,6 @@ function formatCompetencia(value: string): string {
   return `${digits.slice(0, 2)}/${digits.slice(2, 6)}`;
 }
 
-function getTodayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
 export function BalanceteForm({
   open,
   onOpenChange,
@@ -101,7 +98,7 @@ export function BalanceteForm({
     resolver: zodResolver(balanceteSchema),
     defaultValues: {
       condominium_id: "",
-      received_at: getTodayISO(),
+      received_at: todayInSaoPaulo(),
       competencia: "",
       volumes: 1,
       observations: "",
@@ -120,7 +117,8 @@ export function BalanceteForm({
       if (balancete) {
         reset({
           condominium_id: balancete.condominium_id,
-          received_at: balancete.received_at ?? "",
+          // Aguardando físico: já sugere a data de hoje, pois quem abre o balancete é quem está com o malote.
+          received_at: balancete.received_at ?? todayInSaoPaulo(),
           competencia: balancete.competencia,
           volumes: balancete.volumes,
           observations: balancete.observations || "",
@@ -128,7 +126,7 @@ export function BalanceteForm({
       } else {
         reset({
           condominium_id: initialCondominiumId ?? "",
-          received_at: getTodayISO(),
+          received_at: todayInSaoPaulo(),
           competencia: initialCompetencia ?? "",
           volumes: 1,
           observations: "",
@@ -219,6 +217,12 @@ export function BalanceteForm({
               {isDigital && (
                 <p className="text-xs text-muted-foreground">
                   Para balancetes digitais, informe a data de publicação
+                </p>
+              )}
+              {isEditingPendingFisico && (
+                <p className="text-xs text-muted-foreground">
+                  Ao salvar, o balancete será registrado como recebido nesta data. Para continuar aguardando o
+                  físico, limpe o campo.
                 </p>
               )}
             </div>
