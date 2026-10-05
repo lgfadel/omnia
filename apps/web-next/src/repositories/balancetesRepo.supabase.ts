@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client"
 import type { TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging'
+import { todayInSaoPaulo } from '../lib/brazilDate'
 import { protocolosRepoSupabase, type Protocolo } from './protocolosRepo.supabase'
 
 export interface Balancete {
@@ -232,7 +233,20 @@ export const balancetesRepoSupabase = {
       created_by: createdBy,
     })
 
-    // 2. Atualizar balancetes com sent_at e protocolo_id
+    // 2. Quem ainda aguardava o físico passa a constar como recebido hoje: o malote está em mãos ao emitir
+    // o protocolo. Só preenche received_at vazio, nunca sobrescreve um recebimento já registrado.
+    const { error: receivedError } = await supabase
+      .from('omnia_balancetes')
+      .update({ received_at: todayInSaoPaulo() })
+      .in('id', ids)
+      .is('received_at', null)
+
+    if (receivedError) {
+      logger.error('Error marking balancetes as received:', receivedError)
+      throw receivedError
+    }
+
+    // 3. Atualizar balancetes com sent_at e protocolo_id
     const { data, error } = await supabase
       .from('omnia_balancetes')
       .update({ 

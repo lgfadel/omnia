@@ -178,6 +178,12 @@ export default function BalancetesPage() {
     }
   }, [protocolos, balancetes]);
 
+  // Ao emitir o protocolo, quem ainda aguardava o físico é marcado como recebido hoje (ver markAsSent).
+  const awaitingPhysicalCount = useMemo(
+    () => balancetes.filter((b) => selectedBalancetes.has(b.id) && !b.received_at).length,
+    [balancetes, selectedBalancetes]
+  );
+
   const protocolosMap = useMemo(() => {
     const map = new Map();
     protocolos.forEach(p => map.set(p.id, p));
@@ -712,6 +718,8 @@ export default function BalancetesPage() {
             <AlertDialogTitle>Data de Envio</AlertDialogTitle>
             <AlertDialogDescription>
               Informe a data de envio dos balancetes selecionados.
+              {awaitingPhysicalCount > 0 &&
+                ` ${awaitingPhysicalCount} deles ainda aguardavam o físico e serão marcados como recebidos hoje.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
