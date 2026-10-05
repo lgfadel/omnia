@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "apps/web-next",
-    "apps/ata-transcription-worker"
+    "apps/ata-transcription-worker",
+    "apps/mcp-server"
   ],
   "scripts": {
     "dev": "npm --prefix apps/web-next run dev",
@@ -15,6 +16,9 @@
     "lint:fix": "npm --prefix apps/web-next run lint --fix",
     "test": "npm --prefix apps/web-next run test",
     "test:worker": "npm --prefix apps/ata-transcription-worker run test",
+    "test:mcp": "npm --workspace apps/mcp-server run test",
+    "build:mcp": "npm --workspace apps/mcp-server run build",
+    "type-check:mcp": "npm --workspace apps/mcp-server run type-check",
     "test:ui": "npm --prefix apps/web-next run test:ui",
     "test:run": "npm --prefix apps/web-next run test:run",
     "test:coverage": "npm --prefix apps/web-next run test:coverage",

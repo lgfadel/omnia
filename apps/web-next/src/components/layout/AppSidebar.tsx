@@ -48,6 +48,7 @@ const menuNameCollator = new Intl.Collator('pt-BR', {
   sensitivity: 'base',
   numeric: true,
 })
+const hiddenPaths = ['/crm']
 
 function sortMenuItemsByName(items: SidebarMenuItemData[]): SidebarMenuItemData[] {
   return items
@@ -135,9 +136,6 @@ export function AppSidebar() {
     }
     setExpandedItems(newExpanded)
   }
-
-  // Paths de menu temporariamente ocultos
-  const hiddenPaths = ['/crm']
 
   // Separar itens principais dos de configuração
   const { mainMenuItems, configMenuItems } = useMemo(() => {
@@ -343,6 +341,14 @@ export function AppSidebar() {
                  </div>
                )}
              </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/integracoes" className={pathname === '/integracoes' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}>
+                <KeyRound className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="truncate">Integrações</span>}
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>

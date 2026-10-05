@@ -46,6 +46,15 @@ jobs:
 
     - name: Run transcription worker tests
       run: npm run test:worker
+
+    - name: Type check MCP server
+      run: npm run type-check:mcp
+
+    - name: Run MCP HTTP integration tests
+      run: npm run test:mcp
+
+    - name: Build MCP server
+      run: npm run build:mcp
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
