@@ -14,6 +14,12 @@ import { ProtocoloAttachmentUpload } from "@/components/balancetes/ProtocoloAtta
 import { BalancetesDashboard } from "@/components/balancetes/BalancetesDashboard";
 import { ProtocolosTab } from "@/components/balancetes/ProtocolosTab";
 import { generateProtocoloPDF, downloadPDF } from "@/lib/generateProtocoloPDF";
+import {
+  filterBalancetesForList,
+  getBalanceteEnvioStatus,
+  type AnexoFilter,
+  type StatusEnvioOption,
+} from "@/lib/balanceteListFilter";
 import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
@@ -69,25 +75,6 @@ function getNextCompetencia(competencia: string | null): string {
   return `${String(nextMonth).padStart(2, "0")}/${nextYear}`;
 }
 
-type StatusEnvioOption = 'enviados' | 'pendentes' | 'digital';
-
-function getBalanceteEnvioStatus(
-  balancete: Balancete,
-  protocoloDataEnvio: string | null | undefined
-): StatusEnvioOption {
-  const isSent = Boolean(balancete.sent_at || protocoloDataEnvio);
-
-  if (isSent) {
-    return 'enviados';
-  }
-
-  if (balancete.balancete_digital === true) {
-    return 'digital';
-  }
-
-  return 'pendentes';
-}
-
 function getSentDateClassName(hasAttachments: boolean): string {
   return hasAttachments
     ? "text-sm text-green-700 font-medium"
@@ -125,7 +112,7 @@ export default function BalancetesPage() {
   const [statusEnvioFilter, setStatusEnvioFilter] = useState<Set<StatusEnvioOption>>(
     () => new Set<StatusEnvioOption>(['pendentes', 'enviados'])
   );
-  const [anexoFilter, setAnexoFilter] = useState<'todos' | 'com-anexo' | 'sem-anexo'>('todos');
+  const [anexoFilter, setAnexoFilter] = useState<AnexoFilter>('todos');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [attachmentCounts, setAttachmentCounts] = useState<Record<string, number>>({});
@@ -190,38 +177,18 @@ export default function BalancetesPage() {
     return map;
   }, [protocolos]);
 
-  const filteredData = useMemo(() => {
-    let data = balancetes;
-
-    // Filtro de status de envio
-    if (statusEnvioFilter.size > 0) {
-      data = data.filter((b) => {
-        const protocolo = b.protocolo_id ? protocolosMap.get(b.protocolo_id) : null;
-        return statusEnvioFilter.has(getBalanceteEnvioStatus(b, protocolo?.data_envio));
-      });
-    } else {
-      data = [];
-    }
-
-    // Filtro de anexos
-    if (anexoFilter === 'com-anexo') {
-      data = data.filter((b) => attachmentCounts[b.id] > 0);
-    } else if (anexoFilter === 'sem-anexo') {
-      data = data.filter((b) => !attachmentCounts[b.id] || attachmentCounts[b.id] === 0);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      data = data.filter(
-        (b) =>
-          (b.condominium_name || "").toLowerCase().includes(query) ||
-          b.competencia.includes(query) ||
-          (b.observations || "").toLowerCase().includes(query)
-      );
-    }
-
-    return data;
-  }, [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts, protocolosMap]);
+  // Com texto na busca, os filtros de status e anexos são ignorados (ver filterBalancetesForList).
+  const filteredData = useMemo(
+    () =>
+      filterBalancetesForList(balancetes, {
+        searchQuery,
+        statusEnvio: statusEnvioFilter,
+        anexo: anexoFilter,
+        attachmentCounts,
+        protocolosMap,
+      }),
+    [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts, protocolosMap]
+  );
 
   const tableData = useMemo(
     () =>
@@ -595,7 +562,7 @@ export default function BalancetesPage() {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>Anexos</DropdownMenuLabel>
-                    <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as 'todos' | 'com-anexo' | 'sem-anexo')}>
+                    <DropdownMenuRadioGroup value={anexoFilter} onValueChange={(value) => setAnexoFilter(value as AnexoFilter)}>
                       <DropdownMenuRadioItem value="todos">Todos</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="com-anexo">Com Anexo</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="sem-anexo">Sem Anexo</DropdownMenuRadioItem>
