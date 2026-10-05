@@ -455,7 +455,8 @@ export default function BalancetesPage() {
       if (editingBalancete) {
         await updateBalancete(editingBalancete.id, {
           condominium_id: data.condominium_id,
-          received_at: data.received_at,
+          // Campo limpo (continua aguardando o físico) não pode ir como '' para uma coluna de data.
+          received_at: data.received_at || undefined,
           competencia: data.competencia,
           volumes: data.volumes,
           observations: data.observations || null,
