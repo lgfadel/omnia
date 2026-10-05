@@ -430,14 +430,14 @@ export default function Tickets() {
     // Default: no sortField selected - sort by status
     // Primary: status order
     if (aOrder !== bOrder) return aOrder - bOrder;
-    // Secondary: due date DECRESCENTE (mais distante primeiro, nulls last)
+    // Secondary: due date CRESCENTE (mais próximo primeiro, nulls last)
     if (aDate && bDate) {
-      const dateDiff = bDate.getTime() - aDate.getTime(); // Inverted for descending
+      const dateDiff = aDate.getTime() - bDate.getTime();
       if (dateDiff !== 0) return dateDiff;
     }
     if (aDate && !bDate) return -1;
     if (!aDate && bDate) return 1;
-    // Tertiary: priority
+    // Tertiary: priority (URGENTE > ALTA > NORMAL/média > BAIXA)
     if (aPriority !== bPriority) return aPriority - bPriority;
     
     // Final fallback: creation date (newest first)
