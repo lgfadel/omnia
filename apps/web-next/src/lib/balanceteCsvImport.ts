@@ -1,5 +1,10 @@
 import Papa from 'papaparse'
-import { matchCondominiumName, type CondominiumMatchCandidate } from './condominiumNameMatch'
+import {
+  matchCondominiumName,
+  type CondominiumAliasMap,
+  type CondominiumMatchCandidate,
+  type CondominiumMatchSource,
+} from './condominiumNameMatch'
 
 export interface BalanceteCsvRow {
   rowNumber: number
@@ -74,6 +79,7 @@ export interface BalanceteCsvPreviewRow {
   condominiumId: string | null
   matchScore: number
   needsReview: boolean
+  matchSource: CondominiumMatchSource
 }
 
 export interface BalanceteCsvImportPreview {
@@ -83,14 +89,20 @@ export interface BalanceteCsvImportPreview {
 
 export function buildBalanceteCsvImportPreview(
   csvText: string,
-  condominiums: CondominiumMatchCandidate[]
+  condominiums: CondominiumMatchCandidate[],
+  aliases?: CondominiumAliasMap
 ): BalanceteCsvImportPreview {
   const { rows, errors } = parseBalancetesCsv(csvText)
 
-  const previewRows = rows.map((row) => {
-    const match = matchCondominiumName(row.nomeCondominio, condominiums)
+  const previewRows: BalanceteCsvPreviewRow[] = []
+  const parseErrors = [...errors]
+  // Só linhas com match confiável entram na checagem aqui; sugestões em revisão
+  // podem mudar de condomínio na UI e são checadas de novo antes de gravar.
+  const firstRowByKey = new Map<string, BalanceteCsvPreviewRow>()
 
-    return {
+  for (const row of rows) {
+    const match = matchCondominiumName(row.nomeCondominio, condominiums, aliases)
+    const previewRow: BalanceteCsvPreviewRow = {
       rowNumber: row.rowNumber,
       nomeCondominioCsv: row.nomeCondominio,
       competencia: row.competencia,
@@ -98,10 +110,45 @@ export function buildBalanceteCsvImportPreview(
       condominiumId: match.condominiumId,
       matchScore: match.score,
       needsReview: match.needsReview,
+      matchSource: match.source,
     }
-  })
 
-  return { rows: previewRows, parseErrors: errors }
+    if (previewRow.condominiumId && !previewRow.needsReview) {
+      const key = balanceteRowKey(previewRow.condominiumId, previewRow.competencia)
+      const firstRow = firstRowByKey.get(key)
+      if (firstRow) {
+        parseErrors.push({
+          rowNumber: row.rowNumber,
+          message: `linha duplicada no arquivo: a competência ${row.competencia} deste condomínio já está na linha ${firstRow.rowNumber}`,
+        })
+        continue
+      }
+      firstRowByKey.set(key, previewRow)
+    }
+
+    previewRows.push(previewRow)
+  }
+
+  parseErrors.sort((a, b) => a.rowNumber - b.rowNumber)
+
+  return { rows: previewRows, parseErrors }
+}
+
+export function balanceteRowKey(condominiumId: string, competencia: string): string {
+  return `${condominiumId}::${competencia}`
+}
+
+export function findDuplicateBalanceteKeys(rows: { condominiumId: string; competencia: string }[]): string[] {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+
+  for (const row of rows) {
+    const key = balanceteRowKey(row.condominiumId, row.competencia)
+    if (seen.has(key)) duplicates.add(key)
+    seen.add(key)
+  }
+
+  return Array.from(duplicates)
 }
 
 export interface BalanceteCsvUpsertExisting {
@@ -120,6 +167,30 @@ export type BalanceteCsvUpsertPlan =
   | { action: 'create'; patch: { received_at: string | null; digital_prepared_at: string } }
   | { action: 'update'; patch: { received_at?: string; digital_prepared_at: string } }
 
+export type BalanceteCsvRowStatus = 'new' | 'update' | 'unchanged'
+
+const ROW_STATUS_BY_ACTION: Record<BalanceteCsvUpsertPlan['action'], BalanceteCsvRowStatus> = {
+  create: 'new',
+  update: 'update',
+  noop: 'unchanged',
+}
+
+export function classifyBalanceteCsvRow(plan: BalanceteCsvUpsertPlan): BalanceteCsvRowStatus {
+  return ROW_STATUS_BY_ACTION[plan.action]
+}
+
+/**
+ * O CSV traz offset (`-03:00`) e o banco devolve TIMESTAMPTZ normalizado (`+00:00`):
+ * a mesma data não é a mesma string. Comparamos o instante; valor ausente ou inválido
+ * nunca conta como igual, para a linha cair em `update` em vez de um `noop` silencioso.
+ */
+function isSameInstant(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false
+  const timeA = new Date(a).getTime()
+  const timeB = new Date(b).getTime()
+  return !Number.isNaN(timeA) && !Number.isNaN(timeB) && timeA === timeB
+}
+
 export function planBalanceteCsvUpsert(params: BalanceteCsvUpsertParams): BalanceteCsvUpsertPlan {
   const { isDigitalCondominium, dataCriacaoIso, existing } = params
   const receivedAtFromCsv = dataCriacaoIso.split('T')[0]
@@ -133,7 +204,7 @@ export function planBalanceteCsvUpsert(params: BalanceteCsvUpsertParams): Balanc
     }
 
     const isAlreadySynced =
-      existing.receivedAt === receivedAtFromCsv && existing.digitalPreparedAt === dataCriacaoIso
+      existing.receivedAt === receivedAtFromCsv && isSameInstant(existing.digitalPreparedAt, dataCriacaoIso)
     if (isAlreadySynced) {
       return { action: 'noop' }
     }
@@ -151,7 +222,7 @@ export function planBalanceteCsvUpsert(params: BalanceteCsvUpsertParams): Balanc
     }
   }
 
-  if (existing.digitalPreparedAt === dataCriacaoIso) {
+  if (isSameInstant(existing.digitalPreparedAt, dataCriacaoIso)) {
     return { action: 'noop' }
   }
 

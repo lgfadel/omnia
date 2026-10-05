@@ -1,7 +1,16 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { Json } from '@/integrations/supabase/db-types'
-import { planBalanceteCsvUpsert, type BalanceteCsvUpsertPlan } from '@/lib/balanceteCsvImport'
+import {
+  balanceteRowKey,
+  findDuplicateBalanceteKeys,
+  planBalanceteCsvUpsert,
+  type BalanceteCsvUpsertPlan,
+} from '@/lib/balanceteCsvImport'
 import { logger } from '../lib/logging'
+import { condominiumAliasesRepoSupabase, type CondominiumAliasToSave } from './condominiumAliasesRepo.supabase'
+
+const PAGE_SIZE = 1000
+const CONDOMINIUM_ID_CHUNK_SIZE = 100
 
 export interface BalanceteCsvCommitRow {
   condominiumId: string
@@ -20,48 +29,102 @@ export interface BalanceteCsvCommitResult {
   createdCount: number
   updatedCount: number
   noopCount: number
+  aliasesSavedCount: number
   outcomes: BalanceteCsvCommitRowOutcome[]
 }
 
+export interface ExistingBalanceteForImport {
+  id: string
+  condominium_id: string
+  competencia: string
+  received_at: string | null
+  digital_prepared_at: string | null
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
 export const balanceteCsvImportsRepoSupabase = {
+  /**
+   * Balancetes já gravados para os condomínios/competências do CSV. Escopado (em vez de reaproveitar a
+   * lista do dashboard) e paginado: o PostgREST corta respostas em 1000 linhas e uma lista incompleta
+   * faria um balancete existente parecer novo.
+   */
+  async loadExisting(condominiumIds: string[], competencias: string[]): Promise<ExistingBalanceteForImport[]> {
+    if (condominiumIds.length === 0 || competencias.length === 0) return []
+
+    const existing: ExistingBalanceteForImport[] = []
+
+    for (const idsChunk of chunk(condominiumIds, CONDOMINIUM_ID_CHUNK_SIZE)) {
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('omnia_balancetes')
+          .select('id, condominium_id, competencia, received_at, digital_prepared_at')
+          .in('condominium_id', idsChunk)
+          .in('competencia', competencias)
+          .order('id')
+          .range(from, from + PAGE_SIZE - 1)
+
+        if (error) throw error
+
+        existing.push(...(data ?? []))
+        if ((data?.length ?? 0) < PAGE_SIZE) break
+      }
+    }
+
+    return existing
+  },
+
   async commit(params: {
     originalFilename: string
     rows: BalanceteCsvCommitRow[]
     createdBy: string
+    /** Linhas do arquivo que o usuário desmarcou; entram só no registro do lote. */
+    ignoredCount?: number
+    /** Linhas do arquivo que já estavam em dia e por isso nem foram para revisão. */
+    unchangedCount?: number
+    aliasesToSave?: CondominiumAliasToSave[]
   }): Promise<BalanceteCsvCommitResult> {
-    const { originalFilename, rows, createdBy } = params
+    const { originalFilename, rows, createdBy, ignoredCount = 0, unchangedCount = 0, aliasesToSave = [] } = params
 
     if (rows.length === 0) {
       throw new Error('Nenhuma linha para importar')
     }
 
+    if (findDuplicateBalanceteKeys(rows).length > 0) {
+      throw new Error(
+        'Duas linhas apontam para o mesmo condomínio e competência. Ignore uma delas ou corrija o condomínio selecionado.'
+      )
+    }
+
     const condominiumIds = Array.from(new Set(rows.map((row) => row.condominiumId)))
+    const competencias = Array.from(new Set(rows.map((row) => row.competencia)))
 
-    const { data: condominiums, error: condominiumsError } = await supabase
-      .from('omnia_condominiums')
-      .select('id, balancete_digital')
-      .in('id', condominiumIds)
+    const isDigitalById = new Map<string, boolean>()
+    for (const idsChunk of chunk(condominiumIds, CONDOMINIUM_ID_CHUNK_SIZE)) {
+      const { data: condominiums, error: condominiumsError } = await supabase
+        .from('omnia_condominiums')
+        .select('id, balancete_digital')
+        .in('id', idsChunk)
 
-    if (condominiumsError) {
-      throw condominiumsError
+      if (condominiumsError) {
+        throw condominiumsError
+      }
+
+      for (const condominium of condominiums ?? []) {
+        isDigitalById.set(condominium.id, condominium.balancete_digital === true)
+      }
     }
 
-    const isDigitalById = new Map(
-      (condominiums ?? []).map((condominium) => [condominium.id, condominium.balancete_digital === true])
-    )
-
-    const { data: existingBalancetes, error: existingError } = await supabase
-      .from('omnia_balancetes')
-      .select('id, condominium_id, competencia, received_at, digital_prepared_at')
-      .in('condominium_id', condominiumIds)
-
-    if (existingError) {
-      throw existingError
-    }
-
+    const existingBalancetes = await this.loadExisting(condominiumIds, competencias)
     const existingByKey = new Map(
-      (existingBalancetes ?? []).map((balancete) => [
-        `${balancete.condominium_id}::${balancete.competencia}`,
+      existingBalancetes.map((balancete) => [
+        balanceteRowKey(balancete.condominium_id, balancete.competencia),
         balancete,
       ])
     )
@@ -70,7 +133,8 @@ export const balanceteCsvImportsRepoSupabase = {
       .from('omnia_balancete_csv_import_batches')
       .insert({
         original_filename: originalFilename,
-        total_rows: rows.length,
+        total_rows: rows.length + ignoredCount + unchangedCount,
+        ignored_count: ignoredCount,
         created_by: createdBy,
       })
       .select('id')
@@ -86,7 +150,7 @@ export const balanceteCsvImportsRepoSupabase = {
     const outcomes: BalanceteCsvCommitRowOutcome[] = []
 
     for (const row of rows) {
-      const existing = existingByKey.get(`${row.condominiumId}::${row.competencia}`)
+      const existing = existingByKey.get(balanceteRowKey(row.condominiumId, row.competencia))
       const isDigitalCondominium = isDigitalById.get(row.condominiumId) ?? false
 
       const plan = planBalanceteCsvUpsert({
@@ -138,6 +202,14 @@ export const balanceteCsvImportsRepoSupabase = {
       logger.error('Failed to update csv import batch counters', batchUpdateError)
     }
 
-    return { batchId: batchRow.id, createdCount, updatedCount, noopCount, outcomes }
+    // Os balancetes já estão gravados: falhar ao memorizar nomes não deve desfazer nem esconder a importação.
+    let aliasesSavedCount = 0
+    try {
+      aliasesSavedCount = await condominiumAliasesRepoSupabase.upsertMany(aliasesToSave, createdBy)
+    } catch (aliasError) {
+      logger.warn('Failed to save condominium aliases after csv import', aliasError)
+    }
+
+    return { batchId: batchRow.id, createdCount, updatedCount, noopCount, aliasesSavedCount, outcomes }
   },
 }

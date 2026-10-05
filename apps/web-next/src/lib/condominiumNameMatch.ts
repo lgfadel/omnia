@@ -3,11 +3,17 @@ export interface CondominiumMatchCandidate {
   name: string
 }
 
+export type CondominiumMatchSource = 'alias' | 'exact' | 'fuzzy'
+
+/** Nome normalizado vindo do CSV (`normalizeCondominiumName`) -> id do condomínio confirmado pelo usuário. */
+export type CondominiumAliasMap = ReadonlyMap<string, string>
+
 export interface CondominiumMatchResult {
   condominiumId: string | null
   matchedName: string | null
   score: number
   needsReview: boolean
+  source: CondominiumMatchSource
 }
 
 const HIGH_CONFIDENCE_SCORE = 0.85
@@ -60,13 +66,20 @@ function diceCoefficient(a: string, b: string): number {
 
 export function matchCondominiumName(
   csvName: string,
-  candidates: CondominiumMatchCandidate[]
+  candidates: CondominiumMatchCandidate[],
+  aliases?: CondominiumAliasMap
 ): CondominiumMatchResult {
   const normalizedCsvName = normalizeCondominiumName(csvName)
 
+  const aliasedId = aliases?.get(normalizedCsvName)
+  const aliased = aliasedId ? candidates.find((candidate) => candidate.id === aliasedId) : undefined
+  if (aliased) {
+    return { condominiumId: aliased.id, matchedName: aliased.name, score: 1, needsReview: false, source: 'alias' }
+  }
+
   const exact = candidates.find((candidate) => normalizeCondominiumName(candidate.name) === normalizedCsvName)
   if (exact) {
-    return { condominiumId: exact.id, matchedName: exact.name, score: 1, needsReview: false }
+    return { condominiumId: exact.id, matchedName: exact.name, score: 1, needsReview: false, source: 'exact' }
   }
 
   const scored = candidates
@@ -78,7 +91,7 @@ export function matchCondominiumName(
 
   const best = scored[0]
   if (!best || best.score < MIN_SUGGESTION_SCORE) {
-    return { condominiumId: null, matchedName: null, score: best?.score ?? 0, needsReview: true }
+    return { condominiumId: null, matchedName: null, score: best?.score ?? 0, needsReview: true, source: 'fuzzy' }
   }
 
   const second = scored[1]
@@ -90,5 +103,6 @@ export function matchCondominiumName(
     matchedName: best.candidate.name,
     score: best.score,
     needsReview,
+    source: 'fuzzy',
   }
 }
