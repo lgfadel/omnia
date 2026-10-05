@@ -655,6 +655,7 @@ export default function Tickets() {
             </div>
           ) : (
             <TabelaOmnia
+              showTitleTooltip
               columns={columns}
               data={!sortField ? groupedData : sortedData}
               onView={handleView}

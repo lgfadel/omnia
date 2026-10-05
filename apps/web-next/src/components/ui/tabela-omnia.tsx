@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Eye, Trash2, ChevronUp, ChevronDown, ChevronRight, MessageCircle, Lock, Paperclip, Copy, Minus, Repeat } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -93,6 +94,7 @@ interface TabelaOmniaProps {
   className?: string
   grouped?: boolean
   contextType?: 'ticket' | 'ata'
+  showTitleTooltip?: boolean
   updatingSecretaryId?: string | null
   selectable?: boolean
   selectedIds?: Set<string>
@@ -128,6 +130,7 @@ export function TabelaOmnia({
   className,
   grouped = false,
   contextType = 'ticket',
+  showTitleTooltip = false,
   updatingSecretaryId,
   selectable = false,
   selectedIds = new Set(),
@@ -903,7 +906,27 @@ export function TabelaOmnia({
 
       return (
         <div className="flex items-center gap-2">
-          <span className="truncate">{value?.toString() || "-"}</span>
+          {showTitleTooltip && value ? (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <span className="truncate cursor-default">{value.toString()}</span>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                align="start"
+                className="max-w-md space-y-1.5 px-3 py-2"
+              >
+                <p className="font-medium break-words">{value.toString()}</p>
+                {typeof row.description === "string" && row.description.trim() && (
+                  <p className="line-clamp-6 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                    {row.description}
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="truncate">{value?.toString() || "-"}</span>
+          )}
           {taskTags.length > 0 && (
             <div className="flex items-center gap-1 flex-shrink-0">
               {visibleTags.map((tagName: string) => {
