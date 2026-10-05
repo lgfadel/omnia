@@ -37,6 +37,13 @@ supabase/.temp/
 # stack fica de pé enquanto se testa — apagar quebraria o ambiente em uso.
 .context/local-test-env/
 
+# Artefatos locais de validação e diagnóstico. Arquivos já versionados nesses
+# diretórios continuam sob controle do Git; código e docs oficiais ficam fora.
+/.context/tasks-api-mcp/
+/.context/upload-debug/
+/.context/pre-release-deployment.json
+/.context/transcription-release.json
+
 # Permissões pessoais do Claude Code. A allowlist chega a liberar `python3 -c`,
 # que é execução arbitrária: compartilhar isso pelo repositório concederia o
 # mesmo poder, sem aviso, a quem clonar. Config de projeto vai em settings.json.
