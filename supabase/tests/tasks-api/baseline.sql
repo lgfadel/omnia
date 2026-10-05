@@ -526,6 +526,34 @@ AFTER UPDATE OF assigned_to ON public.omnia_tickets
 FOR EACH ROW
 EXECUTE FUNCTION public.omnia_notify_ticket_assigned_to_change();
 
+-- Task comments exactly as the production migrations define them (table, RLS, count trigger, notification FK).
+CREATE TABLE public.omnia_ticket_comments (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticket_id UUID NOT NULL,
+  body TEXT NOT NULL,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  author_id UUID NOT NULL
+);
+ALTER TABLE public.omnia_ticket_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view ticket comments" ON public.omnia_ticket_comments FOR SELECT USING (auth.role() = 'authenticated'::text);
+CREATE POLICY "Authenticated users can create ticket comments" ON public.omnia_ticket_comments FOR INSERT WITH CHECK (auth.role() = 'authenticated'::text);
+CREATE POLICY "Users can update their own ticket comments" ON public.omnia_ticket_comments FOR UPDATE USING ((created_by = auth.uid()) OR (EXISTS (SELECT 1 FROM omnia_users WHERE ((omnia_users.auth_user_id = auth.uid()) AND ('ADMIN'::text = ANY (omnia_users.roles))))));
+CREATE POLICY "Users can delete their own ticket comments or admins can delete any" ON public.omnia_ticket_comments FOR DELETE USING ((created_by = auth.uid()) OR (EXISTS (SELECT 1 FROM omnia_users WHERE ((omnia_users.auth_user_id = auth.uid()) AND ('ADMIN'::text = ANY (omnia_users.roles))))));
+CREATE OR REPLACE FUNCTION public.update_ticket_comment_count_new() RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE public.omnia_tickets SET comment_count = comment_count + 1 WHERE id = NEW.ticket_id;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE public.omnia_tickets SET comment_count = comment_count - 1 WHERE id = OLD.ticket_id;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_ticket_comment_count_trigger AFTER INSERT OR DELETE ON public.omnia_ticket_comments FOR EACH ROW EXECUTE FUNCTION public.update_ticket_comment_count_new();
+ALTER TABLE public.omnia_notifications ADD CONSTRAINT omnia_notifications_ticket_comment_id_fkey FOREIGN KEY (ticket_comment_id) REFERENCES public.omnia_ticket_comments(id) ON DELETE CASCADE;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
 INSERT INTO public.omnia_users(id,auth_user_id,name,email,roles) VALUES

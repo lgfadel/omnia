@@ -18,6 +18,8 @@ const task = {
   recurrenceId: null, recurrenceOccurrence: null, createdAt: '2026-10-04T12:00:00.000001+00:00',
   updatedAt: '2026-10-04T12:00:00.123456+00:00', assignedTo: null, createdBy: null, recurrence: null,
 }
+const commentId = '44444444-4444-4444-8444-444444444444'
+const comment = {id:commentId,taskId:uid,body:'Olá',authorId:uid,author:null,createdAt:'2026-10-04T12:02:00.000001+00:00'}
 const version = '"MjAyNi0xMC0wNFQxMjowMDowMC4xMjM0NTYrMDA6MDA"'
 const updatedVersion = '"MjAyNi0xMC0wNFQxMjowMTowMC42NTQzMjErMDA6MDA"'
 const updatedTask = {...task,title:'Changed',updatedAt:'2026-10-04T12:01:00.654321+00:00'}
@@ -30,6 +32,7 @@ let rateLimitExchange = false
 let oversizedList = false
 let slowStatusBody = false
 let badEtag = false
+let commentForbidden = false
 
 before(async () => {
   requests = []
@@ -48,7 +51,7 @@ before(async () => {
       if (rateLimitExchange) {res.statusCode=429;res.setHeader('Retry-After','60');res.end(JSON.stringify({error:{code:'RATE_LIMITED',message:'Request limit exceeded'},requestId:uid}));return}
       if (redirectExchange) {res.statusCode=302;res.setHeader('Location','http://127.0.0.1:1/steal');res.end('{}');return}
       res.statusCode=201
-      res.end(JSON.stringify({data:{id:uid,audience:'api',scopes:['tasks:read','tasks:create','tasks:update'],expiresAt:'2999-10-04T13:00:00Z',token:body.mcpKey===otherKey?otherCap:cap},requestId:uid}))
+      res.end(JSON.stringify({data:{id:uid,audience:'api',scopes:['tasks:read','tasks:create','tasks:update','tasks:comment'],expiresAt:'2999-10-04T13:00:00Z',token:body.mcpKey===otherKey?otherCap:cap},requestId:uid}))
       return
     }
     if (path === `/api/v1/tasks/${uid}` && req.method === 'GET') {res.setHeader('ETag',badEtag?'"YWJj"':responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
@@ -63,6 +66,12 @@ before(async () => {
     if (path === '/api/v1/task-statuses') {
       if(slowStatusBody) {res.flushHeaders();setTimeout(()=>res.end(JSON.stringify({data:[],requestId:uid})),100);return}
       res.end(JSON.stringify({data:[{id:statusId,name:'Open',color:null,order:1,isDefault:true,isFinal:false}],requestId:uid}));return
+    }
+    if (path.startsWith(`/api/v1/tasks/${uid}/comments`)) {
+      if (commentForbidden && req.method !== 'GET') {res.statusCode=403;res.end(JSON.stringify({error:{code:'FORBIDDEN',message:'Access denied'},requestId:uid}));return}
+      if (req.method === 'GET') {res.end(JSON.stringify({data:{items:[comment],nextCursor:null},requestId:uid}));return}
+      if (req.method === 'POST') {res.statusCode=201;res.end(JSON.stringify({data:comment,requestId:uid}));return}
+      res.end(JSON.stringify({data:comment,requestId:uid}));return
     }
     if (path.startsWith('/api/v1/task-assignees')) {res.end(JSON.stringify({data:[],requestId:uid}));return}
     res.statusCode=404;res.end(JSON.stringify({error:{code:'NOT_FOUND',message:'Resource not found'},requestId:uid}))
@@ -83,11 +92,17 @@ async function clientFor(key=mcpKey,modern=false) {
   return client
 }
 
-test('official client negotiates, lists six tools, and exchanges on initialize and list', async () => {
+test('official client negotiates, lists ten tools, and exchanges on initialize and list', async () => {
   const client = await clientFor(mcpKey,true)
   try {
     const tools=(await client.listTools()).tools
-    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','get_task','list_task_statuses','list_tasks','search_task_assignees','update_task'])
+    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_tasks','search_task_assignees','update_task','update_task_comment'])
+    const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations
+    assert.equal(annotations('list_task_comments')?.readOnlyHint,true)
+    assert.equal(annotations('create_task_comment')?.readOnlyHint,false)
+    assert.equal(annotations('create_task_comment')?.destructiveHint,false)
+    assert.equal(annotations('update_task_comment')?.destructiveHint,true)
+    assert.equal(annotations('delete_task_comment')?.destructiveHint,true)
     assert.equal(tools.find(tool=>tool.name==='update_task')?.annotations?.destructiveHint,true)
     assert.ok(requests.filter(r=>r.path==='/api/v1/mcp/exchange').length>=2)
     assert.equal(requests[0]?.authorization,'Bearer test-service-secret')
@@ -258,4 +273,86 @@ test('outbound timeout applies while reading a response body', async () => {
     const apiClient=createApiClient({apiBaseUrl:`http://127.0.0.1:${apiPort}`,exchangeSecret:'test-service-secret',allowedHosts:['127.0.0.1'],allowedOrigins:[],allowInsecureLocalhost:true,timeoutMs:20})
     await assert.rejects(apiClient.resource('/api/v1/task-statuses','GET',cap),error=>error instanceof ApiFailure&&error.code==='UPSTREAM_TIMEOUT')
   } finally {slowStatusBody=false}
+})
+
+test('comment tools list, create, edit and delete through the task comment routes with the exchanged capability', async () => {
+  const client=await clientFor()
+  try {
+    requests.length=0
+    const list=await client.callTool({name:'list_task_comments',arguments:{taskId:uid,limit:2,cursor:'abc_-'}})
+    assert.equal(list.isError,undefined)
+    assert.equal((list.structuredContent as {data:{items:{id:string}[]}}).data.items[0]?.id,commentId)
+    const created=await client.callTool({name:'create_task_comment',arguments:{taskId:uid,body:'Olá',idempotencyKey:'comment-key-1'}})
+    assert.equal(created.isError,undefined)
+    const edited=await client.callTool({name:'update_task_comment',arguments:{taskId:uid,commentId,body:'Editado',idempotencyKey:'comment-key-2'}})
+    assert.equal(edited.isError,undefined)
+    const deleted=await client.callTool({name:'delete_task_comment',arguments:{taskId:uid,commentId}})
+    assert.equal(deleted.isError,undefined)
+    assert.equal((deleted.structuredContent as {data:{id:string}}).data.id,commentId)
+    for (const result of [list,created,edited,deleted]) assert.equal('version' in (result.structuredContent as object),false)
+    const calls=requests.filter(r=>r.path!=='/api/v1/mcp/exchange')
+    assert.deepEqual(calls.map(r=>`${r.method} ${r.path}`),[
+      `GET /api/v1/tasks/${uid}/comments?limit=2&cursor=abc_-`,
+      `POST /api/v1/tasks/${uid}/comments`,
+      `PATCH /api/v1/tasks/${uid}/comments/${commentId}`,
+      `DELETE /api/v1/tasks/${uid}/comments/${commentId}`,
+    ])
+    assert.ok(calls.every(r=>r.authorization===`Bearer ${cap}`))
+    assert.deepEqual(calls[1]?.body,{body:'Olá'})
+    assert.equal(calls[1]?.headers['idempotency-key'],'comment-key-1')
+    assert.deepEqual(calls[2]?.body,{body:'Editado'})
+    assert.equal(calls[2]?.headers['idempotency-key'],'comment-key-2')
+    assert.equal(calls[2]?.headers['x-omnia-if-match'],'')
+    assert.equal(calls[3]?.body,undefined)
+    assert.equal(calls[3]?.headers['idempotency-key'],'')
+  } finally {await client.close()}
+})
+
+test('comment tool schemas are strict and fail before any resource call', async () => {
+  const client=await clientFor()
+  try {
+    requests.length=0
+    const invalid:[string,Record<string,unknown>][]=[
+      ['create_task_comment',{taskId:uid,body:'x'}],
+      ['create_task_comment',{taskId:uid,body:'   ',idempotencyKey:'k'}],
+      ['create_task_comment',{taskId:uid,body:'x'.repeat(10001),idempotencyKey:'k'}],
+      ['create_task_comment',{taskId:uid,body:'x',idempotencyKey:'k',authorId:uid}],
+      ['create_task_comment',{taskId:'nope',body:'x',idempotencyKey:'k'}],
+      ['create_task_comment',{taskId:uid,body:'x',idempotencyKey:'a,b'}],
+      ['update_task_comment',{taskId:uid,commentId,body:'x'}],
+      ['update_task_comment',{taskId:uid,commentId:'nope',body:'x',idempotencyKey:'k'}],
+      ['update_task_comment',{taskId:uid,commentId,body:'x',idempotencyKey:'k',version}],
+      ['delete_task_comment',{taskId:uid}],
+      ['delete_task_comment',{taskId:uid,commentId,idempotencyKey:'k'}],
+      ['list_task_comments',{taskId:uid,limit:0}],
+      ['list_task_comments',{taskId:uid,limit:101}],
+      ['list_task_comments',{}],
+    ]
+    for (const [name,args] of invalid) {
+      const result=await client.callTool({name,arguments:args})
+      assert.equal(result.isError,true,`${name} ${JSON.stringify(args)}`)
+    }
+    assert.equal(requests.filter(r=>r.path!=='/api/v1/mcp/exchange').length,0)
+  } finally {await client.close()}
+})
+
+test('comment bodies are trimmed by the tool schema like task titles', async () => {
+  const client=await clientFor()
+  try {
+    requests.length=0
+    await client.callTool({name:'create_task_comment',arguments:{taskId:uid,body:'  espaço  ',idempotencyKey:'trim'}})
+    assert.deepEqual(requests.find(r=>r.method==='POST'&&r.path.endsWith('/comments'))?.body,{body:'espaço'})
+  } finally {await client.close()}
+})
+
+test('author-only API denials surface as safe tool errors with code and requestId', async () => {
+  const client=await clientFor()
+  commentForbidden=true
+  try {
+    for (const [name,args] of [['update_task_comment',{taskId:uid,commentId,body:'x',idempotencyKey:'forbidden'}],['delete_task_comment',{taskId:uid,commentId}]] as const) {
+      const result=await client.callTool({name,arguments:args})
+      assert.equal(result.isError,true)
+      assert.deepEqual(result.structuredContent,{error:{code:'FORBIDDEN',message:'Access denied',status:403},requestId:uid})
+    }
+  } finally {commentForbidden=false;await client.close()}
 })

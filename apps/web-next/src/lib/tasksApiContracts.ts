@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const taskPrioritySchema = z.enum(['URGENTE', 'ALTA', 'NORMAL', 'BAIXA'])
-export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update'])
+export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update', 'tasks:comment'])
 export const taskDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const [year, month, day] = value.split('-').map(Number)
   if (year < 1 || month < 1 || month > 12 || day < 1) return false
@@ -54,9 +54,13 @@ export const taskListQuerySchema = z.object({
 export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optional(),limit:queryLimit.optional().default('50')}).strict()
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
-  scopes:z.array(taskScopeSchema).min(1).max(3).refine(value => new Set(value).size === value.length),
+  scopes:z.array(taskScopeSchema).min(1).max(4).refine(value => new Set(value).size === value.length),
   expiresAt:taskTimestampSchema.optional(),
 }).strict()
+const commentBody = z.string().trim().min(1).max(10000)
+export const commentCreateSchema = z.object({body:commentBody}).strict()
+export const commentUpdateSchema = z.object({body:commentBody}).strict()
+export const commentListQuerySchema = z.object({limit:queryLimit.optional().default('50'),cursor:z.string().min(1).max(1000).optional()}).strict()
 export const mcpExchangeSchema = z.object({mcpKey:z.string().max(100)}).strict()
 export const taskUserRefSchema = z.object({id:uuid,name:z.string(),email:z.string().nullable(),roles:z.array(z.string()).nullable().transform(value => value ?? []),avatarUrl:z.string().nullable(),color:z.string().nullable()}).strict()
 export const taskRecurrenceSchema = z.object({
@@ -70,6 +74,7 @@ export const taskSchema = z.object({
   oportunidadeId:uuid.nullable(),commentCount:z.number().int(),attachmentCount:z.number().int(),recurrenceId:uuid.nullable(),recurrenceOccurrence:z.number().int().nullable(),
   createdAt:taskTimestampSchema,updatedAt:taskTimestampSchema,assignedTo:taskUserRefSchema.nullable(),createdBy:taskUserRefSchema.nullable(),recurrence:taskRecurrenceSchema.nullable(),
 }).strict()
+export const commentSchema = z.object({id:uuid,taskId:uuid,body:z.string(),authorId:uuid,author:taskUserRefSchema.nullable(),createdAt:taskTimestampSchema}).strict()
 export const taskStatusSchema = z.object({id:uuid,name:z.string(),color:z.string().nullable(),order:z.number().int(),isDefault:z.boolean().nullable().transform(value => value ?? false),isFinal:z.boolean()}).strict()
 export const credentialSchema = z.object({id:uuid,name:z.string(),audience:z.enum(['api','mcp']),scopes:z.array(taskScopeSchema),createdAt:taskTimestampSchema,expiresAt:taskTimestampSchema,revokedAt:taskTimestampSchema.nullable(),lastUsedAt:taskTimestampSchema.nullable()}).strict()
 export const mcpCapabilitySchema = z.object({id:uuid,audience:z.literal('api'),scopes:z.array(taskScopeSchema),expiresAt:taskTimestampSchema}).strict()
@@ -78,6 +83,9 @@ export type TaskCreateDTO = z.infer<typeof taskCreateSchema>
 export type TaskPatchDTO = z.infer<typeof taskPatchSchema>
 export type TaskListQueryDTO = z.infer<typeof taskListQuerySchema>
 export type TaskUserRefDTO = z.infer<typeof taskUserRefSchema>
+export type CommentDTO = z.infer<typeof commentSchema>
+export type CommentCreateDTO = z.infer<typeof commentCreateSchema>
+export type CommentUpdateDTO = z.infer<typeof commentUpdateSchema>
 export type TaskStatusDTO = z.infer<typeof taskStatusSchema>
 export type IntegrationCredentialDTO = z.infer<typeof credentialSchema>
 export type IntegrationCredentialCreateDTO = z.infer<typeof credentialCreateSchema>

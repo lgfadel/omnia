@@ -18,6 +18,7 @@ const scopeOptions = [
   {value:'tasks:read',label:'Ler tarefas'},
   {value:'tasks:create',label:'Criar tarefas'},
   {value:'tasks:update',label:'Atualizar tarefas'},
+  {value:'tasks:comment',label:'Comentar em tarefas'},
 ] as const
 const formatDate = (value:string) => new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))
 const errorMessage = (error:unknown) => error instanceof Error ? error.message : 'Não foi possível concluir a operação.'

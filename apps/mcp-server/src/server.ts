@@ -9,25 +9,31 @@ const uuid=z.uuid()
 const date=z.iso.date()
 const priority=z.enum(['URGENTE','ALTA','NORMAL','BAIXA'])
 const tags=z.array(z.string().max(100)).max(50)
+const idempotencyKey=z.string().regex(/^[\x21-\x7E]{1,200}$/).refine(value=>!value.includes(','))
 const taskFields={
   title:z.string().trim().min(1).max(500).optional(),description:z.string().max(50000).nullable().optional(),
   priority:priority.optional(),dueDate:date.nullable().optional(),ticketOcta:z.string().max(500).nullable().optional(),
   statusId:uuid.optional(),assignedToId:uuid.nullable().optional(),tags:tags.optional(),isPrivate:z.boolean().optional(),
   oportunidadeId:uuid.nullable().optional(),
 }
-const createSchema=z.object({...taskFields,title:z.string().trim().min(1).max(500),idempotencyKey:z.string().regex(/^[\x21-\x7E]{1,200}$/).refine(value=>!value.includes(','))}).strict()
+const createSchema=z.object({...taskFields,title:z.string().trim().min(1).max(500),idempotencyKey}).strict()
 const patchSchema=z.object(taskFields).strict().refine(value=>Object.keys(value).length>0)
 const version=z.string().regex(/^"[A-Za-z0-9_-]{1,190}"$/).max(200).refine(value=>{
   const encoded=value.slice(1,-1)
   const decoded=Buffer.from(encoded,'base64url').toString('utf8')
   return Buffer.from(decoded).toString('base64url')===encoded && z.iso.datetime({offset:true}).safeParse(decoded).success
 },'Invalid strong task version')
-const updateSchema=z.object({id:uuid,version,idempotencyKey:z.string().regex(/^[\x21-\x7E]{1,200}$/).refine(value=>!value.includes(',')),patch:patchSchema}).strict()
+const updateSchema=z.object({id:uuid,version,idempotencyKey,patch:patchSchema}).strict()
 const listSchema=z.object({
   limit:z.number().int().min(1).max(100).optional(),cursor:z.string().min(1).max(1000).optional(),query:z.string().max(500).optional(),
   statusId:uuid.optional(),assignedToId:uuid.optional(),mine:z.boolean().optional(),priority:priority.optional(),
   isPrivate:z.boolean().optional(),oportunidadeId:uuid.optional(),tags:tags.optional(),dueDateFrom:date.optional(),dueDateTo:date.optional(),
 }).strict().refine(value=>!value.dueDateFrom||!value.dueDateTo||value.dueDateFrom<=value.dueDateTo)
+const commentBody=z.string().trim().min(1).max(10000)
+const listCommentsSchema=z.object({taskId:uuid,limit:z.number().int().min(1).max(100).optional(),cursor:z.string().min(1).max(1000).optional()}).strict()
+const createCommentSchema=z.object({taskId:uuid,body:commentBody,idempotencyKey}).strict()
+const updateCommentSchema=z.object({taskId:uuid,commentId:uuid,body:commentBody,idempotencyKey}).strict()
+const deleteCommentSchema=z.object({taskId:uuid,commentId:uuid}).strict()
 const assigneeSchema=z.object({query:z.string().max(500).optional(),limit:z.number().int().min(1).max(100).optional()}).strict()
 
 function toolResponse(value:{data:unknown;requestId:string;etag:string|null},requireVersion=false) {
@@ -70,6 +76,15 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
       if(args.limit!==undefined)query.set('limit',String(args.limit))
       return run(`/api/v1/task-assignees${query.size?`?${query}`:''}`,'GET')
     })
+    server.registerTool('list_task_comments',{description:'List the comments of a visible task, newest first, with cursor pagination. Use it to find a comment id before editing or deleting.',inputSchema:listCommentsSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async ({taskId,limit,cursor})=>{
+      const query=new URLSearchParams()
+      if(limit!==undefined)query.set('limit',String(limit))
+      if(cursor!==undefined)query.set('cursor',cursor)
+      return run(`/api/v1/tasks/${taskId}/comments${query.size?`?${query}`:''}`,'GET')
+    })
+    server.registerTool('create_task_comment',{description:'Add a comment to a visible task as the key owner. Supply a unique caller idempotencyKey and retain it for retries. Requires the tasks:comment scope.',inputSchema:createCommentSchema,annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},async ({taskId,body,idempotencyKey})=>run(`/api/v1/tasks/${taskId}/comments`,'POST',{body:{body},idempotencyKey}))
+    server.registerTool('update_task_comment',{description:'Replace the body of a comment. Only the comment author may edit it, including administrators. Supply a unique caller idempotencyKey. Requires the tasks:comment scope.',inputSchema:updateCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId,body,idempotencyKey})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'PATCH',{body:{body},idempotencyKey}))
+    server.registerTool('delete_task_comment',{description:'Permanently delete a comment and its attachments. Allowed for the comment author or an administrator. Returns the deleted comment; a second call returns NOT_FOUND. Requires the tasks:comment scope.',inputSchema:deleteCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'DELETE'))
     return server
   }
 }

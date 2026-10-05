@@ -13,11 +13,15 @@ done
 docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/baseline.sql >/dev/null
 if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261002223637_tasks_api_transactional_security.sql >/dev/null
+  docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261005120000_tasks_api_comments.sql >/dev/null
+  docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261005130000_tickets_version_ignores_derived_counters.sql >/dev/null
 fi
 docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/regression.sql
 if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/review-regression.sql
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/final-review-regression.sql
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/comments-regression.sql
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/version-stability-regression.sql
   mkdir -p .context/tasks-api-mcp
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DELETE FROM tasks_api_private.rate_limits WHERE actor_id='10000000-0000-0000-0000-000000000001';

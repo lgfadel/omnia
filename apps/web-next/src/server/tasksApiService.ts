@@ -1,12 +1,12 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import {
-  credentialCreateSchema, credentialSchema, mcpCapabilitySchema, mcpExchangeSchema,
+  commentCreateSchema, commentListQuerySchema, commentSchema, commentUpdateSchema, credentialCreateSchema, credentialSchema, mcpCapabilitySchema, mcpExchangeSchema,
   taskAssigneeQuerySchema, taskCreateSchema, taskCursorSchema, taskEtag, taskListQuerySchema,
   taskPatchSchema, taskSchema, taskStatusSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
 } from '@/lib/tasksApiContracts'
 
-export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'statuses.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
+export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
 export type DispatchArgs = {
   p_operation:TaskOperation; p_payload:Record<string, unknown>; p_auth_user_id:string|null;
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
@@ -19,7 +19,7 @@ export type TasksApiDependencies = {
   config:()=>TasksApiConfig;
 }
 export const TASK_TOKEN_PREFIXES = {api:'omnia_api_',mcp:'omnia_mcp_',capability:'omnia_cap_'} as const
-const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','statuses.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
+const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
 const errors:Record<string,{status:number;message:string}> = {
   INVALID_OPERATION:{status:400,message:'Invalid operation'}, INVALID_AUTH:{status:401,message:'Authentication required'},
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
@@ -104,6 +104,11 @@ function output(operation:TaskOperation,data:unknown):unknown {
       return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
     }
     case 'tasks.get': case 'tasks.create': case 'tasks.update':return taskSchema.parse(data)
+    case 'comments.list':{
+      const list=z.object({items:z.array(commentSchema),nextCursor:taskCursorSchema.nullable()}).strict().parse(data)
+      return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
+    }
+    case 'comments.create': case 'comments.update': case 'comments.delete':return commentSchema.parse(data)
     case 'statuses.list':return z.array(taskStatusSchema).parse(data)
     case 'assignees.list':return z.array(taskUserRefSchema).parse(data)
     case 'credentials.list':return z.array(credentialSchema).parse(data)
@@ -113,7 +118,7 @@ function output(operation:TaskOperation,data:unknown):unknown {
 }
 /** All callers cross the same validation/auth boundary. The injected transport exposes only one RPC. */
 export function createTasksApiHandler(deps:TasksApiDependencies) {
-  return async (request:Request,operation:TaskOperation,id?:string):Promise<Response> => {
+  return async (request:Request,operation:TaskOperation,id?:string,commentId?:string):Promise<Response> => {
     const suppliedId=request.headers.get('x-request-id')
     const requestId=suppliedId && z.string().uuid().safeParse(suppliedId).success ? suppliedId : randomUUID()
     const headers:Record<string,string>={'Cache-Control':'no-store','X-Request-Id':requestId}
@@ -146,7 +151,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         if(audience==='mcp' || (integration && isManagement))fail('INVALID_AUDIENCE')
         if(integration){
           const config=deps.config()
-          const write=operation==='tasks.create'||operation==='tasks.update'
+          const write=operation==='tasks.create'||operation==='tasks.update'||operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'
           if(write ? !config.writeEnabled : !config.readEnabled)fail('INTEGRATIONS_DISABLED')
           tokenDigest=digest(token)
         }else{
@@ -157,6 +162,19 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
           const list=parse(taskListQuerySchema,params)
           payload={...list,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
         }else if(operation==='assignees.list')payload=parse(taskAssigneeQuerySchema,params)
+        else if(operation==='comments.list'){
+          const list=parse(commentListQuerySchema,params)
+          payload={taskId:parse(z.string().uuid(),id),limit:list.limit,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
+        }else if(operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'){
+          parse(z.object({}).strict(),params)
+          payload={taskId:parse(z.string().uuid(),id)}
+          if(operation!=='comments.create')payload.id=parse(z.string().uuid(),commentId)
+          if(operation!=='comments.delete'){
+            idempotencyKey=idempotency(request)
+            const fields=parse(operation==='comments.create'?commentCreateSchema:commentUpdateSchema,await jsonBody(request))
+            payload={...payload,...fields}
+          }
+        }
         else{
           parse(z.object({}).strict(),params)
           if(operation==='tasks.get'||operation==='tasks.update'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
@@ -184,7 +202,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         if(!errors[result.error.code] || errors[result.error.code].status!==result.status)fail('INTERNAL_ERROR')
         fail(result.error.code)
       }
-      const expectedStatus=operation==='tasks.create'||operation==='credentials.create'||isExchange?201:200
+      const expectedStatus=operation==='tasks.create'||operation==='comments.create'||operation==='credentials.create'||isExchange?201:200
       if(result.status!==expectedStatus)fail('INTERNAL_ERROR')
       let data=output(operation,result.data)
       if(operation==='tasks.get'||operation==='tasks.create'||operation==='tasks.update')headers.ETag=taskEtag((data as {updatedAt:string}).updatedAt)

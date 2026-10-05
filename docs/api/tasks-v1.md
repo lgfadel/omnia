@@ -6,9 +6,9 @@ O contrato de máquina está em [OpenAPI 3.1](./tasks-v1.openapi.json). Esta API
 
 Envie `Authorization: Bearer <valor>` em toda chamada. Um JWT de sessão do navegador é validado pelo Supabase Auth e resolve o usuário Omnia existente. Uma chave pessoal `omnia_api_…` chama recursos diretamente. Uma chave `omnia_mcp_…` só entra no gateway MCP; ela não chama recursos da API. O gateway usa seu segredo de serviço separado para trocar essa chave em `POST /api/v1/mcp/exchange` por uma capacidade `omnia_cap_…`, válida por até 15 minutos e nunca além da chave mãe. A capacidade é aceita apenas nos recursos e é mantida na memória durante a requisição MCP. Chaves de API e capacidades não podem ser trocadas novamente.
 
-O usuário verificado continua sendo o autor da ação. A permissão atual de `/tarefas`, estado ativo, escopos `tasks:read`, `tasks:create` e `tasks:update`, visibilidade por RLS, validade da chave e revogação da chave mãe são reavaliados em cada operação. `mine=true` filtra tarefas atribuídas ao próprio usuário; não amplia visibilidade. Tarefa privada fica visível para seu criador e para `ADMIN`, respeitando uma negação explícita de permissão do usuário. Qualquer usuário autenticado ativo pode gerenciar as próprias chaves, mesmo sem acesso ao menu de tarefas; esse acesso não lhe dá permissão de usar os recursos.
+O usuário verificado continua sendo o autor da ação. A permissão atual de `/tarefas`, estado ativo, escopos `tasks:read`, `tasks:create`, `tasks:update` e `tasks:comment`, visibilidade por RLS, validade da chave e revogação da chave mãe são reavaliados em cada operação. `mine=true` filtra tarefas atribuídas ao próprio usuário; não amplia visibilidade. Tarefa privada fica visível para seu criador e para `ADMIN`, respeitando uma negação explícita de permissão do usuário. Qualquer usuário autenticado ativo pode gerenciar as próprias chaves, mesmo sem acesso ao menu de tarefas; esse acesso não lhe dá permissão de usar os recursos.
 
-As chaves são criadas em **Minhas integrações** (`/integracoes`) ou por `POST /api/v1/integration-keys` com JWT de navegador. Escolha `audience: "api"` ou `"mcp"`, nome e um subconjunto não vazio dos três escopos. A resposta de criação traz o `token` uma única vez; a listagem e a revogação só retornam metadados. A validade padrão é 90 dias; um `expiresAt` explícito precisa ser futuro e no máximo 365 dias adiante. `DELETE /api/v1/integration-keys/{id}` revoga apenas uma chave do próprio usuário. Na interface, a substituição cria a nova chave antes de revogar a antiga e mostra uma falha de revogação para tratamento manual.
+As chaves são criadas em **Minhas integrações** (`/integracoes`) ou por `POST /api/v1/integration-keys` com JWT de navegador. Escolha `audience: "api"` ou `"mcp"`, nome e um subconjunto não vazio dos quatro escopos. Chaves emitidas antes do escopo `tasks:comment` não ganham essa permissão: emita uma nova chave para comentar. A resposta de criação traz o `token` uma única vez; a listagem e a revogação só retornam metadados. A validade padrão é 90 dias; um `expiresAt` explícito precisa ser futuro e no máximo 365 dias adiante. `DELETE /api/v1/integration-keys/{id}` revoga apenas uma chave do próprio usuário. Na interface, a substituição cria a nova chave antes de revogar a antiga e mostra uma falha de revogação para tratamento manual.
 
 No Vercel (`VERCEL=1`), **todas as operações desta API**, inclusive leituras, criação de tarefa, criação/revogação de chave e troca MCP, rejeitam qualquer header padrão `If-Match` com `400 UNSUPPORTED_PRECONDITION_HEADER` em JSON antes de chamar a persistência. Para PATCH de tarefa, envie a versão forte somente em `X-Omnia-If-Match`. Essa proteção evita uma mutação bem-sucedida seguida por um 412 da plataforma. Fora do Vercel, o header padrão continua compatível.
 
@@ -20,6 +20,10 @@ No Vercel (`VERCEL=1`), **todas as operações desta API**, inclusive leituras, 
 | `POST /api/v1/tasks` | criação | tarefa, `201`, `ETag` |
 | `GET /api/v1/tasks/{id}` | leitura | tarefa, `ETag` |
 | `PATCH /api/v1/tasks/{id}` | atualização | tarefa, `ETag` |
+| `GET /api/v1/tasks/{id}/comments` | leitura | `{items, nextCursor}`, mais recentes primeiro |
+| `POST /api/v1/tasks/{id}/comments` | comentário | comentário, `201` |
+| `PATCH /api/v1/tasks/{id}/comments/{commentId}` | comentário | comentário editado |
+| `DELETE /api/v1/tasks/{id}/comments/{commentId}` | comentário | comentário removido |
 | `GET /api/v1/task-statuses` | leitura | status com `isDefault` e `isFinal` |
 | `GET /api/v1/task-assignees` | leitura | usuários ativos e elegíveis |
 | `GET /api/v1/integration-keys` | somente JWT de navegador | metadados das próprias chaves |
@@ -47,6 +51,18 @@ curl --fail-with-body --get "$OMNIA_API_URL/api/v1/tasks" \
   --data-urlencode 'limit=20' \
   --data-urlencode 'mine=true'
 ```
+
+## Comentários
+
+Um comentário retorna `id`, `taskId`, `body`, `authorId`, `author` (referência de usuário, possivelmente `null`) e `createdAt`. O corpo de criação e de edição aceita somente `body`: texto de 1 a 10000 caracteres, com espaços das extremidades removidos antes da validação. Autor, tarefa, data e qualquer outro campo vêm do servidor; enviá-los falha com `400`.
+
+- **Visibilidade.** Todas as rotas passam pela mesma leitura da tarefa que um humano faria: uma tarefa privada que o usuário não enxerga responde `404` em todas as operações de comentário, como se não existisse. O comentário também precisa pertencer à tarefa do caminho, senão `404`.
+- **Criar.** Qualquer usuário com acesso à tarefa e o escopo `tasks:comment`. O autor é sempre o usuário verificado da chave. Exige `Idempotency-Key`, com a mesma regra das tarefas.
+- **Editar.** Somente o **autor**, inclusive para `ADMIN` (mesma regra da interface); outro usuário recebe `403`. Exige `Idempotency-Key`. Não há `ETag` nem pré-condição de versão: vale a última escrita e `createdAt` nunca muda. Editar não altera `updatedAt` da tarefa.
+- **Excluir.** O **autor** ou um `ADMIN`; outro usuário recebe `403`. A resposta traz o comentário removido; anexos e notificações ligados a ele são removidos junto. Uma chamada repetida retorna `404`, e não exige `Idempotency-Key`.
+- **Listar.** Exige `tasks:read`. `limit` de 1 a 100 (padrão 50) e `cursor` opaco, no mesmo formato das tarefas; ordem decrescente `(createdAt,id)`.
+- **Versão da tarefa.** Criar ou excluir comentário (e anexo) atualiza os contadores `commentCount` e `attachmentCount`, mas **não** muda `updatedAt` nem o `ETag`: a versão só muda quando um campo da tarefa é editado. Assim, um comentário feito enquanto outra pessoa edita a tarefa não invalida a edição dela com `412`. O envio de menções (`@[idDoUsuario]`) pela API grava o texto, mas **não** dispara a notificação de menção que a interface envia.
+- **Escopo e chaves.** Escrever comentários exige `tasks:comment`, que não vem junto com `tasks:update`. Chaves antigas continuam funcionando para o que já faziam. A flag `OMNIA_INTEGRATIONS_WRITE_ENABLED` governa criar, editar e excluir; `OMNIA_INTEGRATIONS_READ_ENABLED` governa a listagem.
 
 As respostas processadas pela API trazem `Cache-Control: no-store`, `X-Request-Id` e JSON `{data,requestId}` ou `{error:{code,message},requestId}`. `X-Request-Id` de entrada é preservado apenas se for UUID válido. Erros tipados incluem 400 (validação), 401 (bearer/chave), 403 (ator/audience/escopo/permissão), 404 (ausente ou invisível), 409 (conflito), 412, 428 e 429 (`Retry-After: 60`). O corpo JSON de escrita é limitado a 64 KiB; excesso retorna 413, Content-Type incompatível 415, falha interna saneada 500, integração desativada 503. O orçamento persistente é de 120 requisições de recurso/troca por usuário por minuto; tentativas de usuários verificados e autorizados também consomem esse orçamento quando retornam erros de domínio, como 404, conflito de idempotência ou versão antiga. Gestão de chaves fica fora dele. A camada Next.js pode responder a um **verbo de rota não implementado** com seu 405 padrão sem esse envelope ou `X-Request-Id`; o contrato de envelope aplica-se aos handlers implementados.
 

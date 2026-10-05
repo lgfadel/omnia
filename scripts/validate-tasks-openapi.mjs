@@ -53,6 +53,8 @@ equal(spec.openapi,'3.1.0','OpenAPI version')
 const routes = {
   '/api/v1/tasks':['apps/web-next/src/app/api/v1/tasks/route.ts',{get:['TaskPage',200],post:['Task',201]}],
   '/api/v1/tasks/{id}':['apps/web-next/src/app/api/v1/tasks/[id]/route.ts',{get:['Task',200],patch:['Task',200]}],
+  '/api/v1/tasks/{id}/comments':['apps/web-next/src/app/api/v1/tasks/[id]/comments/route.ts',{get:['CommentPage',200],post:['Comment',201]}],
+  '/api/v1/tasks/{id}/comments/{commentId}':['apps/web-next/src/app/api/v1/tasks/[id]/comments/[commentId]/route.ts',{patch:['Comment',200],delete:['Comment',200]}],
   '/api/v1/task-statuses':['apps/web-next/src/app/api/v1/task-statuses/route.ts',{get:['Status',200]}],
   '/api/v1/task-assignees':['apps/web-next/src/app/api/v1/task-assignees/route.ts',{get:['UserRef',200]}],
   '/api/v1/integration-keys':['apps/web-next/src/app/api/v1/integration-keys/route.ts',{get:['Credential',200],post:['CredentialIssued',201]}],
@@ -86,6 +88,7 @@ for (const [model,source] of [
   ['Task','taskSchema'],['TaskCreate','taskCreateSchema'],['TaskPatch','taskPatchSchema'],
   ['UserRef','taskUserRefSchema'],['Status','taskStatusSchema'],['RecurrenceInput','taskRecurrenceInputSchema'],
   ['Recurrence','taskRecurrenceSchema'],['Credential','credentialSchema'],['CredentialCreate','credentialCreateSchema'],
+  ['Comment','commentSchema'],['CommentCreate','commentCreateSchema'],['CommentUpdate','commentUpdateSchema'],
 ]) {
   equal(schemaKeys(model),sourceKeys(source),`${model} properties vs Zod source`)
   equal(schema(model).additionalProperties,false,`${model} strict fields`)
@@ -107,6 +110,16 @@ equal(schema('Task').properties.updatedAt.format,'date-time','updatedAt offset t
 yes(schema('Task').properties.ticketId.description.includes('distinct from ticketOcta'),'ticketId vs ticketOcta')
 equal(schema('RecurrenceInput').required,['frequency','startDate'],'human recurrence required fields')
 equal(names(schema('TaskPage').required),['items','nextCursor'],'page shape')
+equal(names(schema('CommentPage').required),['items','nextCursor'],'comment page shape')
+equal(schema('CommentPage').properties.items.items.$ref,'#/components/schemas/Comment','comment page items')
+equal(schema('Scope').enum,[...variable('taskScopeSchema').getText(contracts).matchAll(/'([a-z]+:[a-z]+)'/g)].map(match=>match[1]),'scope enum vs Zod source')
+equal(schema('CredentialCreate').properties.scopes.maxItems,schema('Scope').enum.length,'every scope can be requested together')
+yes(nullable(schema('Comment').properties.author),'comment author nullable output')
+equal(schema('Comment').properties.createdAt.format,'date-time','comment createdAt offset timestamp')
+equal(schema('CommentCreate').required,['body'],'required comment field')
+equal(schema('CommentUpdate').required,['body'],'required comment field on edit')
+equal(schema('CommentCreate').properties.body.maxLength,10000,'comment body bound')
+yes(schema('CommentCreate').properties.body.description.includes('trimmed'),'comment trimming documented')
 
 const list = spec.paths['/api/v1/tasks'].get
 equal(names(list.parameters.filter(parameter=>parameter.in==='query').map(parameter=>parameter.name)),sourceKeys('taskListQuerySchema'),'task filters vs Zod source')
@@ -127,6 +140,19 @@ for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}']) {
     if (route.includes('{id}')||method==='post') yes(result(operation,method==='post'?201:200).headers.ETag,`${method} ${route} ETag header`)
   }
 }
+const commentList = spec.paths['/api/v1/tasks/{id}/comments'].get
+equal(names(commentList.parameters.filter(parameter=>parameter.in==='query').map(parameter=>parameter.name)),sourceKeys('commentListQuerySchema'),'comment list query vs Zod source')
+for (const route of ['/api/v1/tasks/{id}/comments','/api/v1/tasks/{id}/comments/{commentId}']) {
+  yes(spec.paths[route].parameters?.some(parameter=>parameter.in==='path'&&parameter.name==='id')||Object.values(spec.paths[route]).every(operation=>operation.parameters?.some(parameter=>parameter.in==='path'&&parameter.name==='id')),`${route} documents the task id`)
+  for (const [method,operation] of Object.entries(spec.paths[route])) {
+    equal(operation.security,[{browserBearer:[]},{apiKeyBearer:[]},{mcpCapabilityBearer:[]}],`${method} ${route} security`)
+    equal(!!header(operation,'Idempotency-Key')?.required,method==='post'||method==='patch',`${method} ${route} idempotency only on create and edit`)
+    yes(!header(operation,'If-Match')&&!header(operation,'X-Omnia-If-Match'),`${method} ${route} has no version precondition`)
+    yes(!result(operation,method==='post'?201:200).headers.ETag,`${method} ${route} comments carry no task ETag`)
+    yes(result(operation,403)&&result(operation,404),`${method} ${route} authorization and visibility errors`)
+  }
+}
+yes(spec.paths['/api/v1/tasks/{id}/comments/{commentId}'].delete.parameters.some(parameter=>parameter.in==='path'&&parameter.name==='commentId'),'delete documents the comment id')
 for (const route of ['/api/v1/integration-keys','/api/v1/integration-keys/{id}']) for (const operation of Object.values(spec.paths[route])) equal(operation.security,[{browserBearer:[]}],`${route} browser only`)
 equal(spec.paths['/api/v1/mcp/exchange'].post.security,[{mcpExchangeSecretBearer:[]}],'backend-only exchange')
 for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}','/api/v1/task-statuses','/api/v1/task-assignees']) for (const operation of Object.values(spec.paths[route])) equal(operation.security,[{browserBearer:[]},{apiKeyBearer:[]},{mcpCapabilityBearer:[]}],`${route} resource audiences`)

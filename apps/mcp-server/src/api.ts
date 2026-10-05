@@ -14,7 +14,7 @@ const uuid = z.uuid()
 const success = z.object({data:z.unknown(),requestId:uuid}).strict()
 const failure = z.object({error:z.object({code:z.string().max(100),message:z.string().max(300)}).strict(),requestId:uuid}).strict()
 const exchangeData = z.object({
-  id:uuid,audience:z.literal('api'),scopes:z.array(z.enum(['tasks:read','tasks:create','tasks:update'])),
+  id:uuid,audience:z.literal('api'),scopes:z.array(z.enum(['tasks:read','tasks:create','tasks:update','tasks:comment'])),
   expiresAt:z.iso.datetime({offset:true}),token:z.string().regex(/^omnia_cap_[A-Za-z0-9_-]{43}$/),
 }).strict()
 
