@@ -25,6 +25,7 @@ No Vercel (`VERCEL=1`), **todas as operações desta API**, inclusive leituras, 
 | `PATCH /api/v1/tasks/{id}/comments/{commentId}` | comentário | comentário editado |
 | `DELETE /api/v1/tasks/{id}/comments/{commentId}` | comentário | comentário removido |
 | `GET /api/v1/task-statuses` | leitura | status com `isDefault` e `isFinal` |
+| `GET /api/v1/task-tags` | leitura | catálogo de tags (`id`, `name`, `color`) por nome; filtro opcional `query` (substring, sem diferenciar maiúsculas). Tarefas referenciam tags pelo `name`. Chaves de integração (API e MCP) só podem gravar tags que existam neste catálogo, com o nome exato (`UNKNOWN_TAG`, 400); a interface web continua criando tags novas |
 | `GET /api/v1/task-assignees` | leitura | usuários ativos e elegíveis |
 | `GET /api/v1/integration-keys` | somente JWT de navegador | metadados das próprias chaves |
 | `POST /api/v1/integration-keys` | somente JWT de navegador | metadados e segredo de uso único |

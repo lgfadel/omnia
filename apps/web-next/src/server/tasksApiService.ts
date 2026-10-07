@@ -3,10 +3,10 @@ import { z } from 'zod'
 import {
   commentCreateSchema, commentListQuerySchema, commentSchema, commentUpdateSchema, credentialCreateSchema, credentialSchema, mcpCapabilitySchema, mcpExchangeSchema,
   taskAssigneeQuerySchema, taskCreateSchema, taskCursorSchema, taskEtag, taskListQuerySchema,
-  taskPatchSchema, taskSchema, taskStatusSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
+  taskPatchSchema, taskSchema, taskStatusSchema, taskTagQuerySchema, taskTagSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
 } from '@/lib/tasksApiContracts'
 
-export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
+export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
 export type DispatchArgs = {
   p_operation:TaskOperation; p_payload:Record<string, unknown>; p_auth_user_id:string|null;
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
@@ -19,13 +19,14 @@ export type TasksApiDependencies = {
   config:()=>TasksApiConfig;
 }
 export const TASK_TOKEN_PREFIXES = {api:'omnia_api_',mcp:'omnia_mcp_',capability:'omnia_cap_'} as const
-const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
+const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
 const errors:Record<string,{status:number;message:string}> = {
   INVALID_OPERATION:{status:400,message:'Invalid operation'}, INVALID_AUTH:{status:401,message:'Authentication required'},
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
   INVALID_AUDIENCE:{status:403,message:'Credential audience is not allowed'},FORBIDDEN:{status:403,message:'Access denied'},
   INSUFFICIENT_SCOPE:{status:403,message:'Required scope is missing'},VALIDATION_ERROR:{status:400,message:'Invalid request'},
   UNSUPPORTED_PRECONDITION_HEADER:{status:400,message:'Use X-Omnia-If-Match instead of If-Match on this deployment'},
+  UNKNOWN_TAG:{status:400,message:'Tag is not in the catalog; list the valid names first'},
   NOT_FOUND:{status:404,message:'Resource not found'},CONFLICT:{status:409,message:'Resource conflict'},
   IDEMPOTENCY_CONFLICT:{status:409,message:'Idempotency key was used for another request'},PRECONDITION_REQUIRED:{status:428,message:'Strong If-Match is required'},
   PRECONDITION_FAILED:{status:412,message:'Task changed; reload before updating'},RATE_LIMITED:{status:429,message:'Request limit exceeded'},
@@ -110,6 +111,7 @@ function output(operation:TaskOperation,data:unknown):unknown {
     }
     case 'comments.create': case 'comments.update': case 'comments.delete':return commentSchema.parse(data)
     case 'statuses.list':return z.array(taskStatusSchema).parse(data)
+    case 'tags.list':return z.array(taskTagSchema).parse(data)
     case 'assignees.list':return z.array(taskUserRefSchema).parse(data)
     case 'credentials.list':return z.array(credentialSchema).parse(data)
     case 'credentials.create':case 'credentials.revoke':return credentialSchema.parse(data)
@@ -162,6 +164,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
           const list=parse(taskListQuerySchema,params)
           payload={...list,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
         }else if(operation==='assignees.list')payload=parse(taskAssigneeQuerySchema,params)
+        else if(operation==='tags.list')payload=parse(taskTagQuerySchema,params)
         else if(operation==='comments.list'){
           const list=parse(commentListQuerySchema,params)
           payload={taskId:parse(z.string().uuid(),id),limit:list.limit,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}

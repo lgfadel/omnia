@@ -27,7 +27,7 @@
     },
     {
       "name": "References",
-      "description": "Read status and eligible assignee references."
+      "description": "Read status, tag and eligible assignee references."
     },
     {
       "name": "Integration keys",
@@ -82,6 +82,7 @@
                   "FORBIDDEN",
                   "INSUFFICIENT_SCOPE",
                   "VALIDATION_ERROR",
+                  "UNKNOWN_TAG",
                   "NOT_FOUND",
                   "CONFLICT",
                   "IDEMPOTENCY_CONFLICT",
@@ -228,6 +229,28 @@
           "order",
           "isDefault",
           "isFinal"
+        ],
+        "additionalProperties": false
+      },
+      "Tag": {
+        "type": "object",
+        "description": "A tag from the catalog. Tasks reference tags by name in their tags array.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color"
         ],
         "additionalProperties": false
       },
@@ -3815,6 +3838,241 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Status"
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or absent bearer",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Actor, audience, scope, or task permission denied",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "120 task resource/exchange requests per actor per minute",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "const": "60"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized internal error",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration operation disabled",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-tags": {
+      "get": {
+        "tags": [
+          "References"
+        ],
+        "operationId": "listTaskTags",
+        "summary": "List the task tag catalog, optionally filtered by name",
+        "security": [
+          {
+            "browserBearer": []
+          },
+          {
+            "apiKeyBearer": []
+          },
+          {
+            "mcpCapabilityBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "description": "Valid UUID is echoed; otherwise the server assigns one.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "description": "Case-insensitive substring of the tag name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Tag"
                       }
                     },
                     "requestId": {

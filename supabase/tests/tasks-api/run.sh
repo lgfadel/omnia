@@ -16,6 +16,7 @@ if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261005120000_tasks_api_comments.sql >/dev/null
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261005130000_tickets_version_ignores_derived_counters.sql >/dev/null
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261005140000_credentials_optional_expiry.sql >/dev/null
+  docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261007120000_tasks_api_tags.sql >/dev/null
 fi
 docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/regression.sql
 if [[ "${1:-}" != '--baseline-only' ]]; then
@@ -24,6 +25,7 @@ if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/comments-regression.sql
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/version-stability-regression.sql
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/credential-expiry-regression.sql
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/tags-regression.sql
   mkdir -p .context/tasks-api-mcp
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DELETE FROM tasks_api_private.rate_limits WHERE actor_id='10000000-0000-0000-0000-000000000001';
