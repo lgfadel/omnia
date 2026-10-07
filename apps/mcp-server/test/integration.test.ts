@@ -61,6 +61,7 @@ before(async () => {
       if(staleVersion) {res.statusCode=412;res.end(JSON.stringify({error:{code:'PRECONDITION_FAILED',message:'Task changed; reload before updating'},requestId:uid}));return}
       res.setHeader('ETag',req.headers['accept-encoding']==='identity'?updatedVersion:`W/${updatedVersion}`);res.end(JSON.stringify({data:updatedTask,requestId:uid}));return
     }
+    if (path === '/api/v1/tasks' && req.method === 'POST' && Array.isArray(body?.tags) && body.tags.includes('inexistente')) {res.statusCode=400;res.end(JSON.stringify({error:{code:'UNKNOWN_TAG',message:'Tag is not in the catalog; list the valid names first'},requestId:uid}));return}
     if (path === '/api/v1/tasks' && req.method === 'POST') {res.statusCode=201;res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path.startsWith('/api/v1/tasks?')) {res.end(JSON.stringify({data:{items:oversizedList?Array.from({length:11},(_,i)=>({...task,id:i===0?uid:`${String(i).padStart(8,'0')}-1111-4111-8111-111111111111`,description:'x'.repeat(50000)})):[task],nextCursor:null},requestId:uid}));return}
     if (path === '/api/v1/task-statuses') {
@@ -73,6 +74,7 @@ before(async () => {
       if (req.method === 'POST') {res.statusCode=201;res.end(JSON.stringify({data:comment,requestId:uid}));return}
       res.end(JSON.stringify({data:comment,requestId:uid}));return
     }
+    if (path.startsWith('/api/v1/task-tags')) {res.end(JSON.stringify({data:[{id:statusId,name:'Urgente',color:'#ef4444'}],requestId:uid}));return}
     if (path.startsWith('/api/v1/task-assignees')) {res.end(JSON.stringify({data:[],requestId:uid}));return}
     res.statusCode=404;res.end(JSON.stringify({error:{code:'NOT_FOUND',message:'Resource not found'},requestId:uid}))
   })
@@ -92,11 +94,11 @@ async function clientFor(key=mcpKey,modern=false) {
   return client
 }
 
-test('official client negotiates, lists ten tools, and exchanges on initialize and list', async () => {
+test('official client negotiates, lists eleven tools, and exchanges on initialize and list', async () => {
   const client = await clientFor(mcpKey,true)
   try {
     const tools=(await client.listTools()).tools
-    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_tasks','search_task_assignees','update_task','update_task_comment'])
+    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_task','update_task_comment'])
     const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations
     assert.equal(annotations('list_task_comments')?.readOnlyHint,true)
     assert.equal(annotations('create_task_comment')?.readOnlyHint,false)
@@ -110,7 +112,7 @@ test('official client negotiates, lists ten tools, and exchanges on initialize a
   } finally {await client.close()}
 })
 
-test('legacy client can list, create, and query status and assignee routes', async () => {
+test('legacy client can list, create, and query status, tag and assignee routes', async () => {
   const client=await clientFor()
   try {
     const list=await client.callTool({name:'list_tasks',arguments:{limit:2,mine:true,tags:['urgent']}})
@@ -120,11 +122,17 @@ test('legacy client can list, create, and query status and assignee routes', asy
     assert.equal((created.structuredContent as {version:string}).version,version)
     await client.callTool({name:'list_task_statuses',arguments:{}})
     await client.callTool({name:'search_task_assignees',arguments:{query:'Jo',limit:3}})
+    const tagList=await client.callTool({name:'list_task_tags',arguments:{}})
+    assert.equal((tagList.structuredContent as {data:{name:string}[]}).data[0]?.name,'Urgente')
+    await client.callTool({name:'list_task_tags',arguments:{query:'urg'}})
     const calls=requests.filter(r=>r.method!=='POST'||r.path!=='/api/v1/mcp/exchange')
     assert.ok(calls.some(r=>r.path==='/api/v1/tasks?limit=2&mine=true&tags=%5B%22urgent%22%5D'&&r.authorization===`Bearer ${cap}`))
     assert.ok(calls.some(r=>r.path==='/api/v1/tasks'&&r.headers['idempotency-key']==='create-key-1'))
     assert.ok(calls.some(r=>r.path==='/api/v1/task-statuses'))
     assert.ok(calls.some(r=>r.path==='/api/v1/task-assignees?query=Jo&limit=3'))
+    assert.ok(calls.some(r=>r.path==='/api/v1/task-tags'&&r.authorization===`Bearer ${cap}`))
+    assert.ok(calls.some(r=>r.path==='/api/v1/task-tags?query=urg'))
+    assert.equal((await client.callTool({name:'list_task_tags',arguments:{unknown:true}})).isError,true)
   } finally {await client.close()}
 })
 
@@ -355,4 +363,18 @@ test('author-only API denials surface as safe tool errors with code and requestI
       assert.deepEqual(result.structuredContent,{error:{code:'FORBIDDEN',message:'Access denied',status:403},requestId:uid})
     }
   } finally {commentForbidden=false;await client.close()}
+})
+
+test('writing a tag outside the catalog surfaces UNKNOWN_TAG as a safe, actionable tool error', async () => {
+  const client=await clientFor()
+  try {
+    const rejected=await client.callTool({name:'create_task',arguments:{title:'Tagged',tags:['inexistente'],idempotencyKey:'tag-key-1'}})
+    assert.equal(rejected.isError,true)
+    const error=(rejected.structuredContent as {error:{code:string;message:string;status:number}}).error
+    assert.equal(error.code,'UNKNOWN_TAG')
+    assert.equal(error.status,400)
+    assert.match(error.message,/list the valid names/)
+    const tool=(await client.listTools()).tools.find(item=>item.name==='create_task')
+    assert.match(JSON.stringify(tool?.inputSchema),/list_task_tags/)
+  } finally {await client.close()}
 })

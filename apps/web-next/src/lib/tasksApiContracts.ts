@@ -51,6 +51,7 @@ export const taskListQuerySchema = z.object({
   tags: z.string().max(10000).transform(value => JSON.parse(value) as unknown).pipe(tags).optional(),
   dueDateFrom:taskDateSchema.optional(),dueDateTo:taskDateSchema.optional(),
 }).strict().refine(value => !value.dueDateFrom || !value.dueDateTo || value.dueDateFrom <= value.dueDateTo, 'Invalid date range')
+export const taskTagQuerySchema = z.object({query:z.string().max(500).optional()}).strict()
 export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optional(),limit:queryLimit.optional().default('50')}).strict()
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
@@ -77,6 +78,7 @@ export const taskSchema = z.object({
 }).strict()
 export const commentSchema = z.object({id:uuid,taskId:uuid,body:z.string(),authorId:uuid,author:taskUserRefSchema.nullable(),createdAt:taskTimestampSchema}).strict()
 export const taskStatusSchema = z.object({id:uuid,name:z.string(),color:z.string().nullable(),order:z.number().int(),isDefault:z.boolean().nullable().transform(value => value ?? false),isFinal:z.boolean()}).strict()
+export const taskTagSchema = z.object({id:uuid,name:z.string(),color:z.string()}).strict()
 export const credentialSchema = z.object({id:uuid,name:z.string(),audience:z.enum(['api','mcp']),scopes:z.array(taskScopeSchema),createdAt:taskTimestampSchema,expiresAt:taskTimestampSchema.nullable(),revokedAt:taskTimestampSchema.nullable(),lastUsedAt:taskTimestampSchema.nullable()}).strict()
 export const mcpCapabilitySchema = z.object({id:uuid,audience:z.literal('api'),scopes:z.array(taskScopeSchema),expiresAt:taskTimestampSchema}).strict()
 export type TaskDTO = z.infer<typeof taskSchema>
@@ -88,6 +90,7 @@ export type CommentDTO = z.infer<typeof commentSchema>
 export type CommentCreateDTO = z.infer<typeof commentCreateSchema>
 export type CommentUpdateDTO = z.infer<typeof commentUpdateSchema>
 export type TaskStatusDTO = z.infer<typeof taskStatusSchema>
+export type TaskTagDTO = z.infer<typeof taskTagSchema>
 export type IntegrationCredentialDTO = z.infer<typeof credentialSchema>
 export type IntegrationCredentialCreateDTO = z.infer<typeof credentialCreateSchema>
 export type McpCapabilityDTO = z.infer<typeof mcpCapabilitySchema>

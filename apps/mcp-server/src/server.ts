@@ -8,7 +8,7 @@ import { ApiFailure, createApiClient, type Config } from './api.js'
 const uuid=z.uuid()
 const date=z.iso.date()
 const priority=z.enum(['URGENTE','ALTA','NORMAL','BAIXA'])
-const tags=z.array(z.string().max(100)).max(50)
+const tags=z.array(z.string().max(100)).max(50).describe('Tag names exactly as returned by list_task_tags; names missing from the catalog are rejected with UNKNOWN_TAG.')
 const idempotencyKey=z.string().regex(/^[\x21-\x7E]{1,200}$/).refine(value=>!value.includes(','))
 const taskFields={
   title:z.string().trim().min(1).max(500).optional(),description:z.string().max(50000).nullable().optional(),
@@ -34,6 +34,7 @@ const listCommentsSchema=z.object({taskId:uuid,limit:z.number().int().min(1).max
 const createCommentSchema=z.object({taskId:uuid,body:commentBody,idempotencyKey}).strict()
 const updateCommentSchema=z.object({taskId:uuid,commentId:uuid,body:commentBody,idempotencyKey}).strict()
 const deleteCommentSchema=z.object({taskId:uuid,commentId:uuid}).strict()
+const tagSchema=z.object({query:z.string().max(500).optional()}).strict()
 const assigneeSchema=z.object({query:z.string().max(500).optional(),limit:z.number().int().min(1).max(100).optional()}).strict()
 
 function toolResponse(value:{data:unknown;requestId:string;etag:string|null},requireVersion=false) {
@@ -70,6 +71,11 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
     server.registerTool('create_task',{description:'Create a standalone task. Supply a unique caller idempotencyKey and retain it for retries.',inputSchema:createSchema,annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},async ({idempotencyKey,...body})=>run('/api/v1/tasks','POST',{body,idempotencyKey},true))
     server.registerTool('update_task',{description:'Patch a task with the version returned by get_task and a caller idempotencyKey.',inputSchema:updateSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({id,version,idempotencyKey,patch})=>run(`/api/v1/tasks/${id}`,'PATCH',{body:patch,version,idempotencyKey},true))
     server.registerTool('list_task_statuses',{description:'List available Omnia task statuses.',inputSchema:z.object({}).strict(),annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async ()=>run('/api/v1/task-statuses','GET'))
+    server.registerTool('list_task_tags',{description:'List the tag catalog (id, name, color), ordered by name. Optionally filter by a case-insensitive name substring. Tasks reference tags by name in their tags field, and create_task and update_task only accept names that exist in this catalog, exactly as listed.',inputSchema:tagSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async args=>{
+      const query=new URLSearchParams()
+      if(args.query!==undefined)query.set('query',args.query)
+      return run(`/api/v1/task-tags${query.size?`?${query}`:''}`,'GET')
+    })
     server.registerTool('search_task_assignees',{description:'Search users available for task assignment.',inputSchema:assigneeSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async args=>{
       const query=new URLSearchParams()
       if(args.query!==undefined)query.set('query',args.query)

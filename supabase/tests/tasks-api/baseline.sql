@@ -82,6 +82,15 @@ CREATE TABLE public.omnia_ticket_statuses (
 "is_final" boolean DEFAULT false NOT NULL
 );
 ALTER TABLE public.omnia_ticket_statuses ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.omnia_tags (
+"id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+"name" text NOT NULL UNIQUE,
+"color" text DEFAULT '#6366f1' NOT NULL,
+"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+"created_by" uuid,
+"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.omnia_tags ENABLE ROW LEVEL SECURITY;
 CREATE TABLE public.omnia_tickets (
 "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
 "title" text NOT NULL,
@@ -253,6 +262,7 @@ USING (
 -- Comentário explicativo
 COMMENT ON COLUMN public.omnia_tickets.is_private IS 'Indica se a tarefa é privada (visível apenas ao criador e admins). As políticas RLS foram corrigidas para usar omnia_users.id em vez de auth.uid() nas comparações.';CREATE POLICY "Users can view public tickets or their own private tickets" ON public.omnia_tickets FOR SELECT USING (auth.role()='authenticated' AND (NOT coalesce(is_private,false) OR created_by=(SELECT id FROM public.omnia_users WHERE auth_user_id=auth.uid()) OR public.is_admin_user(auth.uid())));
 CREATE POLICY statuses_read ON public.omnia_ticket_statuses FOR SELECT USING (auth.role()='authenticated');
+CREATE POLICY tags_read ON public.omnia_tags FOR SELECT USING (auth.role()='authenticated');
 CREATE POLICY recurrences_read ON public.omnia_ticket_recurrences FOR SELECT USING (auth.role()='authenticated');
 CREATE POLICY recurrences_insert ON public.omnia_ticket_recurrences FOR INSERT WITH CHECK (auth.role()='authenticated');
 CREATE POLICY recurrences_update ON public.omnia_ticket_recurrences FOR UPDATE USING (auth.role()='authenticated');

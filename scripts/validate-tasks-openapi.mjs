@@ -56,6 +56,7 @@ const routes = {
   '/api/v1/tasks/{id}/comments':['apps/web-next/src/app/api/v1/tasks/[id]/comments/route.ts',{get:['CommentPage',200],post:['Comment',201]}],
   '/api/v1/tasks/{id}/comments/{commentId}':['apps/web-next/src/app/api/v1/tasks/[id]/comments/[commentId]/route.ts',{patch:['Comment',200],delete:['Comment',200]}],
   '/api/v1/task-statuses':['apps/web-next/src/app/api/v1/task-statuses/route.ts',{get:['Status',200]}],
+  '/api/v1/task-tags':['apps/web-next/src/app/api/v1/task-tags/route.ts',{get:['Tag',200]}],
   '/api/v1/task-assignees':['apps/web-next/src/app/api/v1/task-assignees/route.ts',{get:['UserRef',200]}],
   '/api/v1/integration-keys':['apps/web-next/src/app/api/v1/integration-keys/route.ts',{get:['Credential',200],post:['CredentialIssued',201]}],
   '/api/v1/integration-keys/{id}':['apps/web-next/src/app/api/v1/integration-keys/[id]/route.ts',{delete:['Credential',200]}],
@@ -73,7 +74,7 @@ for (const [route,[file,operations]] of Object.entries(routes)) {
     equal(success.headers['X-Request-Id'].schema.format,'uuid',`${method} ${route} request header`)
     yes(success.headers['Cache-Control'],`${method} ${route} no-store success header`)
     const data = dataRef(operation,status)
-    if (['Status','UserRef','Credential'].includes(model) && (route.includes('statuses')||route.includes('assignees')||route==='/api/v1/integration-keys'&&method==='get')) {
+    if (['Status','Tag','UserRef','Credential'].includes(model) && (route.includes('statuses')||route.includes('tags')||route.includes('assignees')||route==='/api/v1/integration-keys'&&method==='get')) {
       equal(data.items.$ref,`#/components/schemas/${model}`,`${method} ${route} array item`)
     } else equal(data.$ref,`#/components/schemas/${model}`,`${method} ${route} response model`)
     for (const [code,response] of Object.entries(operation.responses)) {
@@ -86,7 +87,7 @@ for (const [route,[file,operations]] of Object.entries(routes)) {
 
 for (const [model,source] of [
   ['Task','taskSchema'],['TaskCreate','taskCreateSchema'],['TaskPatch','taskPatchSchema'],
-  ['UserRef','taskUserRefSchema'],['Status','taskStatusSchema'],['RecurrenceInput','taskRecurrenceInputSchema'],
+  ['UserRef','taskUserRefSchema'],['Status','taskStatusSchema'],['Tag','taskTagSchema'],['RecurrenceInput','taskRecurrenceInputSchema'],
   ['Recurrence','taskRecurrenceSchema'],['Credential','credentialSchema'],['CredentialCreate','credentialCreateSchema'],
   ['Comment','commentSchema'],['CommentCreate','commentCreateSchema'],['CommentUpdate','commentUpdateSchema'],
 ]) {
@@ -129,6 +130,8 @@ yes(schema('CommentCreate').properties.body.description.includes('trimmed'),'com
 
 const list = spec.paths['/api/v1/tasks'].get
 equal(names(list.parameters.filter(parameter=>parameter.in==='query').map(parameter=>parameter.name)),sourceKeys('taskListQuerySchema'),'task filters vs Zod source')
+const tags = spec.paths['/api/v1/task-tags'].get
+equal(names(tags.parameters.filter(parameter=>parameter.in==='query').map(parameter=>parameter.name)),sourceKeys('taskTagQuerySchema'),'tag filters vs Zod source')
 const assignees = spec.paths['/api/v1/task-assignees'].get
 equal(names(assignees.parameters.filter(parameter=>parameter.in==='query').map(parameter=>parameter.name)),sourceKeys('taskAssigneeQuerySchema'),'assignee filters vs Zod source')
 for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}']) {
@@ -161,7 +164,7 @@ for (const route of ['/api/v1/tasks/{id}/comments','/api/v1/tasks/{id}/comments/
 yes(spec.paths['/api/v1/tasks/{id}/comments/{commentId}'].delete.parameters.some(parameter=>parameter.in==='path'&&parameter.name==='commentId'),'delete documents the comment id')
 for (const route of ['/api/v1/integration-keys','/api/v1/integration-keys/{id}']) for (const operation of Object.values(spec.paths[route])) equal(operation.security,[{browserBearer:[]}],`${route} browser only`)
 equal(spec.paths['/api/v1/mcp/exchange'].post.security,[{mcpExchangeSecretBearer:[]}],'backend-only exchange')
-for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}','/api/v1/task-statuses','/api/v1/task-assignees']) for (const operation of Object.values(spec.paths[route])) equal(operation.security,[{browserBearer:[]},{apiKeyBearer:[]},{mcpCapabilityBearer:[]}],`${route} resource audiences`)
+for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}','/api/v1/task-statuses','/api/v1/task-tags','/api/v1/task-assignees']) for (const operation of Object.values(spec.paths[route])) equal(operation.security,[{browserBearer:[]},{apiKeyBearer:[]},{mcpCapabilityBearer:[]}],`${route} resource audiences`)
 equal(spec.paths['/api/v1/tasks'].get.responses['429'].headers['Retry-After'].schema.const,'60','rate backoff')
 
 console.log(`OpenAPI source-contract check: ${checks} assertions passed`)
