@@ -55,6 +55,7 @@ before(async () => {
       return
     }
     if (path === `/api/v1/tasks/${uid}` && req.method === 'GET') {res.setHeader('ETag',badEtag?'"YWJj"':responseVersion);res.end(JSON.stringify({data:task,requestId:uid}));return}
+    if (path === `/api/v1/tasks/${uid}` && req.method === 'DELETE') {res.end(JSON.stringify({data:task,requestId:uid}));return}
     if (path === `/api/v1/tasks/${uid}` && req.method === 'PATCH') {
       // Model the platform rejecting a response after a valid standard conditional request.
       if(req.headers['if-match']) {res.statusCode=412;res.removeHeader('X-Request-Id');res.setHeader('Content-Type','text/plain');res.end('PRECONDITION_FAILED');return}
@@ -94,11 +95,11 @@ async function clientFor(key=mcpKey,modern=false) {
   return client
 }
 
-test('official client negotiates, lists eleven tools, and exchanges on initialize and list', async () => {
+test('official client negotiates, lists twelve tools, and exchanges on initialize and list', async () => {
   const client = await clientFor(mcpKey,true)
   try {
     const tools=(await client.listTools()).tools
-    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_task','update_task_comment'])
+    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_task','update_task_comment'])
     const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations
     assert.equal(annotations('list_task_comments')?.readOnlyHint,true)
     assert.equal(annotations('create_task_comment')?.readOnlyHint,false)
@@ -313,6 +314,34 @@ test('comment tools list, create, edit and delete through the task comment route
     assert.equal(calls[2]?.headers['x-omnia-if-match'],'')
     assert.equal(calls[3]?.body,undefined)
     assert.equal(calls[3]?.headers['idempotency-key'],'')
+  } finally {await client.close()}
+})
+
+test('delete_task is destructive, strict, and calls the task route with the capability only', async () => {
+  const client=await clientFor()
+  try {
+    const tool=(await client.listTools()).tools.find(item=>item.name==='delete_task')
+    assert.equal(tool?.annotations?.destructiveHint,true)
+    assert.equal(tool?.annotations?.idempotentHint,false)
+    requests.length=0
+    const deleted=await client.callTool({name:'delete_task',arguments:{id:uid}})
+    assert.equal(deleted.isError,undefined)
+    assert.equal((deleted.structuredContent as {data:{id:string}}).data.id,uid)
+    assert.equal('version' in (deleted.structuredContent as object),false)
+    const calls=requests.filter(r=>r.path!=='/api/v1/mcp/exchange')
+    assert.deepEqual(calls.map(r=>`${r.method} ${r.path}`),[`DELETE /api/v1/tasks/${uid}`])
+    assert.equal(calls[0]?.authorization,`Bearer ${cap}`)
+    assert.equal(calls[0]?.body,undefined)
+    assert.equal(calls[0]?.headers['idempotency-key'],'')
+    const invalid:[string,Record<string,unknown>][]=[
+      ['delete_task',{}],
+      ['delete_task',{id:'nope'}],
+      ['delete_task',{id:uid,version}],
+      ['delete_task',{id:uid,idempotencyKey:'k'}],
+    ]
+    requests.length=0
+    for (const [name,args] of invalid) assert.equal((await client.callTool({name,arguments:args})).isError,true,`${name} ${JSON.stringify(args)}`)
+    assert.equal(requests.filter(r=>r.path!=='/api/v1/mcp/exchange').length,0)
   } finally {await client.close()}
 })
 

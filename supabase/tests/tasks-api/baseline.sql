@@ -564,6 +564,39 @@ END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_ticket_comment_count_trigger AFTER INSERT OR DELETE ON public.omnia_ticket_comments FOR EACH ROW EXECUTE FUNCTION public.update_ticket_comment_count_new();
 ALTER TABLE public.omnia_notifications ADD CONSTRAINT omnia_notifications_ticket_comment_id_fkey FOREIGN KEY (ticket_comment_id) REFERENCES public.omnia_ticket_comments(id) ON DELETE CASCADE;
+-- Ticket attachments as the production migrations define them: no foreign key from ticket_id to the task
+-- (only the comment link cascades), RLS, the browser view/delete policies, and the attachment count trigger.
+CREATE TABLE public.omnia_ticket_attachments (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticket_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  mime_type TEXT,
+  size_kb INTEGER,
+  uploaded_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  comment_id UUID REFERENCES public.omnia_ticket_comments(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_ticket_attachments_comment_id ON public.omnia_ticket_attachments(comment_id);
+ALTER TABLE public.omnia_ticket_attachments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view ticket attachments" ON public.omnia_ticket_attachments FOR SELECT USING (auth.role() = 'authenticated'::text AND (comment_id IS NULL OR EXISTS (SELECT 1 FROM public.omnia_ticket_comments WHERE id = comment_id)));
+CREATE POLICY "Users can delete their own ticket attachments or admins can delete any" ON public.omnia_ticket_attachments FOR DELETE USING ((uploaded_by = auth.uid()) OR (EXISTS (SELECT 1 FROM omnia_users WHERE ((omnia_users.auth_user_id = auth.uid()) AND ('ADMIN'::text = ANY (omnia_users.roles))))));
+ALTER TABLE public.omnia_tickets ADD COLUMN IF NOT EXISTS attachment_count integer NOT NULL DEFAULT 0;
+CREATE OR REPLACE FUNCTION public.update_ticket_attachment_count() RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN UPDATE public.omnia_tickets SET attachment_count = attachment_count + 1 WHERE id = NEW.ticket_id; RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN UPDATE public.omnia_tickets SET attachment_count = GREATEST(attachment_count - 1, 0) WHERE id = OLD.ticket_id; RETURN OLD;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF NEW.ticket_id IS DISTINCT FROM OLD.ticket_id THEN
+      UPDATE public.omnia_tickets SET attachment_count = GREATEST(attachment_count - 1, 0) WHERE id = OLD.ticket_id;
+      UPDATE public.omnia_tickets SET attachment_count = attachment_count + 1 WHERE id = NEW.ticket_id;
+    END IF;
+    RETURN NEW;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_ticket_attachment_count_trigger AFTER INSERT OR DELETE OR UPDATE OF ticket_id ON public.omnia_ticket_attachments FOR EACH ROW EXECUTE FUNCTION public.update_ticket_attachment_count();
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
 INSERT INTO public.omnia_users(id,auth_user_id,name,email,roles) VALUES

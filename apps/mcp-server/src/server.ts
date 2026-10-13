@@ -34,6 +34,7 @@ const listCommentsSchema=z.object({taskId:uuid,limit:z.number().int().min(1).max
 const createCommentSchema=z.object({taskId:uuid,body:commentBody,idempotencyKey}).strict()
 const updateCommentSchema=z.object({taskId:uuid,commentId:uuid,body:commentBody,idempotencyKey}).strict()
 const deleteCommentSchema=z.object({taskId:uuid,commentId:uuid}).strict()
+const deleteTaskSchema=z.object({id:uuid}).strict()
 const tagSchema=z.object({query:z.string().max(500).optional()}).strict()
 const assigneeSchema=z.object({query:z.string().max(500).optional(),limit:z.number().int().min(1).max(100).optional()}).strict()
 
@@ -91,6 +92,7 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
     server.registerTool('create_task_comment',{description:'Add a comment to a visible task as the key owner. Supply a unique caller idempotencyKey and retain it for retries. Requires the tasks:comment scope.',inputSchema:createCommentSchema,annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},async ({taskId,body,idempotencyKey})=>run(`/api/v1/tasks/${taskId}/comments`,'POST',{body:{body},idempotencyKey}))
     server.registerTool('update_task_comment',{description:'Replace the body of a comment. Only the comment author may edit it, including administrators. Supply a unique caller idempotencyKey. Requires the tasks:comment scope.',inputSchema:updateCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId,body,idempotencyKey})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'PATCH',{body:{body},idempotencyKey}))
     server.registerTool('delete_task_comment',{description:'Permanently delete a comment and its attachments. Allowed for the comment author or an administrator. Returns the deleted comment; a second call returns NOT_FOUND. Requires the tasks:comment scope.',inputSchema:deleteCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'DELETE'))
+    server.registerTool('delete_task',{description:'Permanently delete a task with its comments, attachments and notifications. Allowed for the task creator or an administrator; tasks without a creator are administrator-only. Returns the deleted task; a second call returns NOT_FOUND. Requires the tasks:delete scope.',inputSchema:deleteTaskSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({id})=>run(`/api/v1/tasks/${id}`,'DELETE'))
     return server
   }
 }

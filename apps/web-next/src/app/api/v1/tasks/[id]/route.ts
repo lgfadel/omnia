@@ -10,3 +10,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params
   return tasksApiHandler(request, 'tasks.update', id)
 }
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
+  return tasksApiHandler(request, 'tasks.delete', id)
+}

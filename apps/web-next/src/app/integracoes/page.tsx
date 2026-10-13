@@ -20,6 +20,7 @@ const scopeOptions = [
   {value:'tasks:create',label:'Criar tarefas'},
   {value:'tasks:update',label:'Atualizar tarefas'},
   {value:'tasks:comment',label:'Comentar em tarefas'},
+  {value:'tasks:delete',label:'Excluir tarefas'},
 ] as const
 type KeyFilter = 'active' | 'revoked'
 // "Ativas" is everything not revoked: an expired key stays here so it can still be revoked or replaced.

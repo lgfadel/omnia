@@ -1,3 +1,5 @@
+> **Atualização (2026-10-13):** a restrição "No MCP deletion" abaixo descreve o piloto original e foi superada. Comentários e a exclusão de tarefas (`delete_task`, escopo `tasks:delete`) foram adicionados depois; veja `docs/api/tasks-v1.md`.
+
 # Omnia tasks API and MCP implementation plan
 
 Approved conversational design, 2026-10-02. Branch: `feat/tasks-api-mcp`.

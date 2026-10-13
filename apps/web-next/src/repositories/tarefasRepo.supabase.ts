@@ -188,7 +188,7 @@ export const tarefasRepoSupabase = {
       method:'PATCH',headers:{'X-Omnia-If-Match':taskEtag(basis.wireUpdatedAt),'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify(body),
     }))
   },
-  // Deletion has no v1 API route and retains its existing authorized Supabase path.
+  // The interface keeps its authorized Supabase path; integrations delete through DELETE /api/v1/tasks/{id}.
   async remove(id:string):Promise<boolean> {
     const {error} = await supabase.from('omnia_tickets').delete().eq('id',id)
     if (error) throw error

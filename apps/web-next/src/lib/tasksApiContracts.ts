@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const taskPrioritySchema = z.enum(['URGENTE', 'ALTA', 'NORMAL', 'BAIXA'])
-export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update', 'tasks:comment'])
+export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update', 'tasks:comment', 'tasks:delete'])
 export const taskDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const [year, month, day] = value.split('-').map(Number)
   if (year < 1 || month < 1 || month > 12 || day < 1) return false
@@ -55,7 +55,7 @@ export const taskTagQuerySchema = z.object({query:z.string().max(500).optional()
 export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optional(),limit:queryLimit.optional().default('50')}).strict()
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
-  scopes:z.array(taskScopeSchema).min(1).max(4).refine(value => new Set(value).size === value.length),
+  scopes:z.array(taskScopeSchema).min(1).max(5).refine(value => new Set(value).size === value.length),
   // Omitted keeps the 90-day default; an explicit null creates a key that never expires.
   expiresAt:taskTimestampSchema.nullable().optional(),
 }).strict()

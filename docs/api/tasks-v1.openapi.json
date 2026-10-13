@@ -132,7 +132,8 @@
           "tasks:read",
           "tasks:create",
           "tasks:update",
-          "tasks:comment"
+          "tasks:comment",
+          "tasks:delete"
         ]
       },
       "UserRef": {
@@ -1009,7 +1010,7 @@
               "$ref": "#/components/schemas/Scope"
             },
             "minItems": 1,
-            "maxItems": 4,
+            "maxItems": 5,
             "uniqueItems": true
           },
           "expiresAt": {
@@ -2527,6 +2528,236 @@
           }
         },
         "description": "A strong version is required in X-Omnia-If-Match. Outside Vercel, If-Match is also accepted; if both are present they must be equal, otherwise 400. Both carry the exact ETag returned by GET/POST/PATCH and enforce the same database compare-and-swap. Missing version returns 428; a stale version returns JSON 412. On Vercel (VERCEL=1), any standard If-Match header is rejected with JSON 400 UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation, including when the alias is also present and equal. Send only X-Omnia-If-Match there. Successful responses retain ETag."
+      },
+      "delete": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "deleteTask",
+        "summary": "Delete a task permanently",
+        "description": "Hard delete, like the interface. Removes the task with its comments (any author), attachments and notifications in one transaction; comments and attachments have no foreign key to the task, so they are deleted explicitly. After commit, files in this project's attachments storage bucket are removed on a best-effort basis: a cleanup failure leaves an orphan file and does not fail the delete. Allowed for the task creator or an ADMIN; tasks without a creator are administrator-only. Returns the deleted task; a repeated call returns 404. No version precondition and no Idempotency-Key: the second call is the safe signal. Requires tasks:delete. Recurrence series are not deleted with an occurrence.",
+        "security": [
+          {
+            "browserBearer": []
+          },
+          {
+            "apiKeyBearer": []
+          },
+          {
+            "mcpCapabilityBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "description": "Valid UUID is echoed; otherwise the server assigns one.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted task, as it was before removal",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or absent bearer",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Actor, audience, scope (tasks:delete), or task permission denied. Deleting requires being the task creator or an ADMIN; tasks without a creator are administrator-only.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not visible or already deleted. Repeating a delete returns 404.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "120 task resource/exchange requests per actor per minute",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "const": "60"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration operation disabled",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/tasks/{id}/comments": {

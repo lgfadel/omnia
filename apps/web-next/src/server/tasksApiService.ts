@@ -6,20 +6,22 @@ import {
   taskPatchSchema, taskSchema, taskStatusSchema, taskTagQuerySchema, taskTagSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
 } from '@/lib/tasksApiContracts'
 
-export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
+export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'tasks.delete'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
 export type DispatchArgs = {
   p_operation:TaskOperation; p_payload:Record<string, unknown>; p_auth_user_id:string|null;
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
 }
-export type DispatchResult = {status:number;data?:unknown;error?:{code:string;message:string}}
+export type DispatchResult = {status:number;data?:unknown;error?:{code:string;message:string};removedFiles?:unknown}
 export type TasksApiConfig = {readEnabled:boolean;writeEnabled:boolean;exchangeSecret?:string;isVercel?:boolean}
 export type TasksApiDependencies = {
   verifyBrowser:(token:string)=>Promise<string|null>;
   dispatch:(args:DispatchArgs)=>Promise<DispatchResult>;
+  /** Best-effort removal of stored files after a committed task delete. Must not be required for the delete to succeed. */
+  removeStoredFiles?:(urls:string[])=>Promise<void>;
   config:()=>TasksApiConfig;
 }
 export const TASK_TOKEN_PREFIXES = {api:'omnia_api_',mcp:'omnia_mcp_',capability:'omnia_cap_'} as const
-const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
+const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','tasks.delete':'DELETE','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
 const errors:Record<string,{status:number;message:string}> = {
   INVALID_OPERATION:{status:400,message:'Invalid operation'}, INVALID_AUTH:{status:401,message:'Authentication required'},
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
@@ -104,7 +106,7 @@ function output(operation:TaskOperation,data:unknown):unknown {
       const list=z.object({items:z.array(taskSchema),nextCursor:taskCursorSchema.nullable()}).strict().parse(data)
       return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
     }
-    case 'tasks.get': case 'tasks.create': case 'tasks.update':return taskSchema.parse(data)
+    case 'tasks.get': case 'tasks.create': case 'tasks.update': case 'tasks.delete':return taskSchema.parse(data)
     case 'comments.list':{
       const list=z.object({items:z.array(commentSchema),nextCursor:taskCursorSchema.nullable()}).strict().parse(data)
       return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
@@ -153,7 +155,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         if(audience==='mcp' || (integration && isManagement))fail('INVALID_AUDIENCE')
         if(integration){
           const config=deps.config()
-          const write=operation==='tasks.create'||operation==='tasks.update'||operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'
+          const write=operation==='tasks.create'||operation==='tasks.update'||operation==='tasks.delete'||operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'
           if(write ? !config.writeEnabled : !config.readEnabled)fail('INTEGRATIONS_DISABLED')
           tokenDigest=digest(token)
         }else{
@@ -180,7 +182,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         }
         else{
           parse(z.object({}).strict(),params)
-          if(operation==='tasks.get'||operation==='tasks.update'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
+          if(operation==='tasks.get'||operation==='tasks.update'||operation==='tasks.delete'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
           if(operation==='tasks.create'||operation==='tasks.update'){
             idempotencyKey=idempotency(request)
             if(operation==='tasks.update'){
@@ -210,6 +212,10 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
       let data=output(operation,result.data)
       if(operation==='tasks.get'||operation==='tasks.create'||operation==='tasks.update')headers.ETag=taskEtag((data as {updatedAt:string}).updatedAt)
       if(rawToken)data={...(data as Record<string,unknown>),token:rawToken}
+      if(operation==='tasks.delete' && deps.removeStoredFiles && Array.isArray(result.removedFiles)){
+        // The row is already gone: a cleanup failure leaves an orphan file, never a failed delete.
+        await deps.removeStoredFiles(result.removedFiles.filter((url):url is string=>typeof url==='string')).catch(()=>undefined)
+      }
       return Response.json({data,requestId},{status:result.status,headers})
     }catch(error){
       const code=error instanceof ApiError ? error.code : 'INTERNAL_ERROR'

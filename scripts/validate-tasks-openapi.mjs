@@ -52,7 +52,7 @@ function methodMap(dir) {
 equal(spec.openapi,'3.1.0','OpenAPI version')
 const routes = {
   '/api/v1/tasks':['apps/web-next/src/app/api/v1/tasks/route.ts',{get:['TaskPage',200],post:['Task',201]}],
-  '/api/v1/tasks/{id}':['apps/web-next/src/app/api/v1/tasks/[id]/route.ts',{get:['Task',200],patch:['Task',200]}],
+  '/api/v1/tasks/{id}':['apps/web-next/src/app/api/v1/tasks/[id]/route.ts',{get:['Task',200],patch:['Task',200],delete:['Task',200]}],
   '/api/v1/tasks/{id}/comments':['apps/web-next/src/app/api/v1/tasks/[id]/comments/route.ts',{get:['CommentPage',200],post:['Comment',201]}],
   '/api/v1/tasks/{id}/comments/{commentId}':['apps/web-next/src/app/api/v1/tasks/[id]/comments/[commentId]/route.ts',{patch:['Comment',200],delete:['Comment',200]}],
   '/api/v1/task-statuses':['apps/web-next/src/app/api/v1/task-statuses/route.ts',{get:['Status',200]}],
@@ -145,6 +145,13 @@ for (const route of ['/api/v1/tasks','/api/v1/tasks/{id}']) {
       equal(alias.required,false,`${method} ${route} alias may be replaced by standard header`)
       equal(alias.schema,standard.schema,`${method} ${route} identical strong version schemas`)
       yes(result(operation,412) && result(operation,428),`${method} ${route} stale/missing version errors`)
+    }
+    if (method==='delete') {
+      equal(!!header(operation,'Idempotency-Key'),false,`${method} ${route} no idempotency key; a repeated delete returns 404`)
+      yes(!header(operation,'If-Match')&&!header(operation,'X-Omnia-If-Match'),`${method} ${route} has no version precondition`)
+      yes(!result(operation,200).headers.ETag,`${method} ${route} deleted task carries no ETag`)
+      equal(operation.security,[{browserBearer:[]},{apiKeyBearer:[]},{mcpCapabilityBearer:[]}],`${method} ${route} security`)
+      continue
     }
     if (route.includes('{id}')||method==='post') yes(result(operation,method==='post'?201:200).headers.ETag,`${method} ${route} ETag header`)
   }
