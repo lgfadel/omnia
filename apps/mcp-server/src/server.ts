@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
 import { toNodeHandler } from '@modelcontextprotocol/node'
 import { z } from 'zod/v4'
@@ -61,7 +61,11 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
     if(!capability) throw new Error('Missing request capability')
     const server=new McpServer({name:'omnia-tasks',version:'0.1.0'})
     const run=async (path:string,method:string,opts?:{body?:unknown;version?:string;idempotencyKey?:string},needsVersion=false) => {
-      try {return toolResponse(await api.resource(path,method,capability,opts),needsVersion)} catch(error) {return errorResponse(error)}
+      try {return toolResponse(await api.resource(path,method,capability,opts),needsVersion)} catch(error) {
+        const response=errorResponse(error)
+        console.warn(JSON.stringify({event:'mcp_tool_error',method,route:path.split('?')[0],...response.structuredContent.error,requestId:response.structuredContent.requestId}))
+        return response
+      }
     }
     server.registerTool('list_tasks',{description:'List visible Omnia tasks with filters and cursor pagination.',inputSchema:listSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async args=>{
       const query=new URLSearchParams()
@@ -97,8 +101,23 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
   }
 }
 
-function reject(status:number,code:string,retryAfterSeconds?:number) {
+type RejectContext = {host?:string|null;origin?:string|null;authorization?:string|null}
+// Shape of the Authorization header without its secret: enough to tell a missing, unprefixed or malformed key apart.
+function authShape(value:string|null|undefined) {
+  if(!value) return 'missing'
+  if(/^Bearer omnia_mcp_[A-Za-z0-9_-]{43}$/i.test(value)) return 'bearer-mcp-key'
+  if(/^Bearer /i.test(value)) return 'bearer-other'
+  if(/^omnia_mcp_/.test(value.trim())) return 'raw-mcp-key'
+  return 'other-scheme'
+}
+// First 12 hex chars of the stored SHA-256 digest: matches tasks_api_private.credentials.token_digest without exposing the key.
+function keyFingerprint(value:string|null|undefined) {
+  const key=/omnia_mcp_[A-Za-z0-9_-]{43}/.exec(value??'')?.[0]
+  return key ? createHash('sha256').update(key).digest('hex').slice(0,12) : null
+}
+function reject(status:number,code:string,retryAfterSeconds?:number,context?:RejectContext) {
   const requestId=randomUUID()
+  if(context) console.warn(JSON.stringify({event:'mcp_rejected',status,code,requestId,host:context.host??null,origin:context.origin??null,auth:authShape(context.authorization),key:keyFingerprint(context.authorization)}))
   return Response.json({error:{code,message:status===401?'Authentication required':code==='INVALID_ORIGIN'?'Origin is not allowed':status===429?'Request limit exceeded':'Request rejected'},requestId},{status,headers:{'Cache-Control':'no-store','X-Request-Id':requestId,...(status===401?{'WWW-Authenticate':'Bearer realm="omnia-mcp"'}:{}),...(retryAfterSeconds?{'Retry-After':String(retryAfterSeconds)}:{})}})
 }
 
@@ -109,18 +128,20 @@ export function createOmniaMcpFetchHandler(config:Config) {
     const path=new URL(req.url).pathname
     if(path!=='/mcp' && path!=='/api/mcp') return reject(404,'NOT_FOUND')
     const host=req.headers.get('host')
-    const hostname=host?.replace(/:\d+$/,'').toLowerCase()
-    if(!hostname || !config.allowedHosts.map(value=>value.toLowerCase()).includes(hostname)) return reject(403,'INVALID_HOST')
     const origin=req.headers.get('origin')
-    if(origin && !config.allowedOrigins.includes(origin)) return reject(403,'INVALID_ORIGIN')
-    const key=/^Bearer (omnia_mcp_[A-Za-z0-9_-]{43})$/i.exec(req.headers.get('authorization')??'')?.[1]
-    if(!key) return reject(401,'INVALID_AUTH')
+    const authorization=req.headers.get('authorization')
+    const context={host,origin,authorization}
+    const hostname=host?.replace(/:\d+$/,'').toLowerCase()
+    if(!hostname || !config.allowedHosts.map(value=>value.toLowerCase()).includes(hostname)) return reject(403,'INVALID_HOST',undefined,context)
+    if(origin && !config.allowedOrigins.includes(origin)) return reject(403,'INVALID_ORIGIN',undefined,context)
+    const key=/^Bearer (omnia_mcp_[A-Za-z0-9_-]{43})$/i.exec(authorization??'')?.[1]
+    if(!key) return reject(401,'INVALID_AUTH',undefined,context)
     try {
       const capability=await api.exchange(key)
       return await handler.fetch(req,{authInfo:{token:capability.token,clientId:capability.id,scopes:capability.scopes,expiresAt:Date.parse(capability.expiresAt)/1000}})
     } catch(error) {
-      if(error instanceof ApiFailure && [401,403,429].includes(error.status)) return reject(error.status,error.code,error.retryAfterSeconds)
-      return reject(503,'UPSTREAM_UNAVAILABLE')
+      if(error instanceof ApiFailure && [401,403,429].includes(error.status)) return reject(error.status,error.code,error.retryAfterSeconds,context)
+      return reject(503,'UPSTREAM_UNAVAILABLE',undefined,context)
     }
   }
 }

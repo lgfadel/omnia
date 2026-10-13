@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import { after, before, test } from 'node:test'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
@@ -406,4 +407,29 @@ test('writing a tag outside the catalog surfaces UNKNOWN_TAG as a safe, actionab
     const tool=(await client.listTools()).tools.find(item=>item.name==='create_task')
     assert.match(JSON.stringify(tool?.inputSchema),/list_task_tags/)
   } finally {await client.close()}
+})
+
+test('rejections are logged with code, host, auth shape and key fingerprint, never the key', async () => {
+  const logged:string[]=[]
+  const original=console.warn
+  console.warn=(...args:unknown[])=>{logged.push(String(args[0]))}
+  try {
+    const post=(headers:Record<string,string>,host?:string)=>new Promise<number>((resolve,reject)=>{
+      const req=httpRequest({host:'127.0.0.1',port:mcpPort,path:'/mcp',method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream',...(host?{Host:host}:{}),...headers}},res=>{res.resume();res.on('end',()=>resolve(res.statusCode??0))})
+      req.on('error',reject);req.end(JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'}))
+    })
+    assert.equal(await post({Authorization:mcpKey}),401)
+    assert.equal(await post({Authorization:`Bearer ${mcpKey}`},'evil.example'),403)
+    revoked=true
+    try {assert.equal(await post({Authorization:`Bearer ${mcpKey}`}),401)} finally {revoked=false}
+    const events=logged.map(line=>JSON.parse(line) as Record<string,unknown>).filter(event=>event.event==='mcp_rejected')
+    const fingerprint=createHash('sha256').update(mcpKey).digest('hex').slice(0,12)
+    assert.deepEqual(events.map(event=>[event.code,event.auth,event.key]),[
+      ['INVALID_AUTH','raw-mcp-key',fingerprint],
+      ['INVALID_HOST','bearer-mcp-key',fingerprint],
+      ['INVALID_CREDENTIAL','bearer-mcp-key',fingerprint],
+    ])
+    assert.equal(events[1]?.host,'evil.example')
+    assert.ok(logged.every(line=>!line.includes(mcpKey)&&!line.includes(cap)),'no secret is ever logged')
+  } finally {console.warn=original}
 })
