@@ -59,7 +59,7 @@ const routes = {
   '/api/v1/task-tags':['apps/web-next/src/app/api/v1/task-tags/route.ts',{get:['Tag',200]}],
   '/api/v1/task-assignees':['apps/web-next/src/app/api/v1/task-assignees/route.ts',{get:['UserRef',200]}],
   '/api/v1/integration-keys':['apps/web-next/src/app/api/v1/integration-keys/route.ts',{get:['Credential',200],post:['CredentialIssued',201]}],
-  '/api/v1/integration-keys/{id}':['apps/web-next/src/app/api/v1/integration-keys/[id]/route.ts',{delete:['Credential',200]}],
+  '/api/v1/integration-keys/{id}':['apps/web-next/src/app/api/v1/integration-keys/[id]/route.ts',{patch:['Credential',200],delete:['Credential',200]}],
   '/api/v1/mcp/exchange':['apps/web-next/src/app/api/v1/mcp/exchange/route.ts',{post:['CapabilityIssued',201]}],
 }
 equal(names(Object.keys(spec.paths)),names(Object.keys(routes)),'documented path set')
@@ -88,7 +88,7 @@ for (const [route,[file,operations]] of Object.entries(routes)) {
 for (const [model,source] of [
   ['Task','taskSchema'],['TaskCreate','taskCreateSchema'],['TaskPatch','taskPatchSchema'],
   ['UserRef','taskUserRefSchema'],['Status','taskStatusSchema'],['Tag','taskTagSchema'],['RecurrenceInput','taskRecurrenceInputSchema'],
-  ['Recurrence','taskRecurrenceSchema'],['Credential','credentialSchema'],['CredentialCreate','credentialCreateSchema'],
+  ['Recurrence','taskRecurrenceSchema'],['Credential','credentialSchema'],['CredentialCreate','credentialCreateSchema'],['CredentialUpdate','credentialUpdateSchema'],
   ['Comment','commentSchema'],['CommentCreate','commentCreateSchema'],['CommentUpdate','commentUpdateSchema'],
 ]) {
   equal(schemaKeys(model),sourceKeys(source),`${model} properties vs Zod source`)
@@ -121,6 +121,8 @@ equal(names(schema('CommentPage').required),['items','nextCursor'],'comment page
 equal(schema('CommentPage').properties.items.items.$ref,'#/components/schemas/Comment','comment page items')
 equal(schema('Scope').enum,[...variable('taskScopeSchema').getText(contracts).matchAll(/'([a-z]+:[a-z]+)'/g)].map(match=>match[1]),'scope enum vs Zod source')
 equal(schema('CredentialCreate').properties.scopes.maxItems,schema('Scope').enum.length,'every scope can be requested together')
+equal(schema('CredentialUpdate').properties.scopes,schema('CredentialCreate').properties.scopes,'editing accepts exactly the permissions creation accepts')
+equal(spec.paths['/api/v1/integration-keys/{id}'].patch.requestBody.content['application/json'].schema.$ref,'#/components/schemas/CredentialUpdate','permission edit body')
 yes(nullable(schema('Comment').properties.author),'comment author nullable output')
 equal(schema('Comment').properties.createdAt.format,'date-time','comment createdAt offset timestamp')
 equal(schema('CommentCreate').required,['body'],'required comment field')

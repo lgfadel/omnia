@@ -1187,6 +1187,25 @@
           "nextCursor"
         ],
         "additionalProperties": false
+      },
+      "CredentialUpdate": {
+        "type": "object",
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            },
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "scopes"
+        ],
+        "additionalProperties": false,
+        "description": "Only the permissions change. The secret, name, audience and expiry stay as issued."
       }
     }
   },
@@ -5126,6 +5145,210 @@
       }
     },
     "/api/v1/integration-keys/{id}": {
+      "patch": {
+        "tags": [
+          "Integration keys"
+        ],
+        "operationId": "updateOwnIntegrationKeyScopes",
+        "summary": "Edit the permissions of a personal key",
+        "description": "Replaces the permissions of the caller's own active key without revoking it or issuing a new secret, so clients that cannot rotate their secret keep working. Removed permissions stop working on the next request, including open MCP capability sessions; added ones apply on the next MCP exchange, which happens on every gateway request. Browser JWT only: an integration key can never edit permissions, not even its own. A revoked or foreign key returns 404.",
+        "security": [
+          {
+            "browserBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "description": "Valid UUID is echoed; otherwise the server assigns one.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Credential"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or invalid input; on Vercel, any If-Match header returns UNSUPPORTED_PRECONDITION_HEADER before dispatch or mutation. Use X-Omnia-If-Match for task updates.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or absent bearer",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Actor, audience, scope, or task permission denied",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task or credential not visible or found",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized internal error",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "Integration keys"

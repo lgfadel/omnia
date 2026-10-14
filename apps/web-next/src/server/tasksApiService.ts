@@ -1,12 +1,12 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import {
-  commentCreateSchema, commentListQuerySchema, commentSchema, commentUpdateSchema, credentialCreateSchema, credentialSchema, mcpCapabilitySchema, mcpExchangeSchema,
+  commentCreateSchema, commentListQuerySchema, commentSchema, commentUpdateSchema, credentialCreateSchema, credentialSchema, credentialUpdateSchema, mcpCapabilitySchema, mcpExchangeSchema,
   taskAssigneeQuerySchema, taskCreateSchema, taskCursorSchema, taskEtag, taskListQuerySchema,
   taskPatchSchema, taskSchema, taskStatusSchema, taskTagQuerySchema, taskTagSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
 } from '@/lib/tasksApiContracts'
 
-export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'tasks.delete'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.revoke'|'mcp.exchange'
+export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'tasks.delete'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.update'|'credentials.revoke'|'mcp.exchange'
 export type DispatchArgs = {
   p_operation:TaskOperation; p_payload:Record<string, unknown>; p_auth_user_id:string|null;
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
@@ -21,7 +21,7 @@ export type TasksApiDependencies = {
   config:()=>TasksApiConfig;
 }
 export const TASK_TOKEN_PREFIXES = {api:'omnia_api_',mcp:'omnia_mcp_',capability:'omnia_cap_'} as const
-const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','tasks.delete':'DELETE','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.revoke':'DELETE','mcp.exchange':'POST'}
+const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','tasks.delete':'DELETE','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.update':'PATCH','credentials.revoke':'DELETE','mcp.exchange':'POST'}
 const errors:Record<string,{status:number;message:string}> = {
   INVALID_OPERATION:{status:400,message:'Invalid operation'}, INVALID_AUTH:{status:401,message:'Authentication required'},
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
@@ -116,7 +116,7 @@ function output(operation:TaskOperation,data:unknown):unknown {
     case 'tags.list':return z.array(taskTagSchema).parse(data)
     case 'assignees.list':return z.array(taskUserRefSchema).parse(data)
     case 'credentials.list':return z.array(credentialSchema).parse(data)
-    case 'credentials.create':case 'credentials.revoke':return credentialSchema.parse(data)
+    case 'credentials.create':case 'credentials.update':case 'credentials.revoke':return credentialSchema.parse(data)
     case 'mcp.exchange':return mcpCapabilitySchema.parse(data)
   }
 }
@@ -182,7 +182,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         }
         else{
           parse(z.object({}).strict(),params)
-          if(operation==='tasks.get'||operation==='tasks.update'||operation==='tasks.delete'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
+          if(operation==='tasks.get'||operation==='tasks.update'||operation==='tasks.delete'||operation==='credentials.update'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
           if(operation==='tasks.create'||operation==='tasks.update'){
             idempotencyKey=idempotency(request)
             if(operation==='tasks.update'){
@@ -195,6 +195,8 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
             const fields=parse(operation==='tasks.create'?taskCreateSchema:taskPatchSchema,body)
             if(integration && Object.hasOwn(fields,'recurrence'))fail('FORBIDDEN')
             payload=operation==='tasks.create'?fields:{...payload,patch:fields}
+          }else if(operation==='credentials.update'){
+            payload={...payload,...parse(credentialUpdateSchema,await jsonBody(request))}
           }else if(operation==='credentials.create'){
             const body=parse(credentialCreateSchema,await jsonBody(request))
             rawToken=generateToken(TASK_TOKEN_PREFIXES[body.audience])

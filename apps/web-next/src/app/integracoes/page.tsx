@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, KeyRound, RotateCw, ShieldCheck, Trash2 } from 'lucide-react'
+import { Copy, KeyRound, RotateCw, ShieldCheck, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { BreadcrumbOmnia } from '@/components/ui/breadcrumb-omnia'
@@ -35,6 +35,8 @@ const lifetimeOf = (key:IntegrationCredentialDTO):KeyLifetime => {
   const days = Math.round((Date.parse(key.expiresAt) - Date.parse(key.createdAt)) / DAY_MS)
   return days === 7 || days === 30 || days === 90 ? days : 90
 }
+const scopeLabel = (scope:string) => scopeOptions.find(option => option.value === scope)?.label ?? scope
+const sameScopes = (a:readonly string[],b:readonly string[]) => a.length === b.length && a.every(scope => b.includes(scope))
 const formatDate = (value:string) => new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))
 const errorMessage = (error:unknown) => error instanceof Error ? error.message : 'Não foi possível concluir a operação.'
 
@@ -51,6 +53,8 @@ function IntegrationKeysContent() {
   const [replacementId,setReplacementId] = useState<string|null>(null)
   const [lifetime,setLifetime] = useState<KeyLifetime>(90)
   const [filter,setFilter] = useState<KeyFilter>('active')
+  const [editingId,setEditingId] = useState<string|null>(null)
+  const [editScopes,setEditScopes] = useState<IntegrationCredentialCreateDTO['scopes']>([])
   const counts = useMemo(() => ({active:keys.filter(key => !key.revokedAt).length,revoked:keys.filter(key => key.revokedAt).length}),[keys])
   const visibleKeys = useMemo(() => keys.filter(key => filter === 'revoked' ? !!key.revokedAt : !key.revokedAt),[keys,filter])
 
@@ -90,6 +94,18 @@ function IntegrationKeysContent() {
     catch (cause) { setError(errorMessage(cause)) }
     finally { setBusy(false) }
   }
+  const startEdit = (key:IntegrationCredentialDTO) => { setEditingId(key.id);setEditScopes(key.scopes);setError(null) }
+  const toggleEditScope = (scope:IntegrationCredentialCreateDTO['scopes'][number],checked:boolean) => {
+    setEditScopes(current => checked ? [...new Set([...current,scope])] : current.filter(value => value !== scope))
+  }
+  // Same secret, same expiry: clients that cannot rotate their key keep working with the new permissions.
+  const saveScopes = async (key:IntegrationCredentialDTO) => {
+    if (editScopes.length === 0 || sameScopes(editScopes,key.scopes)) return
+    setBusy(true);setError(null)
+    try { await integrationKeysRepo.updateScopes(key.id,{scopes:editScopes}); setEditingId(null); await load(); toast({title:'Permissões atualizadas',description:'A chave continua a mesma; não é preciso trocá-la na integração.'}) }
+    catch (cause) { setError(errorMessage(cause)) }
+    finally { setBusy(false) }
+  }
   const replace = (key:IntegrationCredentialDTO) => {
     setReplacementId(key.id);setName(`${key.name} — nova`);setAudience(key.audience);setScopes(key.scopes);setLifetime(lifetimeOf(key))
     document.getElementById('integration-key-name')?.focus()
@@ -121,7 +137,7 @@ function IntegrationKeysContent() {
         <fieldset className="space-y-2"><legend className="text-sm font-medium">Validade da chave</legend><div className="flex flex-wrap gap-5 text-sm">
           {lifetimeOptions.map(option=><label key={option.value} className="flex items-center gap-2"><input type="radio" name="lifetime" checked={lifetime===option.value} onChange={()=>setLifetime(option.value)} /> {option.label}</label>)}
         </div>{lifetime==='never' && <p className="text-xs text-muted-foreground">Uma chave sem prazo só deixa de funcionar quando for revogada. Guarde-a com cuidado e revogue-a quando não precisar mais dela.</p>}</fieldset>
-        {replacementId && <p className="text-sm text-muted-foreground">Após criar a nova chave, a chave anterior será revogada.</p>}
+        {replacementId && <p className="text-sm text-muted-foreground">Após criar a nova chave, a chave anterior será revogada e deixará de funcionar na hora. Para só mudar as permissões, cancele e use “Permissões” na chave.</p>}
         <Button type="submit" disabled={busy || !!issued || scopes.length===0}>{busy?'Criando...':replacementId?'Criar substituta':'Criar chave'}</Button>
       </form>
     </section>
@@ -142,10 +158,15 @@ function IntegrationKeysContent() {
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {loading ? <p className="text-sm text-muted-foreground">Carregando chaves...</p> : keys.length===0 ? <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">Nenhuma chave criada. Escolha o tipo de acesso e as permissões acima para começar.</p> :
         visibleKeys.length===0 ? <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">{filter==='active'?'Nenhuma chave ativa. Crie uma nova acima ou veja as revogadas no filtro.':'Nenhuma chave revogada.'}</p> :
-        <ul className="divide-y rounded-lg border">{visibleKeys.map(key=><li key={key.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <ul className="divide-y rounded-lg border">{visibleKeys.map(key=><li key={key.id} className={`flex flex-col gap-3 p-4 sm:flex-row sm:justify-between ${editingId===key.id?'sm:items-start':'sm:items-center'}`}>
           <div className="min-w-0 space-y-1"><div className="flex flex-wrap items-center gap-2"><span className="font-medium">{key.name}</span><Badge variant="outline">{key.audience.toUpperCase()}</Badge><Badge variant={key.revokedAt?'destructive':'secondary'}>{key.revokedAt?'Revogada':key.expiresAt && new Date(key.expiresAt)<new Date()?'Expirada':'Ativa'}</Badge></div>
-            <p className="text-xs text-muted-foreground">{key.scopes.join(' · ')} · {key.expiresAt?`Expira em ${formatDate(key.expiresAt)}`:'Sem prazo de expiração'}{key.lastUsedAt?` · Último uso ${formatDate(key.lastUsedAt)}`:''}</p></div>
-          {!key.revokedAt && <div className="flex shrink-0 gap-2"><Button type="button" size="sm" variant="outline" disabled={busy || !!issued} onClick={()=>replace(key)}><RotateCw className="mr-1 h-4 w-4" />Substituir</Button><Button type="button" size="sm" variant="ghost" disabled={busy} onClick={()=>revoke(key)}><Trash2 className="mr-1 h-4 w-4" />Revogar</Button></div>}
+            <p className="text-xs text-muted-foreground">{key.scopes.map(scopeLabel).join(' · ')} · {key.expiresAt?`Expira em ${formatDate(key.expiresAt)}`:'Sem prazo de expiração'}{key.lastUsedAt?` · Último uso ${formatDate(key.lastUsedAt)}`:''}</p>
+            {editingId===key.id && <fieldset className="mt-3 space-y-3 rounded-md border bg-muted/40 p-3"><legend className="sr-only">Permissões da chave {key.name}</legend>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">{scopeOptions.map(option=><label key={option.value} className="flex items-center gap-2 text-sm"><Checkbox checked={editScopes.includes(option.value)} onCheckedChange={checked=>toggleEditScope(option.value,checked===true)} />{option.label}</label>)}</div>
+              <p className="text-xs text-muted-foreground">A chave continua a mesma. Permissões removidas param de valer na próxima chamada.</p>
+              <div className="flex gap-2"><Button type="button" size="sm" disabled={busy || editScopes.length===0 || sameScopes(editScopes,key.scopes)} onClick={()=>saveScopes(key)}>{busy?'Salvando...':'Salvar permissões'}</Button><Button type="button" size="sm" variant="ghost" disabled={busy} onClick={()=>setEditingId(null)}>Cancelar</Button></div>
+            </fieldset>}</div>
+          {!key.revokedAt && <div className="flex shrink-0 gap-2"><Button type="button" size="sm" variant="outline" disabled={busy || editingId===key.id} onClick={()=>startEdit(key)}><SlidersHorizontal className="mr-1 h-4 w-4" />Permissões</Button><Button type="button" size="sm" variant="outline" disabled={busy || !!issued} onClick={()=>replace(key)}><RotateCw className="mr-1 h-4 w-4" />Substituir</Button><Button type="button" size="sm" variant="ghost" disabled={busy} onClick={()=>revoke(key)}><Trash2 className="mr-1 h-4 w-4" />Revogar</Button></div>}
         </li>)}</ul>}
       <p className="text-xs text-muted-foreground">Para conectar um cliente, use a configuração fornecida pelo administrador da sua organização.</p>
     </section>

@@ -53,12 +53,15 @@ export const taskListQuerySchema = z.object({
 }).strict().refine(value => !value.dueDateFrom || !value.dueDateTo || value.dueDateFrom <= value.dueDateTo, 'Invalid date range')
 export const taskTagQuerySchema = z.object({query:z.string().max(500).optional()}).strict()
 export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optional(),limit:queryLimit.optional().default('50')}).strict()
+const credentialScopesSchema = z.array(taskScopeSchema).min(1).max(5).refine(value => new Set(value).size === value.length)
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
-  scopes:z.array(taskScopeSchema).min(1).max(5).refine(value => new Set(value).size === value.length),
+  scopes:credentialScopesSchema,
   // Omitted keeps the 90-day default; an explicit null creates a key that never expires.
   expiresAt:taskTimestampSchema.nullable().optional(),
 }).strict()
+// Only the permissions of an active key can change; its secret, name, audience and expiry stay as issued.
+export const credentialUpdateSchema = z.object({scopes:credentialScopesSchema}).strict()
 const commentBody = z.string().trim().min(1).max(10000)
 export const commentCreateSchema = z.object({body:commentBody}).strict()
 export const commentUpdateSchema = z.object({body:commentBody}).strict()
@@ -93,6 +96,7 @@ export type TaskStatusDTO = z.infer<typeof taskStatusSchema>
 export type TaskTagDTO = z.infer<typeof taskTagSchema>
 export type IntegrationCredentialDTO = z.infer<typeof credentialSchema>
 export type IntegrationCredentialCreateDTO = z.infer<typeof credentialCreateSchema>
+export type IntegrationCredentialUpdateDTO = z.infer<typeof credentialUpdateSchema>
 export type McpCapabilityDTO = z.infer<typeof mcpCapabilitySchema>
 export type TasksApiSuccess<T> = {data:T;requestId:string}
 export type TasksApiFailure = {error:{code:string;message:string};requestId:string}
