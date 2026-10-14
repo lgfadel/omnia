@@ -99,6 +99,7 @@ async function clientFor(key=mcpKey,modern=false) {
 test('official client negotiates, lists twelve tools, and exchanges on initialize and list', async () => {
   const client = await clientFor(mcpKey,true)
   try {
+    assert.deepEqual(client.getServerVersion(),{name:'omnia-mcp',version:'0.2.0'})
     const tools=(await client.listTools()).tools
     assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_task','update_task_comment'])
     const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations

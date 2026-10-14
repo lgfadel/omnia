@@ -59,7 +59,7 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
   return ({authInfo}:{authInfo?:{token:string}}) => {
     const capability=authInfo?.token
     if(!capability) throw new Error('Missing request capability')
-    const server=new McpServer({name:'omnia-tasks',version:'0.1.0'})
+    const server=new McpServer({name:'omnia-mcp',version:'0.2.0'})
     const run=async (path:string,method:string,opts?:{body?:unknown;version?:string;idempotencyKey?:string},needsVersion=false) => {
       try {return toolResponse(await api.resource(path,method,capability,opts),needsVersion)} catch(error) {
         const response=errorResponse(error)
