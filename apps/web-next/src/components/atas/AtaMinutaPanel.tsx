@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowRight, Check, ChevronDown, Download, Eye, FileDown, FileText, History, Loader2, MessageSquare, Pencil, RefreshCcw, Sparkles, TriangleAlert } from 'lucide-react'
 import { AtaMinutaChat } from './AtaMinutaChat'
+import { AtaMinutaConvocacao } from './AtaMinutaConvocacao'
 import { AtaMinutaDocuments } from './AtaMinutaDocuments'
 import { AtaMinutaViewer } from './AtaMinutaViewer'
 import { AtaMinutaVersions } from './AtaMinutaVersions'
@@ -35,6 +36,7 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
   const [error, setError] = useState<string | null>(null)
   const [hasReviewedTranscription, setHasReviewedTranscription] = useState<boolean | null>(null)
   const [hasTranscription, setHasTranscription] = useState<boolean | null>(null)
+  const [convocacaoText, setConvocacaoText] = useState<string | undefined>()
   const [initialInstructions, setInitialInstructions] = useState<string | undefined>()
   const [isDocumentBusy, setIsDocumentBusy] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
@@ -55,6 +57,7 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
       setDocuments(minutaData.documents)
       setDraftContent(minutaData.minuta?.content ?? '')
       setHasTranscription(Boolean(transcriptionData.transcription))
+      setConvocacaoText(transcriptionData.job?.convocacaoText)
       setHasReviewedTranscription(Boolean(transcriptionData.transcription?.isReviewed))
       setError(null)
     } catch {
@@ -155,9 +158,12 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
   const showPreparation = !hasContent && !isGenerating
   const canSendChat = Boolean(minuta?.status === 'ready' && !isBusy && mode === 'view')
   const documentUploader = (
-    <AtaMinutaDocuments documents={documents} disabled={isGenerating || isSaving || mode === 'edit'} onBusyChange={setIsDocumentBusy}
-      onUpload={async (file, kind) => { const document = await ataMinutasRepoSupabase.uploadDocument(ataId, file, kind); setDocuments((current) => [document, ...current]) }}
-      onDelete={async (documentId) => { await ataMinutasRepoSupabase.deleteDocument(ataId, documentId); setDocuments((current) => current.filter((document) => document.id !== documentId)) }} />
+    <div className="space-y-4">
+      <AtaMinutaConvocacao text={convocacaoText} />
+      <AtaMinutaDocuments documents={documents} disabled={isGenerating || isSaving || mode === 'edit'} onBusyChange={setIsDocumentBusy}
+        onUpload={async (file, kind) => { const document = await ataMinutasRepoSupabase.uploadDocument(ataId, file, kind); setDocuments((current) => [document, ...current]) }}
+        onDelete={async (documentId) => { await ataMinutasRepoSupabase.deleteDocument(ataId, documentId); setDocuments((current) => current.filter((document) => document.id !== documentId)) }} />
+    </div>
   )
 
   return (

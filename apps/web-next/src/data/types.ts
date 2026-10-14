@@ -77,6 +77,8 @@ export interface AtaTranscriptionJob {
   stage?: AtaTranscriptionStage;
   /** Último sinal de vida do worker enquanto processa. */
   heartbeatAt?: string;
+  /** Texto da convocação lido junto da gravação; a minuta o reaproveita. */
+  convocacaoText?: string;
 }
 
 export interface AtaTranscription {

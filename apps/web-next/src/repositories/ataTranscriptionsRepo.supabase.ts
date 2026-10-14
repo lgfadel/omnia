@@ -52,6 +52,7 @@ type DbJob = {
   processed_chunks: number | null
   stage: AtaTranscriptionStage | null
   heartbeat_at: string | null
+  context_text: string | null
 }
 
 type DbTranscription = {
@@ -83,6 +84,7 @@ function mapJob(job: DbJob): AtaTranscriptionJob {
     processedChunks: job.processed_chunks ?? 0,
     stage: job.stage ?? undefined,
     heartbeatAt: job.heartbeat_at ?? undefined,
+    convocacaoText: job.context_text ?? undefined,
   }
 }
 
@@ -101,7 +103,7 @@ export const ataTranscriptionsRepoSupabase = {
   async load(ataId: string): Promise<{ job: AtaTranscriptionJob | null; transcription: AtaTranscription | null }> {
     const { data: job, error: jobError } = await untypedSupabase
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, status, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage, heartbeat_at')
+      .select('id, ata_id, status, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage, heartbeat_at, context_text')
       .eq('ata_id', ataId)
       .eq('is_current', true)
       .maybeSingle()

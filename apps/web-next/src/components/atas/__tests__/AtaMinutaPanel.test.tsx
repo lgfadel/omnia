@@ -10,6 +10,15 @@ vi.mock('@/repositories/ataMinutasRepo.supabase', () => ({ ataMinutasRepoSupabas
 vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({ ataTranscriptionsRepoSupabase: transcription }))
 vi.mock('@/lib/ataMinutaDocx', () => ({ buildMinutaDocxBlob: vi.fn(), downloadBlob: vi.fn() }))
 
+const CONVOCACAO_AGO = `A ASSOCIAÇÃO RECREATIVA ÁGUA DA PRATA, localizada na Rod. Alvaro Luiz, Km 26, está CONVOCANDO
+todos os associados para a ASSEMBLEIA GERAL ORDINÁRIA que será realizada no dia 08/10/2026, nas dependências
+do Salão do Campo Suíço do Neno, para deliberação dos seguintes assuntos em Pauta:
+1) PRESTAÇÃO DE CONTAS DA GESTÃO NOVEMBRO/2025 A SETEMBRO/2026;
+2) ELEIÇÃO DA NOVA DIRETORIA EXECUTIVA E CONSELHO FISCAL;
+Londrina, 28 de setembro de 2026.
+Claudio Alves Ferreira
+Presidente`
+
 const empty = { minuta: null, versions: [], messages: [], documents: [] }
 
 describe('AtaMinutaPanel preparation', () => {
@@ -87,5 +96,26 @@ describe('AtaMinutaPanel preparation', () => {
     fireEvent.change(field, { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Tentar gerar novamente' }))
     await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', '', expect.any(Function)))
+  })
+  it('shows the convocação already read during the transcription, so it need not be uploaded again', async () => {
+    transcription.load.mockResolvedValue({
+      transcription: { isReviewed: true },
+      job: { id: 'job-1', convocacaoText: CONVOCACAO_AGO },
+    })
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    expect(await screen.findByText('Convocação lida na transcrição')).toBeInTheDocument()
+    expect(screen.getByText(/ASSOCIAÇÃO RECREATIVA ÁGUA DA PRATA/)).toBeInTheDocument()
+    expect(screen.getByText(/08\/10\/2026/)).toBeInTheDocument()
+    expect(screen.getByText('2 itens de pauta')).toBeInTheDocument()
+    expect(screen.getByText(/não precisa enviar de novo/i)).toBeInTheDocument()
+  })
+
+  it('does not claim a convocação when the transcription had none', async () => {
+    transcription.load.mockResolvedValue({ transcription: { isReviewed: true }, job: { id: 'job-1' } })
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    await screen.findByRole('button', { name: 'Gerar primeira minuta' })
+    expect(screen.queryByText('Convocação lida na transcrição')).not.toBeInTheDocument()
   })
 })
