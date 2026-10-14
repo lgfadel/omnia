@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { saveMinutaManualEdit, streamMinutaTurn } from '@/server/ataMinutaService'
 
 export const runtime = 'nodejs'
 // Teto do plano Hobby da Vercel para este projeto — 300 é o máximo aceito, não uma
-// escolha de conforto. Uma geração que ultrapassa isso é interrompida como qualquer
-// desconexão de cliente: o texto parcial fica salvo e "Continuar"/"Gerar de novo"
-// retomam sem perda (ver streamMinutaTurn).
+// escolha de conforto. Uma geração que ultrapassa isso é interrompida: o texto
+// parcial fica salvo e "Continuar"/"Gerar de novo" retomam sem perda (ver
+// streamMinutaTurn).
 export const maxDuration = 300
 
 export async function POST(request: Request, context: { params: Promise<{ ataId: string }> }) {
@@ -26,32 +26,43 @@ export async function POST(request: Request, context: { params: Promise<{ ataId:
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Não foi possível gerar a minuta.' }, { status: 400 })
   }
 
+  // A geração é uma tarefa da minuta, não da conexão: fechar a aba, trocar de
+  // tela ou perder o wifi só tira o espectador. Quem a conduz até o fim é esta
+  // tarefa, mantida viva por after() mesmo depois que a resposta termina; a
+  // tela reencontra o resultado ao recarregar (a minuta fica "generating" e
+  // depois "ready"). Cancelar o gerador aqui foi o que fazia uma ação inocente
+  // do usuário virar "A conexão foi perdida".
   const encoder = new TextEncoder()
+  let clientGone = false
   const stream = new ReadableStream({
-    async start(controller) {
-      const write = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
-      try {
-        let step = first
-        while (!step.done) {
-          write(step.value)
-          step = await events.next()
-        }
-      } catch (error) {
+    start(controller) {
+      const write = (event: unknown) => {
+        if (clientGone) return
         try {
-          write({ type: 'error', message: error instanceof Error ? error.message : 'Não foi possível gerar a minuta.' })
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
         } catch {
-          // O cliente já desconectou; não há para quem escrever.
+          clientGone = true
         }
-      } finally {
-        controller.close()
       }
+      const generation = (async () => {
+        try {
+          let step = first
+          while (!step.done) {
+            write(step.value)
+            step = await events.next()
+          }
+        } catch (error) {
+          write({ type: 'error', message: error instanceof Error ? error.message : 'Não foi possível gerar a minuta.' })
+        } finally {
+          if (!clientGone) {
+            try { controller.close() } catch { /* o cliente saiu entre a checagem e o fechamento */ }
+          }
+        }
+      })()
+      after(generation)
     },
-    // Aba fechada ou conexão perdida cancela o stream sem passar pelo catch acima. Sem
-    // isso, o gerador fica suspenso para sempre segurando a conexão aberta com a OpenAI
-    // — o cleanup de verdade (liberar o reader, marcar a minuta como falha) está no
-    // finally de streamMinutaTurn, disparado por este return().
-    async cancel() {
-      await events.return(undefined).catch(() => {})
+    cancel() {
+      clientGone = true
     },
   })
 

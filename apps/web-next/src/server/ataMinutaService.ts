@@ -19,6 +19,11 @@ const FLUSH_INTERVAL_MS = 2000
 // no spec. É maior que o intervalo de flush para não confundir uma pausa entre blocos
 // SSE com uma interrupção real.
 const GENERATION_STALE_MS = 90_000
+// Sem deltas — o modelo "pensa" antes do primeiro trecho —, o updated_at não
+// anda. O sinal de vida mantém a geração viva para quem a vê de outra aba e
+// impede que a janela de GENERATION_STALE_MS autorize uma segunda geração.
+const GENERATION_HEARTBEAT_MS = 30_000
+const GENERATION_IN_PROGRESS_MESSAGE = 'Uma geração já está em andamento para esta minuta.'
 
 type AuthenticatedUser = { authUserId: string; omniaUserId: string; roles: string[] }
 export type MinutaDocumentKind = 'convocacao' | 'apuracao' | 'outro'
@@ -392,13 +397,20 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
 
   const { data: minuta, error } = await client
     .from('omnia_ata_minutas')
-    .select('id')
+    .select('id, status, updated_at')
     .eq('ata_id', ataId)
     .eq('is_current', true)
     .maybeSingle()
   if (error || !minuta) throw new Error('Nenhuma minuta para editar.')
 
-  const minutaId = (minuta as { id: string }).id
+  // A geração reescreve o conteúdo até o fim; uma edição salva agora seria
+  // sobrescrita sem aviso. A tela já bloqueia isso na própria aba, mas outra
+  // aba ou outra pessoa chega aqui sem passar por ela.
+  const { id: minutaId, status, updated_at: updatedAt } = minuta as { id: string; status: string; updated_at: string }
+  if (status === 'generating' && Date.now() - new Date(updatedAt).getTime() < GENERATION_STALE_MS) {
+    throw new Error('A minuta está sendo gerada. Aguarde terminar para editar.')
+  }
+
   await insertMinutaVersion(client, minutaId, content, 'manual', user.omniaUserId)
   const { error: updateError } = await client.from('omnia_ata_minutas').update({ content }).eq('id', minutaId)
   if (updateError) throw new Error(updateError.message)
@@ -437,6 +449,26 @@ async function downloadDocumentsAsBase64(client: SupabaseClient, ataId: string) 
 // Um turno por vez: sem instrução é geração (do zero, supera a minuta atual).
 // Instruções sem minuta escrita orientam a geração inicial; com texto existente,
 // refinam a minuta atual salva no banco, respeitando também as edições manuais.
+// Duas requisições podem ler a mesma minuta antes de qualquer uma gravar. Quem
+// assume a vez é quem ainda enxerga o updated_at que leu: o gatilho do banco
+// o renova a cada escrita, então a segunda requisição não encontra a linha e
+// recebe "já em andamento" em vez de gerar em cima da primeira.
+async function claimMinuta(
+  client: SupabaseClient,
+  minuta: { id: string; updated_at: string },
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const { data, error } = await client
+    .from('omnia_ata_minutas')
+    .update(patch)
+    .eq('id', minuta.id)
+    .eq('updated_at', minuta.updated_at)
+    .select('id')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
+}
+
 export async function* streamMinutaTurn(
   authHeader: string | null,
   ataId: string,
@@ -485,7 +517,7 @@ export async function* streamMinutaTurn(
   const hasCurrentContent = Boolean(currentMinuta?.content.trim())
   const isRefinement = Boolean(turnInstruction && hasCurrentContent)
   if (currentMinuta?.status === 'generating' && Date.now() - new Date(currentMinuta.updated_at).getTime() < GENERATION_STALE_MS) {
-    throw new Error('Uma geração já está em andamento para esta minuta.')
+    throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
   }
   // Refazer uma geração interrompida mantém as orientações já fornecidas. Uma
   // string vazia explícita permite apagar essas orientações antes de tentar de novo.
@@ -529,10 +561,10 @@ export async function* streamMinutaTurn(
       instruction: turnInstruction,
     })
 
-    await client.from('omnia_ata_minutas').update({ status: 'generating', error_message: null }).eq('id', minutaId)
+    await claimMinuta(client, currentMinuta, { status: 'generating', error_message: null })
     await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
   } else {
-    if (currentMinuta) await client.from('omnia_ata_minutas').update({ is_current: false }).eq('id', currentMinuta.id)
+    if (currentMinuta) await claimMinuta(client, currentMinuta, { is_current: false })
     const { data: created, error: createError } = await client
       .from('omnia_ata_minutas')
       .insert({
@@ -544,7 +576,14 @@ export async function* streamMinutaTurn(
       })
       .select('id')
       .single()
-    if (createError || !created) throw new Error(createError?.message ?? 'Não foi possível iniciar a minuta.')
+    if (createError || !created) {
+      // 23505: o índice de uma minuta corrente por ata barrou uma geração que
+      // começou no mesmo instante. Qualquer outra falha devolve a minuta
+      // anterior ao estado de corrente, para a ata não ficar sem minuta.
+      if (createError?.code === '23505') throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
+      if (currentMinuta) await client.from('omnia_ata_minutas').update({ is_current: true }).eq('id', currentMinuta.id)
+      throw new Error(createError?.message ?? 'Não foi possível iniciar a minuta.')
+    }
     minutaId = (created as { id: string }).id
     input = buildMinutaResponsesInput(settingsRow.system_prompt, { ...baseContext, instruction: turnInstruction })
     if (turnInstruction) await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
@@ -557,6 +596,12 @@ export async function* streamMinutaTurn(
   // sempre segurando uma conexão aberta com a OpenAI.
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
   let settled = false
+  const heartbeat = setInterval(() => {
+    // error_message não tem efeito algum durante a geração; escrevê-lo só
+    // renova o updated_at sem disparar os gatilhos de status.
+    void client.from('omnia_ata_minutas').update({ error_message: null }).eq('id', minutaId).eq('status', 'generating')
+      .then(() => undefined, () => undefined)
+  }, GENERATION_HEARTBEAT_MS)
 
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -633,6 +678,7 @@ export async function* streamMinutaTurn(
     settled = true
     yield { type: 'error', message }
   } finally {
+    clearInterval(heartbeat)
     reader?.releaseLock()
     if (!settled) {
       await client

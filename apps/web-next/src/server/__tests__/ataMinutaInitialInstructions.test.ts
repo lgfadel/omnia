@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ResponsesInputMessage } from '@/lib/ataMinuta'
-import { streamMinutaTurn } from '../ataMinutaService'
+import { saveMinutaManualEdit, streamMinutaTurn } from '../ataMinutaService'
 import { POST } from '@/app/api/atas/[ataId]/minuta/route'
+
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (task: Promise<unknown> | (() => unknown)) => { void Promise.resolve(typeof task === 'function' ? task() : task) },
+}))
 
 type Row = Record<string, unknown>
 
@@ -16,6 +21,8 @@ let tables: Record<string, Row[]>
 let providerInputs: ResponsesInputMessage[][]
 let providerText: string
 let providerFailure: boolean
+// Quando definido, o provedor entrega o primeiro trecho e só conclui depois dele.
+let providerGate: Promise<void> | null
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
@@ -26,11 +33,21 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promi
   if (url.hostname === 'api.openai.com') {
     providerInputs.push(JSON.parse(init?.body as string).input)
     if (providerFailure) return new Response('Serviço indisponível', { status: 503 })
-    const sse = [
-      { type: 'response.output_text.delta', delta: providerText },
-      { type: 'response.completed', response: { usage: { input_tokens: 10, output_tokens: 5 } } },
-    ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
-    return new Response(sse, { headers: { 'Content-Type': 'text/event-stream' } })
+    const frame = (event: unknown) => `data: ${JSON.stringify(event)}\n\n`
+    const delta = frame({ type: 'response.output_text.delta', delta: providerText })
+    const completed = frame({ type: 'response.completed', response: { usage: { input_tokens: 10, output_tokens: 5 } } })
+    if (!providerGate) return new Response(delta + completed, { headers: { 'Content-Type': 'text/event-stream' } })
+    const gate = providerGate
+    const encoder = new TextEncoder()
+    const body = new ReadableStream({
+      async start(controller) {
+        controller.enqueue(encoder.encode(delta))
+        await gate
+        controller.enqueue(encoder.encode(completed))
+        controller.close()
+      },
+    })
+    return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })
   }
   if (url.pathname === '/auth/v1/user') return json(user)
   if (url.hostname !== 'supabase.test' || !url.pathname.startsWith('/rest/v1/')) {
@@ -45,6 +62,10 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promi
     !value.startsWith('eq.') || String(row[key]) === value.slice(3)
   )))
   if (method === 'POST') {
+    const body = JSON.parse(init?.body as string)
+    if (table === 'omnia_ata_minutas' && body.is_current !== false && records.some((row) => row.ata_id === body.ata_id && row.is_current)) {
+      return json({ code: '23505', message: 'duplicate key value violates unique constraint "omnia_ata_minutas_one_current_per_ata"' }, 409)
+    }
     const inserted: Row = {
       id: `${table}-${records.length + 1}`,
       ...(table === 'omnia_ata_minutas' ? { content: '', is_current: true, updated_at: new Date().toISOString() } : {}),
@@ -100,6 +121,7 @@ describe('minuta initial instructions', () => {
     providerInputs = []
     providerText = '## Contas\nAprovadas por unanimidade.'
     providerFailure = false
+    providerGate = null
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://supabase.test')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key')
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key')
@@ -259,5 +281,75 @@ describe('minuta initial instructions', () => {
     await expect(turn('Orientação inicial.')).rejects.toThrow('Esta ata ainda não tem uma transcrição para gerar a minuta.')
     expect(tables.omnia_ata_minutas).toHaveLength(0)
     expect(providerInputs).toHaveLength(0)
+  })
+  const ready = (overrides: Row = {}): Row => ({
+    id: 'ready-1', ata_id: 'ata-1', content: '## Contas\nTexto pronto.', is_current: true, status: 'ready',
+    updated_at: new Date(Date.now() - 60_000).toISOString(), ...overrides,
+  })
+
+  it('lets only one of two simultaneous chat refinements of the same draft run', async () => {
+    tables.omnia_ata_minutas.push(ready())
+
+    const results = await Promise.allSettled([turn('Deixe mais formal.'), turn('Resuma os votos.')])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+    expect(rejected?.reason).toMatchObject({ message: 'Uma geração já está em andamento para esta minuta.' })
+    expect(providerInputs).toHaveLength(1)
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+    expect(currentMinuta()).toMatchObject({ id: 'ready-1', status: 'ready' })
+  })
+
+  it('lets only one of two simultaneous regenerations of a completed draft run, keeping it current', async () => {
+    tables.omnia_ata_minutas.push(ready())
+
+    const results = await Promise.allSettled([turn(), turn()])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { message: 'Uma geração já está em andamento para esta minuta.' } })
+    expect(tables.omnia_ata_minutas.filter((row) => row.is_current)).toHaveLength(1)
+    expect(providerInputs).toHaveLength(1)
+  })
+
+  it('lets only one of two simultaneous first generations run, with a clear message for the other', async () => {
+    const results = await Promise.allSettled([turn(), turn()])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { message: 'Uma geração já está em andamento para esta minuta.' } })
+    expect(tables.omnia_ata_minutas).toHaveLength(1)
+    expect(currentMinuta()).toMatchObject({ status: 'ready' })
+  })
+
+  it('keeps generating when the user closes the tab mid-stream, instead of failing the draft', async () => {
+    let finishProvider!: () => void
+    providerGate = new Promise<void>((resolve) => { finishProvider = resolve })
+    const response = await POST(new Request('http://localhost/api/atas/ata-1/minuta', {
+      method: 'POST', headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+    }), { params: Promise.resolve({ ataId: 'ata-1' }) })
+    const reader = response.body!.getReader()
+    await reader.read()
+
+    await reader.cancel()
+    expect(currentMinuta()).toMatchObject({ status: 'generating' })
+    finishProvider()
+
+    await vi.waitFor(() => expect(currentMinuta()).toMatchObject({ status: 'ready', content: '## Contas\nAprovadas por unanimidade.' }))
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+  })
+  it('refuses a manual edit while a generation is writing to the same draft', async () => {
+    tables.omnia_ata_minutas.push(ready({ status: 'generating', updated_at: new Date().toISOString() }))
+
+    await expect(saveMinutaManualEdit('Bearer test-token', 'ata-1', 'Edição em outra aba.')).rejects.toThrow('A minuta está sendo gerada. Aguarde terminar para editar.')
+    expect(currentMinuta()!.content).toBe('## Contas\nTexto pronto.')
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(0)
+  })
+
+  it('still accepts a manual edit once the generation has finished', async () => {
+    tables.omnia_ata_minutas.push(ready())
+
+    await saveMinutaManualEdit('Bearer test-token', 'ata-1', 'Texto revisado à mão.')
+
+    expect(currentMinuta()!.content).toBe('Texto revisado à mão.')
+    expect(tables.omnia_ata_minuta_versions).toEqual([expect.objectContaining({ origin: 'manual' })])
   })
 })
