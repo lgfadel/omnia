@@ -79,9 +79,27 @@ function findCondominio(text: string): string | undefined {
   const prefixed = /\b(?:CONDOM[ÍI]NIO|EDIF[ÍI]CIO|RESIDENCIAL)\s+([A-ZÀ-Ú0-9][A-ZÀ-Ú0-9\s.'-]{3,60})/.exec(text)
   if (prefixed) return `${prefixed[0].split(/\s+/)[0]} ${prefixed[1].trim()}`.replace(/\s+/g, ' ')
   // Sem prefixo nenhum ("Florais Eco Resort e Residence"), o nome ainda
-  // costuma se apresentar assim: "o <nome>, localizado na Rua...".
-  const intro = /\bo\s+([A-ZÀ-Ú][A-ZÀ-Ú0-9À-Ú\s.,'-]{3,70}?),?\s+(?:localizad[oa]|situad[oa])\b/.exec(text)
+  // costuma se apresentar assim: "o <nome>, localizado na Rua..." — ou "A
+  // ASSOCIAÇÃO ..., localizada", que abre a frase com maiúscula. O artigo não
+  // pode vir colado em outra letra: o \b do JS é ASCII e tomaria o "O" final de
+  // "CONVOCAÇÃO" por artigo.
+  const intro = /(?<![\wÀ-ú])[oOaA]\s+([A-ZÀ-Ú][A-ZÀ-Ú0-9À-Ú\s.,'-]{3,70}?),?\s+(?:localizad[oa]|situad[oa])\b/.exec(text)
   return intro ? intro[1].trim().replace(/[.,;]+$/, '').replace(/\s+/g, ' ') : undefined
+}
+
+// Em condomínio quem convoca é o síndico; em associação, o presidente. O
+// síndico vence quando os dois aparecem, e o presidente só entra como
+// alternativa: a pauta também cita "PRESIDENTE, VICE PRESIDENTE" ao eleger a
+// diretoria, e isso não é um nome — NAME_SHAPE já o recusa.
+function findConvocante(text: string): string | undefined {
+  const sindico = ['s[íi]ndic[oa] geral', 's[íi]ndic[oa]']
+  const presidente = ['presidente']
+  return (
+    findLabeledName(text, sindico) ??
+    findNameBeforeLabel(text, sindico) ??
+    findLabeledName(text, presidente) ??
+    findNameBeforeLabel(text, presidente)
+  )
 }
 
 function findData(text: string): string | undefined {
@@ -93,9 +111,16 @@ function findData(text: string): string | undefined {
 
 // A pauta é o vocabulário daquela assembleia: "reforma da fachada", "rateio do
 // elevador social". É o que o modelo mais erra e o que a convocação mais ajuda.
+// Um item de pauta é uma frase, não um parágrafo: este teto só existe para que
+// uma pauta sem pontuação nenhuma não engula o resto do documento.
+const MAX_ITEM_CHARS = 300
+
+const NUMBERED_MARKER = /^\s*(\d{1,2})[).º°-]\s*(.{1,120})$/
+const LETTERED_MARKER = /^\s*[a-z]\)\s*(.{1,120})$/i
+const BULLET_MARKER = /^\s*[-•]\s*(.{1,120})$/
+
 function findPautaItems(text: string): string[] {
   const items: string[] = []
-  const numberedMarker = /^\s*(?:[a-z]\)|\d{1,2}[).º°-])\s*(.{1,120})$/i
   const start = /ordem\s+do\s+dia|pauta/i.exec(text)
   const scope = start ? text.slice(start.index) : text
   const lines = scope.split('\n')
@@ -104,23 +129,35 @@ function findPautaItems(text: string): string[] {
   // pauta já é numerada, um "-" é sub-detalhe do item anterior (a convocação
   // da Florais usa isso para explicar o item 1, não para listar um item 2) e
   // contá-lo como item duplicaria a pauta.
-  const usesNumbering = lines.some((line) => numberedMarker.test(line))
-  const markerLine = usesNumbering
-    ? numberedMarker
-    : /^\s*(?:[a-z]\)|\d{1,2}[).º°-]|[-•])\s*(.{1,120})$/i
+  const usesNumbering = lines.some((line) => LETTERED_MARKER.test(line) || NUMBERED_MARKER.test(line))
 
+  // Um número só abre item quando é o próximo da sequência. O PDF quebra a
+  // frase onde quiser, e "1º SECRETÁRIO, 2º SECRETÁRIO..." pode cair no início
+  // de uma linha dentro do item 2: sem essa checagem, a continuação virava um
+  // item novo e o item 2 ficava cortado no meio.
+  function markerText(line: string, expectedNumber: number): string | undefined {
+    const lettered = LETTERED_MARKER.exec(line)
+    if (lettered) return lettered[1]
+    const numbered = NUMBERED_MARKER.exec(line)
+    if (numbered) return Number(numbered[1]) === expectedNumber ? numbered[2] : undefined
+    if (usesNumbering) return undefined
+    return BULLET_MARKER.exec(line)?.[1]
+  }
+
+  let expectedNumber = 1
   for (let i = 0; i < lines.length && items.length < 20; i += 1) {
-    const match = markerLine.exec(lines[i])
-    if (!match) continue
+    const marker = markerText(lines[i], expectedNumber)
+    if (marker === undefined) continue
+    if (NUMBERED_MARKER.test(lines[i]) && !LETTERED_MARKER.test(lines[i])) expectedNumber += 1
 
     // O PDF quebra a frase no meio, não a pauta: um marcador sem pontuação
     // final é sinal de que o item continua na(s) linha(s) seguinte(s), até
     // achar o fim da frase, uma linha em branco ou o próximo marcador.
-    let item = match[1].trim()
+    let item = marker.trim()
     let next = i + 1
-    while (next < lines.length && item.length < 120 && !/[.;:]$/.test(item)) {
+    while (next < lines.length && item.length < MAX_ITEM_CHARS && !/[.;:]$/.test(item)) {
       const line = lines[next].trim()
-      if (!line || markerLine.test(lines[next])) break
+      if (!line || markerText(lines[next], expectedNumber) !== undefined) break
       item = `${item} ${line}`.trim()
       next += 1
     }
@@ -140,9 +177,7 @@ export function parseConvocacao(rawText: string, pages: number): ConvocacaoConte
     text: text.slice(0, MAX_CONTEXT_CHARS),
     pages,
     condominio: findCondominio(text),
-    sindico:
-      findLabeledName(text, ['s[íi]ndic[oa] geral', 's[íi]ndic[oa]']) ??
-      findNameBeforeLabel(text, ['s[íi]ndic[oa] geral', 's[íi]ndic[oa]']),
+    sindico: findConvocante(text),
     data: findData(text),
     pautaItems: findPautaItems(text),
   }

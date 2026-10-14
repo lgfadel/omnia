@@ -141,4 +141,67 @@ ORDEM DO DIA
       'Reforma da fachada e do hall social',
     ])
   })
+
+  it('keeps a wrapped item whose continuation line starts with an ordinal ("1º SECRETÁRIO")', () => {
+    // Convocação da AGO Água da Prata: o item 2 quebra em três linhas e a
+    // segunda começa com "1º". Lida como marcador, ela virava um item 6 numa
+    // pauta de 5 e deixava o item 2 cortado no meio da frase.
+    const ago = `
+para deliberação dos seguintes assuntos em Pauta:
+1) PRESTAÇÃO DE CONTAS DA GESTÃO NOVEMBRO/2025 A SETEMBRO/2026;
+- A prestação de contas a ser apresentada estará disponível no aplicativo.
+2) ELEIÇÃO DA NOVA DIRETORIA EXECUTIVA (PRESIDENTE, VICE PRESIDENTE,
+1º SECRETÁRIO, 2º SECRETÁRIO, 1º TESOUREIRO) E CONSELHO FISCAL PARA A
+GESTÃO DE 01/DEZEMBRO/2026 A 30/NOVEMBRO/2028;
+3) DELIBERAÇÃO SOBRE A NOVA TAXA ASSOCIATIVA PARA O ANO DE 2026/2027;
+4) DELIBERAÇÃO SOBRE A ALTERAÇÃO DO ESTATUTO SOCIAL;
+- Art. 65 - Proposta de alteração referente à remuneração do corpo diretivo.
+5) DELIBERAÇÃO SOBRE A INCLUSÃO DE NORMAS NO REGIMENTO INTERNO;
+- Inclusão de normas para implantação de mecanismos de contenção das águas
+pluviais, com a finalidade de evitar danos às vias públicas da Associação.
+`
+    const context = parseConvocacao(ago, 1)
+
+    expect(context.pautaItems).toEqual([
+      'PRESTAÇÃO DE CONTAS DA GESTÃO NOVEMBRO/2025 A SETEMBRO/2026',
+      'ELEIÇÃO DA NOVA DIRETORIA EXECUTIVA (PRESIDENTE, VICE PRESIDENTE, 1º SECRETÁRIO, 2º SECRETÁRIO, 1º TESOUREIRO) E CONSELHO FISCAL PARA A GESTÃO DE 01/DEZEMBRO/2026 A 30/NOVEMBRO/2028',
+      'DELIBERAÇÃO SOBRE A NOVA TAXA ASSOCIATIVA PARA O ANO DE 2026/2027',
+      'DELIBERAÇÃO SOBRE A ALTERAÇÃO DO ESTATUTO SOCIAL',
+      'DELIBERAÇÃO SOBRE A INCLUSÃO DE NORMAS NO REGIMENTO INTERNO',
+    ])
+  })
+
+  it('reads the association and its president when the notice is not from a condomínio', () => {
+    // AGO Água da Prata: o nome abre a frase ("A ASSOCIAÇÃO ..., localizada") e
+    // quem assina é o Presidente, não um Síndico. A pauta cita "PRESIDENTE,
+    // VICE PRESIDENTE" e não pode virar nome de pessoa.
+    const ago = `
+Associação Recreativa Água da Prata
+EDITAL DE CONVOCAÇÃO
+A ASSOCIAÇÃO RECREATIVA ÁGUA DA PRATA, localizada na Rod. Alvaro Luiz , Km 26,
+Sítio Água da Prata, nesta cidade de Londrina-PR, está CONVOCANDO todos os associados
+para a realização da ASSEMBLEIA GERAL ORDINÁRIA que será realizada no dia
+08/10/2026 (QUINTA-FEIRA) nas dependências do Salão do Campo Suíço do Neno.
+1) PRESTAÇÃO DE CONTAS DA GESTÃO NOVEMBRO/2025 A SETEMBRO/2026;
+2) ELEIÇÃO DA NOVA DIRETORIA EXECUTIVA (PRESIDENTE, VICE PRESIDENTE,
+1º SECRETÁRIO, 2º SECRETÁRIO, 1º TESOUREIRO) E CONSELHO FISCAL;
+Londrina, 28 de setembro de 2026.
+Associação Recreativa Água da Prata
+Claudio Alves Ferreira
+Presidente
+`
+    const context = parseConvocacao(ago, 1)
+
+    expect(context.condominio).toBe('ASSOCIAÇÃO RECREATIVA ÁGUA DA PRATA')
+    expect(context.sindico).toBe('Claudio Alves Ferreira')
+  })
+
+  it('does not take a role named in the agenda for the person who signs', () => {
+    const semAssinatura = `
+A ASSOCIAÇÃO RECREATIVA ÁGUA DA PRATA, localizada na Rod. Alvaro Luiz, Km 26, convoca todos
+os associados para a Assembleia Geral Ordinária de 08/10/2026.
+2) ELEIÇÃO DA NOVA DIRETORIA EXECUTIVA (PRESIDENTE, VICE PRESIDENTE, 1º SECRETÁRIO);
+`
+    expect(parseConvocacao(semAssinatura, 1).sindico).toBeUndefined()
+  })
 })
