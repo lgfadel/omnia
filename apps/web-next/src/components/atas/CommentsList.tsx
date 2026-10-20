@@ -3,8 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Comment, Attachment } from "@/data/types"
-import { formatDistanceToNow } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { formatDateTimeInSaoPaulo } from "@/lib/brazilDate"
 import { Download, FileText, Image, File, Paperclip, Trash2, MoreVertical, Edit, Check, X } from "lucide-react"
 import { useState } from "react"
 import { generateUserColor, getUserInitials } from "@/lib/userColors"
@@ -186,10 +185,7 @@ export function CommentsList({ comments, onDeleteComment, onUpdateComment }: Com
                     )}
                     <span className="text-muted-foreground">•</span>
                     <span className="text-muted-foreground">
-                      {formatDistanceToNow(new Date(comment.createdAt), { 
-                        addSuffix: true, 
-                        locale: ptBR 
-                      })}
+                      {formatDateTimeInSaoPaulo(comment.createdAt)}
                     </span>
                   </div>
                   

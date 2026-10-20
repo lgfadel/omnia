@@ -18,8 +18,6 @@ import { useSecretariosStore } from '@/stores/secretarios.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { Tarefa, TarefaPrioridade } from '@/repositories/tarefasRepo.supabase';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';

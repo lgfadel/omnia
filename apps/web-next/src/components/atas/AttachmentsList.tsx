@@ -3,8 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Attachment } from "@/data/types"
 import { Download, FileText, Trash2, X, FileImage, FileSpreadsheet, Paperclip } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { formatDateTimeInSaoPaulo } from "@/lib/brazilDate"
 import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
 
@@ -159,10 +158,7 @@ export function AttachmentsList({ attachments, onDelete, canDelete }: Attachment
                       </>
                     )}
                     <span>
-                      {formatDistanceToNow(new Date(attachment.createdAt), { 
-                        addSuffix: true, 
-                        locale: ptBR 
-                      })}
+                      {formatDateTimeInSaoPaulo(attachment.createdAt)}
                     </span>
                   </div>
                 </div>

@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Trash2, MoreVertical, Edit, Check, X, Download, FileText, Image, File, Paperclip } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatDateTimeInSaoPaulo } from '@/lib/brazilDate';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
 import { ticketCommentsRepoSupabase, type TicketComment } from '@/repositories/ticketCommentsRepo.supabase';
@@ -356,10 +355,7 @@ export const TicketCommentsList = ({ ticketId, onCommentsChange, onCountChange, 
                       {comment.author?.name || comment.created_by}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(comment.created_at), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
+                      {formatDateTimeInSaoPaulo(comment.created_at)}
                     </span>
                     {comment.attachments && comment.attachments.length > 0 && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
