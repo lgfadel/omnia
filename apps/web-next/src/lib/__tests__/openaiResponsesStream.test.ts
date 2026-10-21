@@ -17,6 +17,16 @@ describe('splitSseBlocks', () => {
 })
 
 describe('parseSseBlock', () => {
+  it('extracts the response id from the created event', () => {
+    const block = 'event: response.created\ndata: {"type":"response.created","response":{"id":"resp_123","status":"queued"}}'
+    expect(parseSseBlock(block)).toEqual({ type: 'created', responseId: 'resp_123' })
+  })
+
+  it('ignores a created event without a usable response id', () => {
+    expect(parseSseBlock('data: {"type":"response.created","response":{}}')).toEqual({ type: 'ignored' })
+    expect(parseSseBlock('data: {"type":"response.created","response":{"id":""}}')).toEqual({ type: 'ignored' })
+  })
+
   it('extracts a text delta', () => {
     const block = 'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"Olá"}'
     expect(parseSseBlock(block)).toEqual({ type: 'delta', text: 'Olá' })

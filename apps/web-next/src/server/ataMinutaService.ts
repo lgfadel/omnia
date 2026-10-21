@@ -24,6 +24,31 @@ const GENERATION_STALE_MS = 90_000
 // impede que a janela de GENERATION_STALE_MS autorize uma segunda geração.
 const GENERATION_HEARTBEAT_MS = 30_000
 const GENERATION_IN_PROGRESS_MESSAGE = 'Uma geração já está em andamento para esta minuta.'
+// A geração roda na OpenAI em background mode, sem o teto de duração da função. Cada
+// requisição só acompanha o stream por esta janela — menor que o maxDuration da rota,
+// para sobrar tempo de gravar o texto escrito — e então entrega a vez ("continue").
+const STREAM_WINDOW_MS = 240_000
+
+type GenerationRun = {
+  response_id: string
+  // Como fechar o turno quando a resposta terminar, mesmo em outra requisição.
+  origin: 'generation' | 'chat'
+  with_instruction: boolean
+  model: string
+}
+
+// Falha definitiva da geração (a OpenAI recusou, reportou erro ou não devolveu texto).
+// Qualquer outro erro de uma requisição que já tem o id da resposta é transitório: a
+// geração segue na OpenAI e pode ser retomada, então não derruba a minuta.
+class GenerationFailedError extends Error {}
+
+// Uma minuta com geração na OpenAI continua "em andamento" mesmo sem escritas
+// recentes: quem a acompanha pode ter fechado a aba, e a resposta segue viva. O
+// updated_at só decide para uma geração que ainda não chegou a registrar a resposta.
+function isGenerationInProgress(minuta: { status: string; updated_at: string; generation_run: unknown | null }): boolean {
+  return minuta.status === 'generating'
+    && (minuta.generation_run != null || Date.now() - new Date(minuta.updated_at).getTime() < GENERATION_STALE_MS)
+}
 
 type AuthenticatedUser = { authUserId: string; omniaUserId: string; roles: string[] }
 export type MinutaDocumentKind = 'convocacao' | 'apuracao' | 'outro'
@@ -397,7 +422,7 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
 
   const { data: minuta, error } = await client
     .from('omnia_ata_minutas')
-    .select('id, status, updated_at')
+    .select('id, status, updated_at, generation_run')
     .eq('ata_id', ataId)
     .eq('is_current', true)
     .maybeSingle()
@@ -406,8 +431,8 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
   // A geração reescreve o conteúdo até o fim; uma edição salva agora seria
   // sobrescrita sem aviso. A tela já bloqueia isso na própria aba, mas outra
   // aba ou outra pessoa chega aqui sem passar por ela.
-  const { id: minutaId, status, updated_at: updatedAt } = minuta as { id: string; status: string; updated_at: string }
-  if (status === 'generating' && Date.now() - new Date(updatedAt).getTime() < GENERATION_STALE_MS) {
+  const minutaId = (minuta as { id: string }).id
+  if (isGenerationInProgress(minuta as { status: string; updated_at: string; generation_run: unknown | null })) {
     throw new Error('A minuta está sendo gerada. Aguarde terminar para editar.')
   }
 
@@ -469,15 +494,36 @@ async function claimMinuta(
   if (!data) throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
 }
 
+// resume: true não inicia nada — reabre o stream da geração que já está na OpenAI
+// (a função anterior chegou ao fim da janela, ou a aba foi fechada e reaberta).
 export async function* streamMinutaTurn(
   authHeader: string | null,
   ataId: string,
   instruction: string | undefined,
+  options: { resume?: boolean } = {},
 ): AsyncGenerator<AtaMinutaStreamEvent> {
+  const startedAt = Date.now()
   const user = await currentUser(authHeader)
   const client = admin()
   const ata = await loadAtaForAccess(client, ataId)
   assertMinutaAccess(user, ata)
+
+  if (options.resume) {
+    const { data: resumable } = await client
+      .from('omnia_ata_minutas')
+      .select('id, content, status, error_message, generation_run')
+      .eq('ata_id', ataId)
+      .eq('is_current', true)
+      .maybeSingle()
+    const row = resumable as { id: string; content: string; status: string; error_message: string | null; generation_run: GenerationRun | null } | null
+    if (!row) throw new Error('Nenhuma geração para retomar.')
+    // Outra aba pode ter terminado (ou falhado) a geração entre a leitura da tela e aqui.
+    if (row.status === 'ready') { yield { type: 'done', content: row.content }; return }
+    if (row.status === 'failed') throw new Error(row.error_message ?? 'A geração falhou. Gere a minuta novamente.')
+    if (!row.generation_run?.response_id) throw new Error('Esta geração não pode ser retomada. Gere a minuta novamente.')
+    yield* driveGeneration(client, { minutaId: row.id, userId: user.omniaUserId, run: row.generation_run, startedAt, request: { kind: 'resume' } })
+    return
+  }
 
   const { data: settings, error: settingsError } = await client.from('omnia_ata_minuta_settings').select('*').single()
   if (settingsError || !settings) throw new Error('Configuração de minuta não encontrada.')
@@ -507,16 +553,16 @@ export async function* streamMinutaTurn(
 
   const { data: currentMinutaRow } = await client
     .from('omnia_ata_minutas')
-    .select('id, content, status, updated_at')
+    .select('id, content, status, updated_at, generation_run')
     .eq('ata_id', ataId)
     .eq('is_current', true)
     .maybeSingle()
-  const currentMinuta = currentMinutaRow as { id: string; content: string; status: string; updated_at: string } | null
+  const currentMinuta = currentMinutaRow as { id: string; content: string; status: string; updated_at: string; generation_run: GenerationRun | null } | null
 
   let turnInstruction = instruction?.trim() || undefined
   const hasCurrentContent = Boolean(currentMinuta?.content.trim())
   const isRefinement = Boolean(turnInstruction && hasCurrentContent)
-  if (currentMinuta?.status === 'generating' && Date.now() - new Date(currentMinuta.updated_at).getTime() < GENERATION_STALE_MS) {
+  if (currentMinuta && isGenerationInProgress(currentMinuta)) {
     throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
   }
   // Refazer uma geração interrompida mantém as orientações já fornecidas. Uma
@@ -589,13 +635,58 @@ export async function* streamMinutaTurn(
     if (turnInstruction) await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
   }
 
-  // Se quem chamou parar de consumir o stream no meio (aba fechada, wifi caiu), o
-  // route handler chama events.return() — isso interrompe a função exatamente no yield
-  // suspenso, e o finally abaixo roda do mesmo jeito que rodaria num catch: libera o
-  // reader e tira a minuta de "generating", em vez de deixar o gerador pendurado para
-  // sempre segurando uma conexão aberta com a OpenAI.
+  yield* driveGeneration(client, {
+    minutaId,
+    userId: user.omniaUserId,
+    run: { origin: isRefinement ? 'chat' : 'generation', with_instruction: Boolean(turnInstruction), model: settingsRow.model },
+    startedAt,
+    request: { kind: 'start', input, model: settingsRow.model, reasoningEffort: settingsRow.reasoning_effort },
+  })
+}
+
+type DriveRequest =
+  | { kind: 'start'; input: ReturnType<typeof buildMinutaResponsesInput>; model: string; reasoningEffort: string }
+  | { kind: 'resume' }
+
+// A resposta ainda não terminou quando o stream acaba sem "completed" (conexão
+// cortada) — ou terminou mal (cancelada, expirada). Só o status na OpenAI separa os dois.
+async function fetchResponseStatus(responseId: string): Promise<{ status: string; message?: string } | null> {
+  try {
+    const response = await fetch(`${OPENAI_RESPONSES_URL}/${encodeURIComponent(responseId)}`, {
+      headers: { Authorization: `Bearer ${env('OPENAI_ATA_MINUTA_API_KEY')}` },
+    })
+    if (response.status === 404) return { status: 'not_found' }
+    if (!response.ok) return null
+    const body = await response.json() as { status?: unknown; error?: { message?: unknown } | null }
+    return {
+      status: typeof body.status === 'string' ? body.status : 'unknown',
+      message: typeof body.error?.message === 'string' ? body.error.message : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+// Acompanha uma geração que roda na OpenAI em background mode. Quem inicia (kind
+// start) cria a resposta e guarda o id; quem retoma (kind resume) reabre o stream
+// dela, que a OpenAI reenvia desde o primeiro evento, então o texto é refeito do zero
+// sem precisar guardar cursor. Ao fim da janela a função entrega a vez ("continue")
+// em vez de falhar: a geração não depende desta requisição.
+async function* driveGeneration(
+  client: SupabaseClient,
+  input: { minutaId: string; userId: string; run: Omit<GenerationRun, 'response_id'> | GenerationRun; startedAt: number; request: DriveRequest },
+): AsyncGenerator<AtaMinutaStreamEvent> {
+  const { minutaId, userId, run, request } = input
+  let responseId = 'response_id' in run ? run.response_id : undefined
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
   let settled = false
+
+  const controller = new AbortController()
+  let windowElapsed = false
+  const windowTimer = setTimeout(() => {
+    windowElapsed = true
+    controller.abort()
+  }, Math.max(0, STREAM_WINDOW_MS - (Date.now() - input.startedAt)))
   const heartbeat = setInterval(() => {
     // error_message não tem efeito algum durante a geração; escrevê-lo só
     // renova o updated_at sem disparar os gatilhos de status.
@@ -603,35 +694,52 @@ export async function* streamMinutaTurn(
       .then(() => undefined, () => undefined)
   }, GENERATION_HEARTBEAT_MS)
 
+  let accumulated = ''
+  let lastFlush = Date.now()
+  const flush = async (force: boolean) => {
+    if (!force && Date.now() - lastFlush < FLUSH_INTERVAL_MS) return
+    lastFlush = Date.now()
+    await client.from('omnia_ata_minutas').update({ content: accumulated }).eq('id', minutaId).eq('status', 'generating')
+  }
+  const authorization = `Bearer ${env('OPENAI_ATA_MINUTA_API_KEY')}`
+
   try {
-    const response = await fetch(OPENAI_RESPONSES_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env('OPENAI_ATA_MINUTA_API_KEY')}` },
-      body: JSON.stringify({
-        model: settingsRow.model,
-        input,
-        stream: true,
-        reasoning: { effort: settingsRow.reasoning_effort },
-      }),
-    })
+    let response: Response
+    if (request.kind === 'start') {
+      response = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authorization },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: request.model,
+          input: request.input,
+          stream: true,
+          // A geração segue na OpenAI mesmo que esta função seja derrubada no teto de duração.
+          background: true,
+          reasoning: { effort: request.reasoningEffort },
+        }),
+      })
+    } else {
+      if (!responseId) throw new GenerationFailedError('Esta geração não pode ser retomada. Gere a minuta novamente.')
+      response = await fetch(`${OPENAI_RESPONSES_URL}/${encodeURIComponent(responseId)}?stream=true`, {
+        headers: { Authorization: authorization },
+        signal: controller.signal,
+      })
+    }
 
     if (!response.ok || !response.body) {
       const body = await response.text()
-      throw new Error(`A OpenAI recusou a geração (HTTP ${response.status}): ${body}`)
+      if (request.kind === 'resume' && response.status === 404) {
+        throw new GenerationFailedError('A OpenAI não encontrou mais esta geração. Gere a minuta novamente.')
+      }
+      throw new GenerationFailedError(`A OpenAI recusou a geração (HTTP ${response.status}): ${body}`)
     }
 
     reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let accumulated = ''
-    let lastFlush = Date.now()
+    let completed = false
     let usage: Record<string, unknown> | undefined
-
-    const flush = async (force: boolean) => {
-      if (!force && Date.now() - lastFlush < FLUSH_INTERVAL_MS) return
-      lastFlush = Date.now()
-      await client.from('omnia_ata_minutas').update({ content: accumulated }).eq('id', minutaId)
-    }
 
     for (;;) {
       const { value, done } = await reader.read()
@@ -641,49 +749,99 @@ export async function* streamMinutaTurn(
       buffer = remainder
       for (const block of blocks) {
         const event = parseSseBlock(block)
-        if (event.type === 'delta') {
+        if (event.type === 'created') {
+          if (!responseId) {
+            responseId = event.responseId
+            const { error: runError } = await client
+              .from('omnia_ata_minutas')
+              .update({ generation_run: { ...run, response_id: responseId } })
+              .eq('id', minutaId)
+              .eq('status', 'generating')
+            if (runError) throw new GenerationFailedError(runError.message)
+          }
+        } else if (event.type === 'delta') {
           accumulated += event.text
           yield { type: 'delta', text: event.text }
           await flush(false)
         } else if (event.type === 'completed') {
           usage = event.usage
+          completed = true
         } else if (event.type === 'failed') {
-          throw new Error(event.message)
+          throw new GenerationFailedError(event.message)
         }
       }
     }
-    await flush(true)
 
-    if (!accumulated.trim()) throw new Error('A OpenAI não devolveu texto para a minuta.')
-
-    const versionId = await insertMinutaVersion(client, minutaId, accumulated, isRefinement ? 'chat' : 'generation', user.omniaUserId, settingsRow.model, usage)
-    if (turnInstruction) {
-      await insertMinutaMessage(client, minutaId, 'assistant', accumulated, user.omniaUserId, versionId)
+    if (!completed) {
+      // Stream cortado antes do fim. Se a resposta segue viva, a próxima requisição
+      // a retoma; se terminou mal, não há o que esperar.
+      if (!responseId) throw new GenerationFailedError('A conexão com a OpenAI foi interrompida antes do fim da geração.')
+      const remote = await fetchResponseStatus(responseId)
+      if (remote && remote.status !== 'queued' && remote.status !== 'in_progress') {
+        throw new GenerationFailedError(remote.message ?? (remote.status === 'not_found'
+          ? 'A OpenAI não encontrou mais esta geração. Gere a minuta novamente.'
+          : `A geração foi encerrada pela OpenAI (${remote.status}).`))
+      }
+      await flush(true)
+      settled = true
+      yield { type: 'continue' }
+      return
     }
-    const { data: readyMinuta, error: readyError } = await client
+
+    if (!accumulated.trim()) throw new GenerationFailedError('A OpenAI não devolveu texto para a minuta.')
+
+    // Dois acompanhantes (duas abas) podem chegar aqui com a mesma resposta: só
+    // quem ainda a encontra "generating" fecha o turno e grava a versão.
+    const { data: finished, error: finishError } = await client
       .from('omnia_ata_minutas')
-      .update({ status: 'ready', content: accumulated, usage: usage ?? {} })
+      .update({ status: 'ready', content: accumulated, usage: usage ?? {}, generation_run: null })
       .eq('id', minutaId)
+      .eq('status', 'generating')
       .select('id')
       .maybeSingle()
-    if (readyError || !readyMinuta) {
-      throw new Error(readyError?.message ?? 'Não foi possível finalizar a minuta.')
+    if (finishError) throw new GenerationFailedError(finishError.message)
+    if (!finished) {
+      const { data: other } = await client.from('omnia_ata_minutas').select('status, content').eq('id', minutaId).maybeSingle()
+      const row = other as { status: string; content: string } | null
+      if (row?.status !== 'ready') throw new GenerationFailedError('Não foi possível finalizar a minuta.')
+      settled = true
+      yield { type: 'done', content: row.content }
+      return
+    }
+
+    const versionId = await insertMinutaVersion(client, minutaId, accumulated, run.origin, userId, run.model, usage)
+    if (run.with_instruction) {
+      await insertMinutaMessage(client, minutaId, 'assistant', accumulated, userId, versionId)
     }
     settled = true
 
     yield { type: 'done', content: accumulated }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Não foi possível gerar a minuta.'
-    await client.from('omnia_ata_minutas').update({ status: 'failed', error_message: message }).eq('id', minutaId)
+    // Fim da janela da função, ou queda de rede com a resposta já registrada: a
+    // geração continua na OpenAI, então a minuta fica "generating" para ser retomada.
+    const transient = !(error instanceof GenerationFailedError)
+    if (responseId && transient) {
+      try { await flush(true) } catch { /* o texto parcial é reconstruído na retomada */ }
+      settled = true
+      yield { type: 'continue' }
+      return
+    }
+    const message = windowElapsed && !responseId
+      ? 'A OpenAI demorou demais para aceitar a geração. Tente novamente.'
+      : error instanceof Error ? error.message : 'Não foi possível gerar a minuta.'
+    await client.from('omnia_ata_minutas').update({ status: 'failed', error_message: message, generation_run: null }).eq('id', minutaId)
     settled = true
     yield { type: 'error', message }
   } finally {
+    clearTimeout(windowTimer)
     clearInterval(heartbeat)
-    reader?.releaseLock()
-    if (!settled) {
+    try { reader?.releaseLock() } catch { /* leitura abortada */ }
+    if (!settled && !responseId) {
+      // Quem consumia o stream saiu antes de a OpenAI registrar a resposta: não há
+      // como retomar. Com a resposta registrada a minuta fica "generating" e segue.
       await client
         .from('omnia_ata_minutas')
-        .update({ status: 'failed', error_message: 'A conexão foi perdida durante a geração.' })
+        .update({ status: 'failed', error_message: 'A conexão foi perdida durante a geração.', generation_run: null })
         .eq('id', minutaId)
         .eq('status', 'generating')
     }

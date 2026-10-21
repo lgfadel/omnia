@@ -23,6 +23,13 @@ let providerText: string
 let providerFailure: boolean
 // Quando definido, o provedor entrega o primeiro trecho e só conclui depois dele.
 let providerGate: Promise<void> | null
+// Roteiro de cada stream aberto no provedor, na ordem; vazio = 'complete'.
+type ProviderScript = 'complete' | 'hang' | 'cut' | 'network-error' | 'missing'
+let providerScripts: ProviderScript[]
+let providerStarts: Array<Record<string, unknown>>
+let providerResumes: string[]
+let providerStatusChecks: string[]
+let providerRemoteStatus: string
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
@@ -31,17 +38,42 @@ function json(data: unknown, status = 200) {
 async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
   if (url.hostname === 'api.openai.com') {
-    providerInputs.push(JSON.parse(init?.body as string).input)
-    if (providerFailure) return new Response('Serviço indisponível', { status: 503 })
+    const isStatusCheck = (init?.method ?? 'GET') === 'GET' && !url.searchParams.has('stream')
+    if (isStatusCheck) {
+      providerStatusChecks.push(url.pathname)
+      return providerRemoteStatus === 'not_found' ? json({ error: { message: 'not found' } }, 404) : json({ status: providerRemoteStatus, error: null })
+    }
+    if (init?.method === 'POST') {
+      const body = JSON.parse(init.body as string)
+      providerStarts.push(body)
+      providerInputs.push(body.input)
+      if (providerFailure) return new Response('Serviço indisponível', { status: 503 })
+    } else {
+      providerResumes.push(url.pathname)
+    }
+    const script = providerScripts.shift() ?? 'complete'
+    if (script === 'missing') return new Response('not found', { status: 404 })
     const frame = (event: unknown) => `data: ${JSON.stringify(event)}\n\n`
+    const created = frame({ type: 'response.created', response: { id: 'resp_1', status: 'queued' } })
     const delta = frame({ type: 'response.output_text.delta', delta: providerText })
     const completed = frame({ type: 'response.completed', response: { usage: { input_tokens: 10, output_tokens: 5 } } })
-    if (!providerGate) return new Response(delta + completed, { headers: { 'Content-Type': 'text/event-stream' } })
+    if (script === 'complete' && !providerGate) return new Response(created + delta + completed, { headers: { 'Content-Type': 'text/event-stream' } })
     const gate = providerGate
     const encoder = new TextEncoder()
+    const signal = init?.signal
     const body = new ReadableStream({
       async start(controller) {
-        controller.enqueue(encoder.encode(delta))
+        controller.enqueue(encoder.encode(created + delta))
+        if (script === 'cut') return controller.close()
+        if (script === 'network-error') {
+          // Um stream que erra com chunks ainda na fila descarta a fila: só erra depois de lida.
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          return controller.error(new TypeError('terminated'))
+        }
+        if (script === 'hang') {
+          signal?.addEventListener('abort', () => controller.error(new DOMException('This operation was aborted', 'AbortError')))
+          return
+        }
         await gate
         controller.enqueue(encoder.encode(completed))
         controller.close()
@@ -122,6 +154,11 @@ describe('minuta initial instructions', () => {
     providerText = '## Contas\nAprovadas por unanimidade.'
     providerFailure = false
     providerGate = null
+    providerScripts = []
+    providerStarts = []
+    providerResumes = []
+    providerStatusChecks = []
+    providerRemoteStatus = 'in_progress'
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://supabase.test')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key')
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key')
@@ -351,5 +388,157 @@ describe('minuta initial instructions', () => {
 
     expect(currentMinuta()!.content).toBe('Texto revisado à mão.')
     expect(tables.omnia_ata_minuta_versions).toEqual([expect.objectContaining({ origin: 'manual' })])
+  })
+
+  async function resumeTurn() {
+    const events = []
+    for await (const event of streamMinutaTurn('Bearer test-token', 'ata-1', undefined, { resume: true })) events.push(event)
+    return events
+  }
+
+  describe('generation in the OpenAI background', () => {
+    // A janela da função acaba no meio do raciocínio: o relógio é falso para não
+    // esperar 4 minutos de verdade, e o stream do provedor termina com o abort.
+    async function runPastTheWindow(instruction?: string) {
+      providerScripts = ['hang']
+      const events: Awaited<ReturnType<typeof turn>> = []
+      const consumption = (async () => { for await (const event of streamMinutaTurn('Bearer test-token', 'ata-1', instruction)) events.push(event) })()
+      await vi.advanceTimersByTimeAsync(241_000)
+      await consumption
+      return events
+    }
+
+    it('starts the response in background mode and records it while generating', async () => {
+      let finishProvider!: () => void
+      providerGate = new Promise<void>((resolve) => { finishProvider = resolve })
+      const consumption = turn('Registre os votos exatos.')
+      await vi.waitFor(() => expect(currentMinuta()?.generation_run).toMatchObject({ response_id: 'resp_1', origin: 'generation', with_instruction: true, model: 'test-model' }))
+      expect(providerStarts[0]).toMatchObject({ background: true, stream: true })
+
+      finishProvider()
+      await consumption
+      expect(currentMinuta()).toMatchObject({ status: 'ready', generation_run: null })
+    })
+
+    it('hands over at the end of the window without failing, keeping the partial text', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] })
+      try {
+        const events = await runPastTheWindow('Registre os votos exatos.')
+
+        expect(events.at(-1)).toEqual({ type: 'continue' })
+        expect(currentMinuta()).toMatchObject({ status: 'generating', content: '## Contas\nAprovadas por unanimidade.', generation_run: { response_id: 'resp_1' } })
+        expect(tables.omnia_ata_minuta_versions).toHaveLength(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('resumes the response by id and closes the turn exactly as the first request would have', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] })
+      try {
+        await runPastTheWindow('Registre os votos exatos.')
+      } finally {
+        vi.useRealTimers()
+      }
+
+      const events = await resumeTurn()
+
+      expect(providerResumes).toEqual(['/v1/responses/resp_1'])
+      expect(providerStarts).toHaveLength(1)
+      expect(events.at(-1)).toEqual({ type: 'done', content: '## Contas\nAprovadas por unanimidade.' })
+      expect(currentMinuta()).toMatchObject({ status: 'ready', generation_run: null, usage: { input_tokens: 10, output_tokens: 5 } })
+      expect(tables.omnia_ata_minuta_versions).toEqual([expect.objectContaining({ origin: 'generation', model: 'test-model' })])
+      expect(tables.omnia_ata_minuta_messages.map((row) => row.role)).toEqual(['user', 'assistant'])
+    })
+
+    it('keeps the chat origin when a refinement is resumed', async () => {
+      tables.omnia_ata_minutas.push({ id: 'ready-1', ata_id: 'ata-1', content: '## Contas\nTexto pronto.', is_current: true, status: 'ready', updated_at: new Date(Date.now() - 60_000).toISOString() })
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] })
+      try {
+        await runPastTheWindow('Deixe mais formal.')
+      } finally {
+        vi.useRealTimers()
+      }
+
+      await resumeTurn()
+
+      expect(tables.omnia_ata_minuta_versions).toEqual([expect.objectContaining({ origin: 'chat' })])
+      expect(tables.omnia_ata_minuta_messages.map((row) => row.role)).toEqual(['user', 'assistant'])
+    })
+
+    it('does not duplicate the version when two tabs follow the same response', async () => {
+      tables.omnia_ata_minutas.push({ id: 'run-1', ata_id: 'ata-1', content: '', is_current: true, status: 'generating', updated_at: new Date(Date.now() - 120_000).toISOString(),
+        generation_run: { response_id: 'resp_1', origin: 'generation', with_instruction: false, model: 'test-model' } })
+
+      const [first, second] = await Promise.all([resumeTurn(), resumeTurn()])
+
+      expect(first.at(-1)).toMatchObject({ type: 'done' })
+      expect(second.at(-1)).toMatchObject({ type: 'done' })
+      expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+      expect(currentMinuta()).toMatchObject({ status: 'ready' })
+    })
+
+    it('answers a resume for a draft another tab already finished with that draft', async () => {
+      tables.omnia_ata_minutas.push({ id: 'ready-1', ata_id: 'ata-1', content: '## Contas\nTexto pronto.', is_current: true, status: 'ready', updated_at: new Date().toISOString() })
+
+      await expect(resumeTurn()).resolves.toEqual([{ type: 'done', content: '## Contas\nTexto pronto.' }])
+      expect(providerResumes).toHaveLength(0)
+    })
+
+    it('refuses to resume a draft with no response to follow', async () => {
+      tables.omnia_ata_minutas.push({ id: 'old-1', ata_id: 'ata-1', content: '', is_current: true, status: 'generating', updated_at: new Date().toISOString() })
+
+      await expect(resumeTurn()).rejects.toThrow('Esta geração não pode ser retomada')
+    })
+
+    it('fails the draft when the response no longer exists at OpenAI', async () => {
+      tables.omnia_ata_minutas.push({ id: 'run-1', ata_id: 'ata-1', content: '', is_current: true, status: 'generating', updated_at: new Date().toISOString(),
+        generation_run: { response_id: 'resp_gone', origin: 'generation', with_instruction: false, model: 'test-model' } })
+      providerScripts = ['missing']
+
+      const events = await resumeTurn()
+
+      expect(events.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('não encontrou mais') })
+      expect(currentMinuta()).toMatchObject({ status: 'failed', generation_run: null })
+    })
+
+    it('treats a cut stream as a hand-over while the response is still running', async () => {
+      providerScripts = ['cut']
+      providerRemoteStatus = 'in_progress'
+
+      const events = await turn()
+
+      expect(events.at(-1)).toEqual({ type: 'continue' })
+      expect(providerStatusChecks).toEqual(['/v1/responses/resp_1'])
+      expect(currentMinuta()).toMatchObject({ status: 'generating', generation_run: { response_id: 'resp_1' } })
+    })
+
+    it('fails the draft when a cut stream belongs to a response OpenAI already ended badly', async () => {
+      providerScripts = ['cut']
+      providerRemoteStatus = 'cancelled'
+
+      const events = await turn()
+
+      expect(events.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('cancelled') })
+      expect(currentMinuta()).toMatchObject({ status: 'failed', generation_run: null })
+    })
+
+    it('does not fail the draft on a network drop once the response is registered', async () => {
+      providerScripts = ['network-error']
+
+      const events = await turn()
+
+      expect(events.at(-1)).toEqual({ type: 'continue' })
+      expect(currentMinuta()).toMatchObject({ status: 'generating', generation_run: { response_id: 'resp_1' } })
+    })
+
+    it('keeps a draft with a registered response "in progress" even after a long silence', async () => {
+      tables.omnia_ata_minutas.push({ id: 'run-1', ata_id: 'ata-1', content: '', is_current: true, status: 'generating', updated_at: new Date(Date.now() - 600_000).toISOString(),
+        generation_run: { response_id: 'resp_1', origin: 'generation', with_instruction: false, model: 'test-model' } })
+
+      await expect(turn()).rejects.toThrow('Uma geração já está em andamento para esta minuta.')
+      await expect(saveMinutaManualEdit('Bearer test-token', 'ata-1', 'Edição em outra aba.')).rejects.toThrow('A minuta está sendo gerada.')
+      expect(providerStarts).toHaveLength(0)
+    })
   })
 })

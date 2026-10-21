@@ -43,6 +43,7 @@ type DbMinuta = {
   status: AtaMinutaStatus
   error_message: string | null
   model: string | null
+  generation_run: unknown | null
   created_at: string
   updated_at: string
 }
@@ -86,6 +87,7 @@ function mapMinuta(row: DbMinuta): AtaMinuta {
     status: row.status,
     errorMessage: row.error_message ?? undefined,
     model: row.model ?? undefined,
+    canResume: row.status === 'generating' && row.generation_run != null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -118,6 +120,53 @@ function mapMessage(row: DbMessage): AtaMinutaMessage {
 
 function mapDocument(row: DbDocument): AtaMinutaDocument {
   return { id: row.id, ataId: row.ata_id, kind: row.kind, originalFilename: row.original_filename, sizeBytes: row.size_bytes, createdAt: row.created_at }
+}
+
+// Cada janela do servidor dura ~4 min; 12 retomadas cobrem quase uma hora de geração.
+const MAX_RESUMES = 12
+
+// Lê um stream NDJSON da rota. Devolve 'continue' quando o servidor entregou a vez
+// (a geração segue na OpenAI) e 'finished' quando a minuta ficou pronta.
+async function streamOnce(
+  ataId: string,
+  body: { instruction?: string } | { resume: true },
+  onEvent: (event: AtaMinutaStreamEvent) => void,
+): Promise<'finished' | 'continue'> {
+  const response = await fetch(`/api/atas/${ataId}/minuta`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok || !response.body) throw await describeResponseError(response, 'Não foi possível gerar a minuta.')
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let outcome: 'finished' | 'continue' | null = null
+  const handle = (line: string) => {
+    if (!line.trim()) return
+    const event = JSON.parse(line) as AtaMinutaStreamEvent
+    onEvent(event)
+    if (event.type === 'error') throw new Error(event.message)
+    if (event.type === 'continue') outcome = 'continue'
+    if (event.type === 'done') outcome = 'finished'
+  }
+  let buffer = ''
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) handle(line)
+    }
+    handle(buffer)
+  } finally {
+    reader.releaseLock()
+  }
+  // Um stream que acabou sem "done" nem "continue" foi cortado no caminho (rede,
+  // função derrubada): a geração pode estar viva na OpenAI, então retoma.
+  return outcome ?? 'continue'
 }
 
 export const ataMinutasRepoSupabase = {
@@ -157,36 +206,17 @@ export const ataMinutasRepoSupabase = {
   },
 
   // Gera a primeira minuta com orientações opcionais ou refina a existente, repassando cada trecho de
-  // texto conforme o servidor escreve. onEvent recebe os deltas e o evento final.
-  async streamTurn(ataId: string, instruction: string | undefined, onEvent: (event: AtaMinutaStreamEvent) => void): Promise<void> {
-    const response = await fetch(`/api/atas/${ataId}/minuta`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
-      body: JSON.stringify({ instruction }),
-    })
-    if (!response.ok || !response.body) throw await describeResponseError(response, 'Não foi possível gerar a minuta.')
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    const handle = (line: string) => {
-      if (!line.trim()) return
-      const event = JSON.parse(line) as AtaMinutaStreamEvent
-      onEvent(event)
-      if (event.type === 'error') throw new Error(event.message)
-    }
-    let buffer = ''
-    try {
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) handle(line)
-      }
-      handle(buffer)
-    } finally {
-      reader.releaseLock()
+  // texto conforme o servidor escreve. onEvent recebe os deltas e o evento final. A geração roda na
+  // OpenAI além do tempo de uma requisição: quando a janela do servidor acaba ele avisa com
+  // "continue" e este método reabre o stream em modo retomada, até a minuta ficar pronta.
+  // resume: true só acompanha uma geração já em andamento (ex.: ao reabrir a ata).
+  async streamTurn(ataId: string, instruction: string | undefined, onEvent: (event: AtaMinutaStreamEvent) => void, resume = false): Promise<void> {
+    let resumeNext = resume
+    for (let handoffs = 0; ; handoffs += 1) {
+      const outcome = await streamOnce(ataId, resumeNext ? { resume: true } : { instruction }, onEvent)
+      if (outcome === 'finished') return
+      if (handoffs >= MAX_RESUMES) throw new Error('A geração está demorando mais que o esperado. Recarregue a página para acompanhar.')
+      resumeNext = true
     }
   },
 

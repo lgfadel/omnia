@@ -3,18 +3,24 @@ import { saveMinutaManualEdit, streamMinutaTurn } from '@/server/ataMinutaServic
 
 export const runtime = 'nodejs'
 // Teto do plano Hobby da Vercel para este projeto — 300 é o máximo aceito, não uma
-// escolha de conforto. Uma geração que ultrapassa isso é interrompida: o texto
-// parcial fica salvo e "Continuar"/"Gerar de novo" retomam sem perda (ver
-// streamMinutaTurn).
+// escolha de conforto. A geração em si roda na OpenAI (background mode) e não depende
+// disso: esta função só acompanha o stream por uma janela menor que o teto
+// (STREAM_WINDOW_MS) e avisa "continue"; o cliente reabre com { resume: true } até a
+// minuta ficar pronta (ver driveGeneration).
 export const maxDuration = 300
 
 export async function POST(request: Request, context: { params: Promise<{ ataId: string }> }) {
   const { ataId } = await context.params
-  const body = await request.json().catch(() => ({})) as { instruction?: unknown }
+  const body = await request.json().catch(() => ({})) as { instruction?: unknown; resume?: unknown }
   if (body.instruction !== undefined && typeof body.instruction !== 'string') {
     return NextResponse.json({ error: 'As instruções devem ser um texto.' }, { status: 400 })
   }
-  const events = streamMinutaTurn(request.headers.get('Authorization'), ataId, typeof body.instruction === 'string' ? body.instruction.trim() : undefined)
+  const events = streamMinutaTurn(
+    request.headers.get('Authorization'),
+    ataId,
+    typeof body.instruction === 'string' ? body.instruction.trim() : undefined,
+    { resume: body.resume === true },
+  )
 
   // O corpo do gerador só roda no primeiro next(): autenticação, autorização e a
   // validação de contexto (transcrição ausente, modelo não configurado) ainda falham

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,9 @@ interface AtaMinutaPanelProps {
 }
 
 const STALE_GENERATION_MS = 90_000
+// A geração segue na OpenAI sem ninguém acompanhando (aba fechada): sem escrita há
+// mais que o intervalo do sinal de vida do servidor (30s), esta aba assume o stream.
+const RESUME_AFTER_IDLE_MS = 45_000
 
 export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinutaPanelProps) {
   const instructionsId = useId()
@@ -44,6 +47,9 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
   const [mode, setMode] = useState<'view' | 'edit'>('view')
   const [draftContent, setDraftContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  // Retomar falhou nesta aba: deixa de tentar sozinha e oferece o botão.
+  const [resumeGaveUp, setResumeGaveUp] = useState(false)
+  const resumeAttemptedFor = useRef<string | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -69,7 +75,10 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
 
   useEffect(() => { void refresh() }, [refresh])
 
-  const isStuck = Boolean(!isStreaming && minuta?.status === 'generating' && Date.now() - new Date(minuta.updatedAt).getTime() > STALE_GENERATION_MS)
+  const idleMs = minuta ? Date.now() - new Date(minuta.updatedAt).getTime() : 0
+  const canResume = Boolean(minuta?.status === 'generating' && minuta.canResume)
+  // Com a geração viva na OpenAI, "parada" não é "interrompida": a aba retoma o stream.
+  const isStuck = Boolean(!isStreaming && minuta?.status === 'generating' && idleMs > STALE_GENERATION_MS && (!canResume || resumeGaveUp))
   const isGenerating = isStreaming || (minuta?.status === 'generating' && !isStuck)
   const isBusy = isGenerating || isSaving || isDocumentBusy
 
@@ -79,8 +88,10 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
     return () => window.clearInterval(interval)
   }, [minuta?.status, isStreaming, isStuck, refresh])
 
-  const run = async (instruction: string | undefined) => {
-    if (isBusy || hasTranscription !== true) return
+  // resume: só acompanha a geração já em andamento na OpenAI (instruction é ignorada).
+  const run = async (instruction: string | undefined, resume = false) => {
+    if (isStreaming || hasTranscription !== true) return
+    if (!resume && isBusy) return
     setError(null)
     setIsStreaming(true)
     setStreamingContent('')
@@ -88,10 +99,14 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
     try {
       await ataMinutasRepoSupabase.streamTurn(ataId, instruction, (event) => {
         if (event.type === 'delta') setStreamingContent((current) => current + event.text)
-      })
+        // O servidor reenvia o texto desde o início ao retomar.
+        if (event.type === 'continue') setStreamingContent('')
+      }, resume)
+      setResumeGaveUp(false)
       await refresh()
     } catch (streamError) {
       const message = streamError instanceof Error ? streamError.message : 'Não foi possível gerar a minuta.'
+      if (resume) setResumeGaveUp(true)
       await refresh()
       setError(message)
     } finally {
@@ -99,6 +114,18 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
       setStreamingContent('')
     }
   }
+
+  const minutaId = minuta?.id
+  const shouldAutoResume = canResume && !isStreaming && !resumeGaveUp && idleMs > RESUME_AFTER_IDLE_MS
+  useEffect(() => {
+    if (!shouldAutoResume || !minutaId || hasTranscription !== true) return
+    // Uma tentativa por minuta; se falhar, resumeGaveUp mostra o botão manual.
+    if (resumeAttemptedFor.current === minutaId) return
+    resumeAttemptedFor.current = minutaId
+    void run(undefined, true)
+    // run é recriada a cada render e só interessa na primeira vez que a condição vale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoResume, minutaId, hasTranscription])
 
   const saveDraft = async () => {
     if (isBusy) return
@@ -210,10 +237,11 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
       )}
       {isStuck && (
         <Alert><TriangleAlert className="h-4 w-4" /><AlertTitle>A geração foi interrompida</AlertTitle>
-          <AlertDescription>O texto já escrito foi preservado. Continue de onde parou ou gere uma nova minuta.</AlertDescription>
+          <AlertDescription>{canResume ? 'A geração continua na OpenAI, mas esta tela perdeu a conexão com ela. Retome para acompanhar.' : 'O texto já escrito foi preservado. Continue de onde parou ou gere uma nova minuta.'}</AlertDescription>
           <div className="mt-3 flex flex-wrap gap-2">
-            {hasContent && <Button type="button" variant="outline" size="sm" disabled={isBusy} onClick={() => void run('Continue a minuta de onde parou, sem repetir o que já foi escrito, mantendo o mesmo formato de seções.')}><RefreshCcw className="mr-2 h-4 w-4" />Continuar</Button>}
-            {hasContent && <Button type="button" variant="ghost" size="sm" disabled={isBusy} onClick={() => void run(undefined)}>Gerar de novo</Button>}
+            {canResume && <Button type="button" variant="outline" size="sm" onClick={() => void run(undefined, true)}><RefreshCcw className="mr-2 h-4 w-4" />Retomar</Button>}
+            {!canResume && hasContent && <Button type="button" variant="outline" size="sm" disabled={isBusy} onClick={() => void run('Continue a minuta de onde parou, sem repetir o que já foi escrito, mantendo o mesmo formato de seções.')}><RefreshCcw className="mr-2 h-4 w-4" />Continuar</Button>}
+            {!canResume && hasContent && <Button type="button" variant="ghost" size="sm" disabled={isBusy} onClick={() => void run(undefined)}>Gerar de novo</Button>}
           </div>
         </Alert>
       )}
@@ -248,7 +276,7 @@ export function AtaMinutaPanel({ ataId, ataTitle, onOpenTranscription }: AtaMinu
               {hasReviewedTranscription ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <FileText className="mt-0.5 h-4 w-4 shrink-0" />}
               {isDocumentBusy ? 'Aguarde o envio dos documentos.' : hasReviewedTranscription ? 'Transcrição revisada. Tudo pronto para começar.' : hasTranscription ? 'A transcrição está disponível para gerar.' : 'Uma transcrição é necessária para começar.'}
             </p>
-            <Button type="button" className="shrink-0" disabled={isBusy || hasTranscription !== true} onClick={() => void run(preparationInstruction.trim() || (initialInstructions !== undefined && savedInitialInstruction ? '' : undefined))}>
+            <Button type="button" className="shrink-0" disabled={isBusy || hasTranscription !== true || canResume} onClick={() => void run(preparationInstruction.trim() || (initialInstructions !== undefined && savedInitialInstruction ? '' : undefined))}>
               <Sparkles className="mr-2 h-4 w-4" />{minuta?.status === 'failed' || isStuck ? 'Tentar gerar novamente' : 'Gerar primeira minuta'}
             </Button>
           </div>

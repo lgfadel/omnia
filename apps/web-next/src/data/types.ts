@@ -106,6 +106,8 @@ export interface AtaMinuta {
   status: AtaMinutaStatus;
   errorMessage?: string;
   model?: string;
+  // Há uma geração em andamento na OpenAI que um novo stream pode retomar.
+  canResume?: boolean;
   createdAt: string;
   updatedAt: string;
 }

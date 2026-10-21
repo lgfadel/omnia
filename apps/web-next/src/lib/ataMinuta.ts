@@ -107,6 +107,9 @@ export function canAccessMinuta(user: { roles: string[]; omniaUserId: string }, 
 
 export type AtaMinutaStreamEvent =
   | { type: 'delta'; text: string }
+  // A geração segue na OpenAI, mas esta conexão chegou ao fim da janela da função:
+  // o cliente deve reabrir o stream em modo retomada. O texto recomeça do início.
+  | { type: 'continue' }
   | { type: 'done'; content: string }
   | { type: 'error'; message: string }
 

@@ -34,13 +34,13 @@ describe('AtaMinutaPanel preparation', () => {
     const field = await screen.findByLabelText('Instruções iniciais para o agente')
     fireEvent.change(field, { target: { value: '  Use linguagem formal e destaque as votações.  ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Gerar primeira minuta' }))
-    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', 'Use linguagem formal e destaque as votações.', expect.any(Function)))
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', 'Use linguagem formal e destaque as votações.', expect.any(Function), false))
   })
 
   it('allows a first generation without optional instructions', async () => {
     render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
     fireEvent.click(await screen.findByRole('button', { name: 'Gerar primeira minuta' }))
-    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', undefined, expect.any(Function)))
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', undefined, expect.any(Function), false))
   })
 
   it('explains the missing transcription and opens that step without generating', async () => {
@@ -71,7 +71,7 @@ describe('AtaMinutaPanel preparation', () => {
     render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
     expect(await screen.findByLabelText('Instruções iniciais para o agente')).toHaveValue('Cite o quórum.')
     fireEvent.click(screen.getByRole('button', { name: 'Tentar gerar novamente' }))
-    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', 'Cite o quórum.', expect.any(Function)))
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', 'Cite o quórum.', expect.any(Function), false))
   })
 
   it('waits for a supporting document upload before enabling generation', async () => {
@@ -95,7 +95,7 @@ describe('AtaMinutaPanel preparation', () => {
     const field = await screen.findByLabelText('Instruções iniciais para o agente')
     fireEvent.change(field, { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Tentar gerar novamente' }))
-    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', '', expect.any(Function)))
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', '', expect.any(Function), false))
   })
   it('shows the convocação already read during the transcription, so it need not be uploaded again', async () => {
     transcription.load.mockResolvedValue({
@@ -117,5 +117,57 @@ describe('AtaMinutaPanel preparation', () => {
 
     await screen.findByRole('button', { name: 'Gerar primeira minuta' })
     expect(screen.queryByText('Convocação lida na transcrição')).not.toBeInTheDocument()
+  })
+})
+
+describe('AtaMinutaPanel generation running at OpenAI', () => {
+  const running = (overrides: Record<string, unknown> = {}) => ({
+    ...empty,
+    minuta: {
+      id: 'minuta-1', ataId: 'ata-1', status: 'generating', content: '', canResume: true,
+      createdAt: '2026-10-02T10:00:00Z', updatedAt: new Date(Date.now() - 5 * 60_000).toISOString(), ...overrides,
+    },
+  })
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    repository.streamTurn.mockResolvedValue(undefined)
+    transcription.load.mockResolvedValue({ transcription: { isReviewed: true } })
+  })
+
+  it('takes over a generation nobody is following instead of calling it interrupted', async () => {
+    repository.load.mockResolvedValue(running())
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledWith('ata-1', undefined, expect.any(Function), true))
+    expect(screen.queryByText('A geração foi interrompida')).not.toBeInTheDocument()
+  })
+
+  it('leaves a generation another tab is still following alone', async () => {
+    repository.load.mockResolvedValue(running({ updatedAt: new Date().toISOString() }))
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    expect(await screen.findByText('Analisando a transcrição e os documentos…')).toBeInTheDocument()
+    expect(repository.streamTurn).not.toHaveBeenCalled()
+  })
+
+  it('offers a manual resume, not a new generation, when resuming fails', async () => {
+    repository.load.mockResolvedValue(running())
+    repository.streamTurn.mockRejectedValueOnce(new Error('Sem conexão.'))
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    expect(await screen.findByText('A geração foi interrompida')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tentar gerar novamente' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Retomar' }))
+    await waitFor(() => expect(repository.streamTurn).toHaveBeenCalledTimes(2))
+    expect(repository.streamTurn).toHaveBeenLastCalledWith('ata-1', undefined, expect.any(Function), true)
+  })
+
+  it('still calls a stalled generation with no response at OpenAI interrupted', async () => {
+    repository.load.mockResolvedValue(running({ canResume: false }))
+    render(<AtaMinutaPanel ataId="ata-1" ataTitle="Assembleia" />)
+
+    expect(await screen.findByText('A geração foi interrompida')).toBeInTheDocument()
+    expect(repository.streamTurn).not.toHaveBeenCalled()
   })
 })
