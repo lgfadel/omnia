@@ -63,12 +63,15 @@ export interface Ata {
 export type AtaTranscriptionStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed'
 
 export type AtaTranscriptionStage = 'downloading' | 'splitting' | 'transcribing' | 'saving';
+export type AtaTranscriptionSourceType = 'audio' | 'text_import';
 
 export interface AtaTranscriptionJob {
   id: string;
   ataId: string;
   status: AtaTranscriptionStatus;
   originalFilename: string;
+  /** Ausente em registros antigos do cliente; equivale a áudio. */
+  sourceType?: AtaTranscriptionSourceType;
   errorMessage?: string;
   attemptCount: number;
   createdAt: string;

@@ -18,6 +18,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Exercise the Edge Function with the same real client in Node; only its
+      // Deno entry point and external HTTP transport are supplied by tests.
+      'https://esm.sh/@supabase/supabase-js@2': '@supabase/supabase-js',
     },
   },
 })

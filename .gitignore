@@ -43,6 +43,8 @@ supabase/.temp/
 /.context/upload-debug/
 /.context/pre-release-deployment.json
 /.context/transcription-release.json
+/.context/transcription-import-preview/
+/.context/transcription-import-deno.lock
 
 # Permissões pessoais do Claude Code. A allowlist chega a liberar `python3 -c`,
 # que é execução arbitrária: compartilhar isso pelo repositório concederia o

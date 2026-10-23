@@ -12,9 +12,10 @@ import { AtaTranscriptionUpload } from './AtaTranscriptionUpload'
 import { AtaTranscriptionStatus } from './AtaTranscriptionStatus'
 import { getTranscriptionProgress, getAudioValidationError, type AtaTranscriptionStatus as TranscriptionStatus } from '@/lib/ataTranscription'
 import { readConvocacao, type ConvocacaoContext } from '@/lib/convocacao'
+import { readTranscriptionFile } from '@/lib/ataTranscriptionImport'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
-import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
-import { Check, FileAudio, FilePlus2, RefreshCcw, TriangleAlert } from 'lucide-react'
+import type { AtaTranscription, AtaTranscriptionJob, AtaTranscriptionSourceType } from '@/data/types'
+import { Check, FileAudio, FilePlus2, FileText, RefreshCcw, TriangleAlert } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
   ataId: string
@@ -38,6 +39,9 @@ type WorkerHealth = 'ok' | 'unavailable' | 'stalled'
 // contexto, e derivar o que mostrar, faz um sinal de vida novo ou a saída da
 // fila encerrarem o aviso sem efeito nenhum para limpá-lo.
 type HealthReport = { jobId: string; status: TranscriptionStatus; since?: string; value: WorkerHealth }
+type Replacement =
+  | { kind: 'audio'; file: File; durationSeconds: number | null; expectedJobId: string }
+  | { kind: 'text_import'; file: File; content: string; expectedJobId: string }
 
 function readAudioDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
@@ -75,6 +79,7 @@ function readAudioDuration(file: File): Promise<number | null> {
 
 export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscriptionPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
   const recordingSelectionLock = useRef(false)
   const loadRequest = useRef(0)
   const [job, setJob] = useState<AtaTranscriptionJob | null>(null)
@@ -82,12 +87,14 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [isLoading, setIsLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [sourceType, setSourceType] = useState<AtaTranscriptionSourceType>('audio')
   const [isPreparingRecording, setIsPreparingRecording] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draftText, setDraftText] = useState('')
-  const [replacement, setReplacement] = useState<{ file: File; durationSeconds: number | null } | null>(null)
+  const [replacement, setReplacement] = useState<Replacement | null>(null)
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [audio, setAudio] = useState<TranscriptionAudioState>({ status: 'loading' })
@@ -98,7 +105,8 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const isJobActive = Boolean(job && activeStatuses.has(job.status))
   const transcriptionId = transcription?.id
   const isReviewed = Boolean(transcription?.isReviewed)
-  const isBusy = isUploading || isPreparingRecording || isSaving || isDiscarding || isRetrying || isReadingConvocacao
+  const isBusy = isUploading || isImporting || isPreparingRecording || isSaving || isDiscarding || isRetrying || isReadingConvocacao
+  const isTextSource = (job?.sourceType ?? sourceType) === 'text_import'
   const hasUnsavedChanges = draftText !== (transcription?.revisedText ?? transcription?.rawText ?? '')
 
   const refresh = useCallback(async () => {
@@ -170,6 +178,10 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   // painel repete o load a cada 7,5 s enquanto há trabalho ativo.
   useEffect(() => {
     const jobId = job?.id
+    if (job?.sourceType === 'text_import') {
+      setAudio({ status: 'gone' })
+      return
+    }
     if (!jobId || !transcriptionId || isJobActive) {
       setAudio({ status: 'loading' })
       return
@@ -185,9 +197,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         if (!cancelled) setAudio({ status: 'error' })
       })
     return () => { cancelled = true }
-  }, [job?.id, transcriptionId, isJobActive, audioRetry])
+  }, [job?.id, job?.sourceType, transcriptionId, isJobActive, audioRetry])
 
-  const uploadFile = async (file: File, durationSeconds: number | null) => {
+  const uploadFile = async (file: File, durationSeconds: number | null, expectedJobId: string | null = job?.id ?? null) => {
     try {
       setIsUploading(true)
       setJob({
@@ -195,11 +207,12 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         ataId,
         status: 'uploading',
         originalFilename: file.name,
+        sourceType: 'audio',
         attemptCount: 0,
         createdAt: new Date().toISOString(),
         processedChunks: 0,
       })
-      const { jobId, workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text)
+      const { jobId, workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text, expectedJobId)
       await refresh()
       setHealthReport({ jobId, status: 'queued', value: workerAvailable ? 'ok' : 'unavailable' })
     } catch (uploadError) {
@@ -211,6 +224,41 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     } finally {
       setIsUploading(false)
       if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const importTextFile = async (file: File, content: string, expectedJobId: string | null) => {
+    setIsImporting(true)
+    setError(null)
+    try {
+      await ataTranscriptionsRepoSupabase.importText(ataId, file.name, content, expectedJobId, convocacao?.text)
+      await refresh()
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'Não foi possível importar a transcrição.')
+    } finally {
+      setIsImporting(false)
+      if (textInputRef.current) textInputRef.current.value = ''
+    }
+  }
+
+  const handleTextSelection = async (file: File) => {
+    if (isBusy || isJobActive || recordingSelectionLock.current) return
+    recordingSelectionLock.current = true
+    setIsImporting(true)
+    setError(null)
+    try {
+      const content = await readTranscriptionFile(file)
+      if (job) {
+        setReplacement({ kind: 'text_import', file, content, expectedJobId: job.id })
+      } else {
+        await importTextFile(file, content, null)
+      }
+    } catch (readError) {
+      setError(readError instanceof Error ? readError.message : 'Não foi possível ler a transcrição.')
+    } finally {
+      recordingSelectionLock.current = false
+      setIsImporting(false)
+      if (textInputRef.current) textInputRef.current.value = ''
     }
   }
 
@@ -251,7 +299,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       }
 
       if (job) {
-        setReplacement({ file, durationSeconds })
+        setReplacement({ kind: 'audio', file, durationSeconds, expectedJobId: job.id })
         return
       }
       await uploadFile(file, durationSeconds)
@@ -337,7 +385,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
 
   if (isLoading) return <p role="status" className="py-10 text-sm text-muted-foreground">Carregando transcrição…</p>
 
-  const stageIndex = !job || job.status === 'uploading' ? 0 : job.status === 'completed' ? 2 : 1
+  const stageLabels = isTextSource ? ['Arquivo de texto', 'Revisão'] : ['Gravação', 'Transcrição', 'Revisão']
+  const reviewStageIndex = stageLabels.length - 1
+  const stageIndex = !job || job.status === 'uploading' ? 0 : job.status === 'completed' ? reviewStageIndex : 1
   const progress = job ? getTranscriptionProgress(job) : null
   const canReview = Boolean(job?.status === 'completed' && transcription && transcription.jobId === job.id)
 
@@ -347,13 +397,13 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl space-y-1.5">
             <h2 className="text-xl font-semibold tracking-tight">Transcrição da assembleia</h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">Da gravação ao texto revisado, pronto para preparar a minuta.</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">Transcreva uma gravação ou importe o texto pronto para preparar a minuta.</p>
           </div>
           {job && <AtaTranscriptionStatus status={job.status} isReviewed={isReviewed} />}
         </div>
-        <ol aria-label="Etapas da transcrição" className="grid grid-cols-3 gap-2 rounded-xl border bg-muted/15 p-3 sm:gap-5 sm:p-4">
-          {['Gravação', 'Transcrição', 'Revisão'].map((label, index) => {
-            const complete = index < stageIndex || (index === 2 && job?.status === 'completed' && isReviewed)
+        <ol aria-label="Etapas da transcrição" className={`grid ${isTextSource ? 'grid-cols-2' : 'grid-cols-3'} gap-2 rounded-xl border bg-muted/15 p-3 sm:gap-5 sm:p-4`}>
+          {stageLabels.map((label, index) => {
+            const complete = index < stageIndex || (index === reviewStageIndex && job?.status === 'completed' && isReviewed)
             const current = index === stageIndex && !complete
             return (
               <li key={label} aria-current={current ? 'step' : undefined} className={`flex min-w-0 flex-col items-start gap-2 text-xs sm:flex-row sm:items-center sm:text-sm ${complete || current ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -391,12 +441,39 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         }}
       />}
 
+      {job && <Input
+        ref={textInputRef}
+        className="hidden"
+        type="file"
+        aria-label="Selecionar arquivo de transcrição"
+        accept=".txt,.vtt,text/plain,text/vtt"
+        disabled={isBusy || isJobActive}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void handleTextSelection(file)
+        }}
+      />}
+
+      {hasLoaded && !job && <div role="group" aria-label="Origem da transcrição" className="flex flex-wrap gap-2">
+        <Button type="button" variant={sourceType === 'audio' ? 'secondary' : 'outline'} aria-pressed={sourceType === 'audio'} disabled={isBusy} onClick={() => { setSourceType('audio'); setError(null) }}>
+          <FileAudio className="h-4 w-4" aria-hidden="true" />Transcrever áudio
+        </Button>
+        <Button type="button" variant={sourceType === 'text_import' ? 'secondary' : 'outline'} aria-pressed={sourceType === 'text_import'} disabled={isBusy} onClick={() => { setSourceType('text_import'); setError(null) }}>
+          <FileText className="h-4 w-4" aria-hidden="true" />Importar transcrição
+        </Button>
+      </div>}
+
       {hasLoaded && !job && <AtaTranscriptionUpload
+        key={sourceType}
+        sourceType={sourceType}
+        isImporting={isImporting}
         convocacao={convocacao}
         isReadingConvocacao={isReadingConvocacao}
         disabled={isBusy}
         isPreparingRecording={isPreparingRecording}
         onRecordingSelect={(file) => void handleFileSelection(file)}
+        onTextSelect={(file) => void handleTextSelection(file)}
         onConvocacaoSelect={(file) => void handleConvocacaoSelection(file)}
         onRemoveConvocacao={() => setConvocacao(null)}
       />}
@@ -450,10 +527,16 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         </Alert>
       )}
 
-      {job && !isJobActive && !canReview && <Button variant="outline" disabled={isBusy} onClick={() => inputRef.current?.click()}>
-        <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-        {isPreparingRecording ? 'Preparando gravação…' : 'Enviar nova gravação'}
-      </Button>}
+      {job && !isJobActive && !canReview && <div className="flex flex-wrap gap-2">
+        <Button variant="outline" disabled={isBusy} onClick={() => inputRef.current?.click()}>
+          <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+          {isPreparingRecording ? 'Preparando gravação…' : 'Enviar nova gravação'}
+        </Button>
+        <Button variant="outline" disabled={isBusy} onClick={() => textInputRef.current?.click()}>
+          <FileText className="h-4 w-4" aria-hidden="true" />
+          {isImporting ? 'Importando transcrição…' : 'Importar transcrição'}
+        </Button>
+      </div>}
 
       {canReview && job && transcription && <AtaTranscriptionReview
         job={job}
@@ -464,6 +547,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         isSaving={isSaving}
         isDiscarding={isDiscarding}
         isPreparingRecording={isPreparingRecording}
+        isImporting={isImporting}
         onChange={setDraftText}
         onSave={(reviewed) => void handleSaveReview(reviewed)}
         onPrepareMinuta={onGenerateMinuta ? () => void handlePrepareMinuta() : undefined}
@@ -471,6 +555,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         onRetryAudio={() => setAudioRetry((attempt) => attempt + 1)}
         onAudioError={() => setAudio({ status: 'error' })}
         onReplace={() => inputRef.current?.click()}
+        onImport={() => textInputRef.current?.click()}
         onDiscard={() => setShowDiscardDialog(true)}
       />}
 
@@ -479,7 +564,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
           <AlertDialogHeader>
             <AlertDialogTitle>Descartar esta transcrição?</AlertDialogTitle>
             <AlertDialogDescription>
-              A ata volta a pedir uma gravação e a revisão feita neste texto deixa de valer. O áudio é apagado em definitivo; o texto continua no histórico, mas não será usado na futura geração da minuta.
+              A ata volta a oferecer a transcrição de áudio ou a importação de texto. O texto atual continua no histórico, mas não será usado na futura geração da minuta.{!isTextSource && ' O áudio é apagado em definitivo.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -499,7 +584,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
           <AlertDialogHeader>
             <AlertDialogTitle>Substituir a transcrição atual?</AlertDialogTitle>
             <AlertDialogDescription>
-              A nova gravação se tornará a transcrição atual desta ata. A transcrição anterior continuará no histórico, mas não será usada na futura geração da minuta.
+              {replacement?.kind === 'text_import' ? 'O texto importado' : 'A nova gravação'} se tornará a transcrição atual desta ata. A transcrição anterior continuará no histórico, mas não será usada na futura geração da minuta.{hasUnsavedChanges && ' As alterações não salvas serão perdidas.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -508,10 +593,11 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
               onClick={() => {
                 const selectedFile = replacement
                 setReplacement(null)
-                if (selectedFile) void uploadFile(selectedFile.file, selectedFile.durationSeconds)
+                if (selectedFile?.kind === 'audio') void uploadFile(selectedFile.file, selectedFile.durationSeconds, selectedFile.expectedJobId)
+                else if (selectedFile?.kind === 'text_import') void importTextFile(selectedFile.file, selectedFile.content, selectedFile.expectedJobId)
               }}
             >
-              Substituir e enviar
+              {replacement?.kind === 'text_import' ? 'Substituir e importar' : 'Substituir e enviar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

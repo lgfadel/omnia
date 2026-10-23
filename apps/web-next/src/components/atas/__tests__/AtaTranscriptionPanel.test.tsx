@@ -7,6 +7,7 @@ vi.mock('@/repositories/ataTranscriptionsRepo.supabase', () => ({
   ataTranscriptionsRepoSupabase: {
     load: vi.fn().mockResolvedValue({ job: null, transcription: null }),
     upload: vi.fn(),
+    importText: vi.fn(),
     retry: vi.fn(),
     wake: vi.fn().mockResolvedValue({ workerAvailable: true, stalled: false }),
     saveReview: vi.fn(),
@@ -90,6 +91,80 @@ describe('AtaTranscriptionPanel', () => {
   })
 })
 
+describe('AtaTranscriptionPanel · importação', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.load.mockResolvedValue({ job: null, transcription: null })
+    repo.audioUrl.mockResolvedValue(null)
+  })
+
+  const imported = () => ({
+    ...transcriptionWith(),
+    job: { ...transcriptionWith().job, sourceType: 'text_import' as const, originalFilename: 'zoom.vtt', attemptCount: 0 },
+    transcription: { ...transcriptionWith().transcription, rawText: 'Maria: Contas aprovadas.' },
+  })
+
+  it('switches exclusively from audio to TXT/VTT and imports Zoom speech for review', async () => {
+    const onGenerateMinuta = vi.fn()
+    render(<AtaTranscriptionPanel ataId="ata-1" onGenerateMinuta={onGenerateMinuta} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Importar transcrição' }))
+    expect(screen.queryByRole('button', { name: 'Selecionar gravação' })).toBeNull()
+    expect(screen.getByText(/VTT do Zoom/)).toBeInTheDocument()
+    repo.importText.mockImplementation(async () => { repo.load.mockResolvedValue(imported()) })
+    const file = new File(['WEBVTT\n\n1\n00:00:00.000 --> 00:00:02.000\nMaria: Contas aprovadas.'], 'zoom.vtt', { type: 'text/vtt' })
+    fireEvent.change(screen.getByLabelText('Selecionar arquivo de transcrição'), { target: { files: [file] } })
+
+    expect(await screen.findByRole('textbox', { name: 'Texto da transcrição' })).toHaveValue('Maria: Contas aprovadas.')
+    expect(screen.getByText('Arquivo importado')).toBeInTheDocument()
+    expect(screen.getByText('zoom.vtt')).toBeInTheDocument()
+    expect(repo.audioUrl).not.toHaveBeenCalled()
+    expect(repo.upload).not.toHaveBeenCalled()
+    expect(repo.wake).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Preparar minuta' }))
+    expect(onGenerateMinuta).toHaveBeenCalledOnce()
+  })
+
+  it('rejects empty files without replacing the existing transcription', async () => {
+    repo.load.mockResolvedValue(imported())
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    await screen.findByRole('textbox', { name: 'Texto da transcrição' })
+    fireEvent.change(screen.getByLabelText('Selecionar arquivo de transcrição'), { target: { files: [new File(['  '], 'vazio.txt')] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent(/não contém texto/)
+    expect(repo.importText).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'Texto da transcrição' })).toHaveValue('Maria: Contas aprovadas.')
+  })
+
+  it('confirms replacing an audio transcription with imported text', async () => {
+    repo.load.mockResolvedValue(transcriptionWith())
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    await screen.findByRole('textbox', { name: 'Texto da transcrição' })
+    fireEvent.change(screen.getByLabelText('Selecionar arquivo de transcrição'), { target: { files: [new File(['Texto pronto.'], 'ata.txt')] } })
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(/Substituir a transcrição atual/)
+    expect(repo.importText).not.toHaveBeenCalled()
+    repo.importText.mockResolvedValue(undefined)
+    fireEvent.click(screen.getByRole('button', { name: 'Substituir e importar' }))
+    await waitFor(() => expect(repo.importText).toHaveBeenCalledWith('ata-1', 'ata.txt', 'Texto pronto.', 'job-1', undefined))
+  })
+
+  it('preserves the current text when replacement is cancelled or import fails', async () => {
+    repo.load.mockResolvedValue(imported())
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    await screen.findByRole('textbox', { name: 'Texto da transcrição' })
+    const input = screen.getByLabelText('Selecionar arquivo de transcrição')
+    const file = new File(['Texto substituto.'], 'ata.txt')
+    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }))
+    expect(repo.importText).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'Texto da transcrição' })).toHaveValue('Maria: Contas aprovadas.')
+
+    repo.importText.mockRejectedValue(new Error('Falha ao importar.'))
+    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Substituir e importar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao importar.')
+    expect(screen.getByRole('textbox', { name: 'Texto da transcrição' })).toHaveValue('Maria: Contas aprovadas.')
+  })
+})
+
 describe('AtaTranscriptionPanel · gravação', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -129,7 +204,7 @@ describe('AtaTranscriptionPanel · gravação', () => {
       fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
       expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeDisabled()
       await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
-      expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined)
+      expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null)
       expect(revoke).toHaveBeenCalledWith('blob:assembleia')
       expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeEnabled()
     } finally {
@@ -161,7 +236,7 @@ describe('AtaTranscriptionPanel · gravação', () => {
       const audioInput = await screen.findByRole('button', { name: 'Selecionar gravação' })
       fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
 
-      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined))
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null))
       expect(audioInput).toBeInTheDocument()
     } finally {
       if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
@@ -193,7 +268,7 @@ describe('AtaTranscriptionPanel · gravação', () => {
       expect(fileInput).not.toBeNull()
       fireEvent.change(fileInput!, { target: { files: [file] } })
 
-      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined))
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null))
     } finally {
       if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
       else Reflect.deleteProperty(HTMLMediaElement.prototype, 'duration')

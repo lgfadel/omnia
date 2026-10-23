@@ -4,6 +4,7 @@ import type {
   AtaTranscriptionStage,
   AtaTranscriptionJob,
   AtaTranscriptionStatus,
+  AtaTranscriptionSourceType,
 } from '@/data/types'
 import { uploadR2Multipart, type R2MultipartUploadPlan } from '@/lib/r2MultipartUpload'
 
@@ -45,6 +46,7 @@ type DbJob = {
   ata_id: string
   status: AtaTranscriptionStatus
   original_filename: string
+  source_type?: AtaTranscriptionSourceType
   error_message: string | null
   attempt_count: number
   created_at: string
@@ -77,6 +79,7 @@ function mapJob(job: DbJob): AtaTranscriptionJob {
     ataId: job.ata_id,
     status: job.status,
     originalFilename: job.original_filename,
+    sourceType: job.source_type ?? 'audio',
     errorMessage: job.error_message ?? undefined,
     attemptCount: job.attempt_count,
     createdAt: job.created_at,
@@ -103,7 +106,7 @@ export const ataTranscriptionsRepoSupabase = {
   async load(ataId: string): Promise<{ job: AtaTranscriptionJob | null; transcription: AtaTranscription | null }> {
     const { data: job, error: jobError } = await untypedSupabase
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, status, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage, heartbeat_at, context_text')
+      .select('id, ata_id, status, source_type, original_filename, error_message, attempt_count, created_at, total_chunks, processed_chunks, stage, heartbeat_at, context_text')
       .eq('ata_id', ataId)
       .eq('is_current', true)
       .maybeSingle()
@@ -128,7 +131,7 @@ export const ataTranscriptionsRepoSupabase = {
   // `workerAvailable` diz se a Edge Function alcançou o worker ao enfileirar. O
   // áudio já está salvo de qualquer jeito; o valor só decide se o painel avisa
   // que a transcrição vai esperar o serviço voltar.
-  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string): Promise<{ jobId: string; workerAvailable: boolean }> {
+  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string, expectedJobId: string | null = null): Promise<{ jobId: string; workerAvailable: boolean }> {
     const { data, error } = await supabase.functions.invoke<StartUploadResponse>('ata-transcriptions', {
       body: {
         action: 'create',
@@ -138,6 +141,7 @@ export const ataTranscriptionsRepoSupabase = {
         sizeBytes: file.size,
         durationSeconds,
         contextText,
+        expectedJobId,
       },
     })
     if (error || !data) throw await describeFunctionError(error, 'Não foi possível iniciar o envio do áudio.')
@@ -158,6 +162,13 @@ export const ataTranscriptionsRepoSupabase = {
       })
       throw uploadError
     }
+  },
+
+  async importText(ataId: string, fileName: string, content: string, expectedJobId: string | null, contextText?: string): Promise<void> {
+    const { data, error } = await supabase.functions.invoke<{ jobId: string }>('ata-transcriptions', {
+      body: { action: 'import', ataId, fileName, content, expectedJobId, contextText },
+    })
+    if (error || !data?.jobId) throw await describeFunctionError(error, 'Não foi possível importar a transcrição.')
   },
 
   async retry(jobId: string): Promise<{ workerAvailable: boolean }> {

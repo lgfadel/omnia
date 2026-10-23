@@ -50,6 +50,13 @@ src/
 - Sistema de status customizável
 - Tags para categorização
 - Busca e filtros avançados
+- Transcrição por áudio ou importação de texto pronto (`.txt` e `.vtt` do Zoom), com revisão e uso na minuta
+
+Na aba **Transcrição**, escolha **Transcrever áudio** ou **Importar transcrição**.
+A importação aceita um arquivo UTF-8 de até 5 MB; no VTT, preserva nomes e falas e
+remove os marcadores de tempo. O texto abre no editor existente e pode ser usado
+em **Preparar minuta**. Uma ata tem uma única transcrição vigente; substituir
+solicita confirmação e preserva os textos anteriores no histórico.
 
 ### 💬 Colaboração
 - Comentários com anexos

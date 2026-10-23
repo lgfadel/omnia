@@ -4,7 +4,7 @@ import type { AtaTranscription, AtaTranscriptionJob } from '@/data/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AtaTranscriptionEditor } from './AtaTranscriptionEditor'
-import { Check, Download, FilePlus2, Headphones, RefreshCcw, Save, Sparkles } from 'lucide-react'
+import { Check, Download, FilePlus2, FileText, Headphones, RefreshCcw, Save, Sparkles } from 'lucide-react'
 
 export type TranscriptionAudioState =
   | { status: 'loading' }
@@ -21,6 +21,7 @@ interface AtaTranscriptionReviewProps {
   isSaving: boolean
   isDiscarding: boolean
   isPreparingRecording: boolean
+  isImporting?: boolean
   onChange: (value: string) => void
   onSave: (reviewed: boolean) => void
   onPrepareMinuta?: () => void
@@ -28,21 +29,23 @@ interface AtaTranscriptionReviewProps {
   onRetryAudio: () => void
   onAudioError: () => void
   onReplace: () => void
+  onImport?: () => void
   onDiscard: () => void
 }
 
-export function AtaTranscriptionReview({ job, transcription, value, audio, hasUnsavedChanges, isSaving, isDiscarding, isPreparingRecording, onChange, onSave, onPrepareMinuta, onDownload, onRetryAudio, onAudioError, onReplace, onDiscard }: AtaTranscriptionReviewProps) {
+export function AtaTranscriptionReview({ job, transcription, value, audio, hasUnsavedChanges, isSaving, isDiscarding, isPreparingRecording, isImporting = false, onChange, onSave, onPrepareMinuta, onDownload, onRetryAudio, onAudioError, onReplace, onImport, onDiscard }: AtaTranscriptionReviewProps) {
   const reviewed = transcription.isReviewed
-  const busy = isSaving || isDiscarding || isPreparingRecording
+  const busy = isSaving || isDiscarding || isPreparingRecording || isImporting
+  const imported = job.sourceType === 'text_import'
   const empty = !value.trim()
 
   return (
     <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
       <Card className="min-w-0 overflow-hidden shadow-none">
         <div className="space-y-1 border-b px-5 py-5 sm:px-6">
-          <h3 className="text-base font-semibold">{reviewed ? 'Transcrição revisada' : 'Transcrição para revisão'}</h3>
+          <h3 className="text-base font-semibold">{reviewed ? 'Transcrição revisada' : imported ? 'Transcrição importada' : 'Transcrição para revisão'}</h3>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {reviewed ? 'O texto está fechado. Reabra a revisão para fazer novas correções.' : 'Confira nomes, falas e decisões. Use o áudio para conferir uma passagem duvidosa.'}
+            {reviewed ? 'O texto está fechado. Reabra a revisão para fazer novas correções.' : imported ? 'Confira os nomes, as falas e as decisões do texto importado antes de preparar a minuta.' : 'Confira nomes, falas e decisões. Use o áudio para conferir uma passagem duvidosa.'}
           </p>
         </div>
         <div className="p-4 sm:p-5">
@@ -64,8 +67,12 @@ export function AtaTranscriptionReview({ job, transcription, value, audio, hasUn
         </div>
       </Card>
 
-      <aside className="min-w-0 space-y-4 xl:sticky xl:top-6" aria-label="Áudio e ações de revisão">
-        {audio.status !== 'gone' && (
+      <aside className="min-w-0 space-y-4 xl:sticky xl:top-6" aria-label="Origem e ações de revisão">
+        {imported && <Card className="space-y-2 p-5 shadow-none">
+          <h3 className="flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />Arquivo importado</h3>
+          <p className="break-words text-xs leading-relaxed text-muted-foreground">{job.originalFilename}</p>
+        </Card>}
+        {!imported && audio.status !== 'gone' && (
           <Card className="space-y-4 p-5 shadow-none">
             <div className="space-y-2">
               <h3 className="flex items-center gap-2 text-sm font-medium">
@@ -124,6 +131,10 @@ export function AtaTranscriptionReview({ job, transcription, value, audio, hasUn
               <FilePlus2 className="h-4 w-4 shrink-0" aria-hidden="true" />
               {isPreparingRecording ? 'Preparando gravação…' : 'Enviar nova gravação'}
             </Button>
+            {onImport && <Button variant="ghost" size="sm" className="h-auto w-full justify-start whitespace-normal px-2 py-2 text-muted-foreground" disabled={busy} onClick={onImport}>
+              <FileText className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {isImporting ? 'Importando transcrição…' : 'Importar outra transcrição'}
+            </Button>}
             <Button variant="ghost" size="sm" className="h-auto w-full justify-start whitespace-normal px-2 py-2 text-muted-foreground hover:text-destructive" disabled={busy} onClick={onDiscard}>
               {isDiscarding ? 'Descartando…' : 'Descartar transcrição'}
             </Button>

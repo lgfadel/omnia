@@ -319,6 +319,18 @@ describe('minuta initial instructions', () => {
     expect(tables.omnia_ata_minutas).toHaveLength(0)
     expect(providerInputs).toHaveLength(0)
   })
+
+  it('uses the current imported transcript for minuta generation, including a saved review', async () => {
+    tables.omnia_ata_transcription_jobs[0].source_type = 'text_import'
+    tables.omnia_ata_transcriptions[0].raw_text = 'Maria: Texto importado do Zoom.'
+    tables.omnia_ata_transcriptions[0].revised_text = null
+    await turn('Prepare a ata.')
+    expect(textOf(providerInputs[0])).toContain('Maria: Texto importado do Zoom.')
+    tables.omnia_ata_transcriptions[0].revised_text = 'Maria: Importação revisada e votação conferida.'
+    await turn('Refine a ata.')
+    expect(textOf(providerInputs[1])).toContain('Maria: Importação revisada e votação conferida.')
+    expect(tables.omnia_ata_minutas[0].transcription_id).toBe('transcription-1')
+  })
   const ready = (overrides: Row = {}): Row => ({
     id: 'ready-1', ata_id: 'ata-1', content: '## Contas\nTexto pronto.', is_current: true, status: 'ready',
     updated_at: new Date(Date.now() - 60_000).toISOString(), ...overrides,
