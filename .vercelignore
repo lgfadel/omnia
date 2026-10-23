@@ -8,7 +8,12 @@
 /.windsurf
 /.agents
 /docs
-/supabase
+# The web app shares this parser with the Edge Function. Keep just this source
+# file available to the build; migrations and the other functions stay excluded.
+/supabase/**
+!/supabase/functions/
+!/supabase/functions/ata-transcriptions/
+!/supabase/functions/ata-transcriptions/importText.ts
 /tests
 /test-results
 /playwright.config.ts
