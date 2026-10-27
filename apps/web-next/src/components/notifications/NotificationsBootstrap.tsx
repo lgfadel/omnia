@@ -89,7 +89,6 @@ export function NotificationsBootstrap() {
     if (userIdRef.current !== userId) {
       userIdRef.current = userId
       isReadyRef.current = false
-      initStartedRef.current = false
       prevLoadingRef.current = false
       knownIdsRef.current = new Set()
       contextCacheRef.current = new Map()

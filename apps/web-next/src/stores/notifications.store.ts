@@ -23,6 +23,11 @@ interface NotificationsStore {
 const computeUnreadCount = (notifications: OmniaNotification[]) =>
   notifications.reduce((acc, n) => (n.read_at ? acc : acc + 1), 0)
 
+let generation = 0
+let eventVersion = 0
+let requestVersion = 0
+const recentEvents = new Map<string, { version: number; notification: OmniaNotification }>()
+
 export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
   notifications: [],
   unreadCount: 0,
@@ -32,12 +37,16 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
   currentUserId: null,
 
   init: async (userId: string) => {
+    if (get().channel && get().currentUserId === userId) return
+    const currentGeneration = ++generation
     try {
       const { data } = await supabase.auth.getSession()
       supabase.realtime.setAuth(data.session?.access_token ?? '')
     } catch (error) {
       logger.warn('Failed to set realtime auth token before subscribing', error)
     }
+
+    if (currentGeneration !== generation) return
 
     const { channel, currentUserId } = get()
     if (channel && currentUserId === userId) return
@@ -50,10 +59,10 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
       }
     }
 
-    set({ currentUserId: userId })
+    recentEvents.clear()
+    set({ currentUserId: userId, notifications: [], unreadCount: 0 })
 
-    await get().loadRecent(userId)
-
+    let initialLoad: Promise<void> = Promise.resolve()
     const nextChannel = supabase
       .channel(`omnia_notifications:${userId}`)
       .on(
@@ -66,7 +75,8 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
         (payload) => {
           const inserted = payload.new as OmniaNotification
 
-          if (inserted.user_id !== userId) return
+          if (inserted.user_id !== userId || currentGeneration !== generation) return
+          recentEvents.set(inserted.id, { version: ++eventVersion, notification: inserted })
 
           set((state) => {
             const exists = state.notifications.some((n) => n.id === inserted.id)
@@ -91,7 +101,8 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
         (payload) => {
           const updated = payload.new as OmniaNotification
 
-          if (updated.user_id !== userId) return
+          if (updated.user_id !== userId || currentGeneration !== generation) return
+          recentEvents.set(updated.id, { version: ++eventVersion, notification: updated })
 
           set((state) => {
             const nextNotifications = state.notifications.map((n) =>
@@ -107,12 +118,21 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
       )
       .subscribe((status) => {
         logger.debug('Notifications realtime status:', status)
+        if (status === 'SUBSCRIBED') {
+          void initialLoad.then(() => {
+            if (currentGeneration === generation) return get().loadRecent(userId)
+          })
+        }
       })
 
     set({ channel: nextChannel })
+    initialLoad = get().loadRecent(userId)
+    await initialLoad
   },
 
   cleanup: () => {
+    generation++
+    recentEvents.clear()
     const { channel } = get()
     if (channel) {
       try {
@@ -122,20 +142,32 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
       }
     }
 
-    set({ channel: null, currentUserId: null })
+    set({ channel: null, currentUserId: null, notifications: [], unreadCount: 0, loading: false, error: null })
   },
 
   loadRecent: async (userId: string) => {
+    const requestGeneration = generation
+    const startingVersion = eventVersion
+    const request = ++requestVersion
     set({ loading: true, error: null })
 
     try {
       const data = await notificationsRepoSupabase.listRecent({ userId, limit: 50 })
+      if (requestGeneration !== generation || request !== requestVersion || get().currentUserId !== userId) return
+      const byId = new Map(data.map((n) => [n.id, n]))
+      for (const { version, notification } of recentEvents.values()) {
+        if (version > startingVersion) byId.set(notification.id, notification)
+      }
+      const notifications = Array.from(byId.values()).sort((a, b) =>
+        (b.created_at ?? '').localeCompare(a.created_at ?? '')
+      )
       set({
-        notifications: data,
-        unreadCount: computeUnreadCount(data),
+        notifications,
+        unreadCount: computeUnreadCount(notifications),
         loading: false,
       })
     } catch (error: unknown) {
+      if (requestGeneration !== generation || request !== requestVersion || get().currentUserId !== userId) return
       const message = error instanceof Error ? error.message : 'Erro ao carregar notificações'
       set({ loading: false, error: message })
     }

@@ -8,7 +8,7 @@ import { Send, Paperclip, X, Image } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useSupabaseUpload } from '@/hooks/useSupabaseUpload';
 import { generateUserColor, getUserInitials } from '@/lib/userColors';
-import { supabase } from '@/integrations/supabase/client';
+import { notifyMentions } from '@/lib/notifyMentions';
 import { ticketCommentsRepoSupabase } from '@/repositories/ticketCommentsRepo.supabase';
 import { ataCommentsRepoSupabase, CreateAtaComment } from '@/repositories/ataCommentsRepo.supabase';
 import { ticketAttachmentsRepoSupabase } from '@/repositories/ticketAttachmentsRepo.supabase';
@@ -97,16 +97,16 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
         newComment = await ticketCommentsRepoSupabase.create(ticketCommentData);
       }
 
+      let notificationFailed = false;
       try {
-        await supabase.functions.invoke('notify-mentions', {
-          body: {
+        if (/@\[[0-9a-fA-F-]{36}\]/.test(commentBody)) await notifyMentions({
             body: commentBody,
             ticket_id: contextType === 'ticket' ? ticketId : null,
             comment_id: contextType === 'ata' ? newComment.id : null,
             ticket_comment_id: contextType === 'ticket' ? newComment.id : null,
-          },
         });
       } catch (error) {
+        notificationFailed = true;
         logger.error('Erro ao notificar menções:', error);
       }
 
@@ -128,8 +128,9 @@ export const TicketCommentInput = ({ ticketId, onCommentAdded, contextType = 'ti
       setMentionMap(new Map());
       onCommentAdded?.();
       toast({
-        title: 'Sucesso',
-        description: 'Comentário adicionado com sucesso',
+        title: notificationFailed ? 'Comentário salvo' : 'Sucesso',
+        description: notificationFailed ? 'Não foi possível enviar as notificações de menção.' : 'Comentário adicionado com sucesso',
+        variant: notificationFailed ? 'destructive' : 'default',
       })
     } catch (error) {
       logger.error('Erro ao adicionar comentário:', error);
