@@ -7,6 +7,7 @@ import { logger } from '../lib/logging';
 interface TarefasStore {
   tarefas: Tarefa[];
   loading: boolean;
+  hasLoadedTarefas: boolean;
   error: string | null;
   
   loadTarefas: () => Promise<void>;
@@ -21,13 +22,14 @@ interface TarefasStore {
 export const useTarefasStore = create<TarefasStore>((set, get) => ({
   tarefas: [],
   loading: false,
+  hasLoadedTarefas: false,
   error: null,
 
   loadTarefas: async () => {
     set({ loading: true, error: null });
     try {
       const tarefas = await tarefasRepoSupabase.list();
-      set({ tarefas, loading: false });
+      set({ tarefas, loading: false, hasLoadedTarefas: true });
     } catch (error) {
       logger.error('Erro ao carregar tarefas:', error);
       const treatedError = handleSupabaseError(

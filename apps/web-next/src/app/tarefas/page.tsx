@@ -74,7 +74,8 @@ export default function Tickets() {
   
   const { 
     tarefas, 
-    loading, 
+    loading,
+    hasLoadedTarefas,
     error, 
     loadTarefas, 
     searchTarefas,
@@ -245,7 +246,6 @@ export default function Tickets() {
   const handleStatusChange = async (id: string | number, statusId: string) => {
     try {
       await updateTarefa(id.toString(), { statusId });
-      loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
     }
@@ -263,7 +263,6 @@ export default function Tickets() {
         }
         
         await updateTarefa(id.toString(), { assignedTo: selectedUser });
-        loadTarefas();
       }
     } catch (error) {
       logger.error('Erro ao atualizar responsável:', error);
@@ -273,7 +272,6 @@ export default function Tickets() {
   const handleDueDateSave = async (newDate: Date | null, taskId: string) => {
     try {
       await updateTarefa(taskId, { dueDate: newDate ?? undefined });
-      loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar data de vencimento:', error);
     }
@@ -286,7 +284,6 @@ export default function Tickets() {
   const handlePriorityChange = async (id: string | number, newPriority: string) => {
     try {
       await updateTarefa(id.toString(), { priority: newPriority as TarefaPrioridade });
-      loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar prioridade:', error);
     }
@@ -295,7 +292,6 @@ export default function Tickets() {
   const handleTicketOctaChange = async (id: string | number, value?: string) => {
     try {
       await updateTarefa(id.toString(), { ticketOcta: value });
-      await loadTarefas();
     } catch (error) {
       console.error('Erro ao atualizar ticket:', error);
       throw error;
@@ -646,7 +642,7 @@ export default function Tickets() {
         </div>
 
         <div className="bg-white rounded-lg border overflow-hidden">
-          {loading ? (
+          {loading && !hasLoadedTarefas ? (
             <div className="text-center py-12 text-muted-foreground">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               Carregando tarefas...
