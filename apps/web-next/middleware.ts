@@ -57,13 +57,16 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
+    if (pathname.startsWith('/notificacoes/')) url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
   // Redirect authenticated users away from /auth
   if (user && isPublicRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    const next = request.nextUrl.searchParams.get('next')
+    url.pathname = next && /^\/notificacoes\/[0-9a-f-]{36}$/i.test(next) ? next : '/'
+    url.search = ''
     return NextResponse.redirect(url)
   }
 

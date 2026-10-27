@@ -22,11 +22,15 @@ export default function Auth() {
   
   const { signIn, resetPassword, user } = useAuth()
   const router = useRouter()
+  const destination = () => {
+    const next = new URLSearchParams(window.location.search).get('next')
+    return next && /^\/notificacoes\/[0-9a-f-]{36}$/i.test(next) ? next : '/'
+  }
 
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      router.push('/')
+      router.push(destination())
     }
   }, [user, router])
 
@@ -46,7 +50,7 @@ export default function Auth() {
         setError(error.message)
       }
     } else {
-      router.push('/')
+      router.push(destination())
     }
     
     setLoading(false)

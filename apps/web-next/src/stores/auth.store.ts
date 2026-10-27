@@ -290,6 +290,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signOut: async () => {
     try {
+      if (typeof window !== 'undefined') {
+        try {
+          const { disablePush } = await import('@/lib/push/subscription')
+          await disablePush()
+        } catch (error) { logger.warn('Failed to remove push subscription on sign out', error) }
+      }
       await supabase.auth.signOut()
     } catch (error) {
       logger.error('Error signing out:', error)

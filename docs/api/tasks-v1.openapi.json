@@ -3062,7 +3062,7 @@
         ],
         "operationId": "createTaskComment",
         "summary": "Add a comment to a visible task",
-        "description": "The author is always the verified user; the body cannot choose or forge it. Any user with access to the task may comment. Requires tasks:comment. Creating a comment updates the task commentCount but not its updatedAt or ETag, so it never invalidates a concurrent task edit. Mention tokens (@[userId]) are stored but no mention notification is sent.",
+        "description": "The author is always the verified user; the body cannot choose or forge it. Any user with access to the task may comment. Requires tasks:comment. Creating a comment updates the task commentCount but not its updatedAt or ETag, so it never invalidates a concurrent task edit. New comments notify the active creator and assignee who can access the task, excluding the author. Mention tokens (@[userId]) also notify active mentioned users with access. Each recipient receives one notification per comment, prioritizing mentions. Editing comments and changing task status do not generate these notifications.",
         "security": [
           {
             "browserBearer": []

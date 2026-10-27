@@ -9,6 +9,8 @@ import { toast } from '@/hooks/use-toast'
 
 const formatToastTitle = (type: string) => {
   switch (type) {
+    case 'commented':
+      return 'Novo comentário'
     case 'mentioned':
       return 'Você foi mencionado'
     case 'assigned':
@@ -60,6 +62,7 @@ const resolveNotificationContext = async (n: {
 
 export function NotificationsBootstrap() {
   const userId = useAuthStore((s) => s.userProfile?.id)
+  const authId = useAuthStore((s) => s.user?.id)
   const init = useNotificationsStore((s) => s.init)
   const cleanup = useNotificationsStore((s) => s.cleanup)
   const notifications = useNotificationsStore((s) => s.notifications)
@@ -71,6 +74,16 @@ export function NotificationsBootstrap() {
   const knownIdsRef = useRef<Set<string>>(new Set())
   const userIdRef = useRef<string | null>(null)
   const contextCacheRef = useRef<Map<string, { label: string; title: string }>>(new Map())
+
+  useEffect(() => {
+    if (!userId || !authId) return
+    void import('@/lib/push/subscription').then(async ({ availability, preparePush, reconcilePush }) => {
+      if (availability() === 'ready' && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) await preparePush()
+      await reconcilePush(userId, authId)
+    }).catch(() => {
+      // A failed refresh must never interrupt in-app notifications.
+    })
+  }, [userId, authId])
 
   useEffect(() => {
     if (!userId) return

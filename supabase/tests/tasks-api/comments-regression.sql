@@ -84,7 +84,8 @@ SELECT public.test_assert((public.t_as(1,'tasks.get',jsonb_build_object('id',:'s
 -- Deleting a comment cascades its notifications without extra worker grants.
 RESET ROLE;
 INSERT INTO public.omnia_ticket_comments(id,ticket_id,body,author_id) VALUES('50000000-0000-0000-0000-000000000001',:'shared_id','with notification','10000000-0000-0000-0000-000000000001');
-INSERT INTO public.omnia_notifications(user_id,type,ticket_id,ticket_comment_id) VALUES('10000000-0000-0000-0000-000000000002','mentioned',:'shared_id','50000000-0000-0000-0000-000000000001');
+INSERT INTO public.omnia_notifications(user_id,type,ticket_id,ticket_comment_id) VALUES('10000000-0000-0000-0000-000000000002','mentioned',:'shared_id','50000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+SELECT public.test_assert((SELECT count(*) FROM public.omnia_notifications WHERE ticket_comment_id='50000000-0000-0000-0000-000000000001')>=1,'comment has a dependent notification, including automatic ones');
 SET LOCAL ROLE service_role;
 SELECT public.test_assert(public.t_as(1,'comments.delete',jsonb_build_object('taskId',:'shared_id','id','50000000-0000-0000-0000-000000000001'))->>'status'='200','delete succeeds with dependent notification');
 SELECT public.test_assert((SELECT count(*) FROM public.omnia_notifications WHERE ticket_comment_id='50000000-0000-0000-0000-000000000001')=0,'dependent notification removed by the existing cascade');

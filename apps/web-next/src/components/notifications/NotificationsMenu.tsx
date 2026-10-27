@@ -16,9 +16,12 @@ import {
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { supabase } from '@/integrations/supabase/client'
 import { tarefasRepoSupabase } from '@/repositories/tarefasRepo.supabase'
+import { PushControl } from './PushControl'
 
 const formatActionLabel = (type: string) => {
   switch (type) {
+    case 'commented':
+      return 'Novo comentário'
     case 'mentioned':
       return 'Você foi mencionado'
     case 'assigned':
@@ -207,6 +210,8 @@ export function NotificationsMenu() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-80">
+        <PushControl />
+        <DropdownMenuSeparator />
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notificações</span>
           <Button

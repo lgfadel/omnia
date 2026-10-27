@@ -10,10 +10,16 @@
 /docs
 # The web app shares this parser with the Edge Function. Keep just this source
 # file available to the build; migrations and the other functions stay excluded.
-/supabase/**
-!/supabase/functions/
-!/supabase/functions/ata-transcriptions/
+/supabase/*
+!/supabase/functions
+/supabase/functions/*
+!/supabase/functions/ata-transcriptions
+/supabase/functions/ata-transcriptions/*
 !/supabase/functions/ata-transcriptions/importText.ts
+!/supabase/functions/send-web-push
+/supabase/functions/send-web-push/*
+!/supabase/functions/send-web-push/endpoint.ts
+!/supabase/functions/send-web-push/content.ts
 /tests
 /test-results
 /playwright.config.ts

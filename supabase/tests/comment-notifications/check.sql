@@ -1,0 +1,46 @@
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000004',false);
+INSERT INTO public.omnia_push_subscriptions(auth_user_id,user_id,endpoint,p256dh,auth_key) VALUES ('20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','https://web.push.apple.com/test','key','auth');
+INSERT INTO public.omnia_ticket_comments(id,ticket_id,author_id,body) VALUES ('50000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','New comment');
+SELECT public.test_assert((SELECT count(*)=2 FROM public.omnia_notifications WHERE ticket_comment_id='50000000-0000-0000-0000-000000000001' AND type='commented'),'new comment notifies creator and responsible');
+SELECT public.test_assert((SELECT count(*)=1 FROM public.omnia_push_jobs),'comment enqueues push for the subscribed creator');
+SELECT public.test_assert((SELECT count(*)=1 FROM public.omnia_claim_push_jobs(10) WHERE notification_type='commented' AND task_number=413 AND actor_name='Author'),'push carries correct comment context');
+UPDATE public.omnia_ticket_comments SET body='Edited' WHERE id='50000000-0000-0000-0000-000000000001';
+UPDATE public.omnia_tickets SET status_id=2;
+SELECT public.test_assert((SELECT count(*)=2 FROM public.omnia_notifications),'edits and status changes do not notify');
+DELETE FROM public.omnia_ticket_comments WHERE id='50000000-0000-0000-0000-000000000001';
+SELECT public.test_assert((SELECT count(*)=0 FROM public.omnia_notifications),'comment deletion cascades notifications');
+-- A mentioned responsible receives a single mention; other participants get a comment.
+INSERT INTO public.omnia_ticket_comments(id,ticket_id,author_id,body) VALUES ('50000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','Hello @[10000000-0000-0000-0000-000000000002] @[10000000-0000-0000-0000-000000000005]');
+SELECT public.test_assert((SELECT count(*)=3 FROM public.omnia_notifications),'comment and mentions notify distinct recipients');
+SELECT public.test_assert((SELECT count(*)=2 FROM public.omnia_notifications WHERE type='mentioned'),'mentions take precedence and include an external mentioned user');
+UPDATE public.omnia_notifications SET read_at=now() WHERE type='mentioned';
+INSERT INTO public.omnia_notifications(user_id,type,ticket_id,ticket_comment_id) VALUES ('10000000-0000-0000-0000-000000000002','mentioned','30000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+SELECT public.test_assert((SELECT count(*)=3 FROM public.omnia_notifications),'legacy mention call is idempotent');
+DELETE FROM public.omnia_ticket_comments;
+-- No self notifications; duplicate participant roles collapse to one recipient.
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+INSERT INTO public.omnia_ticket_comments(ticket_id,author_id,body) VALUES ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','Author is creator');
+SELECT public.test_assert((SELECT count(*)=1 AND min(user_id::text)='10000000-0000-0000-0000-000000000002' FROM public.omnia_notifications),'creator does not receive own comment');
+DELETE FROM public.omnia_ticket_comments;
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000004',false);
+UPDATE public.omnia_tickets SET assigned_to=created_by;
+INSERT INTO public.omnia_ticket_comments(ticket_id,author_id,body) VALUES ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','Same roles');
+SELECT public.test_assert((SELECT count(*)=1 FROM public.omnia_notifications),'duplicate roles do not duplicate notification');
+DELETE FROM public.omnia_ticket_comments;
+-- Private task and inactive recipients are filtered.
+UPDATE public.omnia_tickets SET assigned_to='10000000-0000-0000-0000-000000000002',is_private=true;
+INSERT INTO public.omnia_ticket_comments(ticket_id,author_id,body) VALUES ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','Private @[10000000-0000-0000-0000-000000000005]');
+SELECT public.test_assert((SELECT count(*)=1 AND min(user_id::text)='10000000-0000-0000-0000-000000000001' FROM public.omnia_notifications),'private task content stays with authorized recipient');
+DELETE FROM public.omnia_ticket_comments;
+UPDATE public.omnia_tickets SET is_private=false;
+UPDATE public.omnia_users SET active=false WHERE id='10000000-0000-0000-0000-000000000002';
+INSERT INTO public.omnia_ticket_comments(ticket_id,author_id,body) VALUES ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','Inactive recipient');
+SELECT public.test_assert((SELECT count(*)=1 FROM public.omnia_notifications),'inactive recipient is excluded');
+DELETE FROM public.omnia_ticket_comments;
+UPDATE public.omnia_users SET active=true;
+INSERT INTO public.omnia_comments(id,ata_id,author_id,body) VALUES ('60000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000004','Meeting comment @[10000000-0000-0000-0000-000000000003]');
+SELECT public.test_assert((SELECT count(*)=3 FROM public.omnia_notifications),'meeting notifies creator, responsible and secretary');
+UPDATE public.omnia_notifications SET read_at=now() WHERE type='mentioned';
+INSERT INTO public.omnia_notifications(user_id,type,comment_id) VALUES ('10000000-0000-0000-0000-000000000003','mentioned','60000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+SELECT public.test_assert((SELECT count(*)=3 FROM public.omnia_notifications),'meeting legacy mention does not duplicate');
+SELECT 'comment notification checks passed' AS result;
