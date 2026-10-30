@@ -1,0 +1,193 @@
+{
+  "snapshotDate": "2026-10-27",
+  "method": "Local source inspection; no production database or browser measurement",
+  "files": [
+    {
+      "original": "apps/web-next/src/components/layout/Layout.tsx",
+      "snapshot": "assets/reference-source/src/components/layout/Layout.tsx",
+      "sha256": "b29095b81c4f999d9f12f7068a98aa8e7d97d54cb30bc5f9ce2e7e38d6eca815",
+      "lines": 23
+    },
+    {
+      "original": "apps/web-next/src/components/layout/TopBar.tsx",
+      "snapshot": "assets/reference-source/src/components/layout/TopBar.tsx",
+      "sha256": "dec2afc6fe9e4d13b272bb5507af6d7417c10063e903fe2b8b36c3d3742b3354",
+      "lines": 20
+    },
+    {
+      "original": "apps/web-next/src/components/layout/AppSidebar.tsx",
+      "snapshot": "assets/reference-source/src/components/layout/AppSidebar.tsx",
+      "sha256": "5adbfa96d6f612162c5e092b284baccdfa1493d3021fc1fb01a747519fd5d1f1",
+      "lines": 384
+    },
+    {
+      "original": "apps/web-next/src/components/ui/sidebar.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/sidebar.tsx",
+      "sha256": "3755b8d134956e9c0be11ac0807d258017fb5b883bae7dd7371e48826845144a",
+      "lines": 765
+    },
+    {
+      "original": "apps/web-next/src/components/ui/tabela-omnia.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/tabela-omnia.tsx",
+      "sha256": "6e850dedfeed34167de548739eb26f5beb3d480e1eb030bfec7ae265d2363fac",
+      "lines": 1414
+    },
+    {
+      "original": "apps/web-next/src/components/ui/breadcrumb-omnia.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/breadcrumb-omnia.tsx",
+      "sha256": "2be49ada13ba6cda068117f15081c53141688c67019bb44233c4b15431c33373",
+      "lines": 50
+    },
+    {
+      "original": "apps/web-next/src/components/ui/button.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/button.tsx",
+      "sha256": "415ccc47cf69a2a87db699cc6da7f1fdcb799a1f40dab3a6220d91ac8da8abbe",
+      "lines": 56
+    },
+    {
+      "original": "apps/web-next/src/components/ui/input.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/input.tsx",
+      "sha256": "0f4808bd4daa9016b0c8de0dcf01b6b9fa9b00f0353d5c41223749ecf41b0ebc",
+      "lines": 36
+    },
+    {
+      "original": "apps/web-next/src/components/ui/textarea.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/textarea.tsx",
+      "sha256": "f4b566bfc0db82b27eb4a78657bb00cb6d9f372027b1f6453595642a43349b71",
+      "lines": 21
+    },
+    {
+      "original": "apps/web-next/src/components/ui/card.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/card.tsx",
+      "sha256": "8bad317eca5b74899d868688a339a16f54995e36810c0fdfe214c057755535e0",
+      "lines": 79
+    },
+    {
+      "original": "apps/web-next/src/components/ui/table.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/table.tsx",
+      "sha256": "1da243956282c040db49d5718d2f0093a705fbbdfa3a25f51c1a31a069c45093",
+      "lines": 117
+    },
+    {
+      "original": "apps/web-next/src/components/ui/badge.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/badge.tsx",
+      "sha256": "db977d821af56ae3fb7952182d9c0a076a10c75c38bc2d2b000827e720423d32",
+      "lines": 36
+    },
+    {
+      "original": "apps/web-next/src/components/ui/badge-status.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/badge-status.tsx",
+      "sha256": "7b1e117a686e3817153852ae4872a845fd5efc8059b28ec6b9ae15e0a08a8f9a",
+      "lines": 60
+    },
+    {
+      "original": "apps/web-next/src/components/ui/priority-badge.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/priority-badge.tsx",
+      "sha256": "99ec43252982c2383fc0760f6bf0a0344b4a162f074b45494b0473fa89a2885d",
+      "lines": 41
+    },
+    {
+      "original": "apps/web-next/src/components/ui/due-date-modal.tsx",
+      "snapshot": "assets/reference-source/src/components/ui/due-date-modal.tsx",
+      "sha256": "8377c1dd17af130ac73c0bc569c79baef3e7f2ec83942077faae3f858ba57af0",
+      "lines": 88
+    },
+    {
+      "original": "apps/web-next/src/components/atas/TagInput.tsx",
+      "snapshot": "assets/reference-source/src/components/atas/TagInput.tsx",
+      "sha256": "f0e6a9f3ff8a07eeb3e37d7398407844a08f6270e25283d8148a25efc397b882",
+      "lines": 180
+    },
+    {
+      "original": "apps/web-next/src/utils/tagColors.ts",
+      "snapshot": "assets/reference-source/src/utils/tagColors.ts",
+      "sha256": "fa9e124b03829cebe3f298e56a75be7a0de67adc0db0457fb3e16389fc4d2e9c",
+      "lines": 276
+    },
+    {
+      "original": "apps/web-next/src/lib/userColors.ts",
+      "snapshot": "assets/reference-source/src/lib/userColors.ts",
+      "sha256": "003bbd7ddb88a530783b54777e184c33d470d576961e9f5bc095667b076499d1",
+      "lines": 51
+    },
+    {
+      "original": "apps/web-next/src/lib/utils.ts",
+      "snapshot": "assets/reference-source/src/lib/utils.ts",
+      "sha256": "7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d",
+      "lines": 6
+    },
+    {
+      "original": "apps/web-next/src/hooks/use-mobile.tsx",
+      "snapshot": "assets/reference-source/src/hooks/use-mobile.tsx",
+      "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b",
+      "lines": 19
+    },
+    {
+      "original": "apps/web-next/src/app/styles/layout-responsive.css",
+      "snapshot": "assets/reference-source/src/app/styles/layout-responsive.css",
+      "sha256": "195fcb01f782f79b7db8f2abc44beca5c362f9bf8415e5e7b01cb46eac4f8f8e",
+      "lines": 81
+    },
+    {
+      "original": "apps/web-next/src/app/layout.tsx",
+      "snapshot": "assets/reference-source/src/app/layout.tsx",
+      "sha256": "9a9e5431ae93c0d65d10d776806f75ed751576b7ce15c00950b48743a68d537e",
+      "lines": 48
+    },
+    {
+      "original": "apps/web-next/tailwind.config.ts",
+      "snapshot": "assets/reference-source/tailwind.config.ts",
+      "sha256": "be907605146ff6b90104ff804126599b0f97086a8ef8ced359627866de4c6f99",
+      "lines": 113
+    },
+    {
+      "original": "apps/web-next/src/hooks/useEscapeKey.ts",
+      "snapshot": "assets/reference-source/src/hooks/useEscapeKey.ts",
+      "sha256": "ffb7d423a23592833ba36e1f1965ce1d3fc0427b739ce02f19c1c5463f64b813",
+      "lines": 28
+    },
+    {
+      "original": "apps/web-next/src/app/globals.css",
+      "snapshot": "assets/omnia-tokens.css",
+      "extraction": "Only :root and .dark token blocks; dashboard styles excluded",
+      "sha256_original": "0d066f0ee278e81e60624ee37344132352bdf2a1c37ccb4876f329eca8f39d3c",
+      "sha256_snapshot": "2ab38299197fcf97a373b7c26bf7c6d198e23a50a2eb591cc025ae1d297bb606"
+    },
+    {
+      "original": "apps/web-next/src/app/tarefas/page.tsx",
+      "snapshot": "assets/reference-source/src/app/tarefas/page.tsx",
+      "sha256": "25c35ff5c83e11049aa6a23b75901146747a3b84c33b7ca59bddb24208468d29",
+      "lines": 699
+    },
+    {
+      "original": "apps/web-next/src/components/tickets/TicketForm.tsx",
+      "snapshot": "assets/reference-source/src/components/tickets/TicketForm.tsx",
+      "sha256": "0a8d0c33c5d4ddcd0342e832cdf813076838513199c127920ac4cbb7ebcca0b4",
+      "lines": 469
+    },
+    {
+      "original": "apps/web-next/src/components/tags/TagForm.tsx",
+      "snapshot": "assets/reference-source/src/components/tags/TagForm.tsx",
+      "sha256": "e7d562fd195ade9af5c7ded3debb1a5aa1469ba31e4b762e6f34043a0e976b9a",
+      "lines": 112
+    },
+    {
+      "original": "apps/web-next/src/components/tags/TagList.tsx",
+      "snapshot": "assets/reference-source/src/components/tags/TagList.tsx",
+      "sha256": "1aa09ef02f897d38d541895e868cd26ea2b644583518970974b745f43dcb87a9",
+      "lines": 170
+    },
+    {
+      "original": "apps/web-next/src/stores/tags.store.ts",
+      "snapshot": "assets/reference-source/src/stores/tags.store.ts",
+      "sha256": "3c25d2ca583f908b86febe257f1742d40bc608a649cec754c7ff43f9a3c86760",
+      "lines": 130
+    },
+    {
+      "original": "apps/web-next/src/repositories/tagsRepo.supabase.ts",
+      "snapshot": "assets/reference-source/src/repositories/tagsRepo.supabase.ts",
+      "sha256": "86693f2b88c8af943083d2e039837ff3ded45604afb77c06756e4da9a7506f01",
+      "lines": 192
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 # Guias para agentes
 
+- [Skill Omnia Design System](../.context/omnia-design-system/omnia-design-system/SKILL.md) — gerar ou adaptar aplicações de outros domínios ao padrão visual do Omnia; [guia de uso](../.context/omnia-design-system/GUIA-DE-USO.md).
 - [Instruções do repositório](../AGENTS.md) e [playbooks de contexto](../.context/agents/README.md).
 - [API oficial de tarefas v1](../docs/api/tasks-v1.md) e [OpenAPI 3.1](../docs/api/tasks-v1.openapi.json) — contratos implementados para clientes e testes.
 - [Integração com Grok Bot](../docs/integrations/grok-bot-tasks.md) — fronteiras de serviço, segurança e implantação.

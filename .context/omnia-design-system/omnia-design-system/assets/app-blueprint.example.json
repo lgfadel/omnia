@@ -1,0 +1,43 @@
+{
+  "purpose": "Exemplo de configuração de domínio; não é um gerador executável.",
+  "app": {
+    "name": "Gestão de Contratos",
+    "locale": "pt-BR",
+    "theme": "omnia-light",
+    "logo": "Usar o logotipo local do sistema de destino"
+  },
+  "navigation": [
+    { "id": "home", "label": "Início", "href": "/", "icon": "home", "section": "main", "order": 0 },
+    { "id": "clients", "label": "Clientes", "href": "/clientes", "icon": "users", "section": "main", "order": 1, "permission": "clients:read" },
+    { "id": "contracts", "label": "Contratos", "href": "/contratos", "icon": "file-text", "section": "main", "order": 2, "permission": "contracts:read" },
+    { "id": "statuses", "label": "Status", "href": "/config/status", "icon": "chart", "section": "settings", "order": 0, "permission": "settings:manage" },
+    { "id": "tags", "label": "Tags", "href": "/config/tags", "icon": "tags", "section": "settings", "order": 1, "permission": "tags:manage" },
+    { "id": "users", "label": "Usuários", "href": "/config/usuarios", "icon": "users", "section": "settings", "order": 2, "permission": "users:manage" }
+  ],
+  "modules": [
+    {
+      "id": "contracts",
+      "title": "Contratos",
+      "listRoute": "/contratos",
+      "createRoute": "/contratos/novo",
+      "columns": ["publicCode", "title", "client", "dueDate", "responsible", "status", "actions"],
+      "defaultGrouping": "statusId",
+      "sortColumns": ["dueDate"],
+      "tags": { "enabled": true, "storage": "ids", "visibleInTitle": 2, "filterMode": "single" },
+      "mine": { "enabled": true, "defaultActive": true, "label": "Meus contratos", "field": "responsibleId" },
+      "fields": ["title", "clientId", "dueDate", "responsibleId", "statusId", "tagIds"]
+    },
+    {
+      "id": "clients",
+      "title": "Clientes",
+      "listRoute": "/clientes",
+      "createRoute": "/clientes/novo",
+      "columns": ["name", "document", "contact", "active", "actions"],
+      "defaultGrouping": null,
+      "defaultSort": "name:asc",
+      "tags": { "enabled": false },
+      "mine": { "enabled": false },
+      "fields": ["name", "document", "contact", "active"]
+    }
+  ]
+}

@@ -25,6 +25,7 @@ This directory contains ready-to-customize playbooks for AI agents collaborating
 4. Capture learnings in the relevant documentation file so future runs improve.
 
 ## Related Resources
+- [Omnia Design System](../omnia-design-system/omnia-design-system/SKILL.md) — padrão visual reutilizável entre aplicações; [guia de uso](../omnia-design-system/GUIA-DE-USO.md).
 - [Guia de agentes do repositório](../../agents/README.md) — contrato de tarefas e integração Grok para colaboradores.
 - [API oficial de tarefas v1](../../docs/api/tasks-v1.md) e [OpenAPI 3.1](../../docs/api/tasks-v1.openapi.json).
 - [Integração com Grok Bot](../../docs/integrations/grok-bot-tasks.md) — ordem de deploy, escopos e testes de aceite.

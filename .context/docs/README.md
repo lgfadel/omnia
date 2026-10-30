@@ -4,6 +4,7 @@
 Welcome to the repository knowledge base. Start with the project overview, then dive into specific guides as needed.
 
 ## Core Guides
+- [Design Omnia reutilizável](../omnia-design-system/GUIA-DE-USO.md) — skill portátil com layout, navegação, tabelas, filtros, formulários e tags.
 - [API oficial de tarefas v1](../../docs/api/tasks-v1.md) e [OpenAPI 3.1](../../docs/api/tasks-v1.openapi.json) — contrato versionado implementado.
 - [Integração com Grok Bot](../../docs/integrations/grok-bot-tasks.md) — arquitetura, configuração e aceite operacional.
 - [Índice público de documentação](../../docs/README.md) — ponto de entrada para guias do repositório.

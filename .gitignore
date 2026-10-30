@@ -46,6 +46,12 @@ supabase/.temp/
 /.context/transcription-import-preview/
 /.context/transcription-import-deno.lock
 
+# Registros locais de execução e validação; não fazem parte da aplicação.
+/.context/euro-office/
+/.context/web-push/
+# O pacote editável é versionado; o ZIP de distribuição é gerado localmente.
+/.context/omnia-design-system/*.zip
+
 # Permissões pessoais do Claude Code. A allowlist chega a liberar `python3 -c`,
 # que é execução arbitrária: compartilhar isso pelo repositório concederia o
 # mesmo poder, sem aviso, a quem clonar. Config de projeto vai em settings.json.

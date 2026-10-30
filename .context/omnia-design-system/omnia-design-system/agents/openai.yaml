@@ -1,0 +1,4 @@
+interface:
+  display_name: "Omnia Design System"
+  short_description: "Aplicações com o layout e os componentes do Omnia"
+  default_prompt: "Use $omnia-design-system para criar ou adaptar esta aplicação com o layout, menus, tabelas e componentes do Omnia, respeitando as regras do seu domínio."
