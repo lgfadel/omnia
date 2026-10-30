@@ -2,11 +2,13 @@ import { AuthApiError, type PostgrestError } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client"
 import type { Tables, TablesUpdate } from '@/integrations/supabase/db-types'
 import { logger } from '../lib/logging';
+import type { EuroOffice } from '@/lib/euroOffice'
 
 
 export interface Condominium {
   id: string
   name: string
+  euro?: EuroOffice
   analista_financeiro?: string | null
   street?: string | null
   number?: string | null
@@ -40,6 +42,7 @@ export interface Condominium {
 const transformCondominiumFromDB = (dbCondominium: Tables<'omnia_condominiums'>): Condominium => ({
   id: dbCondominium.id,
   name: dbCondominium.name,
+  euro: dbCondominium.euro,
   analista_financeiro: dbCondominium.analista_financeiro,
   street: dbCondominium.street,
   number: dbCondominium.number,
@@ -129,6 +132,7 @@ export const condominiumsRepoSupabase = {
       .from('omnia_condominiums')
       .insert({
         name: data.name,
+        euro: data.euro ?? 'Londrina',
         street: data.street,
         number: data.number,
         complement: data.complement,
@@ -171,6 +175,7 @@ export const condominiumsRepoSupabase = {
     
     const updateData: TablesUpdate<'omnia_condominiums'> = {}
     if (data.name !== undefined) updateData.name = data.name
+    if (data.euro !== undefined) updateData.euro = data.euro
     if (data.street !== undefined) updateData.street = data.street
     if (data.number !== undefined) updateData.number = data.number
     if (data.complement !== undefined) updateData.complement = data.complement

@@ -41,6 +41,7 @@ describe('balancetesRepoSupabase', () => {
           updated_at: '2026-04-01',
           omnia_condominiums: {
             name: 'Condomínio Digital',
+            euro: 'Campinas',
             balancete_digital: true,
           },
         },
@@ -50,9 +51,10 @@ describe('balancetesRepoSupabase', () => {
 
     const balancetes = await balancetesRepoSupabase.list()
 
-    expect(supabaseMocks.selectMock).toHaveBeenCalledWith('*, omnia_condominiums(name, balancete_digital)')
+    expect(supabaseMocks.selectMock).toHaveBeenCalledWith('*, omnia_condominiums(name, balancete_digital, euro)')
     expect(balancetes[0]).toMatchObject({
       condominium_name: 'Condomínio Digital',
+      euro: 'Campinas',
       balancete_digital: true,
     })
   })

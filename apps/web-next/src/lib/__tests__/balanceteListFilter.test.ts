@@ -123,3 +123,27 @@ describe('filterBalancetesForList', () => {
     expect(result).toHaveLength(1)
   })
 })
+
+
+describe('filtro Euro', () => {
+  const offices = [
+    balancete({ id: 'londrina', euro: 'Londrina' }),
+    balancete({ id: 'campinas', euro: 'Campinas' }),
+  ]
+
+  it('restringe os balancetes ao escritório selecionado', () => {
+    expect(filterBalancetesForList(offices, filters({ euro: 'Campinas' })).map(b => b.id)).toEqual(['campinas'])
+    expect(filterBalancetesForList(offices, filters({ euro: 'Londrina' })).map(b => b.id)).toEqual(['londrina'])
+    expect(filterBalancetesForList(offices, filters({ euro: 'todos' }))).toHaveLength(2)
+  })
+
+  it('mantém o escritório durante a busca que ignora status e anexos', () => {
+    const digital = offices.map(b => ({ ...b, balancete_digital: true }))
+    expect(filterBalancetesForList(digital, filters({ euro: 'Campinas', searchQuery: 'village', anexo: 'com-anexo' })).map(b => b.id)).toEqual(['campinas'])
+  })
+
+  it('combina escritório com status e anexos quando não há busca', () => {
+    expect(filterBalancetesForList(offices, filters({ euro: 'Campinas', anexo: 'com-anexo', attachmentCounts: { londrina: 1 } }))).toEqual([])
+    expect(filterBalancetesForList(offices, filters({ euro: 'Campinas', statusEnvio: new Set(['enviados']) }))).toEqual([])
+  })
+})

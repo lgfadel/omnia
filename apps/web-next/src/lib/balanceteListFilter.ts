@@ -1,4 +1,5 @@
 import type { Balancete } from '@/repositories/balancetesRepo.supabase'
+import type { EuroOfficeFilter } from './euroOffice'
 
 export type StatusEnvioOption = 'enviados' | 'pendentes' | 'digital'
 export type AnexoFilter = 'todos' | 'com-anexo' | 'sem-anexo'
@@ -21,6 +22,7 @@ export function getBalanceteEnvioStatus(
 }
 
 export interface BalanceteListFilters {
+  euro?: EuroOfficeFilter
   searchQuery: string
   statusEnvio: ReadonlySet<StatusEnvioOption>
   anexo: AnexoFilter
@@ -31,13 +33,17 @@ export interface BalanceteListFilters {
 /**
  * Com texto na busca, os filtros (status de envio e anexos) deixam de valer: quem procura um condomínio
  * pelo nome precisa achá-lo mesmo que ele esteja num grupo escondido por padrão (ex.: digitais).
+ * O filtro de escritório Euro é mantido mesmo durante a busca.
  * Sem busca, os filtros valem normalmente.
  */
 export function filterBalancetesForList(balancetes: Balancete[], filters: BalanceteListFilters): Balancete[] {
   const query = filters.searchQuery.trim().toLowerCase()
+  const officeBalancetes = filters.euro && filters.euro !== 'todos'
+    ? balancetes.filter((b) => b.euro === filters.euro)
+    : balancetes
 
   if (query) {
-    return balancetes.filter(
+    return officeBalancetes.filter(
       (b) =>
         (b.condominium_name || '').toLowerCase().includes(query) ||
         b.competencia.includes(query) ||
@@ -47,7 +53,7 @@ export function filterBalancetesForList(balancetes: Balancete[], filters: Balanc
 
   if (filters.statusEnvio.size === 0) return []
 
-  let data = balancetes.filter((b) => {
+  let data = officeBalancetes.filter((b) => {
     const protocolo = b.protocolo_id ? filters.protocolosMap.get(b.protocolo_id) : null
     return filters.statusEnvio.has(getBalanceteEnvioStatus(b, protocolo?.data_envio))
   })

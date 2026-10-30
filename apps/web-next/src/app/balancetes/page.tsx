@@ -41,6 +41,7 @@ import { balanceteAttachmentsRepoSupabase } from "@/repositories/balanceteAttach
 import { BalanceteForm } from "@/components/balancetes/BalanceteForm";
 import type { Balancete } from "@/repositories/balancetesRepo.supabase";
 import { useToast } from "@/hooks/use-toast";
+import { EURO_OFFICES, type EuroOfficeFilter } from "@/lib/euroOffice";
 
 const columns = [
   { key: "condominium_name", label: "Condomínio", width: "w-[23%]", sortable: true },
@@ -97,6 +98,7 @@ export default function BalancetesPage() {
   const { protocolos, loadProtocolos } = useProtocolosStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [euroFilter, setEuroFilter] = useState<EuroOfficeFilter>('Londrina');
   const [formOpen, setFormOpen] = useState(false);
   const [editingBalancete, setEditingBalancete] = useState<Balancete | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -181,13 +183,14 @@ export default function BalancetesPage() {
   const filteredData = useMemo(
     () =>
       filterBalancetesForList(balancetes, {
+        euro: euroFilter,
         searchQuery,
         statusEnvio: statusEnvioFilter,
         anexo: anexoFilter,
         attachmentCounts,
         protocolosMap,
       }),
-    [balancetes, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts, protocolosMap]
+    [balancetes, euroFilter, searchQuery, statusEnvioFilter, anexoFilter, attachmentCounts, protocolosMap]
   );
 
   const tableData = useMemo(
@@ -494,6 +497,29 @@ export default function BalancetesPage() {
     }
   };
 
+  const euroFilterControl = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="h-10 gap-2">
+          <Filter className="h-4 w-4" />
+          Euro: {euroFilter === 'todos' ? 'Todos' : euroFilter}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel>Escritório Euro</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={euroFilter} onValueChange={(value) => {
+          setEuroFilter(value as EuroOfficeFilter);
+          setSelectedBalancetes(new Set());
+        }}>
+          <DropdownMenuRadioItem value="todos">Todos os escritórios</DropdownMenuRadioItem>
+          {EURO_OFFICES.map((office) => (
+            <DropdownMenuRadioItem key={office} value={office}>{office}</DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <Layout>
       <div className="space-y-4">
@@ -509,7 +535,9 @@ export default function BalancetesPage() {
           </TabsList>
 
           <TabsContent value="dashboard">
+            <div className="mb-4">{euroFilterControl}</div>
             <BalancetesDashboard
+              euroFilter={euroFilter}
               balancetes={balancetes}
               condominiums={condominiums}
               onCondominiumClick={handleDashboardCondominiumClick}
@@ -528,6 +556,7 @@ export default function BalancetesPage() {
                     className="pl-10 h-10 bg-gray-50 border-gray-200 text-gray-700 placeholder:text-gray-500"
                   />
                 </div>
+                {euroFilterControl}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

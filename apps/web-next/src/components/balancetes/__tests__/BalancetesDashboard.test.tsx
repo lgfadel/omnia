@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { BalancetesDashboard } from '../BalancetesDashboard'
+import { generateBalancetesRelatorioPDF } from '@/lib/generateBalancetesRelatorio'
 
 vi.mock('@/lib/generateBalancetesRelatorio', () => ({
   generateBalancetesRelatorioPDF: vi.fn(),
@@ -27,6 +28,7 @@ describe('BalancetesDashboard', () => {
             state: null,
             zip_code: null,
             active: true,
+            euro: 'Londrina',
             balancete_digital: true,
             boleto_impresso: false,
             created_at: null,
@@ -43,6 +45,7 @@ describe('BalancetesDashboard', () => {
             state: null,
             zip_code: null,
             active: true,
+            euro: 'Londrina',
             balancete_digital: false,
             boleto_impresso: false,
             created_at: null,
@@ -73,6 +76,7 @@ describe('BalancetesDashboard', () => {
             state: null,
             zip_code: null,
             active: true,
+            euro: 'Londrina',
             analista_financeiro: 'Marina Souza',
             balancete_digital: true,
             boleto_impresso: false,
@@ -115,6 +119,7 @@ describe('BalancetesDashboard', () => {
             state: null,
             zip_code: null,
             active: true,
+            euro: 'Londrina',
             balancete_digital: true,
             boleto_impresso: false,
             created_at: null,
@@ -157,6 +162,7 @@ describe('BalancetesDashboard', () => {
             state: null,
             zip_code: null,
             active: true,
+            euro: 'Londrina',
             balancete_digital: true,
             boleto_impresso: false,
             created_at: null,
@@ -171,4 +177,26 @@ describe('BalancetesDashboard', () => {
 
     expect(onCondominiumClick).toHaveBeenCalledWith('cond-1', '02/2026')
   })
+})
+
+
+it('filtra indicadores e relatório por escritório Euro', async () => {
+  vi.mocked(generateBalancetesRelatorioPDF).mockResolvedValue(new Uint8Array())
+  const condominiums = [
+    { id: 'ld', name: 'Condomínio Londrina', euro: 'Londrina' as const, active: true, created_at: null, updated_at: null },
+    { id: 'cp', name: 'Condomínio Campinas', euro: 'Campinas' as const, active: true, created_at: null, updated_at: null },
+  ]
+  const balancetes = condominiums.map(c => ({ id: c.id, condominium_id: c.id, received_at: '2020-01-01', competencia: '01/2020', volumes: 1, status: 'received', created_at: null, updated_at: null }))
+  const { rerender } = render(<BalancetesDashboard balancetes={balancetes} condominiums={condominiums} />)
+  expect(screen.getByRole('button', { name: 'Condomínio Londrina' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Condomínio Campinas' })).not.toBeInTheDocument()
+  rerender(<BalancetesDashboard balancetes={balancetes} condominiums={condominiums} euroFilter="Campinas" />)
+  expect(screen.queryByRole('button', { name: 'Condomínio Londrina' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Condomínio Campinas' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Todos/ })).toHaveTextContent('1')
+  fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }))
+  await waitFor(() => expect(generateBalancetesRelatorioPDF).toHaveBeenCalledWith([], [expect.objectContaining({ condominium: 'Condomínio Campinas' })]))
+  rerender(<BalancetesDashboard balancetes={balancetes} condominiums={condominiums} euroFilter="todos" />)
+  expect(screen.getByRole('button', { name: 'Condomínio Londrina' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Todos/ })).toHaveTextContent('2')
 })

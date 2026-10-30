@@ -19,6 +19,7 @@ import { useAuthStore } from "@/stores/auth.store"
 import { useBalancetesStore } from "@/stores/balancetes.store"
 import type { Balancete } from "@/repositories/balancetesRepo.supabase"
 import type { Condominium } from "@/repositories/condominiumsRepo.supabase"
+import type { EuroOfficeFilter } from "@/lib/euroOffice"
 import {
   getBalanceteStatus,
   getBalanceteStatusLabel,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/balanceteStatus"
 
 interface BalancetesDashboardProps {
+  euroFilter?: EuroOfficeFilter
   balancetes: Balancete[]
   condominiums: Condominium[]
   onCondominiumClick?: (condominiumId: string, latestCompetencia: string | null) => void
@@ -63,7 +65,7 @@ function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortF
   return <ArrowDown className="w-3.5 h-3.5 ml-1 text-primary" />
 }
 
-export function BalancetesDashboard({ balancetes, condominiums, onCondominiumClick }: BalancetesDashboardProps) {
+export function BalancetesDashboard({ balancetes, condominiums, euroFilter = 'Londrina', onCondominiumClick }: BalancetesDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | BalanceteStatusColor>('all')
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -72,7 +74,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
   const { loadBalancetes } = useBalancetesStore()
 
   const rows = useMemo(() => {
-    const activeCondominiums = condominiums.filter((c) => c.active === true)
+    const activeCondominiums = condominiums.filter((c) => c.active === true && (euroFilter === 'todos' || c.euro === euroFilter))
 
     function latestCompetenciaOf(items: Balancete[]): string | null {
       return items.reduce((best, b) => {
@@ -116,7 +118,7 @@ export function BalancetesDashboard({ balancetes, condominiums, onCondominiumCli
         balanceteDigital: cond.balancete_digital,
       }
     })
-  }, [balancetes, condominiums])
+  }, [balancetes, condominiums, euroFilter])
 
   const counts = useMemo(() => {
     return {

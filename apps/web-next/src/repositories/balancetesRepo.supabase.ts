@@ -4,10 +4,13 @@ import { logger } from '../lib/logging'
 import { todayInSaoPaulo } from '../lib/brazilDate'
 import { protocolosRepoSupabase, type Protocolo } from './protocolosRepo.supabase'
 
+import type { EuroOffice } from '@/lib/euroOffice'
+
 export interface Balancete {
   id: string
   condominium_id: string
   condominium_name?: string
+  euro?: EuroOffice
   balancete_digital?: boolean | null
   received_at: string | null
   competencia: string
@@ -46,7 +49,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
       .order('received_at', { ascending: false })
 
     if (error) {
@@ -59,6 +62,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
@@ -91,7 +95,7 @@ export const balancetesRepoSupabase = {
     const { data: newBalancete, error } = await supabase
       .from('omnia_balancetes')
       .insert(insertData)
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
       .maybeSingle()
 
     if (error) {
@@ -110,6 +114,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
@@ -140,7 +145,7 @@ export const balancetesRepoSupabase = {
       .from('omnia_balancetes')
       .update(updateData)
       .eq('id', id)
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
       .single()
 
     if (error) {
@@ -155,6 +160,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
@@ -192,7 +198,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
       .eq('id', id)
       .single()
 
@@ -208,6 +214,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
@@ -254,7 +261,7 @@ export const balancetesRepoSupabase = {
         protocolo_id: protocolo.id,
       } as any)
       .in('id', ids)
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
 
     if (error) {
       logger.error('Error marking balancetes as sent:', error)
@@ -266,6 +273,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,
@@ -289,7 +297,7 @@ export const balancetesRepoSupabase = {
 
     const { data, error } = await supabase
       .from('omnia_balancetes')
-      .select('*, omnia_condominiums(name, balancete_digital)')
+      .select('*, omnia_condominiums(name, balancete_digital, euro)')
       .filter('protocolo_id', 'eq', protocoloId)
       .order('condominium_id')
 
@@ -302,6 +310,7 @@ export const balancetesRepoSupabase = {
       id: row.id,
       condominium_id: row.condominium_id,
       condominium_name: row.omnia_condominiums?.name || '',
+      euro: row.omnia_condominiums?.euro,
       balancete_digital: row.omnia_condominiums?.balancete_digital ?? false,
       received_at: row.received_at,
       competencia: row.competencia,

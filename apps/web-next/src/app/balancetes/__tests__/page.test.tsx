@@ -108,6 +108,7 @@ vi.mock('@/stores/balancetes.store', () => ({
         id: '1',
         condominium_id: 'cond-1',
         condominium_name: 'Condomínio Digital',
+        euro: 'Londrina',
         balancete_digital: true,
         received_at: '2026-04-01',
         competencia: '03/2026',
@@ -123,6 +124,7 @@ vi.mock('@/stores/balancetes.store', () => ({
         id: '2',
         condominium_id: 'cond-2',
         condominium_name: 'Condomínio Impresso',
+        euro: 'Campinas',
         balancete_digital: false,
         received_at: '2026-04-02',
         competencia: '03/2026',
@@ -138,6 +140,7 @@ vi.mock('@/stores/balancetes.store', () => ({
         id: '3',
         condominium_id: 'cond-3',
         condominium_name: 'Condomínio Enviado',
+        euro: 'Londrina',
         balancete_digital: false,
         received_at: '2026-04-03',
         competencia: '03/2026',
@@ -235,21 +238,23 @@ describe('BalancetesPage', () => {
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
     expect(screen.getByTestId('columns')).toHaveTextContent('Tipo')
-    expect(screen.getByTestId('tipo-values')).toHaveTextContent('I|I')
+    expect(screen.getByTestId('tipo-values')).toHaveTextContent('I')
   })
 
-  it('aplica como padrao apenas os status pendente e enviado', async () => {
+  it('usa Londrina como padrão com os status pendente e enviado', async () => {
     render(<BalancetesPage />)
 
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
+    expect(screen.getByRole('button', { name: 'Euro: Londrina' })).toBeInTheDocument()
     expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Digital')
-    expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Impresso')
+    expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Impresso')
     expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Enviado')
   })
 
   it('mostra status Digital quando o filtro digital esta selecionado', async () => {
     render(<BalancetesPage />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Todos os escritórios' }))
 
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Digital' }))
 
@@ -263,6 +268,7 @@ describe('BalancetesPage', () => {
 
   it('combina filtros de status ao selecionar Digital junto com os demais', async () => {
     render(<BalancetesPage />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Todos os escritórios' }))
 
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Digital' }))
 
@@ -275,6 +281,7 @@ describe('BalancetesPage', () => {
 
   it('nao permite selecionar balancete digital para envio', async () => {
     render(<BalancetesPage />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Todos os escritórios' }))
 
     await waitFor(() => expect(mockTabelaOmnia).toHaveBeenCalled())
 
@@ -306,6 +313,7 @@ describe('BalancetesPage', () => {
     const expectedDate = amanha.toISOString().split('T')[0]
 
     render(<BalancetesPage />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Todos os escritórios' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete impresso' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enviar (1)' }))
@@ -323,4 +331,23 @@ describe('BalancetesPage', () => {
     expect(screen.getByTestId('status-values')).toHaveTextContent('10/04/2026')
     expect(screen.getByTestId('status-classes')).toHaveTextContent('text-red-700')
   })
+})
+
+
+it('filtra por Euro durante a busca e limpa a seleção ao trocar de escritório', async () => {
+  render(<BalancetesPage />)
+  fireEvent.click(screen.getByRole('menuitemradio', { name: 'Campinas' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Selecionar balancete impresso' }))
+  expect(screen.getByRole('button', { name: 'Enviar (1)' })).toBeEnabled()
+  fireEvent.click(screen.getByRole('menuitemradio', { name: 'Londrina' }))
+  expect(screen.getByRole('button', { name: /^Enviar$/ })).toBeDisabled()
+  expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Impresso')
+  fireEvent.change(screen.getByPlaceholderText('Buscar balancetes...'), { target: { value: 'Condomínio' } })
+  expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Digital')
+  expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Impresso')
+  fireEvent.click(screen.getByRole('menuitemradio', { name: 'Campinas' }))
+  expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Impresso')
+  expect(screen.getByTestId('row-names')).not.toHaveTextContent('Condomínio Enviado')
+  fireEvent.click(screen.getByRole('menuitemradio', { name: 'Todos os escritórios' }))
+  expect(screen.getByTestId('row-names')).toHaveTextContent('Condomínio Enviado')
 })

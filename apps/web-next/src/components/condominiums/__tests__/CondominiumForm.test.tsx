@@ -49,6 +49,22 @@ describe("CondominiumForm", () => {
     updated_at: null,
   }
 
+  it("usa Londrina por padrão e salva a alteração para Campinas", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<CondominiumForm condominium={condominiumFixture} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    const euro = screen.getByRole("combobox", { name: "Euro" })
+    expect(euro).toHaveTextContent("Londrina")
+    fireEvent.keyDown(euro, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("option", { name: "Campinas" }))
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar" }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ euro: "Campinas" })))
+  })
+
+  it("carrega o escritório salvo no condomínio", () => {
+    render(<CondominiumForm condominium={{ ...condominiumFixture, euro: "Campinas" }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+    expect(screen.getByRole("combobox", { name: "Euro" })).toHaveTextContent("Campinas")
+  })
+
   it("exibe e envia o campo de analista financeiro", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 

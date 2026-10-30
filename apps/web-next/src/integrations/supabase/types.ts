@@ -507,6 +507,7 @@ export type Database = {
       }
       omnia_condominiums: {
         Row: {
+          euro: "Londrina" | "Campinas"
           active: boolean
           address: string | null
           analista_assembleias: string | null
@@ -538,6 +539,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          euro?: "Londrina" | "Campinas"
           active?: boolean
           address?: string | null
           analista_assembleias?: string | null
@@ -569,6 +571,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          euro?: "Londrina" | "Campinas"
           active?: boolean
           address?: string | null
           analista_assembleias?: string | null

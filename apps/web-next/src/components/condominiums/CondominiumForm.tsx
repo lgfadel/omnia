@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Condominium } from "@/repositories/condominiumsRepo.supabase"
+import { EURO_OFFICES, type EuroOffice } from "@/lib/euroOffice"
 import { cepService, CEPServiceError } from "@/services/cep.service"
 import { cnpjService, CNPJServiceError } from "@/services/cnpj.service"
 import { Building2, Loader2, MapPin, Settings2, Users, type LucideIcon } from "lucide-react"
@@ -55,6 +56,7 @@ const boletoDeliveryOptions = [
 ] as const
 
 const condominiumSchema = z.object({
+  euro: z.enum(EURO_OFFICES).default("Londrina"),
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos").max(14, "CNPJ deve ter 14 dígitos").regex(/^\d{14}$/, "CNPJ deve conter apenas números"),
   syndic_name: z.string().optional().nullable(),
@@ -93,6 +95,7 @@ const condominiumSchema = z.object({
 type CondominiumFormData = z.infer<typeof condominiumSchema>
 
 export type CondominiumFormValues = {
+  euro: EuroOffice
   name: string
   cnpj: string
   syndic_name?: string | null
@@ -140,6 +143,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(condominiumSchema as any),
     defaultValues: {
+      euro: condominium?.euro ?? "Londrina",
       name: condominium?.name || "",
       cnpj: condominium?.cnpj || "",
       syndic_name: condominium?.syndic_name || "",
@@ -242,6 +246,7 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
     const boletoImpresso = data.boleto_delivery_type !== "nao"
 
     await onSubmit({
+      euro: data.euro,
       name: data.name,
       cnpj: cnpjService.cleanCNPJ(data.cnpj),
       syndic_name: data.syndic_name || null,
@@ -296,6 +301,20 @@ export function CondominiumForm({ condominium, onSubmit, onCancel, isLoading }: 
         {/* Coluna principal */}
         <div className="space-y-6 lg:col-span-7">
           <FormSection icon={Building2} title="Informações" description="Dados cadastrais do condomínio">
+            <div className="space-y-2">
+              <Label htmlFor="euro">Euro</Label>
+              <Select
+                value={watch("euro")}
+                onValueChange={(value: EuroOffice) => setValue("euro", value, { shouldDirty: true, shouldValidate: true })}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="euro"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EURO_OFFICES.map((office) => <SelectItem key={office} value={office}>{office}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Escritório responsável pelo condomínio</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="cnpj">CNPJ *</Label>
               <div className="relative">
