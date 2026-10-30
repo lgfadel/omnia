@@ -535,9 +535,9 @@ export default function BalancetesPage() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <div className="mb-4">{euroFilterControl}</div>
             <BalancetesDashboard
               euroFilter={euroFilter}
+              euroFilterControl={euroFilterControl}
               balancetes={balancetes}
               condominiums={condominiums}
               onCondominiumClick={handleDashboardCondominiumClick}

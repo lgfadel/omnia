@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, type ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,6 +30,7 @@ import {
 
 interface BalancetesDashboardProps {
   euroFilter?: EuroOfficeFilter
+  euroFilterControl?: ReactNode
   balancetes: Balancete[]
   condominiums: Condominium[]
   onCondominiumClick?: (condominiumId: string, latestCompetencia: string | null) => void
@@ -65,7 +66,7 @@ function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortF
   return <ArrowDown className="w-3.5 h-3.5 ml-1 text-primary" />
 }
 
-export function BalancetesDashboard({ balancetes, condominiums, euroFilter = 'Londrina', onCondominiumClick }: BalancetesDashboardProps) {
+export function BalancetesDashboard({ balancetes, condominiums, euroFilter = 'Londrina', euroFilterControl, onCondominiumClick }: BalancetesDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | BalanceteStatusColor>('all')
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -290,11 +291,12 @@ export function BalancetesDashboard({ balancetes, condominiums, euroFilter = 'Lo
         </button>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2">
+        {euroFilterControl}
         <Button
           variant="outline"
           size="sm"
-          className="h-9 px-3 gap-2"
+          className="h-10 px-3 gap-2"
           onClick={() => setImportDialogOpen(true)}
         >
           <Upload className="w-4 h-4" />
@@ -303,7 +305,7 @@ export function BalancetesDashboard({ balancetes, condominiums, euroFilter = 'Lo
         <Button
           variant="outline"
           size="sm"
-          className="h-9 px-3 gap-2"
+          className="h-10 px-3 gap-2"
           onClick={handleGerarRelatorio}
           disabled={counts.yellow + counts.red === 0}
         >
