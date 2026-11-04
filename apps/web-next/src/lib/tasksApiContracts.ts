@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const taskPrioritySchema = z.enum(['URGENTE', 'ALTA', 'NORMAL', 'BAIXA'])
-export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update', 'tasks:comment', 'tasks:delete'])
+export const taskScopeSchema = z.enum(['tasks:read', 'tasks:create', 'tasks:update', 'tasks:comment', 'tasks:delete', 'balancetes:read', 'balancetes:write', 'balancetes:delete'])
 export const taskDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const [year, month, day] = value.split('-').map(Number)
   if (year < 1 || month < 1 || month > 12 || day < 1) return false
@@ -53,7 +53,7 @@ export const taskListQuerySchema = z.object({
 }).strict().refine(value => !value.dueDateFrom || !value.dueDateTo || value.dueDateFrom <= value.dueDateTo, 'Invalid date range')
 export const taskTagQuerySchema = z.object({query:z.string().max(500).optional()}).strict()
 export const taskAssigneeQuerySchema = z.object({query:z.string().max(500).optional(),limit:queryLimit.optional().default('50')}).strict()
-const credentialScopesSchema = z.array(taskScopeSchema).min(1).max(5).refine(value => new Set(value).size === value.length)
+const credentialScopesSchema = z.array(taskScopeSchema).min(1).max(8).refine(value => new Set(value).size === value.length)
 export const credentialCreateSchema = z.object({
   name:z.string().trim().min(1).max(100), audience:z.enum(['api','mcp']),
   scopes:credentialScopesSchema,
@@ -84,6 +84,33 @@ export const taskStatusSchema = z.object({id:uuid,name:z.string(),color:z.string
 export const taskTagSchema = z.object({id:uuid,name:z.string(),color:z.string()}).strict()
 export const credentialSchema = z.object({id:uuid,name:z.string(),audience:z.enum(['api','mcp']),scopes:z.array(taskScopeSchema),createdAt:taskTimestampSchema,expiresAt:taskTimestampSchema.nullable(),revokedAt:taskTimestampSchema.nullable(),lastUsedAt:taskTimestampSchema.nullable()}).strict()
 export const mcpCapabilitySchema = z.object({id:uuid,audience:z.literal('api'),scopes:z.array(taskScopeSchema),expiresAt:taskTimestampSchema}).strict()
+const competencia = z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Competencia must be MM/YYYY')
+const euroOffice = z.enum(['Londrina', 'Campinas'])
+export const condominiumListQuerySchema = z.object({
+  query: z.string().max(500).optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(500)).optional().default('200'),
+  includeInactive: queryBoolean.optional(),
+}).strict()
+export const balanceteListQuerySchema = z.object({
+  limit: queryLimit.optional().default('50'),
+  cursor: z.string().min(1).max(1000).optional(),
+  condominiumId: uuid.optional(), competencia: competencia.optional(), euro: euroOffice.optional(),
+  awaitingPhysical: queryBoolean.optional(), sent: queryBoolean.optional(),
+}).strict()
+export const balanceteUpsertSchema = z.object({condominiumId:uuid,competencia,generatedAt:taskTimestampSchema}).strict()
+export const balancetePatchSchema = z.object({
+  condominiumId: uuid.optional(), competencia: competencia.optional(), receivedAt: taskDateSchema.optional(),
+  volumes: z.number().int().min(1).max(10000).optional(), observations: z.string().max(10000).nullable().optional(),
+}).strict().refine(value => Object.keys(value).length > 0, 'Patch requires a field')
+export const condominiumSummarySchema = z.object({id:uuid,name:z.string(),euro:euroOffice,balanceteDigital:z.boolean(),active:z.boolean(),aliases:z.array(z.string())}).strict()
+export const balanceteSchema = z.object({
+  id:uuid,condominiumId:uuid,condominiumName:z.string(),euro:euroOffice,balanceteDigital:z.boolean(),competencia:z.string(),receivedAt:taskDateSchema.nullable(),
+  digitalPreparedAt:taskTimestampSchema.nullable(),volumes:z.number().int(),observations:z.string().nullable(),status:z.string(),sentAt:taskTimestampSchema.nullable(),
+  protocoloId:uuid.nullable(),csvImportBatchId:uuid.nullable(),createdById:uuid.nullable(),createdAt:taskTimestampSchema,updatedAt:taskTimestampSchema,
+}).strict()
+export const balanceteUpsertResultSchema = balanceteSchema.extend({action:z.enum(['create','update','noop'])}).strict()
+export type BalanceteDTO = z.infer<typeof balanceteSchema>
+export type CondominiumSummaryDTO = z.infer<typeof condominiumSummarySchema>
 export type TaskDTO = z.infer<typeof taskSchema>
 export type TaskCreateDTO = z.infer<typeof taskCreateSchema>
 export type TaskPatchDTO = z.infer<typeof taskPatchSchema>

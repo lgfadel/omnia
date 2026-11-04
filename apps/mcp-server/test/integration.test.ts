@@ -24,6 +24,9 @@ const comment = {id:commentId,taskId:uid,body:'Olá',authorId:uid,author:null,cr
 const version = '"MjAyNi0xMC0wNFQxMjowMDowMC4xMjM0NTYrMDA6MDA"'
 const updatedVersion = '"MjAyNi0xMC0wNFQxMjowMTowMC42NTQzMjErMDA6MDA"'
 const updatedTask = {...task,title:'Changed',updatedAt:'2026-10-04T12:01:00.654321+00:00'}
+const condominiumId = '55555555-5555-4555-8555-555555555555'
+const balancete = {id:uid,condominiumId,condominiumName:'Edifício',euro:'Londrina',balanceteDigital:true,competencia:'09/2026',receivedAt:'2026-10-04',digitalPreparedAt:'2026-10-04T12:00:00+00:00',volumes:1,observations:null,status:'recebido',sentAt:null,protocoloId:null,csvImportBatchId:null,createdById:uid,createdAt:'2026-10-04T12:00:00.000001+00:00',updatedAt:'2026-10-04T12:00:00.123456+00:00'}
+let balanceteLocked = false
 let api: Server, mcp: Server, apiPort: number, mcpPort: number
 let requests: Array<{method:string;path:string;authorization:string|undefined;body:unknown;headers:Record<string,string|undefined>}>
 let revoked = false
@@ -76,6 +79,14 @@ before(async () => {
       if (req.method === 'POST') {res.statusCode=201;res.end(JSON.stringify({data:comment,requestId:uid}));return}
       res.end(JSON.stringify({data:comment,requestId:uid}));return
     }
+    if (path.startsWith('/api/v1/condominiums')) {res.end(JSON.stringify({data:{items:[{id:condominiumId,name:'Edifício',euro:'Londrina',balanceteDigital:true,active:true,aliases:[]}],hasMore:false},requestId:uid}));return}
+    if (path === '/api/v1/balancetes' && req.method === 'POST') {res.setHeader('ETag',responseVersion);res.end(JSON.stringify({data:{...balancete,action:'create'},requestId:uid}));return}
+    if (path.startsWith('/api/v1/balancetes?') || path === '/api/v1/balancetes') {res.end(JSON.stringify({data:{items:[balancete],nextCursor:null},requestId:uid}));return}
+    if (path === `/api/v1/balancetes/${uid}`) {
+      if (balanceteLocked && req.method !== 'GET') {res.statusCode=409;res.end(JSON.stringify({error:{code:'BALANCETE_LOCKED',message:'A sent balancete or one with attachments cannot be changed this way'},requestId:uid}));return}
+      if (req.method !== 'DELETE') res.setHeader('ETag',responseVersion)
+      res.end(JSON.stringify({data:balancete,requestId:uid}));return
+    }
     if (path.startsWith('/api/v1/task-tags')) {res.end(JSON.stringify({data:[{id:statusId,name:'Urgente',color:'#ef4444'}],requestId:uid}));return}
     if (path.startsWith('/api/v1/task-assignees')) {res.end(JSON.stringify({data:[],requestId:uid}));return}
     res.statusCode=404;res.end(JSON.stringify({error:{code:'NOT_FOUND',message:'Resource not found'},requestId:uid}))
@@ -96,12 +107,12 @@ async function clientFor(key=mcpKey,modern=false) {
   return client
 }
 
-test('official client negotiates, lists twelve tools, and exchanges on initialize and list', async () => {
+test('official client negotiates, lists eighteen tools, and exchanges on initialize and list', async () => {
   const client = await clientFor(mcpKey,true)
   try {
-    assert.deepEqual(client.getServerVersion(),{name:'omnia-mcp',version:'0.2.0'})
+    assert.deepEqual(client.getServerVersion(),{name:'omnia-mcp',version:'0.3.0'})
     const tools=(await client.listTools()).tools
-    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_task','delete_task_comment','get_task','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_task','update_task_comment'])
+    assert.deepEqual(tools.map(tool=>tool.name).sort(),['create_task','create_task_comment','delete_balancete','delete_task','delete_task_comment','get_balancete','get_task','list_balancetes','list_condominiums','list_task_comments','list_task_statuses','list_task_tags','list_tasks','search_task_assignees','update_balancete','update_task','update_task_comment','upsert_balancete'])
     const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations
     assert.equal(annotations('list_task_comments')?.readOnlyHint,true)
     assert.equal(annotations('create_task_comment')?.readOnlyHint,false)
@@ -433,4 +444,54 @@ test('rejections are logged with code, host, auth shape and key fingerprint, nev
     assert.equal(events[1]?.host,'evil.example')
     assert.ok(logged.every(line=>!line.includes(mcpKey)&&!line.includes(cap)),'no secret is ever logged')
   } finally {console.warn=original}
+})
+
+test('balancete tools forward filters, version and idempotency key, and surface typed refusals', async () => {
+  const client=await clientFor()
+  try {
+    const tools=(await client.listTools()).tools
+    const annotations=(name:string)=>tools.find(tool=>tool.name===name)?.annotations
+    for(const name of ['list_condominiums','list_balancetes','get_balancete']) assert.equal(annotations(name)?.readOnlyHint,true,name)
+    for(const name of ['update_balancete','delete_balancete']) assert.equal(annotations(name)?.destructiveHint,true,name)
+    assert.equal(annotations('upsert_balancete')?.destructiveHint,false)
+
+    requests.length=0
+    const found=await client.callTool({name:'list_condominiums',arguments:{query:'São João',includeInactive:true,limit:500}})
+    assert.deepEqual((found.structuredContent as {data:{hasMore:boolean}}).data.hasMore,false)
+    assert.equal(requests.at(-1)?.path,'/api/v1/condominiums?query=S%C3%A3o+Jo%C3%A3o&limit=500&includeInactive=true')
+    await client.callTool({name:'list_balancetes',arguments:{condominiumId,competencia:'09/2026',euro:'Campinas',awaitingPhysical:true,sent:false}})
+    assert.equal(requests.at(-1)?.path,`/api/v1/balancetes?condominiumId=${condominiumId}&competencia=09%2F2026&euro=Campinas&awaitingPhysical=true&sent=false`)
+
+    const got=await client.callTool({name:'get_balancete',arguments:{id:uid}})
+    assert.equal((got.structuredContent as {version:string}).version,version)
+
+    const upserted=await client.callTool({name:'upsert_balancete',arguments:{condominiumId,competencia:'09/2026',generatedAt:'2026-10-05T09:30:00-03:00',idempotencyKey:'bal-1'}})
+    assert.equal((upserted.structuredContent as {data:{action:string}}).data.action,'create')
+    assert.equal((upserted.structuredContent as {version:string}).version,version)
+    assert.deepEqual(requests.at(-1)?.body,{condominiumId,competencia:'09/2026',generatedAt:'2026-10-05T09:30:00-03:00'})
+    assert.equal(requests.at(-1)?.headers['idempotency-key'],'bal-1')
+
+    await client.callTool({name:'update_balancete',arguments:{id:uid,version,idempotencyKey:'bal-2',patch:{volumes:2,observations:null}}})
+    assert.equal(requests.at(-1)?.method,'PATCH')
+    assert.deepEqual(requests.at(-1)?.body,{volumes:2,observations:null})
+    assert.equal(requests.at(-1)?.headers['x-omnia-if-match'],version)
+    assert.equal(requests.at(-1)?.headers['if-match'],'')
+
+    await client.callTool({name:'delete_balancete',arguments:{id:uid}})
+    assert.equal(requests.at(-1)?.method,'DELETE')
+
+    // Malformed input never reaches the API.
+    requests.length=0
+    for(const args of [{condominiumId,competencia:'2026-09',generatedAt:'2026-10-05T09:30:00-03:00',idempotencyKey:'bad-1'},{condominiumId,competencia:'09/2026',generatedAt:'2026-10-05',idempotencyKey:'bad-2'},{condominiumId,competencia:'09/2026',generatedAt:'2026-10-05T09:30:00-03:00'}]) {
+      const rejected=await client.callTool({name:'upsert_balancete',arguments:args})
+      assert.equal(rejected.isError,true)
+    }
+    assert.equal(requests.filter(request=>request.path.startsWith('/api/v1/balancetes')).length,0)
+
+    balanceteLocked=true
+    const locked=await client.callTool({name:'delete_balancete',arguments:{id:uid}})
+    assert.equal(locked.isError,true)
+    assert.equal((locked.structuredContent as {error:{code:string;status:number}}).error.code,'BALANCETE_LOCKED')
+    assert.equal((locked.structuredContent as {error:{code:string;status:number}}).error.status,409)
+  } finally {balanceteLocked=false;await client.close()}
 })

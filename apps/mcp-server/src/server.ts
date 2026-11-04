@@ -22,7 +22,7 @@ const version=z.string().regex(/^"[A-Za-z0-9_-]{1,190}"$/).max(200).refine(value
   const encoded=value.slice(1,-1)
   const decoded=Buffer.from(encoded,'base64url').toString('utf8')
   return Buffer.from(decoded).toString('base64url')===encoded && z.iso.datetime({offset:true}).safeParse(decoded).success
-},'Invalid strong task version')
+},'Invalid strong version')
 const updateSchema=z.object({id:uuid,version,idempotencyKey,patch:patchSchema}).strict()
 const listSchema=z.object({
   limit:z.number().int().min(1).max(100).optional(),cursor:z.string().min(1).max(1000).optional(),query:z.string().max(500).optional(),
@@ -37,6 +37,17 @@ const deleteCommentSchema=z.object({taskId:uuid,commentId:uuid}).strict()
 const deleteTaskSchema=z.object({id:uuid}).strict()
 const tagSchema=z.object({query:z.string().max(500).optional()}).strict()
 const assigneeSchema=z.object({query:z.string().max(500).optional(),limit:z.number().int().min(1).max(100).optional()}).strict()
+const competencia=z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/).describe('Accounting period as MM/YYYY, for example 09/2026.')
+const condominiumListSchema=z.object({query:z.string().max(500).optional(),limit:z.number().int().min(1).max(500).optional(),includeInactive:z.boolean().optional()}).strict()
+const balanceteListSchema=z.object({
+  limit:z.number().int().min(1).max(100).optional(),cursor:z.string().min(1).max(1000).optional(),condominiumId:uuid.optional(),competencia:competencia.optional(),
+  euro:z.enum(['Londrina','Campinas']).optional(),awaitingPhysical:z.boolean().optional(),sent:z.boolean().optional(),
+}).strict()
+const balanceteUpsertSchema=z.object({condominiumId:uuid,competencia,generatedAt:z.iso.datetime({offset:true}).describe('When the digital balancete was generated, with offset, for example 2026-10-05T09:30:00-03:00.'),idempotencyKey}).strict()
+const balancetePatchSchema=z.object({
+  condominiumId:uuid.optional(),competencia:competencia.optional(),receivedAt:date.optional(),volumes:z.number().int().min(1).max(10000).optional(),observations:z.string().max(10000).nullable().optional(),
+}).strict().refine(value=>Object.keys(value).length>0)
+const balanceteUpdateSchema=z.object({id:uuid,version,idempotencyKey,patch:balancetePatchSchema}).strict()
 
 function toolResponse(value:{data:unknown;requestId:string;etag:string|null},requireVersion=false) {
   if (requireVersion) {
@@ -59,7 +70,7 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
   return ({authInfo}:{authInfo?:{token:string}}) => {
     const capability=authInfo?.token
     if(!capability) throw new Error('Missing request capability')
-    const server=new McpServer({name:'omnia-mcp',version:'0.2.0'})
+    const server=new McpServer({name:'omnia-mcp',version:'0.3.0'})
     const run=async (path:string,method:string,opts?:{body?:unknown;version?:string;idempotencyKey?:string},needsVersion=false) => {
       try {return toolResponse(await api.resource(path,method,capability,opts),needsVersion)} catch(error) {
         const response=errorResponse(error)
@@ -97,6 +108,20 @@ function createServerFactory(api:ReturnType<typeof createApiClient>) {
     server.registerTool('update_task_comment',{description:'Replace the body of a comment. Only the comment author may edit it, including administrators. Supply a unique caller idempotencyKey. Requires the tasks:comment scope.',inputSchema:updateCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId,body,idempotencyKey})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'PATCH',{body:{body},idempotencyKey}))
     server.registerTool('delete_task_comment',{description:'Permanently delete a comment and its attachments. Allowed for the comment author or an administrator. Returns the deleted comment; a second call returns NOT_FOUND. Requires the tasks:comment scope.',inputSchema:deleteCommentSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({taskId,commentId})=>run(`/api/v1/tasks/${taskId}/comments/${commentId}`,'DELETE'))
     server.registerTool('delete_task',{description:'Permanently delete a task with its comments, attachments and notifications. Allowed for the task creator or an administrator; tasks without a creator are administrator-only. Returns the deleted task; a second call returns NOT_FOUND. Requires the tasks:delete scope.',inputSchema:deleteTaskSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({id})=>run(`/api/v1/tasks/${id}`,'DELETE'))
+    server.registerTool('list_condominiums',{description:'Find condominiums by name or known alias, ignoring accents and case; only active ones unless includeInactive is set. Use it to turn a name into the condominiumId the balancete tools need. If more than one result could match, ask a person instead of choosing. hasMore means the list was cut: refine the query. Requires the balancetes:read scope.',inputSchema:condominiumListSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async args=>{
+      const query=new URLSearchParams()
+      for(const [key,value] of Object.entries(args)) if(value!==undefined) query.set(key,String(value))
+      return run(`/api/v1/condominiums${query.size?`?${query}`:''}`,'GET')
+    })
+    server.registerTool('list_balancetes',{description:'List balancetes, newest first, with filters and cursor pagination. awaitingPhysical selects those whose physical book has not arrived; sent selects those already dispatched. Requires the balancetes:read scope.',inputSchema:balanceteListSchema,annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async args=>{
+      const query=new URLSearchParams()
+      for(const [key,value] of Object.entries(args)) if(value!==undefined) query.set(key,String(value))
+      return run(`/api/v1/balancetes${query.size?`?${query}`:''}`,'GET')
+    })
+    server.registerTool('get_balancete',{description:'Get one balancete and its strong version for a later update_balancete. Requires the balancetes:read scope.',inputSchema:z.object({id:uuid}).strict(),annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},async ({id})=>run(`/api/v1/balancetes/${id}`,'GET',undefined,true))
+    server.registerTool('upsert_balancete',{description:'Record one balancete with the same rule as the Omnia CSV import, keyed by condominium and period. A digital condominium gets the received date from generatedAt; a physical one keeps waiting for the book and only records generatedAt. The result action says what happened: create, update, or noop when nothing changed. Inactive condominiums fail with CONDOMINIUM_INACTIVE. AMBIGUOUS_BALANCETE means the period is duplicated and a person must fix it. Supply a unique caller idempotencyKey and retain it for retries. Requires the balancetes:write scope.',inputSchema:balanceteUpsertSchema,annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},async ({idempotencyKey,...body})=>run('/api/v1/balancetes','POST',{body,idempotencyKey},true))
+    server.registerTool('update_balancete',{description:'Patch a balancete with the version returned by get_balancete and a caller idempotencyKey. BALANCETE_CHANGED means fetch it again. A sent balancete keeps its condominium and period (BALANCETE_LOCKED); a digital one always has one volume; moving onto a period that already exists fails with CONFLICT. Requires the balancetes:write scope.',inputSchema:balanceteUpdateSchema,annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({id,version,idempotencyKey,patch})=>run(`/api/v1/balancetes/${id}`,'PATCH',{body:patch,version,idempotencyKey},true))
+    server.registerTool('delete_balancete',{description:'Permanently delete a balancete. One that was sent or has attachments is refused with BALANCETE_LOCKED. Returns the deleted balancete; a second call returns NOT_FOUND. Requires the balancetes:delete scope.',inputSchema:z.object({id:uuid}).strict(),annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},async ({id})=>run(`/api/v1/balancetes/${id}`,'DELETE'))
     return server
   }
 }

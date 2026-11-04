@@ -19,6 +19,7 @@ if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261007120000_tasks_api_tags.sql >/dev/null
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261013120000_tasks_api_delete.sql >/dev/null
   docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261013150000_credentials_update_scopes.sql >/dev/null
+  docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261104120000_tasks_api_balancetes.sql >/dev/null
 fi
 docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/regression.sql
 if [[ "${1:-}" != '--baseline-only' ]]; then
@@ -30,6 +31,7 @@ if [[ "${1:-}" != '--baseline-only' ]]; then
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/tags-regression.sql
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/delete-regression.sql
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/credential-scopes-regression.sql
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < supabase/tests/tasks-api/balancetes-regression.sql
   mkdir -p .context/tasks-api-mcp
   docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DELETE FROM tasks_api_private.rate_limits WHERE actor_id='10000000-0000-0000-0000-000000000001';
@@ -55,5 +57,23 @@ SQL
 SELECT public.test_assert((SELECT count(*) FROM public.omnia_tickets WHERE title='Concurrent retry')=1,'concurrent retries create one task');
 SELECT public.test_assert((SELECT count(*) FROM tasks_api_private.audit a JOIN public.omnia_tickets t ON a.resource_id=t.id WHERE t.title='Concurrent retry')=1,'concurrent retries create one audit entry');
 SELECT public.test_assert((SELECT sum(requests) FROM tasks_api_private.rate_limits WHERE actor_id='10000000-0000-0000-0000-000000000001')=4,'both concurrent writes and both domain errors retain atomic rate debits');
+SQL
+  # Two real connections upsert the same condominium and period under different keys: one row, one create.
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+INSERT INTO public.omnia_condominiums(id,name,balancete_digital) VALUES ('70000000-0000-0000-0000-000000000099','Corrida',true);
+SQL
+  for connection in 1 2; do
+    docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 >/dev/null <<SQL &
+BEGIN;
+SET LOCAL ROLE service_role;
+SELECT public.tasks_api_dispatch('balancetes.upsert','{"condominiumId":"70000000-0000-0000-0000-000000000099","competencia":"01/2026","generatedAt":"2026-02-10T09:00:00-03:00"}','20000000-0000-0000-0000-000000000001',NULL,'race-$connection');
+SELECT pg_sleep(0.2);
+COMMIT;
+SQL
+    pids[$connection]=$!
+  done
+  for connection in 1 2; do wait "${pids[$connection]}"; done
+  docker exec -i "$container" psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+SELECT public.test_assert((SELECT count(*) FROM public.omnia_balancetes WHERE condominium_id='70000000-0000-0000-0000-000000000099')=1,'concurrent upserts of one period create one balancete');
 SQL
 fi

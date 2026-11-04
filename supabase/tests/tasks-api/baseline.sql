@@ -597,6 +597,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_ticket_attachment_count_trigger AFTER INSERT OR DELETE OR UPDATE OF ticket_id ON public.omnia_ticket_attachments FOR EACH ROW EXECUTE FUNCTION public.update_ticket_attachment_count();
+CREATE TABLE public.omnia_condominiums (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, euro text NOT NULL DEFAULT 'Londrina' CHECK (euro IN ('Londrina','Campinas')),
+  balancete_digital boolean DEFAULT false, active boolean DEFAULT true, syndic_cpf text, phone text, address text
+);
+ALTER TABLE public.omnia_condominiums ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.omnia_condominium_aliases (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), condominium_id uuid NOT NULL REFERENCES public.omnia_condominiums(id) ON DELETE CASCADE,
+  alias_normalized text NOT NULL UNIQUE, alias_original text NOT NULL, created_by uuid REFERENCES public.omnia_users(id)
+);
+ALTER TABLE public.omnia_condominium_aliases ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.omnia_protocolos (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+CREATE TABLE public.omnia_balancetes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), condominium_id uuid NOT NULL REFERENCES public.omnia_condominiums(id) ON DELETE CASCADE,
+  received_at date, competencia varchar(7) NOT NULL, volumes integer NOT NULL DEFAULT 1, observations text, status varchar(20) NOT NULL DEFAULT 'recebido',
+  sent_at timestamptz, protocolo_id uuid REFERENCES public.omnia_protocolos(id) ON DELETE SET NULL, digital_prepared_at timestamptz, csv_import_batch_id uuid,
+  created_by uuid REFERENCES public.omnia_users(id), created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.omnia_balancetes ENABLE ROW LEVEL SECURITY;
+CREATE TRIGGER update_omnia_balancetes_updated_at BEFORE UPDATE ON public.omnia_balancetes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TABLE public.omnia_balancete_attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), balancete_id uuid NOT NULL REFERENCES public.omnia_balancetes(id) ON DELETE CASCADE, name text NOT NULL, url text NOT NULL
+);
+ALTER TABLE public.omnia_balancete_attachments ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
 INSERT INTO public.omnia_users(id,auth_user_id,name,email,roles) VALUES
@@ -605,6 +628,8 @@ INSERT INTO public.omnia_users(id,auth_user_id,name,email,roles) VALUES
 ('10000000-0000-0000-0000-000000000003','20000000-0000-0000-0000-000000000003','Admin','admin@example.test',ARRAY['ADMIN']);
 INSERT INTO public.omnia_menu_items(id,name,path) VALUES ('30000000-0000-0000-0000-000000000001','Tarefas','/tarefas');
 INSERT INTO public.omnia_role_permissions(role_name,menu_item_id,can_access) SELECT r,'30000000-0000-0000-0000-000000000001',true FROM unnest(ARRAY['USUARIO','ADMIN']) r;
+INSERT INTO public.omnia_menu_items(id,name,path) VALUES ('30000000-0000-0000-0000-000000000002','Balancetes','/balancetes');
+INSERT INTO public.omnia_role_permissions(role_name,menu_item_id,can_access) SELECT r,'30000000-0000-0000-0000-000000000002',true FROM unnest(ARRAY['USUARIO','ADMIN']) r;
 INSERT INTO public.omnia_ticket_statuses(id,name,color,order_position,is_default,is_final) VALUES
 ('40000000-0000-0000-0000-000000000001','Aberta','#000000',1,true,false),
 ('40000000-0000-0000-0000-000000000002','Concluída','#000000',2,false,true);

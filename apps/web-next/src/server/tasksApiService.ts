@@ -1,12 +1,13 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import {
+  balanceteListQuerySchema, balancetePatchSchema, balanceteSchema, balanceteUpsertResultSchema, balanceteUpsertSchema, condominiumListQuerySchema, condominiumSummarySchema,
   commentCreateSchema, commentListQuerySchema, commentSchema, commentUpdateSchema, credentialCreateSchema, credentialSchema, credentialUpdateSchema, mcpCapabilitySchema, mcpExchangeSchema,
   taskAssigneeQuerySchema, taskCreateSchema, taskCursorSchema, taskEtag, taskListQuerySchema,
   taskPatchSchema, taskSchema, taskStatusSchema, taskTagQuerySchema, taskTagSchema, taskUpdatedAtFromEtag, taskUserRefSchema,
 } from '@/lib/tasksApiContracts'
 
-export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'tasks.delete'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'credentials.list'|'credentials.create'|'credentials.update'|'credentials.revoke'|'mcp.exchange'
+export type TaskOperation = 'tasks.list'|'tasks.get'|'tasks.create'|'tasks.update'|'tasks.delete'|'comments.list'|'comments.create'|'comments.update'|'comments.delete'|'statuses.list'|'tags.list'|'assignees.list'|'condominiums.list'|'balancetes.list'|'balancetes.get'|'balancetes.upsert'|'balancetes.update'|'balancetes.delete'|'credentials.list'|'credentials.create'|'credentials.update'|'credentials.revoke'|'mcp.exchange'
 export type DispatchArgs = {
   p_operation:TaskOperation; p_payload:Record<string, unknown>; p_auth_user_id:string|null;
   p_token_digest:string|null; p_idempotency_key:string|null; p_request_id:string;
@@ -21,7 +22,7 @@ export type TasksApiDependencies = {
   config:()=>TasksApiConfig;
 }
 export const TASK_TOKEN_PREFIXES = {api:'omnia_api_',mcp:'omnia_mcp_',capability:'omnia_cap_'} as const
-const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','tasks.delete':'DELETE','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','credentials.list':'GET','credentials.create':'POST','credentials.update':'PATCH','credentials.revoke':'DELETE','mcp.exchange':'POST'}
+const methods:Record<TaskOperation,string> = {'tasks.list':'GET','tasks.get':'GET','tasks.create':'POST','tasks.update':'PATCH','tasks.delete':'DELETE','comments.list':'GET','comments.create':'POST','comments.update':'PATCH','comments.delete':'DELETE','statuses.list':'GET','tags.list':'GET','assignees.list':'GET','condominiums.list':'GET','balancetes.list':'GET','balancetes.get':'GET','balancetes.upsert':'POST','balancetes.update':'PATCH','balancetes.delete':'DELETE','credentials.list':'GET','credentials.create':'POST','credentials.update':'PATCH','credentials.revoke':'DELETE','mcp.exchange':'POST'}
 const errors:Record<string,{status:number;message:string}> = {
   INVALID_OPERATION:{status:400,message:'Invalid operation'}, INVALID_AUTH:{status:401,message:'Authentication required'},
   INVALID_CREDENTIAL:{status:401,message:'Invalid or expired credential'},ACTOR_DISABLED:{status:403,message:'User is inactive'},
@@ -29,6 +30,8 @@ const errors:Record<string,{status:number;message:string}> = {
   INSUFFICIENT_SCOPE:{status:403,message:'Required scope is missing'},VALIDATION_ERROR:{status:400,message:'Invalid request'},
   UNSUPPORTED_PRECONDITION_HEADER:{status:400,message:'Use X-Omnia-If-Match instead of If-Match on this deployment'},
   UNKNOWN_TAG:{status:400,message:'Tag is not in the catalog; list the valid names first'},
+  BALANCETE_LOCKED:{status:409,message:'A sent balancete or one with attachments cannot be changed this way'},BALANCETE_CHANGED:{status:412,message:'Balancete changed; reload before updating'},
+  CONDOMINIUM_INACTIVE:{status:409,message:'Condominium is inactive'},AMBIGUOUS_BALANCETE:{status:409,message:'More than one balancete exists for this condominium and period; fix it in the Omnia screen'},
   NOT_FOUND:{status:404,message:'Resource not found'},CONFLICT:{status:409,message:'Resource conflict'},
   IDEMPOTENCY_CONFLICT:{status:409,message:'Idempotency key was used for another request'},PRECONDITION_REQUIRED:{status:428,message:'Strong If-Match is required'},
   PRECONDITION_FAILED:{status:412,message:'Task changed; reload before updating'},RATE_LIMITED:{status:429,message:'Request limit exceeded'},
@@ -112,6 +115,13 @@ function output(operation:TaskOperation,data:unknown):unknown {
       return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
     }
     case 'comments.create': case 'comments.update': case 'comments.delete':return commentSchema.parse(data)
+    case 'condominiums.list':return z.object({items:z.array(condominiumSummarySchema),hasMore:z.boolean()}).strict().parse(data)
+    case 'balancetes.list':{
+      const list=z.object({items:z.array(balanceteSchema),nextCursor:taskCursorSchema.nullable()}).strict().parse(data)
+      return {...list,nextCursor:list.nextCursor ? encodeTaskCursor(list.nextCursor):null}
+    }
+    case 'balancetes.get': case 'balancetes.update': case 'balancetes.delete':return balanceteSchema.parse(data)
+    case 'balancetes.upsert':return balanceteUpsertResultSchema.parse(data)
     case 'statuses.list':return z.array(taskStatusSchema).parse(data)
     case 'tags.list':return z.array(taskTagSchema).parse(data)
     case 'assignees.list':return z.array(taskUserRefSchema).parse(data)
@@ -155,7 +165,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         if(audience==='mcp' || (integration && isManagement))fail('INVALID_AUDIENCE')
         if(integration){
           const config=deps.config()
-          const write=operation==='tasks.create'||operation==='tasks.update'||operation==='tasks.delete'||operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'
+          const write=operation==='tasks.create'||operation==='tasks.update'||operation==='tasks.delete'||operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'||operation==='balancetes.upsert'||operation==='balancetes.update'||operation==='balancetes.delete'
           if(write ? !config.writeEnabled : !config.readEnabled)fail('INTEGRATIONS_DISABLED')
           tokenDigest=digest(token)
         }else{
@@ -167,7 +177,11 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
           payload={...list,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
         }else if(operation==='assignees.list')payload=parse(taskAssigneeQuerySchema,params)
         else if(operation==='tags.list')payload=parse(taskTagQuerySchema,params)
-        else if(operation==='comments.list'){
+        else if(operation==='condominiums.list')payload=parse(condominiumListQuerySchema,params)
+        else if(operation==='balancetes.list'){
+          const list=parse(balanceteListQuerySchema,params)
+          payload={...list,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
+        }else if(operation==='comments.list'){
           const list=parse(commentListQuerySchema,params)
           payload={taskId:parse(z.string().uuid(),id),limit:list.limit,...(list.cursor?{cursor:decodeTaskCursor(list.cursor)}:{})}
         }else if(operation==='comments.create'||operation==='comments.update'||operation==='comments.delete'){
@@ -182,19 +196,25 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
         }
         else{
           parse(z.object({}).strict(),params)
-          if(operation==='tasks.get'||operation==='tasks.update'||operation==='tasks.delete'||operation==='credentials.update'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
-          if(operation==='tasks.create'||operation==='tasks.update'){
+          if(operation==='tasks.get'||operation==='tasks.update'||operation==='tasks.delete'||operation==='balancetes.get'||operation==='balancetes.update'||operation==='balancetes.delete'||operation==='credentials.update'||operation==='credentials.revoke')payload.id=parse(z.string().uuid(),id)
+          if(operation==='balancetes.upsert'){
             idempotencyKey=idempotency(request)
-            if(operation==='tasks.update'){
+            payload=parse(balanceteUpsertSchema,await jsonBody(request))
+          }else if(operation==='tasks.create'||operation==='tasks.update'||operation==='balancetes.update'){
+            idempotencyKey=idempotency(request)
+            if(operation==='tasks.update'||operation==='balancetes.update'){
               const transportMatch=request.headers.get('x-omnia-if-match')
               if(standardMatch!==null && transportMatch!==null && standardMatch!==transportMatch)fail('VALIDATION_ERROR')
               const match=transportMatch??standardMatch;if(!match)fail('PRECONDITION_REQUIRED')
               try {payload.expectedUpdatedAt=taskUpdatedAtFromEtag(match)}catch{fail('VALIDATION_ERROR')}
             }
             const body=await jsonBody(request)
-            const fields=parse(operation==='tasks.create'?taskCreateSchema:taskPatchSchema,body)
-            if(integration && Object.hasOwn(fields,'recurrence'))fail('FORBIDDEN')
-            payload=operation==='tasks.create'?fields:{...payload,patch:fields}
+            if(operation==='balancetes.update')payload={...payload,patch:parse(balancetePatchSchema,body)}
+            else{
+              const fields=parse(operation==='tasks.create'?taskCreateSchema:taskPatchSchema,body)
+              if(integration && Object.hasOwn(fields,'recurrence'))fail('FORBIDDEN')
+              payload=operation==='tasks.create'?fields:{...payload,patch:fields}
+            }
           }else if(operation==='credentials.update'){
             payload={...payload,...parse(credentialUpdateSchema,await jsonBody(request))}
           }else if(operation==='credentials.create'){
@@ -212,7 +232,7 @@ export function createTasksApiHandler(deps:TasksApiDependencies) {
       const expectedStatus=operation==='tasks.create'||operation==='comments.create'||operation==='credentials.create'||isExchange?201:200
       if(result.status!==expectedStatus)fail('INTERNAL_ERROR')
       let data=output(operation,result.data)
-      if(operation==='tasks.get'||operation==='tasks.create'||operation==='tasks.update')headers.ETag=taskEtag((data as {updatedAt:string}).updatedAt)
+      if(operation==='tasks.get'||operation==='tasks.create'||operation==='tasks.update'||operation==='balancetes.get'||operation==='balancetes.upsert'||operation==='balancetes.update')headers.ETag=taskEtag((data as {updatedAt:string}).updatedAt)
       if(rawToken)data={...(data as Record<string,unknown>),token:rawToken}
       if(operation==='tasks.delete' && deps.removeStoredFiles && Array.isArray(result.removedFiles)){
         // The row is already gone: a cleanup failure leaves an orphan file, never a failed delete.
