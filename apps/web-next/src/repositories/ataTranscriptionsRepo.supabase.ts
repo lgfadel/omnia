@@ -7,6 +7,7 @@ import type {
   AtaTranscriptionSourceType,
 } from '@/data/types'
 import { uploadR2Multipart, type R2MultipartUploadPlan } from '@/lib/r2MultipartUpload'
+import { getAudioSelectionError, type PendingRecording } from '@/lib/ataAudioSelection'
 
 // supabase.functions.invoke devolve um FunctionsHttpError cuja mensagem é sempre
 // "Edge Function returned a non-2xx status code". A razão real está no corpo da
@@ -66,7 +67,8 @@ type DbTranscription = {
   is_reviewed: boolean
 }
 
-type StartUploadResponse = { jobId: string; uploadId: string } & R2MultipartUploadPlan
+type AudioFileUpload = { fileId: string; uploadId: string } & R2MultipartUploadPlan
+type StartFilesUploadResponse = { jobId: string; uploads: AudioFileUpload[] }
 
 // The generated database type is refreshed after this migration is applied. Until then,
 // this scoped client preserves the existing repository pattern for newly introduced tables.
@@ -122,8 +124,17 @@ export const ataTranscriptionsRepoSupabase = {
       : { data: null, error: null }
 
     if (transcriptionError) throw transcriptionError
+    const { data: files, error: filesError } = job && job.source_type !== 'text_import'
+      ? await untypedSupabase.from('omnia_ata_transcription_files')
+        .select('id, position, original_filename, size_bytes, duration_seconds')
+        .eq('job_id', job.id).order('position', { ascending: true })
+      : { data: [], error: null }
+    if (filesError) throw filesError
     return {
-      job: job ? mapJob(job as DbJob) : null,
+      job: job ? { ...mapJob(job as DbJob), files: (files ?? []).map((file: { id: string; position: number; original_filename: string; size_bytes: number; duration_seconds: number | null }) => ({
+        id: file.id, position: file.position, originalFilename: file.original_filename,
+        sizeBytes: Number(file.size_bytes), durationSeconds: file.duration_seconds,
+      })) } : null,
       transcription: transcription ? mapTranscription(transcription as DbTranscription) : null,
     }
   },
@@ -131,15 +142,16 @@ export const ataTranscriptionsRepoSupabase = {
   // `workerAvailable` diz se a Edge Function alcançou o worker ao enfileirar. O
   // áudio já está salvo de qualquer jeito; o valor só decide se o painel avisa
   // que a transcrição vai esperar o serviço voltar.
-  async upload(ataId: string, file: File, durationSeconds: number | null, contextText?: string, expectedJobId: string | null = null): Promise<{ jobId: string; workerAvailable: boolean }> {
-    const { data, error } = await supabase.functions.invoke<StartUploadResponse>('ata-transcriptions', {
+  async upload(ataId: string, recordings: readonly PendingRecording[], contextText?: string, expectedJobId: string | null = null, onFileProgress?: (position: number, total: number) => void): Promise<{ jobId: string; workerAvailable: boolean }> {
+    const validationError = getAudioSelectionError(recordings)
+    if (validationError) throw new Error(validationError)
+    const { data, error } = await supabase.functions.invoke<StartFilesUploadResponse>('ata-transcriptions', {
       body: {
         action: 'create',
         ataId,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        durationSeconds,
+        files: recordings.map(({ file, durationSeconds }) => ({
+          fileName: file.name, mimeType: file.type, sizeBytes: file.size, durationSeconds,
+        })),
         contextText,
         expectedJobId,
       },
@@ -147,18 +159,32 @@ export const ataTranscriptionsRepoSupabase = {
     if (error || !data) throw await describeFunctionError(error, 'Não foi possível iniciar o envio do áudio.')
 
     try {
-      const parts = await uploadR2Multipart(file, data)
-
-      const { data: completed, error: completeError } = await supabase.functions.invoke<{ workerAvailable?: boolean }>('ata-transcriptions', {
-        body: { action: 'complete', jobId: data.jobId, uploadId: data.uploadId, parts },
-      })
-      if (completeError) throw await describeFunctionError(completeError, 'Não foi possível enfileirar a transcrição.')
-      return { jobId: data.jobId, workerAvailable: completed?.workerAvailable !== false }
+      if (!Array.isArray(data.uploads) || data.uploads.length !== recordings.length) throw new Error('Plano de envio incompleto. Tente novamente.')
+      const files = []
+      for (const [index, recording] of recordings.entries()) {
+        const upload = data.uploads[index]
+        onFileProgress?.(index + 1, recordings.length)
+        const parts = await uploadR2Multipart(recording.file, upload)
+        files.push({ fileId: upload.fileId, uploadId: upload.uploadId, parts })
+      }
+      // A conclusão é idempotente no servidor. Repeti-la cobre uma resposta
+      // perdida depois de completar um ou mais objetos, sem reenviar os áudios.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data: completed, error: completeError } = await supabase.functions.invoke<{ workerAvailable?: boolean }>('ata-transcriptions', {
+          body: { action: 'complete', jobId: data.jobId, files },
+        })
+        if (!completeError) return { jobId: data.jobId, workerAvailable: completed?.workerAvailable !== false }
+        const response = (completeError as { context?: unknown }).context
+        if (attempt === 2 || (response instanceof Response && response.status < 500)) {
+          throw await describeFunctionError(completeError, 'Não foi possível enfileirar a transcrição.')
+        }
+      }
+      throw new Error('Não foi possível concluir o envio.')
     } catch (uploadError) {
       // Do not leave an orphaned upload job as the current transcription when the
       // browser loses the connection between signed upload and queueing.
       await supabase.functions.invoke('ata-transcriptions', {
-        body: { action: 'cancel', jobId: data.jobId, uploadId: data.uploadId },
+        body: { action: 'cancel', jobId: data.jobId },
       })
       throw uploadError
     }
@@ -210,9 +236,9 @@ export const ataTranscriptionsRepoSupabase = {
 
   // Devolve null quando a gravação não existe mais no bucket — transcrições
   // anteriores à retenção do áudio continuam revisáveis, apenas sem player.
-  async audioUrl(jobId: string): Promise<string | null> {
+  async audioUrl(jobId: string, fileId?: string): Promise<string | null> {
     const { data, error } = await supabase.functions.invoke<{ url: string | null }>('ata-transcriptions', {
-      body: { action: 'audio', jobId },
+      body: { action: 'audio', jobId, ...(fileId ? { fileId } : {}) },
     })
     if (error) throw await describeFunctionError(error, 'Não foi possível carregar a gravação.')
     return data?.url ?? null

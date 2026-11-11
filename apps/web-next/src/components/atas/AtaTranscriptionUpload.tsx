@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import type { ConvocacaoContext } from '@/lib/convocacao'
 import { cn } from '@/lib/utils'
 import type { AtaTranscriptionSourceType } from '@/data/types'
+import { formatRecordingDuration, MAX_RECORDING_FILES, type PendingRecording } from '@/lib/ataAudioSelection'
 
 interface AtaTranscriptionUploadProps {
   convocacao: ConvocacaoContext | null
@@ -18,6 +19,9 @@ interface AtaTranscriptionUploadProps {
   onRecordingSelect: (file: File) => void
   onConvocacaoSelect: (file: File) => void
   onRemoveConvocacao: () => void
+  recordings?: readonly PendingRecording[]
+  onRemoveRecording?: (index: number) => void
+  onStart?: () => void
 }
 
 const RECORDING_ACCEPT = 'audio/mpeg,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,video/mp4,audio/webm,video/webm,audio/ogg,.mp3,.m4a,.aac,.wav,.mp4,.webm,.ogg,.oga,.opus'
@@ -33,6 +37,9 @@ export function AtaTranscriptionUpload({
   onRecordingSelect,
   onConvocacaoSelect,
   onRemoveConvocacao,
+  recordings = [],
+  onRemoveRecording,
+  onStart,
 }: AtaTranscriptionUploadProps) {
   const recordingRef = useRef<HTMLInputElement>(null)
   const convocacaoRef = useRef<HTMLInputElement>(null)
@@ -43,11 +50,16 @@ export function AtaTranscriptionUpload({
   const id = useId()
   const isText = sourceType === 'text_import'
   const isBlocked = disabled || isReadingConvocacao || isPreparingRecording || isImporting
+  const atLimit = !isText && recordings.length >= MAX_RECORDING_FILES
   const pickerLabel = isText ? 'Selecionar transcrição' : 'Selecionar gravação'
-  const showDragPrompt = isDragging && !isBlocked
+  const showDragPrompt = isDragging && !isBlocked && !atLimit
 
   const selectRecording = (files: FileList | readonly File[]) => {
     if (isBlocked || files.length === 0) return
+    if (atLimit) {
+      setRecordingError('Adicione no máximo três partes da gravação.')
+      return
+    }
     if (files.length > 1) {
       setRecordingError(isText ? 'Importe uma transcrição por vez.' : 'Envie uma gravação por vez.')
       return
@@ -59,7 +71,7 @@ export function AtaTranscriptionUpload({
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    if (isBlocked || !Array.from(event.dataTransfer.types).includes('Files')) return
+    if (isBlocked || atLimit || !Array.from(event.dataTransfer.types).includes('Files')) return
     dragDepth.current += 1
     setIsDragging(true)
   }
@@ -87,7 +99,7 @@ export function AtaTranscriptionUpload({
         className="hidden"
         aria-label={isText ? 'Selecionar arquivo de transcrição' : 'Selecionar arquivo de gravação'}
         accept={isText ? '.txt,.vtt,text/plain,text/vtt' : RECORDING_ACCEPT}
-        disabled={isBlocked}
+        disabled={isBlocked || atLimit}
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? [])
           event.currentTarget.value = ''
@@ -120,13 +132,13 @@ export function AtaTranscriptionUpload({
         onDragEnter={handleDragEnter}
         onDragOver={(event) => {
           event.preventDefault()
-          event.dataTransfer.dropEffect = isBlocked ? 'none' : 'copy'
+          event.dataTransfer.dropEffect = isBlocked || atLimit ? 'none' : 'copy'
         }}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <div className="space-y-2">
-          <h3 className="text-base font-semibold tracking-tight">{isText ? 'Importe uma transcrição pronta' : 'Envie uma gravação de até 6 horas'}</h3>
+          <h3 className="text-base font-semibold tracking-tight">{isText ? 'Importe uma transcrição pronta' : 'Adicione até três partes da gravação'}</h3>
           <p id={`${id}-formats`} className="text-sm leading-relaxed text-muted-foreground">
             {isText ? 'TXT ou VTT do Zoom. O texto fica disponível para revisão e confecção da minuta.' : 'MP3, M4A, AAC, WAV, MP4, WebM, OGG, OGA ou OPUS.'}
           </p>
@@ -137,9 +149,9 @@ export function AtaTranscriptionUpload({
           variant="outline"
           aria-label={pickerLabel}
           aria-describedby={`${id}-formats ${id}-limits ${id}-flow${recordingError ? ` ${id}-recording-error` : ''}`}
-          disabled={isBlocked}
+          disabled={isBlocked || atLimit}
           onClick={() => {
-            if (isBlocked) return
+            if (isBlocked || atLimit) return
             recordingRef.current?.click()
           }}
           className={cn(
@@ -152,7 +164,7 @@ export function AtaTranscriptionUpload({
             <span className="block text-base font-medium">
               {isText ? showDragPrompt ? 'Solte a transcrição aqui' : 'Arraste o arquivo de texto para cá' : showDragPrompt ? 'Solte a gravação aqui' : 'Arraste a gravação para cá'}
             </span>
-            <span id={`${id}-limits`} className="block text-xs font-normal text-muted-foreground">{isText ? 'Até 5 MB · TXT ou VTT' : 'Até 1 GB · 6 horas'}</span>
+            <span id={`${id}-limits`} className="block text-xs font-normal text-muted-foreground">{isText ? 'Até 5 MB · TXT ou VTT' : 'Até 3 arquivos · 1 GB e 6 horas no total'}</span>
           </span>
           <span className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             {isPreparingRecording || isImporting ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload aria-hidden="true" />}
@@ -163,9 +175,27 @@ export function AtaTranscriptionUpload({
         {recordingError ? (
           <p id={`${id}-recording-error`} role="alert" className="text-sm text-destructive">{recordingError}</p>
         ) : null}
+        {!isText && recordings.length > 0 && (
+          <ol aria-label="Partes da gravação" className="divide-y rounded-lg border">
+            {recordings.map(({ file, durationSeconds }, index) => (
+              <li key={index} className="flex min-w-0 items-center gap-3 p-3">
+                <FileAudio className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Parte {index + 1}</p>
+                  <p className="break-words text-sm font-medium">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{file.size < 1024 * 1024 ? `${Math.max(1, Math.ceil(file.size / 1024)).toLocaleString('pt-BR')} KB` : `${(file.size / (1024 * 1024)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`} · {formatRecordingDuration(durationSeconds)}</p>
+                </div>
+                <Button type="button" variant="ghost" size="icon" aria-label={`Remover parte ${index + 1}`} disabled={isBlocked} onClick={() => onRemoveRecording?.(index)} className="h-8 w-8 shrink-0">
+                  <X aria-hidden="true" />
+                </Button>
+              </li>
+            ))}
+          </ol>
+        )}
         <p id={`${id}-flow`} className="text-sm leading-relaxed text-muted-foreground">
-          {isText ? 'A importação começa assim que você escolher o arquivo. No VTT, preservamos as falas e os nomes dos participantes, sem os marcadores de tempo.' : 'O envio começa assim que você escolher o arquivo, e o processamento continua mesmo se você sair desta tela.'}
+          {isText ? 'A importação começa assim que você escolher o arquivo. No VTT, preservamos as falas e os nomes dos participantes, sem os marcadores de tempo.' : 'Adicione uma parte por vez, na ordem em que devem ser transcritas. Confira a lista e clique em Iniciar transcrição. Após o envio de todas as partes, o processamento continua mesmo se você sair desta tela.'}
         </p>
+        {!isText && <Button type="button" disabled={isBlocked || recordings.length === 0} onClick={onStart}>Iniciar transcrição</Button>}
         {isPreparingRecording ? <p role="status" className="sr-only">Preparando gravação…</p> : null}
       </div>
 
@@ -173,7 +203,7 @@ export function AtaTranscriptionUpload({
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Convocação <span className="font-normal text-muted-foreground">· opcional</span></h3>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {isText ? 'Anexe o PDF antes da transcrição para usar os dados do condomínio e os itens da pauta na minuta.' : 'Anexe o PDF antes da gravação para orientar os nomes do condomínio, do síndico e os itens da pauta.'}
+            {isText ? 'Anexe o PDF antes da transcrição para usar os dados do condomínio e os itens da pauta na minuta.' : 'Anexe o PDF antes de iniciar a transcrição para orientar os nomes do condomínio, do síndico e os itens da pauta.'}
           </p>
         </div>
 

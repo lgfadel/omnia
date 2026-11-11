@@ -1,26 +1,12 @@
-import { createReadStream } from 'node:fs'
-import { mkdtemp, rm, stat } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { processJob, type TranscriptionJob } from './processJob.js'
 import { createServer } from 'node:http'
 import { Agent, setGlobalDispatcher } from 'undici'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
-import { loadAtaContext } from './ataContext.js'
-import { buildCarryOver, mergeTranscribedChunks } from './transcript.js'
-import { extractChunk, readAudioDuration } from './audio.js'
-import { planChunks } from './chunkPlan.js'
-import { createCompactedUpload } from './compactedUpload.js'
-import {
-  claimCurrentQueuedJob,
-  HEARTBEAT_SECONDS,
-  isCurrentProcessingJob,
-  STALE_LEASE_MINUTES,
-  reclaimDecision,
-  type TranscriptionWorkerClient,
-} from './jobLease.js'
-import { createR2Client, deleteR2Object, presignR2Get } from './r2.js'
-import { commitCompactedAudio } from './storedAudio.js'
+import { claimCurrentQueuedJob, STALE_LEASE_MINUTES, reclaimDecision, type TranscriptionWorkerClient } from './jobLease.js'
+import { createR2Client } from './r2.js'
+
+type AdminClient = TranscriptionWorkerClient
 
 // Medido em 19/08/2026: um bloco de 20 minutos leva ~635 s para retornar. Isso
 // estoura dois limites padrão de uma vez — o headersTimeout de 300 s do undici,
@@ -33,67 +19,12 @@ setGlobalDispatcher(new Agent({
   bodyTimeout: REQUEST_TIMEOUT_MS,
 }))
 
-// O whisper-1 é o large-v2 e ficou para trás em acurácia. O gpt-transcribe erra
-// menos e aceita `keywords`, que é onde ancoramos os nomes próprios daquela
-// assembleia — a classe de erro que mais dói numa ata. O preço é não devolver
-// marcação de tempo alguma; a decisão foi trocar o player de conferência por
-// acurácia, porque o texto é o produto e o player era conveniência.
-// TRANSCRIPTION_MODEL existe como válvula: apontar de volta para whisper-1 no
-// Railway reverte o modelo sem deploy, e o código monta a requisição certa para
-// cada família.
-const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL?.trim() || 'gpt-transcribe'
-const IS_WHISPER = TRANSCRIPTION_MODEL.startsWith('whisper')
-
- const AUDIO_BUCKET = 'ata-transcription-audio'
-
-// A URL assinada precisa sobreviver ao job inteiro: uma gravação de 6 horas tem
-// 12 blocos, e cada um espera a resposta do modelo.
-const SOURCE_URL_TTL_SECONDS = 12 * 60 * 60
-const CHUNK_SECONDS = 30 * 60
-const MAX_DURATION_SECONDS = 6 * 60 * 60
-
 // O Railway adormece um serviço após 10 minutos sem tráfego de SAÍDA, e serviço
 // dormindo não gera cobrança de compute. O worker antigo consultava a fila a cada
 // 5 segundos, o que o mantinha acordado para sempre — pagando o mês inteiro para
 // trabalhar cerca de 1% do tempo. Aqui ele não pergunta nada: dorme até ser
 // avisado, drena tudo o que houver e volta a ficar em silêncio.
 const WAKE_PATH = '/wake'
-
-interface TranscriptionJob {
-  id: string
-  ata_id: string
-  storage_path: string
-  storage_provider: 'supabase' | 'r2'
-  size_bytes: number
-  mime_type: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  attempt_count: number
-  context_text: string | null
-}
-
-interface OpenAITranscription {
-  text?: string
-  usage?: Record<string, unknown>
-}
-
-// `keywords` e `languages` são do gpt-transcribe e ainda não existem nos tipos
-// do SDK, que os encaminha como campos extras do multipart (arrays viram
-// `campo[]`, a convenção da própria API). Descrever a requisição aqui é o que
-// permite usar o parâmetro que ancora os nomes próprios da assembleia.
-type TranscriptionRequest = {
-  file: ReturnType<typeof createReadStream>
-  model: string
-  prompt: string
-  response_format: 'json'
-  language?: string
-  temperature?: number
-  keywords?: string[]
-  languages?: string[]
-}
-
-type SdkTranscriptionParams = Parameters<OpenAI['audio']['transcriptions']['create']>[0]
-
-type AdminClient = TranscriptionWorkerClient
 
 const requiredEnvironment = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_ATA_TRANSCRIPTION_API_KEY', 'WORKER_WAKE_SECRET'] as const
 
@@ -110,14 +41,6 @@ function getEnvironment() {
     r2: createR2Client(),
     port: Number(process.env.PORT ?? 8080),
   }
-}
-
-
-async function sourceUrlFor(job: TranscriptionJob, supabase: AdminClient, r2: ReturnType<typeof createR2Client>): Promise<string> {
-  if (job.storage_provider === 'r2') return presignR2Get(r2.client, r2.bucket, job.storage_path, SOURCE_URL_TTL_SECONDS)
-  const { data, error } = await supabase.storage.from(AUDIO_BUCKET).createSignedUrl(job.storage_path, SOURCE_URL_TTL_SECONDS)
-  if (error || !data?.signedUrl) throw error ?? new Error('Stored audio was not found.')
-  return data.signedUrl
 }
 
 
@@ -158,192 +81,6 @@ async function reclaimStaleJobs(supabase: AdminClient): Promise<void> {
 async function claimNextJob(supabase: AdminClient): Promise<TranscriptionJob | null> {
   await reclaimStaleJobs(supabase)
   return claimCurrentQueuedJob<TranscriptionJob>(supabase)
-}
-
-// O sinal de vida sai num intervalo próprio, e não entre etapas: uma resposta do
-// modelo pode levar mais de dez minutos, e é o intervalo que separa "ainda
-// trabalhando" de "o container morreu" em minutos, não em três quartos de hora.
-function startHeartbeat(supabase: AdminClient, jobId: string): () => void {
-  const beat = async () => {
-    const { error } = await supabase
-      .from('omnia_ata_transcription_jobs')
-      .update({ heartbeat_at: new Date().toISOString() })
-      .eq('id', jobId)
-      .eq('status', 'processing')
-    if (error) console.error(`Unable to publish heartbeat for job ${jobId}`, error)
-  }
-  const timer = setInterval(() => void beat(), HEARTBEAT_SECONDS * 1000)
-  return () => clearInterval(timer)
-}
-
-async function processJob(
-  job: TranscriptionJob,
-  supabase: AdminClient,
-  openai: OpenAI,
-  r2: ReturnType<typeof createR2Client>,
-): Promise<void> {
-  const workspace = await mkdtemp(join(tmpdir(), 'omnia-ata-transcription-'))
-  const stopHeartbeat = startHeartbeat(supabase, job.id)
-  const compacted = createCompactedUpload({ storagePath: job.storage_path, storageProvider: job.storage_provider }, r2)
-  try {
-    // A interface fica minutos sem novidade durante um bloco longo; publicar a
-    // etapa e a contagem de blocos é o que diferencia "trabalhando" de "travado".
-    await supabase.from('omnia_ata_transcription_jobs')
-      .update({ stage: 'splitting', processed_chunks: 0, total_chunks: null })
-      .eq('id', job.id)
-    const sourceUrl = await sourceUrlFor(job, supabase, r2)
-    const durationSeconds = await readAudioDuration(sourceUrl)
-    if (durationSeconds > MAX_DURATION_SECONDS) throw new Error('Audio exceeds the maximum duration.')
-    const windows = planChunks(durationSeconds, CHUNK_SECONDS)
-    await supabase.from('omnia_ata_transcription_jobs')
-      .update({ stage: 'transcribing', total_chunks: windows.length })
-      .eq('id', job.id)
-
-    const context = await loadAtaContext(supabase, job.ata_id, job.context_text)
-    const chunkResults = [] as Array<{ chunkIndex: number; text: string }>
-    const usages: Record<string, unknown>[] = []
-    let carryOver = ''
-    const chunkPath = join(workspace, 'chunk.mp3')
-    for (const window of windows) {
-      await extractChunk(sourceUrl, window, chunkPath)
-
-      const prompt = carryOver ? `${context.prompt} Continuação de: ${carryOver}` : context.prompt
-      const request: TranscriptionRequest = IS_WHISPER
-        ? {
-          file: createReadStream(chunkPath),
-          model: TRANSCRIPTION_MODEL,
-          language: 'pt',
-          prompt,
-          temperature: 0,
-          response_format: 'json',
-        }
-        : {
-          file: createReadStream(chunkPath),
-          model: TRANSCRIPTION_MODEL,
-          languages: ['pt'],
-          keywords: context.keywords,
-          prompt,
-          response_format: 'json',
-        }
-
-      if (!await isCurrentProcessingJob(supabase, job.id)) {
-        throw new Error(`Transcription job ${job.id} was superseded before chunk ${window.index + 1}.`)
-      }
-
-      const result = await openai.audio.transcriptions.create(
-        request as unknown as SdkTranscriptionParams,
-      ) as unknown as OpenAITranscription
-      if (!await isCurrentProcessingJob(supabase, job.id)) {
-        throw new Error(`Transcription job ${job.id} was superseded during chunk ${window.index + 1}.`)
-      }
-      const text = result.text ?? ''
-      chunkResults.push({ chunkIndex: window.index + 1, text })
-      carryOver = buildCarryOver(text)
-      if (result.usage) usages.push(result.usage)
-
-      // Guardar o áudio é conveniência; perder essa parte não pode custar a
-      // transcrição. Na primeira falha o upload é abandonado e o original fica.
-      if (compacted) {
-        const partSize = (await stat(chunkPath)).size
-        await compacted.addPart(chunkPath, partSize).catch(async (error) => {
-          console.error(`Unable to store compacted audio for job ${job.id}; keeping the original`, error)
-          await compacted.abort().catch(() => undefined)
-        })
-      }
-      await rm(chunkPath, { force: true })
-
-      const { error: progressError } = await supabase
-        .from('omnia_ata_transcription_jobs')
-        .update({ processed_chunks: window.index + 1, heartbeat_at: new Date().toISOString() })
-        .eq('id', job.id)
-        .eq('status', 'processing')
-      if (progressError) throw progressError
-    }
-
-    await supabase.from('omnia_ata_transcription_jobs')
-      .update({ stage: 'saving' })
-      .eq('id', job.id)
-    const merged = mergeTranscribedChunks(chunkResults)
-    if (!await isCurrentProcessingJob(supabase, job.id)) {
-      throw new Error(`Transcription job ${job.id} was superseded before transcript persistence.`)
-    }
-    const { data: transcription, error: transcriptError } = await supabase
-      .from('omnia_ata_transcriptions')
-      .upsert({ ata_id: job.ata_id, job_id: job.id, raw_text: merged.rawText, language: 'pt-BR' }, { onConflict: 'job_id' })
-      .select('id')
-      .single()
-    if (transcriptError || !transcription) throw transcriptError ?? new Error('Could not persist transcription.')
-
-    // Uma reprocessada precisa começar limpa: sem isso, os trechos da transcrição
-    // anterior deste mesmo job ficariam órfãos apontando para o texto novo.
-    const { error: deleteSegmentsError } = await supabase
-      .from('omnia_ata_transcription_segments')
-      .delete()
-      .eq('transcription_id', transcription.id)
-    if (deleteSegmentsError) throw deleteSegmentsError
-
-    // O áudio fica retido para permitir reprocessar a mesma gravação com outro
-    // modelo ou outro contexto, sem pedir o arquivo de novo a quem revisa — na
-    // versão compactada que o modelo acabou de ouvir. A limpeza definitiva
-    // continua acontecendo quando a transcrição deixa de ser a atual da ata.
-    // Uma falha aqui não invalida a transcrição, que é o produto.
-    if (compacted && compacted.sizeBytes > 0) {
-      await commitCompactedAudio({
-        key: job.storage_path,
-        sizeBytes: compacted.sizeBytes,
-        originalSizeBytes: Number(job.size_bytes),
-        complete: () => compacted.complete(),
-        abort: () => compacted.abort(),
-        remove: (key) => deleteR2Object(r2.client, r2.bucket, key),
-        persist: async (record) => {
-          const { error } = await supabase
-            .from('omnia_ata_transcription_jobs')
-            .update({ storage_path: record.storagePath, size_bytes: record.sizeBytes, mime_type: record.mimeType })
-            .eq('id', job.id)
-          if (error) throw error
-        },
-      })
-        .then((stored) => {
-          if (stored.replaced) console.log(`Compacted stored audio for job ${job.id}: ${job.size_bytes} -> ${stored.sizeBytes} bytes`)
-        })
-        .catch(async (error) => {
-          console.error(`Unable to compact stored audio for job ${job.id}`, error)
-          await compacted.abort().catch(() => undefined)
-        })
-    }
-
-    const { data: completedJob, error: completeError } = await supabase
-      .from('omnia_ata_transcription_jobs')
-      .update({ status: 'completed', completed_at: new Date().toISOString(), heartbeat_at: null, stage: null, usage: { chunks: usages } })
-      .eq('id', job.id)
-      .eq('status', 'processing')
-      .eq('is_current', true)
-      .select('id')
-      .maybeSingle()
-    if (completeError || !completedJob) {
-      throw completeError ?? new Error(`Transcription job ${job.id} was superseded before completion.`)
-    }
-  } catch (error) {
-    // Keep provider and infrastructure details in Railway logs only. The application
-    // exposes a safe, actionable error to ATA users.
-    console.error(`Transcription job ${job.id} failed`, error)
-    await compacted?.abort().catch(() => undefined)
-    const { error: failError } = await supabase
-      .from('omnia_ata_transcription_jobs')
-      .update({
-        status: 'failed',
-        error_message: 'Não foi possível processar esta gravação. Verifique o arquivo e tente novamente.',
-        heartbeat_at: null,
-        stage: null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', job.id)
-    if (failError) console.error('Unable to mark transcription job as failed', failError)
-    throw error
-  } finally {
-    stopHeartbeat()
-    await rm(workspace, { recursive: true, force: true })
-  }
 }
 
 async function runWorker() {

@@ -52,6 +52,10 @@ const ACCEPTED_MIME_TYPES = new Set([
 ])
 
 type Action = 'create' | 'import' | 'complete' | 'retry' | 'cancel' | 'discard' | 'audio' | 'wake'
+type UploadInput = { fileName: string; mimeType: string; sizeBytes: number; durationSeconds?: number | null }
+type CompletedUpload = { fileId: string; uploadId: string; parts: Array<{ partNumber: number; etag: string }> }
+type AudioSource = { id?: string; storage_path: string | null; storage_provider: string | null; upload_id?: string | null }
+type SourceFile = AudioSource & { id: string; job_id: string; position: number; size_bytes: number }
 type TeamProfile = { id: string; roles: string[] | null }
 type AtaAccess = { responsible_id: string | null }
 
@@ -149,14 +153,37 @@ Deno.serve(async (req: Request) => {
     return { profile: profile as TeamProfile, ata: ata as AtaAccess & { id: string } }
   }
 
-  async function purgeAudio(source: { storage_path: string | null; storage_provider: string | null } | null) {
-    if (!source?.storage_path) return
-    if (source.storage_provider === 'r2') {
-      await deleteR2Object(source.storage_path).catch((error) => console.error('Unable to purge R2 audio', error))
-    } else {
-      const { error } = await admin.storage.from(AUDIO_BUCKET).remove([source.storage_path])
-      if (error) console.error('Unable to purge audio', error)
+  async function getFiles(jobId: string): Promise<SourceFile[]> {
+    const { data, error } = await admin.from('omnia_ata_transcription_files').select('*').eq('job_id', jobId).order('position')
+    if (error) throw error
+    return data ?? []
+  }
+
+  async function removeSources(sources: AudioSource[]) {
+    const aborted = new Set<string>()
+    const deleted = new Set<string>()
+    for (const source of sources) {
+      if (!source.storage_path) continue
+      const key = `${source.storage_provider}:${source.storage_path}`
+      if (source.storage_provider === 'r2' && source.upload_id && !aborted.has(`${key}:${source.upload_id}`)) {
+        aborted.add(`${key}:${source.upload_id}`)
+        await abortR2MultipartUpload(source.storage_path, source.upload_id).catch((error) => console.error('Unable to abort audio upload', error))
+      }
+      if (deleted.has(key)) continue
+      deleted.add(key)
+      if (source.storage_provider === 'r2') {
+        await deleteR2Object(source.storage_path).catch((error) => console.error('Unable to purge R2 audio', error))
+      } else {
+        const { error } = await admin.storage.from(AUDIO_BUCKET).remove([source.storage_path])
+        if (error) console.error('Unable to purge audio', error)
+      }
     }
+  }
+
+  async function purgeAudio(source: AudioSource | null) {
+    if (!source) return
+    const files = source.id ? await getFiles(source.id) : []
+    await removeSources(files.length ? files : [source])
   }
 
   try {
@@ -197,6 +224,8 @@ Deno.serve(async (req: Request) => {
       durationSeconds?: number | null
       jobId?: string
       uploadId?: string
+      files?: UploadInput[] | CompletedUpload[]
+      fileId?: string
       parts?: Array<{ partNumber: number; etag: string }>
       contextText?: string
       content?: string
@@ -249,22 +278,26 @@ Deno.serve(async (req: Request) => {
     }
 
     if (payload.action === 'create') {
-      const durationSeconds = payload.durationSeconds
-      if (!payload.ataId || !payload.fileName || typeof payload.sizeBytes !== 'number' || !Number.isFinite(payload.sizeBytes) || (durationSeconds != null && (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds)))) {
-        return json({ error: 'Dados do áudio incompletos.' }, 400)
+      const newContract = Object.prototype.hasOwnProperty.call(payload, 'files')
+      const inputFiles = (newContract ? payload.files : [payload]) as UploadInput[]
+      if (!payload.ataId || !Array.isArray(inputFiles) || inputFiles.length < 1 || inputFiles.length > 3) {
+        return json({ error: 'Envie entre 1 e 3 arquivos de áudio.' }, 400)
       }
-      if (!ACCEPTED_MIME_TYPES.has(payload.mimeType ?? '')) {
-        // Nomear o tipo recebido evita um beco sem saída: o formato que o
-        // navegador reporta nem sempre é o que a extensão do arquivo sugere.
-        return json({
-          error: `Formato de áudio não suportado: "${payload.mimeType || 'desconhecido'}". Envie MP3, M4A, AAC, WAV, MP4, WebM ou OGG.`,
-        }, 400)
+      for (const file of inputFiles) {
+        if (!file || typeof file.fileName !== 'string' || !file.fileName.trim() || file.fileName.length > 255 ||
+          !Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0 ||
+          (file.durationSeconds != null && (typeof file.durationSeconds !== 'number' || !Number.isFinite(file.durationSeconds) || file.durationSeconds <= 0))) {
+          return json({ error: 'Dados do áudio incompletos ou inválidos.' }, 400)
+        }
+        if (!ACCEPTED_MIME_TYPES.has(file.mimeType)) {
+          return json({ error: `Formato de áudio não suportado: "${file.mimeType || 'desconhecido'}". Envie MP3, M4A, AAC, WAV, MP4, WebM ou OGG.` }, 400)
+        }
       }
-      if (payload.sizeBytes <= 0 || payload.sizeBytes > MAX_FILE_SIZE_BYTES) {
-        return json({ error: 'O arquivo excede o limite de 1 GB.' }, 400)
+      if (inputFiles.reduce((total, file) => total + file.sizeBytes, 0) > MAX_FILE_SIZE_BYTES) {
+        return json({ error: 'Os arquivos excedem o limite total de 1 GB.' }, 400)
       }
-      if (typeof durationSeconds === 'number' && (durationSeconds <= 0 || durationSeconds > MAX_DURATION_SECONDS)) {
-        return json({ error: 'A gravação deve ter até 6 horas.' }, 400)
+      if (inputFiles.reduce((total, file) => total + (file.durationSeconds == null ? 0 : Math.ceil(file.durationSeconds)), 0) > MAX_DURATION_SECONDS) {
+        return json({ error: 'A gravação deve ter até 6 horas no total.' }, 400)
       }
 
       const authorization = await getAuthorizedAta(payload.ataId)
@@ -278,53 +311,60 @@ Deno.serve(async (req: Request) => {
         : null
 
       const jobId = crypto.randomUUID()
-      const storagePath = `${payload.ataId}/${jobId}/${sanitizeFileName(payload.fileName)}`
+      const sourceFiles = inputFiles.map((file, index) => {
+        const id = crypto.randomUUID()
+        return {
+          id, job_id: jobId, position: index + 1,
+          storage_path: `${payload.ataId}/${jobId}/${id}/${sanitizeFileName(file.fileName)}`,
+          original_filename: file.fileName, mime_type: file.mimeType, size_bytes: file.sizeBytes,
+          duration_seconds: file.durationSeconds == null ? null : Math.ceil(file.durationSeconds),
+          storage_provider: 'r2', upload_id: null as string | null,
+        }
+      })
+      const first = sourceFiles[0]
       const { error: insertError } = await admin.from('omnia_ata_transcription_jobs').insert({
-        id: jobId,
-        ata_id: payload.ataId,
-        created_by: authorization.profile.id,
-        storage_path: storagePath,
-        original_filename: payload.fileName,
-        mime_type: payload.mimeType,
-        size_bytes: payload.sizeBytes,
-        duration_seconds: typeof durationSeconds === 'number' ? Math.ceil(durationSeconds) : null,
-        context_text: contextText,
-        storage_provider: 'r2',
-        is_current: false,
+        id: jobId, ata_id: payload.ataId, created_by: authorization.profile.id,
+        storage_path: first.storage_path, original_filename: first.original_filename,
+        mime_type: first.mime_type, size_bytes: first.size_bytes, duration_seconds: first.duration_seconds,
+        context_text: contextText, storage_provider: 'r2', is_current: false,
       })
       if (insertError) {
         console.error('Unable to create transcription job', insertError)
         return json({ error: 'Não foi possível criar o trabalho de transcrição.' }, 500)
       }
-
-      let upload: Awaited<ReturnType<typeof startR2MultipartUpload>>
+      const uploads: Array<{ fileId: string; uploadId: string; partSize: number; parts: Array<{ partNumber: number; url: string }> }> = []
       try {
-        upload = await startR2MultipartUpload(storagePath, payload.mimeType ?? '', payload.sizeBytes)
+        for (const file of sourceFiles) {
+          const upload = await startR2MultipartUpload(file.storage_path, file.mime_type, file.size_bytes)
+          file.upload_id = upload.uploadId
+          uploads.push({ fileId: file.id, ...upload, parts: upload.parts.map((url, index) => ({ partNumber: index + 1, url })) })
+        }
+        const { error } = await admin.from('omnia_ata_transcription_files').insert(sourceFiles)
+        if (error) throw error
       } catch (uploadError) {
-        await admin.from('omnia_ata_transcription_jobs').delete().eq('id', jobId)
-        console.error('Unable to sign transcription upload', uploadError)
-        return json({ error: 'Não foi possível preparar o envio do áudio.' }, 500)
+        await removeSources(sourceFiles)
+        await admin.from('omnia_ata_transcription_jobs').delete().eq('id', jobId).eq('is_current', false)
+        console.error('Unable to prepare transcription uploads', uploadError)
+        return json({ error: 'Não foi possível preparar o envio dos áudios.' }, 500)
       }
 
       const { error: activateError } = await admin.rpc('omnia_activate_ata_transcription', {
-        p_job_id: jobId,
-        p_expected_job_id: payload.expectedJobId ?? null,
-        p_raw_text: null,
+        p_job_id: jobId, p_expected_job_id: payload.expectedJobId ?? null, p_raw_text: null,
       })
       if (activateError) {
-        await abortR2MultipartUpload(storagePath, upload.uploadId).catch((error) => console.error('Unable to abort inactive audio upload', error))
+        await removeSources(sourceFiles)
         await admin.from('omnia_ata_transcription_jobs').delete().eq('id', jobId).eq('is_current', false)
         const conflict = ['40001', '55000', '23505'].includes(activateError.code)
         return json({ error: conflict ? 'A transcrição atual mudou ou está em andamento. Recarregue a ata antes de substituir.' : 'Não foi possível ativar o trabalho de transcrição.' }, conflict ? 409 : 500)
       }
-
-      return json({ jobId, ...upload, parts: upload.parts.map((url, index) => ({ partNumber: index + 1, url })) }, 201)
+      const { fileId: _firstFileId, ...legacyUpload } = uploads[0]
+      return json({ jobId, ...legacyUpload, ...(newContract ? { uploads } : {}) }, 201)
     }
 
     if (!payload.jobId) return json({ error: 'jobId é obrigatório.' }, 400)
     const { data: job, error: jobError } = await admin
       .from('omnia_ata_transcription_jobs')
-      .select('id, ata_id, source_type, replaces_job_id, storage_path, storage_provider, size_bytes, status, attempt_count, heartbeat_at')
+      .select('id, ata_id, source_type, replaces_job_id, storage_path, storage_provider, size_bytes, status, is_current, attempt_count, heartbeat_at')
       .eq('id', payload.jobId)
       .maybeSingle()
     if (jobError || !job) return json({ error: 'Trabalho não encontrado.' }, 404)
@@ -335,26 +375,66 @@ Deno.serve(async (req: Request) => {
     }
 
     if (payload.action === 'complete') {
+      const sourceFiles = await getFiles(job.id)
+      const hasFiles = Object.prototype.hasOwnProperty.call(payload, 'files')
+      const completedFiles = (hasFiles ? payload.files : sourceFiles.length <= 1
+        ? [{ fileId: sourceFiles[0]?.id ?? job.id, uploadId: payload.uploadId, parts: payload.parts }] : null) as CompletedUpload[] | null
+      const expectedFiles = sourceFiles.length ? sourceFiles : [{ ...job, id: job.id, upload_id: null }]
+      if (!Array.isArray(completedFiles) || completedFiles.length !== expectedFiles.length ||
+        new Set(completedFiles.map(file => file?.fileId)).size !== expectedFiles.length ||
+        completedFiles.some(file => !file || typeof file.uploadId !== 'string' || !file.uploadId ||
+          !expectedFiles.some(expected => expected.id === file.fileId && (!expected.upload_id || expected.upload_id === file.uploadId)) ||
+          !Array.isArray(file.parts) || !file.parts.length ||
+          file.parts.some(part => !part || !Number.isInteger(part.partNumber) || part.partNumber < 1 || typeof part.etag !== 'string' || !part.etag) ||
+          new Set(file.parts.map(part => part.partNumber)).size !== file.parts.length)) {
+        return json({ error: 'Arquivos ou partes do envio inválidos.' }, 400)
+      }
+      // An acknowledged queue transition remains successful on transport retries,
+      // even after processing/compaction has changed the original storage paths.
+      if (['queued', 'processing', 'completed'].includes(job.status) && job.is_current) {
+        return json({ status: 'queued', workerAvailable: job.status === 'completed' ? true : await wakeWorker() })
+      }
       if (job.status !== 'uploading') return json({ error: 'O áudio já foi enviado.' }, 409)
-      if (!payload.uploadId || !Array.isArray(payload.parts) || payload.parts.length === 0 || payload.parts.some((part) => !Number.isInteger(part.partNumber) || part.partNumber < 1 || !part.etag)) return json({ error: 'Partes do envio inválidas.' }, 400)
       try {
-        await completeR2MultipartUpload(job.storage_path, payload.uploadId, payload.parts)
-        if (await r2ObjectSize(job.storage_path) !== Number(job.size_bytes)) throw new Error('R2 object size does not match job.')
+        for (const file of expectedFiles) {
+          const completed = completedFiles.find(item => item.fileId === file.id)!
+          let size: number | null = null
+          try { size = await r2ObjectSize(file.storage_path) } catch { /* No object yet; finish its multipart upload. */ }
+          if (size !== Number(file.size_bytes)) {
+            try {
+              await completeR2MultipartUpload(file.storage_path, completed.uploadId, completed.parts)
+            } catch (error) {
+              // Another completion can consume this upload ID after both
+              // requests saw a missing object. Its exact object is success.
+              if (await r2ObjectSize(file.storage_path).catch(() => null) !== Number(file.size_bytes)) throw error
+            }
+            if (await r2ObjectSize(file.storage_path) !== Number(file.size_bytes)) throw new Error('R2 object size does not match source file.')
+          }
+        }
       } catch (error) {
         console.error('Unable to complete R2 transcription upload', error)
-        return json({ error: 'Não foi possível concluir o envio do áudio.' }, 500)
+        return json({ error: 'Não foi possível concluir o envio dos áudios.' }, 500)
       }
       const { data: queuedJob, error } = await admin.from('omnia_ata_transcription_jobs')
         .update({ status: 'queued', error_message: null })
         .eq('id', job.id).eq('status', 'uploading').eq('is_current', true)
         .select('id').maybeSingle()
-      if (error) return json({ error: 'Não foi possível enfileirar a transcrição.' }, 500)
-      if (!queuedJob) return json({ error: 'Este envio foi cancelado ou já foi concluído. Recarregue a ata.' }, 409)
+      if (error && error.code !== 'PGRST116') return json({ error: 'Não foi possível enfileirar a transcrição.' }, 500)
+      if (!queuedJob) {
+        // Another complete request may have queued the same verified objects
+        // while this one was in R2. A cancelled/deleted job must still lose.
+        const { data: currentJob, error: currentError } = await admin.from('omnia_ata_transcription_jobs')
+          .select('status, is_current').eq('id', job.id).maybeSingle()
+        if (!currentError && currentJob?.is_current && ['queued', 'processing', 'completed'].includes(currentJob.status)) {
+          return json({ status: 'queued', workerAvailable: currentJob.status === 'completed' ? true : await wakeWorker() })
+        }
+        return json({ error: 'Este envio foi cancelado ou já foi concluído. Recarregue a ata.' }, 409)
+      }
       // Keep the previous recording until upload succeeds, so cancellation can
       // restore both its text and its playable audio.
       if (job.replaces_job_id) {
         const { data: previousJob } = await admin.from('omnia_ata_transcription_jobs')
-          .select('storage_path, storage_provider').eq('id', job.replaces_job_id).maybeSingle()
+          .select('id, storage_path, storage_provider').eq('id', job.replaces_job_id).maybeSingle()
         await purgeAudio(previousJob)
       }
       return json({ status: 'queued', workerAvailable: await wakeWorker() })
@@ -376,26 +456,26 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'cancel') {
       if (job.status !== 'uploading') return json({ error: 'Apenas envios pendentes podem ser cancelados.' }, 409)
+      // The cancellation RPC deletes the parent and cascades files; capture
+      // all paths/upload IDs first, but touch storage only after winning it.
+      const sourceFiles = await getFiles(job.id)
       const { error: cancelError } = await admin.rpc('omnia_cancel_ata_transcription_upload', { p_job_id: job.id })
       if (cancelError) return json({ error: 'Não foi possível cancelar o envio. Recarregue a ata para conferir o estado atual.' }, 409)
-      if (job.storage_provider === 'r2' && payload.uploadId) await abortR2MultipartUpload(job.storage_path, payload.uploadId).catch((error) => console.error('Unable to abort R2 upload', error))
-      if (job.storage_provider === 'r2') await deleteR2Object(job.storage_path).catch(() => undefined)
-      else {
-        const { error: removeError } = await admin.storage.from(AUDIO_BUCKET).remove([job.storage_path])
-        if (removeError) console.error('Unable to remove cancelled audio', removeError)
-      }
+      await removeSources([...sourceFiles, { ...job, upload_id: sourceFiles.length ? null : payload.uploadId }])
 
       return json({ status: 'cancelled' })
     }
 
     if (payload.action === 'audio') {
-      if (job.source_type === 'text_import' || !job.storage_path) return json({ url: null })
-      if (job.status === 'uploading') return json({ url: null })
-      if (job.storage_provider === 'r2') {
-        try { return json({ url: await createR2DownloadUrl(job.storage_path, AUDIO_URL_TTL_SECONDS) }) }
+      const sourceFiles = await getFiles(job.id)
+      const source = payload.fileId ? sourceFiles.find(file => file.id === payload.fileId) : sourceFiles[0] ?? job
+      if (!source) return json({ error: 'Arquivo não encontrado nesta transcrição.' }, 404)
+      if (job.source_type === 'text_import' || !source.storage_path || job.status === 'uploading') return json({ url: null })
+      if (source.storage_provider === 'r2') {
+        try { return json({ url: await createR2DownloadUrl(source.storage_path, AUDIO_URL_TTL_SECONDS) }) }
         catch (error) { console.error('Unable to sign R2 transcription audio', error); return json({ url: null }) }
       }
-      const { data, error } = await admin.storage.from(AUDIO_BUCKET).createSignedUrl(job.storage_path, AUDIO_URL_TTL_SECONDS)
+      const { data, error } = await admin.storage.from(AUDIO_BUCKET).createSignedUrl(source.storage_path, AUDIO_URL_TTL_SECONDS)
       // Transcrições anteriores à retenção do áudio não têm mais arquivo no
       // bucket. Isso não impede a revisão — apenas não há o que tocar —, então
       // a falha vira ausência de player, registrada no log para diagnóstico.

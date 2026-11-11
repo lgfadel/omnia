@@ -15,6 +15,7 @@ import { readConvocacao, type ConvocacaoContext } from '@/lib/convocacao'
 import { readTranscriptionFile } from '@/lib/ataTranscriptionImport'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 import type { AtaTranscription, AtaTranscriptionJob, AtaTranscriptionSourceType } from '@/data/types'
+import { getAudioSelectionError, MAX_RECORDING_FILES, type PendingRecording } from '@/lib/ataAudioSelection'
 import { Check, FileAudio, FilePlus2, FileText, RefreshCcw, TriangleAlert } from 'lucide-react'
 
 interface AtaTranscriptionPanelProps {
@@ -40,7 +41,7 @@ type WorkerHealth = 'ok' | 'unavailable' | 'stalled'
 // fila encerrarem o aviso sem efeito nenhum para limpá-lo.
 type HealthReport = { jobId: string; status: TranscriptionStatus; since?: string; value: WorkerHealth }
 type Replacement =
-  | { kind: 'audio'; file: File; durationSeconds: number | null; expectedJobId: string }
+  | { kind: 'audio'; recordings: PendingRecording[]; expectedJobId: string }
   | { kind: 'text_import'; file: File; content: string; expectedJobId: string }
 
 function readAudioDuration(file: File): Promise<number | null> {
@@ -78,7 +79,6 @@ function readAudioDuration(file: File): Promise<number | null> {
 
 
 export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscriptionPanelProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
   const recordingSelectionLock = useRef(false)
   const loadRequest = useRef(0)
@@ -87,6 +87,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [isLoading, setIsLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [recordings, setRecordings] = useState<PendingRecording[]>([])
+  const [isSelectingReplacement, setIsSelectingReplacement] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ position: number; total: number } | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [sourceType, setSourceType] = useState<AtaTranscriptionSourceType>('audio')
   const [isPreparingRecording, setIsPreparingRecording] = useState(false)
@@ -99,6 +102,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [audio, setAudio] = useState<TranscriptionAudioState>({ status: 'loading' })
   const [audioRetry, setAudioRetry] = useState(0)
+  const [audioSelection, setAudioSelection] = useState<{ jobId: string; fileId: string } | null>(null)
   const [convocacao, setConvocacao] = useState<ConvocacaoContext | null>(null)
   const [isReadingConvocacao, setIsReadingConvocacao] = useState(false)
   const [healthReport, setHealthReport] = useState<HealthReport | null>(null)
@@ -108,6 +112,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   const isBusy = isUploading || isImporting || isPreparingRecording || isSaving || isDiscarding || isRetrying || isReadingConvocacao
   const isTextSource = (job?.sourceType ?? sourceType) === 'text_import'
   const hasUnsavedChanges = draftText !== (transcription?.revisedText ?? transcription?.rawText ?? '')
+  const selectedAudioFileId = audioSelection?.jobId === job?.id ? audioSelection?.fileId : undefined
 
   const refresh = useCallback(async () => {
     const request = ++loadRequest.current
@@ -188,7 +193,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
     }
     let cancelled = false
     setAudio({ status: 'loading' })
-    ataTranscriptionsRepoSupabase.audioUrl(jobId)
+    ataTranscriptionsRepoSupabase.audioUrl(jobId, selectedAudioFileId)
       .then((url) => {
         if (cancelled) return
         setAudio(url ? { status: 'ready', url } : { status: 'gone' })
@@ -197,22 +202,29 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         if (!cancelled) setAudio({ status: 'error' })
       })
     return () => { cancelled = true }
-  }, [job?.id, job?.sourceType, transcriptionId, isJobActive, audioRetry])
+  }, [job?.id, job?.sourceType, transcriptionId, isJobActive, audioRetry, selectedAudioFileId])
 
-  const uploadFile = async (file: File, durationSeconds: number | null, expectedJobId: string | null = job?.id ?? null) => {
+  const uploadFiles = async (selected: PendingRecording[], expectedJobId: string | null) => {
+    if (recordingSelectionLock.current || isBusy || isJobActive) return
+    recordingSelectionLock.current = true
     try {
       setIsUploading(true)
+      setError(null)
+      setUploadProgress({ position: 1, total: selected.length })
       setJob({
         id: 'uploading',
         ataId,
         status: 'uploading',
-        originalFilename: file.name,
+        originalFilename: selected[0].file.name,
         sourceType: 'audio',
         attemptCount: 0,
         createdAt: new Date().toISOString(),
         processedChunks: 0,
       })
-      const { jobId, workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, file, durationSeconds, convocacao?.text, expectedJobId)
+      const { jobId, workerAvailable } = await ataTranscriptionsRepoSupabase.upload(ataId, selected, convocacao?.text, expectedJobId,
+        (position, total) => setUploadProgress({ position, total }))
+      setRecordings([])
+      setIsSelectingReplacement(false)
       await refresh()
       setHealthReport({ jobId, status: 'queued', value: workerAvailable ? 'ok' : 'unavailable' })
     } catch (uploadError) {
@@ -223,7 +235,8 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       setError(message)
     } finally {
       setIsUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
+      setUploadProgress(null)
+      recordingSelectionLock.current = false
     }
   }
 
@@ -277,7 +290,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
   }
 
   const handleFileSelection = async (file: File) => {
-    if (isBusy || isJobActive || recordingSelectionLock.current) return
+    if (isBusy || isJobActive || recordingSelectionLock.current || recordings.length >= MAX_RECORDING_FILES) return
     recordingSelectionLock.current = true
     setIsPreparingRecording(true)
     setError(null)
@@ -287,29 +300,34 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         setError(formatError)
         return
       }
-      if (file.size === 0 || file.size > 1024 * 1024 * 1024) {
-        setError(file.size === 0 ? 'A gravação está vazia. Escolha outro arquivo.' : 'A gravação ultrapassa o limite de 1 GB.')
+      const sizeError = getAudioSelectionError([...recordings, { file, durationSeconds: null }])
+      if (sizeError) {
+        setError(sizeError)
         return
       }
       const durationSeconds = await readAudioDuration(file)
-      const validationError = getAudioValidationError({ name: file.name, type: file.type, durationSeconds })
+      const next = [...recordings, { file, durationSeconds }]
+      const validationError = getAudioSelectionError(next)
       if (validationError) {
         setError(validationError)
         return
       }
 
-      if (job) {
-        setReplacement({ kind: 'audio', file, durationSeconds, expectedJobId: job.id })
-        return
-      }
-      await uploadFile(file, durationSeconds)
+      setRecordings(next)
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível preparar a gravação.')
     } finally {
       recordingSelectionLock.current = false
       setIsPreparingRecording(false)
-      if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  const startTranscription = () => {
+    if (isBusy || isJobActive || recordingSelectionLock.current || replacement) return
+    const validationError = getAudioSelectionError(recordings)
+    if (validationError) { setError(validationError); return }
+    if (job) setReplacement({ kind: 'audio', recordings: [...recordings], expectedJobId: job.id })
+    else void uploadFiles([...recordings], null)
   }
 
   const handleRetry = async () => {
@@ -429,19 +447,6 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       )}
 
       {job && <Input
-        ref={inputRef}
-        className="hidden"
-        type="file"
-        aria-label="Selecionar arquivo de gravação"
-        disabled={isBusy || isJobActive}
-        accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,video/mp4,audio/webm,video/webm,audio/ogg,.mp3,.m4a,.wav,.mp4,.webm,.aac,.ogg,.oga,.opus"
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          if (file) void handleFileSelection(file)
-        }}
-      />}
-
-      {job && <Input
         ref={textInputRef}
         className="hidden"
         type="file"
@@ -459,14 +464,14 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         <Button type="button" variant={sourceType === 'audio' ? 'secondary' : 'outline'} aria-pressed={sourceType === 'audio'} disabled={isBusy} onClick={() => { setSourceType('audio'); setError(null) }}>
           <FileAudio className="h-4 w-4" aria-hidden="true" />Transcrever áudio
         </Button>
-        <Button type="button" variant={sourceType === 'text_import' ? 'secondary' : 'outline'} aria-pressed={sourceType === 'text_import'} disabled={isBusy} onClick={() => { setSourceType('text_import'); setError(null) }}>
+        <Button type="button" variant={sourceType === 'text_import' ? 'secondary' : 'outline'} aria-pressed={sourceType === 'text_import'} disabled={isBusy} onClick={() => { setSourceType('text_import'); setRecordings([]); setError(null) }}>
           <FileText className="h-4 w-4" aria-hidden="true" />Importar transcrição
         </Button>
       </div>}
 
-      {hasLoaded && !job && <AtaTranscriptionUpload
-        key={sourceType}
-        sourceType={sourceType}
+      {hasLoaded && (!job || (isSelectingReplacement && !isJobActive)) && <AtaTranscriptionUpload
+        key={isSelectingReplacement ? 'replacement' : sourceType}
+        sourceType={isSelectingReplacement ? 'audio' : sourceType}
         isImporting={isImporting}
         convocacao={convocacao}
         isReadingConvocacao={isReadingConvocacao}
@@ -476,7 +481,16 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         onTextSelect={(file) => void handleTextSelection(file)}
         onConvocacaoSelect={(file) => void handleConvocacaoSelection(file)}
         onRemoveConvocacao={() => setConvocacao(null)}
+        recordings={recordings}
+        onRemoveRecording={(index) => {
+          if (isBusy || recordingSelectionLock.current) return
+          setRecordings((current) => current.filter((_, i) => i !== index))
+          setError(null)
+        }}
+        onStart={startTranscription}
       />}
+
+      {isSelectingReplacement && !isJobActive && <Button type="button" variant="ghost" disabled={isBusy} onClick={() => { setIsSelectingReplacement(false); setRecordings([]); setError(null) }}>Cancelar nova gravação</Button>}
 
       {job && isJobActive && progress && (
         <Card className="space-y-6 p-5 shadow-none sm:p-7">
@@ -486,12 +500,12 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
             </span>
             <div className="min-w-0 space-y-1">
               <h3 className="break-words text-base font-medium">{job.originalFilename}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">O processamento continua em segundo plano. Você pode sair desta tela e voltar depois.</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{job.status === 'uploading' ? 'Aguarde o envio de todas as partes antes de sair desta tela.' : 'O processamento continua em segundo plano. Você pode sair desta tela e voltar depois.'}</p>
             </div>
           </div>
           <div className="space-y-3">
             <div role="status" className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="font-medium">{progress.label}</span>
+              <span className="font-medium">{isUploading && uploadProgress ? `Enviando parte ${uploadProgress.position} de ${uploadProgress.total}` : progress.label}</span>
               <span className="tabular-nums text-muted-foreground">{progress.percent}%</span>
             </div>
             <Progress value={progress.percent} aria-label="Progresso da transcrição" className="h-2" />
@@ -527,8 +541,8 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         </Alert>
       )}
 
-      {job && !isJobActive && !canReview && <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={isBusy} onClick={() => inputRef.current?.click()}>
+      {job && !isJobActive && !canReview && !isSelectingReplacement && <div className="flex flex-wrap gap-2">
+        <Button variant="outline" disabled={isBusy} onClick={() => setIsSelectingReplacement(true)}>
           <FilePlus2 className="h-4 w-4" aria-hidden="true" />
           {isPreparingRecording ? 'Preparando gravação…' : 'Enviar nova gravação'}
         </Button>
@@ -538,7 +552,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         </Button>
       </div>}
 
-      {canReview && job && transcription && <AtaTranscriptionReview
+      {canReview && job && transcription && !isSelectingReplacement && <AtaTranscriptionReview
         job={job}
         transcription={transcription}
         value={draftText}
@@ -554,7 +568,9 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
         onDownload={downloadTranscription}
         onRetryAudio={() => setAudioRetry((attempt) => attempt + 1)}
         onAudioError={() => setAudio({ status: 'error' })}
-        onReplace={() => inputRef.current?.click()}
+        onReplace={() => setIsSelectingReplacement(true)}
+        selectedAudioFileId={selectedAudioFileId}
+        onAudioFileSelect={(fileId) => setAudioSelection({ jobId: job.id, fileId })}
         onImport={() => textInputRef.current?.click()}
         onDiscard={() => setShowDiscardDialog(true)}
       />}
@@ -577,7 +593,6 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
       <AlertDialog open={Boolean(replacement)} onOpenChange={(open) => {
         if (!open) {
           setReplacement(null)
-          if (inputRef.current) inputRef.current.value = ''
         }
       }}>
         <AlertDialogContent>
@@ -593,7 +608,7 @@ export function AtaTranscriptionPanel({ ataId, onGenerateMinuta }: AtaTranscript
               onClick={() => {
                 const selectedFile = replacement
                 setReplacement(null)
-                if (selectedFile?.kind === 'audio') void uploadFile(selectedFile.file, selectedFile.durationSeconds, selectedFile.expectedJobId)
+                if (selectedFile?.kind === 'audio') void uploadFiles(selectedFile.recordings, selectedFile.expectedJobId)
                 else if (selectedFile?.kind === 'text_import') void importTextFile(selectedFile.file, selectedFile.content, selectedFile.expectedJobId)
               }}
             >

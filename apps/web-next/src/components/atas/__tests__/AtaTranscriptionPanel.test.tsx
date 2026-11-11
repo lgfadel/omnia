@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AtaTranscriptionPanel } from '../AtaTranscriptionPanel'
 import { ataTranscriptionsRepoSupabase } from '@/repositories/ataTranscriptionsRepo.supabase'
 
@@ -47,13 +47,11 @@ describe('AtaTranscriptionPanel', () => {
     repo.audioUrl.mockResolvedValue(null)
   })
 
-  it('explains the asynchronous upload flow before a recording is selected', async () => {
+  it('explains staged selection and background processing before upload', async () => {
     render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-    expect(await screen.findByText('Envie uma gravação de até 6 horas')).toBeInTheDocument()
-    // O envio dispara na seleção do arquivo, sem botão de confirmar; a tela precisa
-    // dizer isso, senão o usuário não sabe se algo começou.
-    expect(screen.getByText(/O envio começa assim que você escolher o arquivo/)).toBeInTheDocument()
+    expect(await screen.findByText('Adicione até três partes da gravação')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Iniciar transcrição' })).toBeDisabled()
     expect(screen.getByText(/processamento continua mesmo se você sair desta tela/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeInTheDocument()
   })
@@ -87,7 +85,7 @@ describe('AtaTranscriptionPanel', () => {
     repo.load.mockResolvedValue({ job: null, transcription: null })
     fireEvent.click(await screen.findByRole('button', { name: 'Descartar' }))
 
-    expect(await screen.findByText('Envie uma gravação de até 6 horas')).toBeInTheDocument()
+    expect(await screen.findByText('Adicione até três partes da gravação')).toBeInTheDocument()
   })
 })
 
@@ -204,7 +202,10 @@ describe('AtaTranscriptionPanel · gravação', () => {
       fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
       expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeDisabled()
       await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
-      expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null)
+      expect(repo.upload).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Iniciar transcrição' }))
+      await act(async () => {})
+      expect(repo.upload).toHaveBeenCalledWith('ata-1', [{ file, durationSeconds: null }], undefined, null, expect.any(Function))
       expect(revoke).toHaveBeenCalledWith('blob:assembleia')
       expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeEnabled()
     } finally {
@@ -233,11 +234,13 @@ describe('AtaTranscriptionPanel · gravação', () => {
       repo.load.mockResolvedValue({ job: null, transcription: null })
       render(<AtaTranscriptionPanel ataId="ata-1" />)
 
-      const audioInput = await screen.findByRole('button', { name: 'Selecionar gravação' })
+      await screen.findByRole('button', { name: 'Selecionar gravação' })
       fireEvent.change(document.querySelector('input[type="file"][accept*="audio"]')!, { target: { files: [file] } })
 
-      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null))
-      expect(audioInput).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Iniciar transcrição' })).toBeEnabled())
+      expect(repo.upload).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Iniciar transcrição' }))
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', [{ file, durationSeconds: null }], undefined, null, expect.any(Function)))
     } finally {
       if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
       else Reflect.deleteProperty(HTMLMediaElement.prototype, 'duration')
@@ -268,7 +271,10 @@ describe('AtaTranscriptionPanel · gravação', () => {
       expect(fileInput).not.toBeNull()
       fireEvent.change(fileInput!, { target: { files: [file] } })
 
-      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', file, null, undefined, null))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Iniciar transcrição' })).toBeEnabled())
+      expect(repo.upload).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Iniciar transcrição' }))
+      await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', [{ file, durationSeconds: null }], undefined, null, expect.any(Function)))
     } finally {
       if (durationDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'duration', durationDescriptor)
       else Reflect.deleteProperty(HTMLMediaElement.prototype, 'duration')
@@ -530,5 +536,85 @@ describe('AtaTranscriptionPanel · worker fora do ar', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('AtaTranscriptionPanel · partes ordenadas', () => {
+  let srcDescriptor: PropertyDescriptor | undefined
+  beforeEach(() => {
+    vi.clearAllMocks()
+    repo.load.mockResolvedValue({ job: null, transcription: null })
+    repo.upload.mockResolvedValue({ jobId: 'job-1', workerAvailable: true })
+    Object.defineProperty(URL, 'createObjectURL', { value: vi.fn().mockReturnValue('blob:part'), writable: true, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), writable: true, configurable: true })
+    srcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src')
+    Object.defineProperty(HTMLMediaElement.prototype, 'src', { set() { queueMicrotask(() => this.dispatchEvent(new Event('error'))) }, configurable: true })
+  })
+  afterEach(() => {
+    if (srcDescriptor) Object.defineProperty(HTMLMediaElement.prototype, 'src', srcDescriptor)
+    else Reflect.deleteProperty(HTMLMediaElement.prototype, 'src')
+  })
+  async function add(name: string) {
+    const file = new File(['audio'], name, { type: 'audio/mpeg' })
+    fireEvent.change(screen.getByLabelText('Selecionar arquivo de gravação'), { target: { files: [file] } })
+    await screen.findByText(name)
+    return file
+  }
+  it('stages three parts in addition order, blocks a fourth, and sends only on start', async () => {
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    await screen.findByRole('button', { name: 'Selecionar gravação' })
+    const first = await add('z-primeira.mp3')
+    const second = await add('a-segunda.mp3')
+    const third = await add('m-terceira.mp3')
+    expect(repo.upload).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeDisabled()
+    expect(screen.getByRole('list', { name: 'Partes da gravação' }).textContent).toMatch(/Parte 1.*z-primeira.*Parte 2.*a-segunda.*Parte 3.*m-terceira/)
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar transcrição' }))
+    await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', [first, second, third].map(file => ({ file, durationSeconds: null })), undefined, null, expect.any(Function)))
+  })
+  it('renumbers after removing a middle part and appends the next file at the end', async () => {
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    await screen.findByRole('button', { name: 'Selecionar gravação' })
+    await add('primeira.mp3'); await add('segunda.mp3'); await add('terceira.mp3')
+    fireEvent.click(screen.getByRole('button', { name: 'Remover parte 2' }))
+    await add('quarta.mp3')
+    expect(screen.getByRole('list', { name: 'Partes da gravação' }).textContent).toMatch(/Parte 1.*primeira.*Parte 2.*terceira.*Parte 3.*quarta/)
+    expect(screen.queryByText('segunda.mp3')).toBeNull()
+  })
+  it('confirms replacement only after the complete new selection is ready to start', async () => {
+    repo.load.mockResolvedValue(transcriptionWith())
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Enviar nova gravação' }))
+    const file = await add('nova-primeira.mp3')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(repo.upload).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar transcrição' }))
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent('Substituir a transcrição atual?')
+    fireEvent.click(screen.getByRole('button', { name: 'Substituir e enviar' }))
+    await waitFor(() => expect(repo.upload).toHaveBeenCalledWith('ata-1', [{ file, durationSeconds: null }], undefined, 'job-1', expect.any(Function)))
+  })
+})
+
+describe('AtaTranscriptionPanel · revisão das partes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    const current = transcriptionWith()
+    repo.load.mockResolvedValue({ ...current, job: { ...current.job, files: [
+      { id: 'file-1', position: 1, originalFilename: 'primeira.mp3', sizeBytes: 10, durationSeconds: 10 },
+      { id: 'file-2', position: 2, originalFilename: 'segunda.mp3', sizeBytes: 10, durationSeconds: 10 },
+      { id: 'file-3', position: 3, originalFilename: 'terceira.mp3', sizeBytes: 10, durationSeconds: 10 },
+    ] } })
+    repo.audioUrl.mockImplementation(async (_jobId, fileId) => fileId === 'file-2' ? null : `https://audio.example/${fileId ?? 'file-1'}.mp3`)
+  })
+  it('plays the selected part and allows moving past an unavailable recording', async () => {
+    render(<AtaTranscriptionPanel ataId="ata-1" />)
+    const select = await screen.findByRole('combobox', { name: 'Parte da gravação' })
+    await waitFor(() => expect(document.querySelector('audio')).toHaveAttribute('src', 'https://audio.example/file-1.mp3'))
+    fireEvent.change(select, { target: { value: 'file-2' } })
+    await screen.findByText(/O áudio desta parte não está mais disponível/)
+    expect(document.querySelector('audio')).toBeNull()
+    fireEvent.change(select, { target: { value: 'file-3' } })
+    await waitFor(() => expect(document.querySelector('audio')).toHaveAttribute('src', 'https://audio.example/file-3.mp3'))
+    expect(screen.getByLabelText('Texto da transcrição')).toHaveValue('texto do áudio')
   })
 })

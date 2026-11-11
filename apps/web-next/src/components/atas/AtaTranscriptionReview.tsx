@@ -28,16 +28,20 @@ interface AtaTranscriptionReviewProps {
   onDownload: () => void
   onRetryAudio: () => void
   onAudioError: () => void
+  selectedAudioFileId?: string
+  onAudioFileSelect?: (fileId: string) => void
   onReplace: () => void
   onImport?: () => void
   onDiscard: () => void
 }
 
-export function AtaTranscriptionReview({ job, transcription, value, audio, hasUnsavedChanges, isSaving, isDiscarding, isPreparingRecording, isImporting = false, onChange, onSave, onPrepareMinuta, onDownload, onRetryAudio, onAudioError, onReplace, onImport, onDiscard }: AtaTranscriptionReviewProps) {
+export function AtaTranscriptionReview({ job, transcription, value, audio, hasUnsavedChanges, isSaving, isDiscarding, isPreparingRecording, isImporting = false, onChange, onSave, onPrepareMinuta, onDownload, onRetryAudio, onAudioError, selectedAudioFileId, onAudioFileSelect, onReplace, onImport, onDiscard }: AtaTranscriptionReviewProps) {
   const reviewed = transcription.isReviewed
   const busy = isSaving || isDiscarding || isPreparingRecording || isImporting
   const imported = job.sourceType === 'text_import'
   const empty = !value.trim()
+  const files = job.files ?? []
+  const selectedFile = files.find(file => file.id === selectedAudioFileId) ?? files[0]
 
   return (
     <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
@@ -72,16 +76,23 @@ export function AtaTranscriptionReview({ job, transcription, value, audio, hasUn
           <h3 className="flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />Arquivo importado</h3>
           <p className="break-words text-xs leading-relaxed text-muted-foreground">{job.originalFilename}</p>
         </Card>}
-        {!imported && audio.status !== 'gone' && (
+        {!imported && (audio.status !== 'gone' || files.length > 1) && (
           <Card className="space-y-4 p-5 shadow-none">
             <div className="space-y-2">
               <h3 className="flex items-center gap-2 text-sm font-medium">
                 <Headphones className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Gravação original
               </h3>
-              <p className="break-words text-xs leading-relaxed text-muted-foreground">{job.originalFilename}</p>
+              <p className="break-words text-xs leading-relaxed text-muted-foreground">{selectedFile?.originalFilename ?? job.originalFilename}</p>
             </div>
-            {audio.status === 'ready' && <audio src={audio.url} controls preload="metadata" className="w-full" onError={onAudioError} />}
+            {files.length > 1 && <label className="block space-y-2 text-sm">
+              <span className="font-medium">Parte da gravação</span>
+              <select aria-label="Parte da gravação" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={selectedFile?.id} onChange={(event) => onAudioFileSelect?.(event.target.value)}>
+                {files.map(file => <option key={file.id} value={file.id}>Parte {file.position}</option>)}
+              </select>
+            </label>}
+            {audio.status === 'ready' && <audio key={selectedFile?.id ?? job.id} src={audio.url} controls preload="metadata" className="w-full" onError={onAudioError} />}
+            {audio.status === 'gone' && <p role="status" className="text-sm text-muted-foreground">O áudio desta parte não está mais disponível. Você pode continuar revisando o texto.</p>}
             {audio.status === 'loading' && <p role="status" className="text-sm text-muted-foreground">Carregando áudio…</p>}
             {audio.status === 'error' && (
               <div className="space-y-3">

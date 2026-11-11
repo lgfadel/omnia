@@ -25,6 +25,7 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit) {
   if (url.pathname === '/auth/v1/user') return json(authUser)
   if (url.pathname === '/rest/v1/omnia_users') return json({ id: 'profile-1', roles: authorized ? ['ADMIN'] : ['USUARIO'] })
   if (url.pathname === '/rest/v1/omnia_atas') return json({ id: 'ata-1', responsible_id: 'another-profile' })
+  if (url.pathname === '/rest/v1/omnia_ata_transcription_files') return json([])
   if (url.pathname === '/rest/v1/omnia_ata_transcription_jobs') {
     if (init?.method === 'POST') { job = JSON.parse(String(init.body)); return json(null, 201) }
     if (init?.method === 'DELETE') { removed = true; job = null; return json(null) }

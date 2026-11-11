@@ -45,6 +45,7 @@ supabase/.temp/
 /.context/transcription-release.json
 /.context/transcription-import-preview/
 /.context/transcription-import-deno.lock
+/.context/ata-multiple-audio/
 
 # Registros locais de execução e validação; não fazem parte da aplicação.
 /.context/euro-office/

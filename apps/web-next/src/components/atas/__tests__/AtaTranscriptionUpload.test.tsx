@@ -26,13 +26,13 @@ function setup(overrides: Partial<React.ComponentProps<typeof AtaTranscriptionUp
 }
 
 describe('AtaTranscriptionUpload', () => {
-  it('explains immediate upload, background processing and the supported recording limits', () => {
+  it('explains staged selection, background processing and the aggregate limits', () => {
     setup()
 
-    expect(screen.getByText('Envie uma gravação de até 6 horas')).toBeInTheDocument()
-    expect(screen.getByText(/O envio começa assim que você escolher o arquivo/)).toBeInTheDocument()
+    expect(screen.getByText('Adicione até três partes da gravação')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Iniciar transcrição' })).toBeDisabled()
     expect(screen.getByText(/processamento continua mesmo se você sair desta tela/)).toBeInTheDocument()
-    expect(screen.getByText('Até 1 GB · 6 horas')).toBeInTheDocument()
+    expect(screen.getByText('Até 3 arquivos · 1 GB e 6 horas no total')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Selecionar gravação' })).toBeEnabled()
 
     const input = screen.getByLabelText('Selecionar arquivo de gravação')

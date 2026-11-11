@@ -2,7 +2,49 @@
 
 Serviço Railway que processa em background os trabalhos em `omnia_ata_transcription_jobs`.
 
+## Gravações com até três arquivos
+
+Um job pode referenciar de um a três arquivos em `omnia_ata_transcription_files`.
+A ordem é exclusivamente `position` crescente, inclusive quando os nomes ou
+formatos diferem. Jobs antigos sem linhas nessa tabela continuam usando o
+`storage_path` e o provedor do próprio job. Falhas ao consultar a tabela de
+arquivos interrompem o processamento, sem recorrer silenciosamente ao legado.
+
+Antes da primeira chamada ao modelo, o worker mede a duração real de cada
+arquivo com ffprobe e valida o total de até seis horas. Cada fonte tem seu
+próprio plano de blocos e upload compactado; uma fonte termina antes da próxima
+começar. O contexto de continuação e o progresso de blocos atravessam os arquivos.
+Repetições do modelo são removidas dentro de cada fonte, preservando falas
+repetidas entre arquivos. O texto final é unido com uma linha em branco, sem
+cabeçalhos de partes, e publicado somente depois de todas as fontes terminarem.
+
+Os originais permanecem até a persistência da transcrição inteira. Cada troca
+pelo áudio compactado usa `omnia_commit_ata_transcription_file`, que valida o
+job atual em processamento e mantém os metadados legados do job alinhados ao
+primeiro arquivo. Uma falha nessa troca mantém o original; uploads pendentes
+são abortados ao abandonar o processamento. Retentativas podem ler fontes já
+compactadas sem sobrescrevê-las ou apagá-las.
+
+Para testes locais, importe `processJob` e o tipo `TranscriptionJob` de
+`src/processJob.ts` (ou `dist/processJob.js` após o build). Esse módulo não inicia
+servidor nem drena a fila. A assinatura continua
+`processJob(job, supabase, openai, r2)`; `index.ts` mantém a configuração HTTP e
+a orquestração de fila.
+
 ## Deploy
+
+Para liberar múltiplos arquivos, aplique primeiro a migration
+`20261111170207_ata_transcription_multiple_audio.sql`, publique este worker e
+confirme que a nova versão está ativa. Depois publique a Edge Function
+`ata-transcriptions` e, por último, a interface. O worker antigo processa apenas
+o primeiro arquivo e não deve receber novos conjuntos.
+
+A interface monta uma lista de até três partes, na ordem de adição, e só começa
+o envio no botão **Iniciar transcrição**. O limite de **1 GB e seis horas** é
+do conjunto. A fila recebe o job após verificar todos os objetos; repetição da
+conclusão é segura após falhas de transporte ou chamadas concorrentes. A revisão
+mantém um texto único e permite escolher a parte no player. TXT/VTT continua
+usando a importação de texto existente.
 
 1. Crie um serviço Railway apontando para este diretório (`apps/ata-transcription-worker`).
 2. O `Dockerfile` compila o TypeScript num estágio separado, instala FFmpeg e sobe um servidor HTTP com `node dist/index.js`. Mantenha uma réplica. Enquanto processa, o worker publica sinal de vida a cada minuto; um job sem sinal há 5 minutos perdeu o container e volta para a fila na próxima vez que um worker acordar, até 3 tentativas no total.
@@ -73,7 +115,7 @@ MB), e o pico fica em ~265 MB (Node ~90, ffmpeg ~165, um bloco) para qualquer
 duração ou tamanho de arquivo. Os blocos saem sem cabeçalho ID3/Xing para que a
 concatenação das partes seja um MP3 contínuo e íntegro.
 
-Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker transcreve a gravação em blocos de 30 minutos com `gpt-transcribe`. O áudio é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O que fica guardado, porém, é a versão compactada — mono, 16 kHz, 64 kbps, a mesma que o modelo ouviu —, e não o arquivo que saiu do navegador; ela é montada no R2 a partir dos próprios blocos transcritos, sem decodificação extra. Em WAV e em gravações longas isso corta de 80% a 90% do arquivo; em M4A que já chega leve, o ganho é pequeno. Medido em 22/09/2026: o bucket caiu de 1,73 GB para 0,53 GB. A troca preserva o reprocessamento por inteiro, já que o original nunca chegou ao modelo. O preço é o player de conferência tocar áudio processado, com timbre achatado. A troca é feita na ordem completar o upload, registrar, apagar, de modo que qualquer falha deixe dois objetos e nunca nenhum; se ela falhar, o job conclui normalmente apontando para o áudio que estiver no bucket. A remoção definitiva continua acontecendo quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket a um arquivo por ata. Em caso de falha da transcrição, o áudio também permanece para uma nova tentativa.
+Crie a última variável como uma chave de service account exclusiva do projeto OpenAI desta feature, com o escopo mínimo de requisição de modelo. O worker transcreve a gravação em blocos de 30 minutos com `gpt-transcribe`. O áudio é **mantido** após concluir: é ele que permite reprocessar a mesma gravação com outro modelo ou outro contexto sem pedir o arquivo de novo. O que fica guardado, porém, é a versão compactada — mono, 16 kHz, 64 kbps, a mesma que o modelo ouviu —, e não o arquivo que saiu do navegador; ela é montada no R2 a partir dos próprios blocos transcritos, sem decodificação extra. Em WAV e em gravações longas isso corta de 80% a 90% do arquivo; em M4A que já chega leve, o ganho é pequeno. Medido em 22/09/2026: o bucket caiu de 1,73 GB para 0,53 GB. A troca preserva o reprocessamento por inteiro, já que o original nunca chegou ao modelo. O preço é o player de conferência tocar áudio processado, com timbre achatado. A troca é feita na ordem completar o upload, registrar, apagar, de modo que qualquer falha deixe dois objetos e nunca nenhum; se ela falhar, o job conclui normalmente apontando para o áudio que estiver no bucket. A remoção definitiva continua acontecendo quando a transcrição deixa de ser a atual da ata — substituída por outra gravação ou descartada na tela —, o que limita o bucket aos arquivos do job atual da ata. Em caso de falha da transcrição, o áudio também permanece para uma nova tentativa.
 
 Os novos áudios ficam no bucket privado Cloudflare R2. As quatro variáveis R2 também precisam ser configuradas como segredos da Edge Function `ata-transcriptions`; não as cadastre no Vercel nem use nomes com `NEXT_PUBLIC_`.
 
