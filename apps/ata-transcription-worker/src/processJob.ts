@@ -293,4 +293,3 @@ export async function processJob(
     await rm(workspace, { recursive: true, force: true })
   }
 }
-

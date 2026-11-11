@@ -15,4 +15,4 @@ CREATE TABLE storage.buckets (id text PRIMARY KEY, name text, public boolean, fi
 \ir ../../migrations/20260828170000_add_ata_transcription_storage_provider.sql
 \ir ../../migrations/20261023155020_add_ata_transcription_import.sql
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
-\ir ../../migrations/20261111170207_ata_transcription_multiple_audio.sql
+\ir ../../migrations/20261111172136_ata_transcription_multiple_audio.sql

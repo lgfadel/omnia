@@ -34,7 +34,7 @@ a orquestração de fila.
 ## Deploy
 
 Para liberar múltiplos arquivos, aplique primeiro a migration
-`20261111170207_ata_transcription_multiple_audio.sql`, publique este worker e
+`20261111172136_ata_transcription_multiple_audio.sql`, publique este worker e
 confirme que a nova versão está ativa. Depois publique a Edge Function
 `ata-transcriptions` e, por último, a interface. O worker antigo processa apenas
 o primeiro arquivo e não deve receber novos conjuntos.
