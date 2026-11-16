@@ -43,6 +43,7 @@ supabase/.temp/
 /.context/upload-debug/
 /.context/pre-release-deployment.json
 /.context/transcription-release.json
+/.context/minuta-pdf-production-deployment.json
 /.context/transcription-import-preview/
 /.context/transcription-import-deno.lock
 /.context/ata-multiple-audio/
@@ -55,8 +56,10 @@ supabase/.temp/
 
 # Permissões pessoais do Claude Code. A allowlist chega a liberar `python3 -c`,
 # que é execução arbitrária: compartilhar isso pelo repositório concederia o
-# mesmo poder, sem aviso, a quem clonar. Config de projeto vai em settings.json.
+# mesmo poder, sem aviso, a quem clonar. Os dois arquivos locais contêm permissões
+# pessoais; revisar e remover essas permissões antes de compartilhar settings.json.
 .claude/settings.local.json
+.claude/settings.json
 
 # Temporary files
 # Gravações de assembleia ficam aqui durante testes. São dezenas de MB de áudio
