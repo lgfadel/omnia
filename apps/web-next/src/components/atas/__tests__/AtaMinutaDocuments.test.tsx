@@ -5,17 +5,17 @@ import { AtaMinutaDocuments } from '../AtaMinutaDocuments'
 describe('AtaMinutaDocuments', () => {
   it('prevents a PDF that exceeds remaining aggregate capacity from being uploaded', async () => {
     const onUpload = vi.fn()
-    render(<AtaMinutaDocuments documents={[{ id: 'doc-1', ataId: 'ata-1', kind: 'apuracao', originalFilename: 'votos.pdf', sizeBytes: 30 * 1024 * 1024, createdAt: '2026-10-02T10:00:00Z' }]} onUpload={onUpload} onDelete={vi.fn()} />)
+    render(<AtaMinutaDocuments documents={[{ id: 'doc-1', ataId: 'ata-1', kind: 'apuracao', originalFilename: 'votos.pdf', sizeBytes: 90 * 1024 * 1024, createdAt: '2026-10-02T10:00:00Z' }]} onUpload={onUpload} onDelete={vi.fn()} />)
     const file = new File(['pdf'], 'pauta.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 })
     fireEvent.change(screen.getByLabelText('PDF de apoio'), { target: { files: [file] } })
-    expect(await screen.findByRole('alert')).toHaveTextContent('limite total de 45 MB')
+    expect(await screen.findByRole('alert')).toHaveTextContent('limite total de 100 MB')
     expect(onUpload).not.toHaveBeenCalled()
   })
 
-  it('accepts a dropped PDF above 25 MB and notifies the parent while uploading', async () => {
+  it('accepts a dropped PDF of exactly 100 MB and notifies the parent while uploading', async () => {
     const file = new File(['pdf'], 'votacao.pdf', { type: 'application/pdf' })
-    Object.defineProperty(file, 'size', { value: 30 * 1024 * 1024 })
+    Object.defineProperty(file, 'size', { value: 100 * 1024 * 1024 })
     const onUpload = vi.fn().mockResolvedValue(undefined)
     const onBusyChange = vi.fn()
     render(<AtaMinutaDocuments documents={[]} onUpload={onUpload} onDelete={vi.fn()} onBusyChange={onBusyChange} />)

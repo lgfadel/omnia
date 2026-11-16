@@ -6,10 +6,12 @@ import {
   getMinutaDocumentValidationError,
   type AtaMinutaStreamEvent,
   type MinutaGenerationContext,
+  type MinutaDocumentInput,
 } from '@/lib/ataMinuta'
 import type { AtaMinutaReasoningEffort } from '@/data/types'
 import { parseSseBlock, splitSseBlocks } from '@/lib/openaiResponsesStream'
-import { getMinutaDocumentsValidationError, MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
+import { getMinutaDocumentsTotalSize, getMinutaDocumentsValidationError, MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES, MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
+import { analyzeMinutaPdf } from './ataMinutaPdfAnalysis'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const MINUTA_DOCUMENTS_BUCKET = 'ata-minuta-documents'
@@ -443,7 +445,7 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
 
 // ---- Geração e refinamento por chat ----
 
-async function downloadDocumentsAsBase64(client: SupabaseClient, ataId: string) {
+async function prepareDocumentsForMinuta(client: SupabaseClient, ataId: string, model: string, reasoningEffort: string) {
   const { data: rows, error } = await client
     .from('omnia_ata_minuta_documents')
     .select('storage_path, original_filename, size_bytes')
@@ -454,7 +456,10 @@ async function downloadDocumentsAsBase64(client: SupabaseClient, ataId: string) 
   const validationError = getMinutaDocumentsValidationError(documents.map((row) => ({ sizeBytes: row.size_bytes })))
   if (validationError) throw new Error(validationError)
 
-  const inputs = [] as Array<{ originalFilename: string; base64: string }>
+  const inputs: MinutaDocumentInput[] = []
+  const needsAnalysis = getMinutaDocumentsTotalSize(documents.map(row => ({ sizeBytes: row.size_bytes }))) > MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES
+  // Reservar tempo da rota para iniciar a geração final em background.
+  const signal = needsAnalysis ? AbortSignal.timeout(180_000) : undefined
   // Processar um PDF de cada vez evita manter todos os blobs e buffers em memória
   // ao mesmo tempo. O teto agregado também é conferido antes do primeiro download.
   for (const row of documents) {
@@ -466,7 +471,9 @@ async function downloadDocumentsAsBase64(client: SupabaseClient, ataId: string) 
       throw new Error(`O documento ${row.original_filename} não corresponde ao tamanho informado.`)
     }
     const buffer = Buffer.from(await file.arrayBuffer())
-    inputs.push({ originalFilename: row.original_filename, base64: buffer.toString('base64') })
+    inputs.push(needsAnalysis
+      ? await analyzeMinutaPdf({ bytes: buffer, originalFilename: row.original_filename, model, reasoningEffort, apiKey: env('OPENAI_ATA_MINUTA_API_KEY'), signal })
+      : { originalFilename: row.original_filename, base64: buffer.toString('base64') })
   }
   return inputs
 }
@@ -549,8 +556,6 @@ export async function* streamMinutaTurn(
   const transcriptionText = transcription?.revised_text ?? transcription?.raw_text
   if (!transcriptionText) throw new Error('Esta ata ainda não tem uma transcrição para gerar a minuta.')
 
-  const documents = await downloadDocumentsAsBase64(client, ataId)
-
   const { data: currentMinutaRow } = await client
     .from('omnia_ata_minutas')
     .select('id, content, status, updated_at, generation_run')
@@ -565,6 +570,7 @@ export async function* streamMinutaTurn(
   if (currentMinuta && isGenerationInProgress(currentMinuta)) {
     throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
   }
+  const documents = await prepareDocumentsForMinuta(client, ataId, settingsRow.model, settingsRow.reasoning_effort)
   // Refazer uma geração interrompida mantém as orientações já fornecidas. Uma
   // string vazia explícita permite apagar essas orientações antes de tentar de novo.
   if (instruction === undefined && currentMinuta && (currentMinuta.status === 'failed' || currentMinuta.status === 'generating')) {

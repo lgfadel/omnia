@@ -1,8 +1,9 @@
-// Responses aceita até 50 MB somando os arquivos de um pedido. 45 MiB deixa
-// margem abaixo desse teto sem retirar o PDF da análise visual do modelo.
-export const MINUTA_DOCUMENT_MAX_SIZE_MB = 45
+export const MINUTA_DOCUMENT_MAX_SIZE_MB = 100
 export const MINUTA_DOCUMENT_MAX_SIZE_BYTES = MINUTA_DOCUMENT_MAX_SIZE_MB * 1024 * 1024
 export const MINUTA_DOCUMENT_TOTAL_MAX_SIZE_BYTES = MINUTA_DOCUMENT_MAX_SIZE_BYTES
+// O armazenamento aceita originais maiores que o orçamento de uma chamada visual.
+// Acima de 45 MiB agregados, analisar os PDFs em partes antes de gerar a minuta.
+export const MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES = 45 * 1024 * 1024
 // A recuperação pelo app precisa caber no limite de corpo da função Vercel.
 export const MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES = 4 * 1024 * 1024
 

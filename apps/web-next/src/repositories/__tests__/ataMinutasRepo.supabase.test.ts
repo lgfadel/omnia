@@ -126,10 +126,10 @@ describe('minuta supporting PDF upload', () => {
 
   it('rejects oversized files before reading them into memory', async () => {
     const file = pdf()
-    Object.defineProperty(file, 'size', { value: 47_185_921 })
+    Object.defineProperty(file, 'size', { value: 104_857_601 })
     const read = vi.fn(async () => { throw new Error('Must not read an oversized file') })
     Object.defineProperty(file, 'arrayBuffer', { value: read })
-    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('limite de 45 MB')
+    await expect(ataMinutasRepoSupabase.uploadDocument('ata-1', file, 'convocacao')).rejects.toThrow('limite de 100 MB')
     expect(read).not.toHaveBeenCalled()
     expect(calls).toEqual([])
   })

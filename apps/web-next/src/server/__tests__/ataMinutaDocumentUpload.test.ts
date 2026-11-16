@@ -35,6 +35,8 @@ vi.mock('@supabase/supabase-js', () => ({
         if (table === 'omnia_ata_minuta_settings') return { model: 'test-model', reasoning_effort: 'high', system_prompt: 'Secretário.' }
         if (table === 'omnia_ata_transcription_jobs') return { id: 'job-1', context_text: null }
         if (table === 'omnia_ata_transcriptions') return { id: 'transcription-1', raw_text: 'Assembleia transcrita.', revised_text: null }
+        if (table === 'omnia_ata_minutas' && operation !== 'select') return { id: 'minuta-1', ...value }
+        if (table === 'omnia_ata_minuta_versions' && operation === 'insert') return { id: 'version-1', ...value }
         if (table === 'omnia_ata_minuta_documents') {
           if (operation === 'insert') {
             state.insertAttempted = true
@@ -140,15 +142,15 @@ describe('support PDF upload and generation budget', () => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key')
   })
 
-  afterEach(() => vi.unstubAllEnvs())
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 
-  it('prepares a signed direct upload for a PDF larger than 25 MiB', async () => {
-    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 30_000_000 })).resolves.toMatchObject({ token: 'upload-token' })
+  it('prepares a signed direct upload for a PDF of exactly 100 MiB', async () => {
+    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 104_857_600 })).resolves.toMatchObject({ token: 'upload-token' })
   })
 
-  it('rejects a combined size above 45 MiB before creating an upload token', async () => {
+  it('rejects a combined size above 100 MiB before creating an upload token', async () => {
     state.documents = [existingDocument(25_000_000)]
-    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 22_185_921 })).rejects.toThrow('limite total de 45 MB')
+    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 79_857_601 })).rejects.toThrow('limite total de 100 MB')
     expect(state.signedPaths).toEqual([])
   })
 
@@ -161,8 +163,8 @@ describe('support PDF upload and generation budget', () => {
 
   it('checks the budget again at confirmation after another PDF was attached', async () => {
     state.documents = [existingDocument(25_000_000)]
-    storedFile(path, 23_000_000)
-    await expect(confirmMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', kind: 'apuracao', sizeBytes: 23_000_000, storagePath: path })).rejects.toThrow('limite total de 45 MB')
+    storedFile(path, 80_000_000)
+    await expect(confirmMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', kind: 'apuracao', sizeBytes: 80_000_000, storagePath: path })).rejects.toThrow('limite total de 100 MB')
     expect(state.documents).toHaveLength(1)
     expect(state.downloadedPaths).toEqual([])
   })
@@ -182,8 +184,8 @@ describe('support PDF upload and generation budget', () => {
   })
 
   it('rejects an oversized existing PDF set before downloads or changing the current minuta', async () => {
-    state.documents = [existingDocument(25_000_000), existingDocument(23_000_000, path)]
-    await expect(streamMinutaTurn(auth, 'ata-1', undefined).next()).rejects.toThrow('limite total de 45 MB')
+    state.documents = [existingDocument(25_000_000), existingDocument(80_000_000, path)]
+    await expect(streamMinutaTurn(auth, 'ata-1', undefined).next()).rejects.toThrow('limite total de 100 MB')
     expect(state.downloadedPaths).toEqual([])
     expect(state.changedTables).toEqual([])
   })
@@ -193,6 +195,35 @@ describe('support PDF upload and generation budget', () => {
     storedFile(path, 2000)
     await expect(streamMinutaTurn(auth, 'ata-1', undefined).next()).rejects.toThrow('não corresponde ao tamanho informado')
     expect(state.encodedPaths).toEqual([])
+    expect(state.changedTables).toEqual([])
+  })
+
+  it.each([[60_000_000], [30_000_000, 30_000_000]])('generates a minuta from visual evidence when PDFs exceed the API budget: %j', async (...sizes) => {
+    vi.stubEnv('OPENAI_ATA_MINUTA_API_KEY', 'test-key')
+    state.documents = sizes.map((size, index) => existingDocument(size, `ata-1/user-1/file-${index}.pdf`))
+    for (const document of state.documents) storedFile(document.storage_path as string, document.size_bytes as number)
+    const requests: Array<{ background?: boolean; input: Array<{ content: Array<{ type: string; text?: string }> }> }> = []
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string)
+      requests.push(body)
+      if (!body.background) return Response.json({ status: 'completed', output: [{ content: [{ type: 'output_text', text: 'Pauta 1: 105 votos favoráveis e 3 contrários.' }] }] })
+      return new Response('data: {"type":"response.output_text.delta","delta":"Ata com 105 votos favoráveis."}\n\ndata: {"type":"response.completed","response":{"usage":{}}}\n\n')
+    })
+    const events = []
+    for await (const event of streamMinutaTurn(auth, 'ata-1', undefined)) events.push(event)
+    expect(events.at(-1)).toEqual({ type: 'done', content: 'Ata com 105 votos favoráveis.' })
+    const finalContent = requests.at(-1)!.input.flatMap(message => message.content)
+    expect(finalContent.some(part => part.type === 'input_file')).toBe(false)
+    expect(finalContent.map(part => part.text ?? '').join('\n')).toContain('105 votos favoráveis e 3 contrários.')
+    expect(requests).toHaveLength(sizes.length + 1)
+  })
+
+  it('preserves the current minuta if analysis of a large document is incomplete', async () => {
+    vi.stubEnv('OPENAI_ATA_MINUTA_API_KEY', 'test-key')
+    state.documents = [existingDocument(60_000_000, path)]
+    storedFile(path, 60_000_000)
+    vi.stubGlobal('fetch', async () => Response.json({ status: 'incomplete', output: [] }))
+    await expect(streamMinutaTurn(auth, 'ata-1', undefined).next()).rejects.toThrow('análise')
     expect(state.changedTables).toEqual([])
   })
 
@@ -250,7 +281,7 @@ describe('support PDF upload and generation budget', () => {
   })
 
   it('keeps repeated recovery idempotent even at the aggregate budget boundary', async () => {
-    state.documents = [existingDocument(47_185_909), { ...existingDocument(11, path), kind: 'apuracao', original_filename: 'apuracao.pdf' }]
+    state.documents = [existingDocument(104_857_589), { ...existingDocument(11, path), kind: 'apuracao', original_filename: 'apuracao.pdf' }]
     state.storedFiles.set(path, { size: pdfBytes.byteLength, arrayBuffer: async () => pdfBytes.slice().buffer })
     await expect(uploadMinutaDocument(auth, 'ata-1', recovery())).resolves.toMatchObject({ id: 'document-existing' })
     expect(state.documents).toHaveLength(2)
@@ -304,7 +335,7 @@ describe('support PDF upload and generation budget', () => {
   it('rejects a recovery above 4 MiB before storage access while leaving the direct limit unchanged', async () => {
     await expect(uploadMinutaDocument(auth, 'ata-1', { ...recovery(), bytes: new Uint8Array(4_194_305) })).rejects.toThrow('4 MB')
     expect(state.downloadedPaths).toEqual([])
-    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 47_185_920 })).resolves.toMatchObject({ token: 'upload-token' })
+    await expect(createMinutaDocumentUpload(auth, 'ata-1', { fileName: 'apuracao.pdf', sizeBytes: 104_857_600 })).resolves.toMatchObject({ token: 'upload-token' })
   })
 
   it('allows an exact 4 MiB recovery', async () => {
@@ -319,7 +350,7 @@ describe('support PDF upload and generation budget', () => {
   })
 
   it('rejects a new recovery exceeding the aggregate budget before storage access', async () => {
-    state.documents = [existingDocument(47_185_915)]
+    state.documents = [existingDocument(104_857_595)]
     await expect(uploadMinutaDocument(auth, 'ata-1', recovery())).rejects.toThrow('limite total')
     expect(state.downloadedPaths).toEqual([])
     expect(state.uploads).toEqual([])

@@ -3,12 +3,12 @@ import { getMinutaDocumentValidationError } from '../ataMinuta'
 import { getMinutaDocumentsTotalSize, getMinutaDocumentsValidationError } from '../ataMinutaDocuments'
 
 describe('support PDF size validation', () => {
-  it.each([26_214_401, 35_000_000, 47_185_920])('accepts a valid PDF of %i bytes', (size) => {
+  it.each([26_214_401, 35_000_000, 104_857_600])('accepts a valid PDF of %i bytes', (size) => {
     expect(getMinutaDocumentValidationError({ name: 'apuracao.pdf', type: 'application/pdf', size })).toBeNull()
   })
 
-  it('rejects a PDF one byte above 45 MiB', () => {
-    expect(getMinutaDocumentValidationError({ name: 'apuracao.pdf', type: 'application/pdf', size: 47_185_921 })).toContain('45 MB')
+  it('rejects a PDF one byte above 100 MiB', () => {
+    expect(getMinutaDocumentValidationError({ name: 'apuracao.pdf', type: 'application/pdf', size: 104_857_601 })).toContain('100 MB')
   })
 
   it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, 0.5])('rejects an invalid file size of %s', (size) => {
@@ -22,15 +22,15 @@ describe('combined support PDF budget', () => {
   })
 
   it('accepts an additional PDF exactly filling the combined budget', () => {
-    expect(getMinutaDocumentsValidationError([{ sizeBytes: 30_000_000 }], 17_185_920)).toBeNull()
+    expect(getMinutaDocumentsValidationError([{ sizeBytes: 30_000_000 }], 74_857_600)).toBeNull()
   })
 
   it('rejects an additional PDF exceeding the combined budget by one byte', () => {
-    expect(getMinutaDocumentsValidationError([{ sizeBytes: 30_000_000 }], 17_185_921)).toContain('limite total de 45 MB')
+    expect(getMinutaDocumentsValidationError([{ sizeBytes: 30_000_000 }], 74_857_601)).toContain('limite total de 100 MB')
   })
 
   it('rejects a stored set whose individual PDFs fit but total exceeds the budget', () => {
-    expect(getMinutaDocumentsValidationError([{ sizeBytes: 24_000_000 }, { sizeBytes: 24_000_000 }])).toContain('limite total de 45 MB')
+    expect(getMinutaDocumentsValidationError([{ sizeBytes: 60_000_000 }, { sizeBytes: 60_000_000 }])).toContain('limite total de 100 MB')
   })
 
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 0.5])('rejects a stored PDF with invalid byte count %s', (sizeBytes) => {

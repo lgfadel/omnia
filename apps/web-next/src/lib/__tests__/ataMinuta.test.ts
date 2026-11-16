@@ -85,7 +85,7 @@ describe('getMinutaDocumentValidationError', () => {
 
   it('rejects a file over the size limit', () => {
     expect(getMinutaDocumentValidationError({ name: 'apuracao.pdf', type: 'application/pdf', size: MINUTA_DOCUMENT_MAX_SIZE_BYTES + 1 }))
-      .toBe('O arquivo ultrapassa o limite de 45 MB.')
+      .toBe('O arquivo ultrapassa o limite de 100 MB.')
   })
 
   it('rejects an empty file', () => {
@@ -120,6 +120,17 @@ describe('buildMinutaResponsesInput', () => {
     const input = buildMinutaResponsesInput('prompt', baseContext)
     const filePart = input[1].content.find((part) => part.type === 'input_file')
     expect(filePart).toEqual({ type: 'input_file', filename: 'apuracao.pdf', file_data: 'data:application/pdf;base64,QUJD' })
+  })
+
+  it('includes extracted evidence from large PDFs as text without attaching an oversized file', () => {
+    const input = buildMinutaResponsesInput('prompt', {
+      ...baseContext,
+      documents: [{ originalFilename: 'votos.pdf', extractedText: 'Páginas 1–20: 105 votos favoráveis, 3 contrários.' }],
+    })
+    expect(input[1].content.some(part => part.type === 'input_file')).toBe(false)
+    const texts = input[1].content.filter(part => part.type === 'input_text').map(part => (part as { text: string }).text)
+    expect(texts.join('\n')).toContain('votos.pdf')
+    expect(texts.join('\n')).toContain('105 votos favoráveis, 3 contrários.')
   })
 
   it('applies optional initial instructions without inventing a prior assistant draft', () => {

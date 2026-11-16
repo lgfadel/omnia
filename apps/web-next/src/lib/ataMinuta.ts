@@ -113,9 +113,14 @@ export type AtaMinutaStreamEvent =
   | { type: 'done'; content: string }
   | { type: 'error'; message: string }
 
-export interface MinutaDocumentInput {
+export type MinutaDocumentInput = {
   originalFilename: string
   base64: string
+  extractedText?: never
+} | {
+  originalFilename: string
+  extractedText: string
+  base64?: never
 }
 
 export interface MinutaGenerationContext {
@@ -166,6 +171,10 @@ function buildContextMessage(context: MinutaGenerationContext): ResponsesInputMe
   }
 
   for (const document of context.documents) {
+    if (document.extractedText !== undefined) {
+      parts.push({ type: 'input_text', text: `Evidências do documento de apoio ${document.originalFilename}:\n${document.extractedText}` })
+      continue
+    }
     parts.push({
       type: 'input_file',
       filename: document.originalFilename,
