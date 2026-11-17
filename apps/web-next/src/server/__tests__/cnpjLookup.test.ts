@@ -233,4 +233,49 @@ describe('fetchCNPJData', () => {
 
     await expect(fetchCNPJData(CNPJ)).rejects.toMatchObject({ code: 'INVALID_FORMAT' })
   })
+
+  it('reports the invalid CNPJ from the form instead of provider unavailability', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({
+        message: 'CNPJ 47.646.257/0001-87 inválido.',
+        type: 'bad_request',
+        name: 'BadRequestError',
+      }, 400))
+      .mockResolvedValueOnce(jsonResponse({ status: 'ERROR', message: 'CNPJ inválido' }, 400))
+
+    await expect(fetchCNPJData('47.646.257/0001-87')).rejects.toMatchObject({
+      code: 'INVALID_FORMAT',
+      message: 'CNPJ inválido',
+    })
+  })
+
+  it.each(['BrasilAPI', 'ReceitaWS'])('preserves an HTTP 400 invalid-CNPJ error from %s when the other provider is unavailable', async (provider) => {
+    const invalid = jsonResponse({ message: 'CNPJ inválido' }, 400)
+    const unavailable = jsonResponse({}, 503)
+    fetchMock
+      .mockResolvedValueOnce(provider === 'BrasilAPI' ? invalid : unavailable)
+      .mockResolvedValueOnce(provider === 'ReceitaWS' ? invalid : unavailable)
+
+    await expect(fetchCNPJData(CNPJ)).rejects.toMatchObject({ code: 'INVALID_FORMAT' })
+  })
+
+  it.each([
+    { message: 'Bad request' },
+    { message: 'Parâmetro inválido' },
+    null,
+  ])('does not classify unrelated HTTP 400 errors as an invalid CNPJ: %j', async (payload) => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(payload, 400))
+      .mockResolvedValueOnce(jsonResponse({}, 503))
+
+    await expect(fetchCNPJData(CNPJ)).rejects.toMatchObject({ code: 'API_ERROR' })
+  })
+
+  it('still accepts a successful fallback after an HTTP 400 invalid-CNPJ response', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: 'CNPJ inválido' }, 400))
+      .mockResolvedValueOnce(jsonResponse(receitaWSData))
+
+    await expect(fetchCNPJData(CNPJ)).resolves.toMatchObject({ name: 'EDIFICIO EXEMPLO' })
+  })
 })

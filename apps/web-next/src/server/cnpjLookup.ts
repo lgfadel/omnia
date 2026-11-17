@@ -18,12 +18,19 @@ async function fetchProvider(url: string): Promise<ProviderData> {
   if (response.status === 404) {
     throw new CNPJServiceError('CNPJ não encontrado', 'NOT_FOUND')
   }
-  if (!response.ok) {
+  if (!response.ok && response.status !== 400) {
     throw new CNPJServiceError(UNAVAILABLE_MESSAGE, 'API_ERROR')
   }
 
   const data: unknown = await response.json()
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new CNPJServiceError(UNAVAILABLE_MESSAGE, 'API_ERROR')
+  }
+  if (response.status === 400) {
+    const message = text((data as ProviderData).message).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    if (/cnpj.*invalido|invalido.*cnpj/.test(message)) {
+      throw new CNPJServiceError('CNPJ inválido', 'INVALID_FORMAT')
+    }
     throw new CNPJServiceError(UNAVAILABLE_MESSAGE, 'API_ERROR')
   }
   return data as ProviderData
