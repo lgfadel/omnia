@@ -6,12 +6,13 @@ import {
   getMinutaDocumentValidationError,
   type AtaMinutaStreamEvent,
   type MinutaGenerationContext,
+  type MinutaRefinementContext,
   type MinutaDocumentInput,
 } from '@/lib/ataMinuta'
 import type { AtaMinutaReasoningEffort } from '@/data/types'
 import { parseSseBlock, splitSseBlocks } from '@/lib/openaiResponsesStream'
 import { getMinutaDocumentsTotalSize, getMinutaDocumentsValidationError, MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES, MINUTA_DOCUMENT_PROXY_MAX_SIZE_BYTES } from '@/lib/ataMinutaDocuments'
-import { analyzeMinutaPdf } from './ataMinutaPdfAnalysis'
+import { splitMinutaPdf, startMinutaPdfAnalysis, readMinutaPdfAnalysis, extractMinutaPdfEvidence, minutaPdfPartLabel, PdfAnalysisFailedError } from './ataMinutaPdfAnalysis'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const MINUTA_DOCUMENTS_BUCKET = 'ata-minuta-documents'
@@ -32,6 +33,7 @@ const GENERATION_IN_PROGRESS_MESSAGE = 'Uma geração já está em andamento par
 const STREAM_WINDOW_MS = 240_000
 
 type GenerationRun = {
+  phase?: 'generation'
   response_id: string
   // Como fechar o turno quando a resposta terminar, mesmo em outra requisição.
   origin: 'generation' | 'chat'
@@ -39,10 +41,31 @@ type GenerationRun = {
   model: string
 }
 
+type MinutaDocumentRow = { storage_path: string; original_filename: string; size_bytes: number }
+
+type DocumentPreparationRun = Omit<GenerationRun, 'response_id' | 'phase'> & {
+  phase: 'documents'
+  response_id?: string
+  response_label?: string
+  documents: MinutaDocumentRow[]
+  document_index: number
+  part_index: number
+  evidence: Array<{ originalFilename: string; extractedText: string }>
+  context: MinutaGenerationContext | MinutaRefinementContext
+  system_prompt: string
+  reasoning_effort: string
+  previous_minuta_id?: string
+  lease_id?: string
+  lease_until?: number
+}
+
+type MinutaRun = GenerationRun | DocumentPreparationRun
+
 // Falha definitiva da geração (a OpenAI recusou, reportou erro ou não devolveu texto).
 // Qualquer outro erro de uma requisição que já tem o id da resposta é transitório: a
 // geração segue na OpenAI e pode ser retomada, então não derruba a minuta.
 class GenerationFailedError extends Error {}
+class PreparationCheckpointError extends Error {}
 
 // Uma minuta com geração na OpenAI continua "em andamento" mesmo sem escritas
 // recentes: quem a acompanha pode ter fechado a aba, e a resposta segue viva. O
@@ -445,21 +468,20 @@ export async function saveMinutaManualEdit(authHeader: string | null, ataId: str
 
 // ---- Geração e refinamento por chat ----
 
-async function prepareDocumentsForMinuta(client: SupabaseClient, ataId: string, model: string, reasoningEffort: string) {
+async function prepareDocumentsForMinuta(client: SupabaseClient, ataId: string) {
   const { data: rows, error } = await client
     .from('omnia_ata_minuta_documents')
     .select('storage_path, original_filename, size_bytes')
     .eq('ata_id', ataId)
   if (error) throw new Error(error.message)
 
-  const documents = (rows ?? []) as Array<{ storage_path: string; original_filename: string; size_bytes: number }>
+  const documents = (rows ?? []) as MinutaDocumentRow[]
   const validationError = getMinutaDocumentsValidationError(documents.map((row) => ({ sizeBytes: row.size_bytes })))
   if (validationError) throw new Error(validationError)
 
   const inputs: MinutaDocumentInput[] = []
   const needsAnalysis = getMinutaDocumentsTotalSize(documents.map(row => ({ sizeBytes: row.size_bytes }))) > MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES
-  // Reservar tempo da rota para iniciar a geração final em background.
-  const signal = needsAnalysis ? AbortSignal.timeout(180_000) : undefined
+  if (needsAnalysis) return { documents: [], analysisDocuments: documents }
   // Processar um PDF de cada vez evita manter todos os blobs e buffers em memória
   // ao mesmo tempo. O teto agregado também é conferido antes do primeiro download.
   for (const row of documents) {
@@ -471,11 +493,9 @@ async function prepareDocumentsForMinuta(client: SupabaseClient, ataId: string, 
       throw new Error(`O documento ${row.original_filename} não corresponde ao tamanho informado.`)
     }
     const buffer = Buffer.from(await file.arrayBuffer())
-    inputs.push(needsAnalysis
-      ? await analyzeMinutaPdf({ bytes: buffer, originalFilename: row.original_filename, model, reasoningEffort, apiKey: env('OPENAI_ATA_MINUTA_API_KEY'), signal })
-      : { originalFilename: row.original_filename, base64: buffer.toString('base64') })
+    inputs.push({ originalFilename: row.original_filename, base64: buffer.toString('base64') })
   }
-  return inputs
+  return { documents: inputs, analysisDocuments: [] as MinutaDocumentRow[] }
 }
 
 // Um turno por vez: sem instrução é geração (do zero, supera a minuta atual).
@@ -522,11 +542,15 @@ export async function* streamMinutaTurn(
       .eq('ata_id', ataId)
       .eq('is_current', true)
       .maybeSingle()
-    const row = resumable as { id: string; content: string; status: string; error_message: string | null; generation_run: GenerationRun | null } | null
+    const row = resumable as { id: string; content: string; status: string; error_message: string | null; generation_run: MinutaRun | null } | null
     if (!row) throw new Error('Nenhuma geração para retomar.')
     // Outra aba pode ter terminado (ou falhado) a geração entre a leitura da tela e aqui.
     if (row.status === 'ready') { yield { type: 'done', content: row.content }; return }
     if (row.status === 'failed') throw new Error(row.error_message ?? 'A geração falhou. Gere a minuta novamente.')
+    if (row.generation_run?.phase === 'documents') {
+      yield* driveDocumentPreparation(client, row.id, user.omniaUserId, row.generation_run, startedAt)
+      return
+    }
     if (!row.generation_run?.response_id) throw new Error('Esta geração não pode ser retomada. Gere a minuta novamente.')
     yield* driveGeneration(client, { minutaId: row.id, userId: user.omniaUserId, run: row.generation_run, startedAt, request: { kind: 'resume' } })
     return
@@ -562,7 +586,7 @@ export async function* streamMinutaTurn(
     .eq('ata_id', ataId)
     .eq('is_current', true)
     .maybeSingle()
-  const currentMinuta = currentMinutaRow as { id: string; content: string; status: string; updated_at: string; generation_run: GenerationRun | null } | null
+  const currentMinuta = currentMinutaRow as { id: string; content: string; status: string; updated_at: string; generation_run: MinutaRun | null } | null
 
   let turnInstruction = instruction?.trim() || undefined
   const hasCurrentContent = Boolean(currentMinuta?.content.trim())
@@ -570,7 +594,7 @@ export async function* streamMinutaTurn(
   if (currentMinuta && isGenerationInProgress(currentMinuta)) {
     throw new Error(GENERATION_IN_PROGRESS_MESSAGE)
   }
-  const documents = await prepareDocumentsForMinuta(client, ataId, settingsRow.model, settingsRow.reasoning_effort)
+  const { documents, analysisDocuments } = await prepareDocumentsForMinuta(client, ataId)
   // Refazer uma geração interrompida mantém as orientações já fornecidas. Uma
   // string vazia explícita permite apagar essas orientações antes de tentar de novo.
   if (instruction === undefined && currentMinuta && (currentMinuta.status === 'failed' || currentMinuta.status === 'generating')) {
@@ -595,6 +619,7 @@ export async function* streamMinutaTurn(
 
   let minutaId: string
   let input: ReturnType<typeof buildMinutaResponsesInput>
+  let generationContext: MinutaGenerationContext | MinutaRefinementContext
 
   if (isRefinement && currentMinuta && turnInstruction) {
     minutaId = currentMinuta.id
@@ -606,12 +631,8 @@ export async function* streamMinutaTurn(
       .order('sequence', { ascending: true })
     const priorInstructions = ((messageRows ?? []) as Array<{ content: string }>).map((row) => row.content)
 
-    input = buildMinutaResponsesInput(settingsRow.system_prompt, {
-      ...baseContext,
-      currentContent: currentMinuta.content,
-      priorInstructions,
-      instruction: turnInstruction,
-    })
+    generationContext = { ...baseContext, currentContent: currentMinuta.content, priorInstructions, instruction: turnInstruction }
+    input = buildMinutaResponsesInput(settingsRow.system_prompt, generationContext)
 
     await claimMinuta(client, currentMinuta, { status: 'generating', error_message: null })
     await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
@@ -637,8 +658,22 @@ export async function* streamMinutaTurn(
       throw new Error(createError?.message ?? 'Não foi possível iniciar a minuta.')
     }
     minutaId = (created as { id: string }).id
-    input = buildMinutaResponsesInput(settingsRow.system_prompt, { ...baseContext, instruction: turnInstruction })
+    generationContext = { ...baseContext, instruction: turnInstruction }
+    input = buildMinutaResponsesInput(settingsRow.system_prompt, generationContext)
     if (turnInstruction) await insertMinutaMessage(client, minutaId, 'user', turnInstruction, user.omniaUserId)
+  }
+
+  if (analysisDocuments.length) {
+    const run: DocumentPreparationRun = {
+      phase: 'documents', origin: isRefinement ? 'chat' : 'generation', with_instruction: Boolean(turnInstruction), model: settingsRow.model,
+      documents: analysisDocuments, document_index: 0, part_index: 0, evidence: [],
+      context: generationContext, system_prompt: settingsRow.system_prompt, reasoning_effort: settingsRow.reasoning_effort,
+      previous_minuta_id: !isRefinement ? currentMinuta?.id : undefined,
+    }
+    const { error } = await client.from('omnia_ata_minutas').update({ generation_run: run }).eq('id', minutaId)
+    if (error) throw new Error(error.message)
+    yield* driveDocumentPreparation(client, minutaId, user.omniaUserId, run, startedAt)
+    return
   }
 
   yield* driveGeneration(client, {
@@ -648,6 +683,137 @@ export async function* streamMinutaTurn(
     startedAt,
     request: { kind: 'start', input, model: settingsRow.model, reasoningEffort: settingsRow.reasoning_effort },
   })
+}
+
+// A leitura visual também pode levar vários minutos. Cada parte roda em background;
+// o cursor e a evidência ficam no JSON já existente, nunca nos buffers do PDF.
+// Uma concessão por requisição impede duas abas de submeterem a mesma próxima parte.
+async function* driveDocumentPreparation(
+  client: SupabaseClient, minutaId: string, userId: string, initialRun: DocumentPreparationRun, startedAt: number,
+): AsyncGenerator<AtaMinutaStreamEvent> {
+  let run = initialRun
+  const remaining = () => STREAM_WINDOW_MS - (Date.now() - startedAt)
+  while (run.lease_until && run.lease_until > Date.now()) {
+    if (remaining() <= 5_000) { yield { type: 'continue' }; return }
+    await new Promise(resolve => setTimeout(resolve, 2_000))
+    const { data, error } = await client.from('omnia_ata_minutas').select('status, error_message, generation_run').eq('id', minutaId).maybeSingle()
+    if (error) throw new Error(error.message)
+    const row = data as { status: string; error_message: string | null; generation_run: MinutaRun | null } | null
+    if (row?.status === 'failed') { yield { type: 'error', message: row.error_message ?? 'A análise do PDF falhou.' }; return }
+    if (!row || row.generation_run?.phase !== 'documents') { yield { type: 'continue' }; return }
+    run = row.generation_run
+  }
+
+  const leaseId = randomUUID()
+  const leased = { ...run, lease_id: leaseId, lease_until: Date.now() + Math.max(0, remaining()) + 30_000 }
+  let claim = client.from('omnia_ata_minutas')
+    .update({ generation_run: leased }).eq('id', minutaId).eq('status', 'generating')
+    .eq('generation_run->>phase', 'documents')
+  // Filtrar apenas o token: o JSON contém transcrição/contexto e não cabe numa URL.
+  claim = run.lease_id ? claim.eq('generation_run->>lease_id', run.lease_id) : claim.is('generation_run->>lease_id', null)
+  const { data: claimed, error: claimError } = await claim.select('id').maybeSingle()
+  if (claimError) throw new Error(claimError.message)
+  if (!claimed) { yield { type: 'continue' }; return }
+  run = leased
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), Math.max(0, remaining()))
+  const apiKey = env('OPENAI_ATA_MINUTA_API_KEY')
+  const owned = () => client.from('omnia_ata_minutas').update({ generation_run: run })
+    .eq('id', minutaId).eq('status', 'generating').eq('generation_run->>lease_id', leaseId)
+  const checkpoint = async () => {
+    const { data, error } = await owned().select('id').maybeSingle()
+    if (error || !data) throw new PreparationCheckpointError(error?.message ?? 'A preparação foi assumida por outra requisição.')
+  }
+  const handoff = async () => {
+    run = { ...run, lease_until: 0 }
+    await checkpoint()
+  }
+
+  try {
+    while (run.document_index < run.documents.length) {
+      if (remaining() <= 5_000) { await handoff(); yield { type: 'continue' }; return }
+      const document = run.documents[run.document_index]
+      if (run.response_id) {
+        const payload = await readMinutaPdfAnalysis(run.response_id, apiKey, controller.signal)
+        if (payload.status === 'queued' || payload.status === 'in_progress') {
+          await new Promise(resolve => setTimeout(resolve, Math.min(2_000, Math.max(0, remaining()))))
+          continue
+        }
+        const text = extractMinutaPdfEvidence(payload)
+        run = {
+          ...run, response_id: undefined, response_label: undefined, part_index: run.part_index + 1,
+          evidence: [...run.evidence, { originalFilename: document.original_filename, extractedText: `Fonte: ${run.response_label}\n${text}` }],
+        }
+        await checkpoint()
+        continue
+      }
+
+      const { data: file, error: downloadError } = await client.storage.from(MINUTA_DOCUMENTS_BUCKET).download(document.storage_path)
+      if (downloadError || !file) throw new PdfAnalysisFailedError('Não foi possível carregar o documento.')
+      const validationError = getMinutaDocumentValidationError({ name: document.original_filename, type: 'application/pdf', size: file.size })
+      if (validationError) throw new PdfAnalysisFailedError(validationError)
+      if (file.size !== document.size_bytes) throw new PdfAnalysisFailedError('O documento não corresponde ao tamanho informado.')
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      let index = 0
+      let found = false
+      for await (const part of splitMinutaPdf(bytes)) {
+        if (index++ < run.part_index) continue
+        // A divisão pode ter consumido a janela; não iniciar uma chamada já cancelada.
+        if (remaining() <= 5_000) { await handoff(); yield { type: 'continue' }; return }
+        found = true
+        const payload = await startMinutaPdfAnalysis({ part, originalFilename: document.original_filename, model: run.model, reasoningEffort: run.reasoning_effort, apiKey, signal: controller.signal })
+        const label = minutaPdfPartLabel(document.original_filename, part)
+        if (payload.status === 'queued' || payload.status === 'in_progress') {
+          if (!payload.id) throw new PdfAnalysisFailedError('A IA não identificou a análise para retomada.')
+          run = { ...run, response_id: payload.id, response_label: label }
+        } else {
+          const text = extractMinutaPdfEvidence(payload)
+          run = { ...run, part_index: run.part_index + 1, evidence: [...run.evidence, { originalFilename: document.original_filename, extractedText: `Fonte: ${label}\n${text}` }] }
+        }
+        await checkpoint()
+        break
+      }
+      if (!found) {
+        run = { ...run, document_index: run.document_index + 1, part_index: 0 }
+        await checkpoint()
+      }
+    }
+
+    if (remaining() <= 30_000) { await handoff(); yield { type: 'continue' }; return }
+    clearTimeout(timer)
+    // Manter a concessão até driveGeneration salvar o id da resposta final.
+    yield* driveGeneration(client, {
+      minutaId, userId, startedAt,
+      run: { origin: run.origin, with_instruction: run.with_instruction, model: run.model },
+      request: { kind: 'start', model: run.model, reasoningEffort: run.reasoning_effort,
+        input: buildMinutaResponsesInput(run.system_prompt, { ...run.context, documents: run.evidence }) },
+    })
+  } catch (error) {
+    // Uma consulta de acompanhamento pode cair: a resposta continua na OpenAI.
+    if (error instanceof PreparationCheckpointError || (!(error instanceof PdfAnalysisFailedError) && run.response_id)) {
+      // Se o banco continuar fora, o último cursor durável ainda permite retomar.
+      // Se outra requisição assumiu a concessão, seu token impede a sobrescrita.
+      try { await handoff() } catch { /* manter o checkpoint anterior */ }
+      yield { type: 'continue' }
+      return
+    }
+    const filename = run.documents[run.document_index]?.original_filename ?? 'PDF'
+    const detail = controller.signal.aborted ? 'A conexão com a análise demorou demais. Tente novamente.'
+      : error instanceof Error ? error.message : 'Não foi possível ler o PDF.'
+    const message = `Falha na análise de ${filename}: ${detail}`
+    const { data: failed, error: failError } = await client.from('omnia_ata_minutas')
+      .update({ status: 'failed', error_message: message, generation_run: null, ...(run.previous_minuta_id ? { is_current: false } : {}) })
+      .eq('id', minutaId).eq('status', 'generating').eq('generation_run->>lease_id', leaseId).select('id').maybeSingle()
+    if (failError) throw new Error(failError.message)
+    if (failed && run.previous_minuta_id) {
+      const { error: restoreError } = await client.from('omnia_ata_minutas').update({ is_current: true }).eq('id', run.previous_minuta_id)
+      if (restoreError) throw new Error(restoreError.message)
+    }
+    yield { type: 'error', message }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 type DriveRequest =

@@ -1,6 +1,6 @@
 import { PDFDocument } from 'pdf-lib'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { analyzeMinutaPdf, splitMinutaPdf } from '../ataMinutaPdfAnalysis'
+import { startMinutaPdfAnalysis, readMinutaPdfAnalysis, extractMinutaPdfEvidence, splitMinutaPdf } from '../ataMinutaPdfAnalysis'
 
 async function fixture() {
   const pdf = await PDFDocument.create()
@@ -40,6 +40,14 @@ describe('PDF parts for visual analysis', () => {
     expect(parts[0].bytes).toBe(bytes)
   })
 
+  it('splits Node buffers downloaded from Storage as well as typed arrays', async () => {
+    const widths: number[] = []
+    for await (const part of splitMinutaPdf(Buffer.from(await fixture()), 1800)) {
+      widths.push(...(await PDFDocument.load(part.bytes)).getPages().map(page => page.getWidth()))
+    }
+    expect(widths).toEqual([200, 201, 202, 203])
+  })
+
   it('fails explicitly when an individual page cannot fit', async () => {
     const consume = async () => { for await (const part of splitMinutaPdf(await fixture(), 100)) void part }
     await expect(consume()).rejects.toThrow(/página 1.*comprima/i)
@@ -47,7 +55,7 @@ describe('PDF parts for visual analysis', () => {
 })
 
 describe('supporting PDF evidence extraction', () => {
-  const options = { originalFilename: 'votos.pdf', model: 'configured-model', reasoningEffort: 'high', apiKey: 'test-key' }
+  const options = { originalFilename: 'votos.pdf', model: 'configured-model', reasoningEffort: 'high', apiKey: 'test-key', signal: new AbortController().signal }
 
   it('uses the configured vision model and returns labeled evidence for the final minuta', async () => {
     const bytes = await fixture()
@@ -56,12 +64,9 @@ describe('supporting PDF evidence extraction', () => {
       requests.push(JSON.parse(init.body as string))
       return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'Pauta 1: 10 votos favoráveis; 2 contrários.' }] }] })
     })
-    const result = await analyzeMinutaPdf({ ...options, bytes })
-    expect(result.originalFilename).toBe('votos.pdf')
-    expect(result.extractedText).toContain('10 votos favoráveis; 2 contrários.')
-    expect(result.extractedText).toContain('votos.pdf')
-    expect(result).not.toHaveProperty('base64')
-    expect(requests[0]).toMatchObject({ model: 'configured-model', reasoning: { effort: 'high' }, input: [{ role: 'user', content: [expect.objectContaining({ type: 'input_text' }), { type: 'input_file', filename: 'votos.pdf', file_data: `data:application/pdf;base64,${Buffer.from(bytes).toString('base64')}` }] }] })
+    const result = await startMinutaPdfAnalysis({ ...options, part: { bytes } })
+    expect(extractMinutaPdfEvidence(result)).toContain('10 votos favoráveis; 2 contrários.')
+    expect(requests[0]).toMatchObject({ background: true, store: true, model: 'configured-model', reasoning: { effort: 'high' }, input: [{ role: 'user', content: [expect.objectContaining({ type: 'input_text', text: expect.stringContaining('votos.pdf') }), { type: 'input_file', filename: 'votos.pdf', file_data: `data:application/pdf;base64,${Buffer.from(bytes).toString('base64')}` }] }] })
   })
 
   it.each([
@@ -70,12 +75,21 @@ describe('supporting PDF evidence extraction', () => {
     { status: 'completed', output: [{ content: [{ type: 'output_text', text: 'Texto parcial' }, { type: 'refusal', refusal: 'Recusado' }] }] },
     { status: 'completed', output: [] },
   ])('refuses incomplete or empty evidence instead of silently dropping pages: %j', async (payload) => {
-    vi.stubGlobal('fetch', async () => Response.json(payload))
-    await expect(analyzeMinutaPdf({ ...options, bytes: await fixture() })).rejects.toThrow(/análise.*votos.pdf/i)
+    expect(() => extractMinutaPdfEvidence(payload)).toThrow(/análise/i)
   })
 
   it('reports upstream failures with the original filename', async () => {
     vi.stubGlobal('fetch', async () => new Response('rate limited', { status: 429 }))
-    await expect(analyzeMinutaPdf({ ...options, bytes: await fixture() })).rejects.toThrow(/votos.pdf.*429/)
+    await expect(startMinutaPdfAnalysis({ ...options, part: { bytes: await fixture() } })).rejects.toThrow(/429/)
+  })
+
+  it('retrieves the accepted response without uploading the PDF again', async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      requests.push({ url, init })
+      return Response.json({ id: 'resp_pdf_1', status: 'in_progress', output: [] })
+    })
+    await expect(readMinutaPdfAnalysis('resp_pdf_1', 'test-key', options.signal)).resolves.toMatchObject({ status: 'in_progress' })
+    expect(requests).toEqual([{ url: 'https://api.openai.com/v1/responses/resp_pdf_1', init: { headers: { Authorization: 'Bearer test-key' }, signal: options.signal } }])
   })
 })

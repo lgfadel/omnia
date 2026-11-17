@@ -6,7 +6,9 @@ Os originais permanecem no bucket privado `ata-minuta-documents`. O navegador en
 
 Até 45 MB agregados, a geração recebe os PDFs diretamente. Acima disso, o servidor lê os documentos visualmente em partes de até 45 MB, usando o modelo configurado em **Configurações → Atas**. As evidências identificam o arquivo e o intervalo de páginas; a geração recebe essas evidências junto à transcrição. Isso preserva a leitura de digitalizações e tabelas de votação sem exceder o [limite agregado de 50 MB dos arquivos enviados à IA](https://developers.openai.com/api/docs/guides/file-inputs#usage-considerations).
 
-Arquivos maiores exigem chamadas adicionais à IA e podem demorar mais. A preparação tem orçamento de 180 segundos para reservar tempo para iniciar a geração final. Uma recusa, saída incompleta ou falha de leitura interrompe a preparação antes de substituir a minuta atual. É possível tentar novamente. Caso uma única página continue maior que 45 MB após a divisão, o sistema solicita a compressão das imagens dessa página.
+Arquivos maiores exigem chamadas adicionais à IA e podem demorar mais. A leitura de cada parte roda em [segundo plano na Responses API](https://developers.openai.com/api/docs/guides/background). O identificador da resposta, o cursor por arquivo/parte, as evidências concluídas e o contexto da geração ficam em `generation_run`, na minuta. Não há mais um limite compartilhado de 180 segundos para a análise inteira: ao encerrar a janela da rota, o cliente retoma automaticamente a resposta pendente e segue da última parte salva. Reabrir a ata também permite retomar. Consultas temporariamente indisponíveis preservam o trabalho salvo, e uma concessão temporária impede que duas abas enviem a próxima parte simultaneamente.
+
+A geração final recebe somente evidências concluídas de todos os PDFs. Uma recusa, saída incompleta ou falha definitiva de leitura interrompe a preparação e restaura a minuta anterior como atual, quando houver. É possível tentar novamente. Caso uma única página continue maior que 45 MB após a divisão, o sistema solicita a compressão das imagens dessa página. As análises usam `background: true` e `store: true` para permitir acompanhamento posterior; o estado local da preparação é removido ao concluir ou falhar.
 
 ## Publicação
 
@@ -16,7 +18,7 @@ Conferir em **Storage → Settings** que o limite global também permite pelo me
 
 ## Validação
 
-Os testes cobrem seleção de um arquivo de exatamente 100 MB, rejeição acima do limite e do total disponível, autorização de upload, confirmação idempotente, divisão de PDFs reais com ordem das páginas preservada e geração com evidências extraídas de conjuntos acima de 45 MB. As chamadas à IA são simuladas nos testes automatizados.
+Os testes cobrem seleção de um arquivo de exatamente 100 MB, rejeição acima do limite e do total disponível, autorização de upload, confirmação idempotente, divisão de PDFs reais com ordem das páginas preservada e geração com evidências extraídas de conjuntos acima de 45 MB. Também verificam retomada após a janela da rota sem reenvio de partes, concorrência entre acompanhantes, recuperação de falhas temporárias de consulta e checkpoint, rejeição de respostas expiradas e preservação da minuta e das instruções. As chamadas à IA são simuladas nos testes automatizados. A correção de retomada usa a coluna JSON existente e não requer uma migração adicional.
 
 ```sh
 npm run test:run

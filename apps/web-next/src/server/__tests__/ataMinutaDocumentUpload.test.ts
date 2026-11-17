@@ -52,6 +52,7 @@ vi.mock('@supabase/supabase-js', () => ({
       const query = {
         select: () => query,
         eq: (key: string, expected: unknown) => { filters[key] = expected; return query },
+        is: (key: string, expected: unknown) => { filters[key] = expected; return query },
         order: () => query,
         limit: () => query,
         update: (row: Record<string, unknown>) => { operation = 'update'; value = row; return query },
@@ -206,7 +207,7 @@ describe('support PDF upload and generation budget', () => {
     vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
       const body = JSON.parse(init.body as string)
       requests.push(body)
-      if (!body.background) return Response.json({ status: 'completed', output: [{ content: [{ type: 'output_text', text: 'Pauta 1: 105 votos favoráveis e 3 contrários.' }] }] })
+      if (!body.stream) return Response.json({ status: 'completed', output: [{ content: [{ type: 'output_text', text: 'Pauta 1: 105 votos favoráveis e 3 contrários.' }] }] })
       return new Response('data: {"type":"response.output_text.delta","delta":"Ata com 105 votos favoráveis."}\n\ndata: {"type":"response.completed","response":{"usage":{}}}\n\n')
     })
     const events = []
@@ -218,13 +219,15 @@ describe('support PDF upload and generation budget', () => {
     expect(requests).toHaveLength(sizes.length + 1)
   })
 
-  it('preserves the current minuta if analysis of a large document is incomplete', async () => {
+  it('does not create a final version if analysis of a large document is incomplete', async () => {
     vi.stubEnv('OPENAI_ATA_MINUTA_API_KEY', 'test-key')
     state.documents = [existingDocument(60_000_000, path)]
     storedFile(path, 60_000_000)
     vi.stubGlobal('fetch', async () => Response.json({ status: 'incomplete', output: [] }))
-    await expect(streamMinutaTurn(auth, 'ata-1', undefined).next()).rejects.toThrow('análise')
-    expect(state.changedTables).toEqual([])
+    const events = []
+    for await (const event of streamMinutaTurn(auth, 'ata-1', undefined)) events.push(event)
+    expect(events.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('análise') })
+    expect(state.changedTables).not.toContain('omnia_ata_minuta_versions')
   })
 
   const pdfBytes = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 55, 10, 0, 255])

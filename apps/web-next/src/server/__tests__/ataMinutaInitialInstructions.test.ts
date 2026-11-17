@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PDFDocument } from 'pdf-lib'
+import { Blob as NodeBlob } from 'node:buffer'
 import type { ResponsesInputMessage } from '@/lib/ataMinuta'
 import { saveMinutaManualEdit, streamMinutaTurn } from '../ataMinutaService'
 import { POST } from '@/app/api/atas/[ataId]/minuta/route'
@@ -6,6 +8,12 @@ import { POST } from '@/app/api/atas/[ataId]/minuta/route'
 vi.mock('next/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/server')>()),
   after: (task: Promise<unknown> | (() => unknown)) => { void Promise.resolve(typeof task === 'function' ? task() : task) },
+}))
+
+// Exercise the real PDF splitter with small fixtures instead of allocating 100 MB.
+vi.mock('@/lib/ataMinutaDocuments', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/ataMinutaDocuments')>()),
+  MINUTA_DOCUMENT_AI_MAX_SIZE_BYTES: 1800,
 }))
 
 type Row = Record<string, unknown>
@@ -30,6 +38,13 @@ let providerStarts: Array<Record<string, unknown>>
 let providerResumes: string[]
 let providerStatusChecks: string[]
 let providerRemoteStatus: string
+let pdfBytes: Uint8Array | null
+let analysisStarts: Array<Record<string, unknown>>
+let analysisPending: boolean
+let analysisFailure: boolean
+let analysisReadHttpStatus: number
+let onAnalysisStart: (() => void) | null
+let failCompletedEvidenceCheckpoint: boolean
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
@@ -38,6 +53,16 @@ function json(data: unknown, status = 200) {
 async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
   if (url.hostname === 'api.openai.com') {
+    const posted = init?.method === 'POST' ? JSON.parse(init.body as string) : null
+    if (posted && !posted.stream) {
+      analysisStarts.push(posted)
+      onAnalysisStart?.()
+      return json({ id: `resp_pdf_${analysisStarts.length}`, status: analysisPending ? 'queued' : analysisFailure ? 'incomplete' : 'completed', output: [{ content: [{ type: 'output_text', text: `Evidência ${analysisStarts.length}: 105 votos favoráveis.` }] }] })
+    }
+    if (url.pathname.includes('/resp_pdf_')) {
+      if (analysisReadHttpStatus !== 200) return json({ error: { message: 'Falha de acompanhamento' } }, analysisReadHttpStatus)
+      return json({ id: url.pathname.split('/').at(-1), status: analysisPending ? 'in_progress' : analysisFailure ? 'incomplete' : 'completed', output: [{ content: [{ type: 'output_text', text: 'Evidência retomada: 105 votos favoráveis.' }] }] })
+    }
     const isStatusCheck = (init?.method ?? 'GET') === 'GET' && !url.searchParams.has('stream')
     if (isStatusCheck) {
       providerStatusChecks.push(url.pathname)
@@ -82,6 +107,12 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promi
     return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })
   }
   if (url.pathname === '/auth/v1/user') return json(user)
+  if (url.pathname.startsWith('/storage/v1/object/') && pdfBytes) {
+    const response = new Response(Buffer.from(pdfBytes))
+    const bytes = pdfBytes
+    response.blob = async () => new NodeBlob([Buffer.from(bytes)]) as unknown as Blob
+    return response
+  }
   if (url.hostname !== 'supabase.test' || !url.pathname.startsWith('/rest/v1/')) {
     throw new Error(`Unexpected test HTTP request: ${url.hostname}${url.pathname}`)
   }
@@ -90,9 +121,11 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promi
   const records = tables[table]
   if (!records) throw new Error(`Unexpected test table: ${table}`)
   const method = init?.method ?? 'GET'
-  let rows = records.filter((row) => [...url.searchParams.entries()].every(([key, value]) => (
-    !value.startsWith('eq.') || String(row[key]) === value.slice(3)
-  )))
+  let rows = records.filter((row) => [...url.searchParams.entries()].every(([key, value]) => {
+    const actual = key.startsWith('generation_run->>') ? (row.generation_run as Row | null)?.[key.slice('generation_run->>'.length)] : row[key]
+    if (value === 'is.null') return actual == null
+    return !value.startsWith('eq.') || String(actual) === value.slice(3)
+  }))
   if (method === 'POST') {
     const body = JSON.parse(init?.body as string)
     if (table === 'omnia_ata_minutas' && body.is_current !== false && records.some((row) => row.ata_id === body.ata_id && row.is_current)) {
@@ -107,6 +140,10 @@ async function externalHttp(input: RequestInfo | URL, init?: RequestInit): Promi
     rows = [inserted]
   } else if (method === 'PATCH') {
     const patch = JSON.parse(init?.body as string)
+    if (table === 'omnia_ata_minutas' && failCompletedEvidenceCheckpoint && patch.generation_run?.evidence?.length && !patch.generation_run.response_id) {
+      failCompletedEvidenceCheckpoint = false
+      return json({ message: 'Banco temporariamente indisponível' }, 503)
+    }
     rows.forEach((row) => Object.assign(row, patch, { updated_at: new Date().toISOString() }))
   } else if (method !== 'GET') {
     throw new Error(`Unexpected test method: ${method}`)
@@ -159,6 +196,13 @@ describe('minuta initial instructions', () => {
     providerResumes = []
     providerStatusChecks = []
     providerRemoteStatus = 'in_progress'
+    pdfBytes = null
+    analysisStarts = []
+    analysisPending = false
+    analysisFailure = false
+    analysisReadHttpStatus = 200
+    onAnalysisStart = null
+    failCompletedEvidenceCheckpoint = false
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://supabase.test')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key')
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key')
@@ -167,8 +211,130 @@ describe('minuta initial instructions', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
+  })
+
+  async function attachPdf() {
+    const pdf = await PDFDocument.create()
+    for (let index = 0; index < 4; index++) pdf.addPage([200 + index, 300]).drawText(`Votacao ${index + 1}: 105 votos favoraveis.`)
+    pdfBytes = await pdf.save({ useObjectStreams: false })
+    tables.omnia_ata_minuta_documents.push({ ata_id: 'ata-1', storage_path: 'ata-1/votos.pdf', original_filename: 'votos.pdf', size_bytes: pdfBytes.byteLength })
+  }
+
+  it('resumes a slow PDF analysis after the request window without resubmitting completed parts', async () => {
+    await attachPdf()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
+    onAnalysisStart = () => {
+      if (analysisStarts.length === 2) {
+        analysisPending = true
+        clock.mockReturnValue(1_800_000_241_000)
+      }
+    }
+    const events = await turn('Registre os votos exatos.')
+    expect(events.at(-1)).toEqual({ type: 'continue' })
+    expect(currentMinuta()).toMatchObject({ status: 'generating', generation_run: expect.objectContaining({ phase: 'documents' }) })
+    expect(analysisStarts).toHaveLength(2)
+    expect(analysisStarts[0]).toMatchObject({ background: true, model: 'test-model', reasoning: { effort: 'high' } })
+    expect(providerStarts).toHaveLength(0)
+
+    analysisPending = false
+    onAnalysisStart = null
+    const resumed = []
+    for await (const event of streamMinutaTurn('Bearer test-token', 'ata-1', undefined, { resume: true })) resumed.push(event)
+    expect(resumed.at(-1)).toMatchObject({ type: 'done' })
+    expect(analysisStarts).toHaveLength(2)
+    expect(textOf(providerInputs[0])).toContain('Evidência 1: 105 votos favoráveis.')
+    expect(textOf(providerInputs[0])).toContain('Evidência retomada: 105 votos favoráveis.')
+    expect(textOf(providerInputs[0])).toContain('páginas 1–2')
+    expect(textOf(providerInputs[0])).toContain('páginas 3–4')
+    expect(textOf(providerInputs[0])).toContain('Registre os votos exatos.')
+    expect(providerInputs[0].flatMap(message => message.content).some(part => part.type === 'input_file')).toBe(false)
+    expect(currentMinuta()).toMatchObject({ status: 'ready', generation_run: null })
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+  })
+
+  it('keeps the previous draft current when background PDF analysis is incomplete', async () => {
+    await turn()
+    const previous = currentMinuta()!
+    await attachPdf()
+    analysisFailure = true
+    const events = await turn()
+    expect(events.at(-1)).toMatchObject({ type: 'error', message: expect.stringMatching(/análise.*votos.pdf/i) })
+    expect(currentMinuta()!.id).toBe(previous.id)
+    expect(currentMinuta()!.content).toBe('## Contas\nAprovadas por unanimidade.')
+    expect(providerStarts).toHaveLength(1)
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+  })
+
+  async function pendingAnalysis() {
+    await attachPdf()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
+    analysisPending = true
+    onAnalysisStart = () => clock.mockReturnValue(1_800_000_241_000)
+    expect((await turn()).at(-1)).toEqual({ type: 'continue' })
+    onAnalysisStart = null
+    return clock
+  }
+
+  async function resumeAnalysis() {
+    const events = []
+    for await (const event of streamMinutaTurn('Bearer test-token', 'ata-1', undefined, { resume: true })) events.push(event)
+    return events
+  }
+
+  it('lets only one of two followers submit the next PDF part and the final generation', async () => {
+    await pendingAnalysis()
+    analysisPending = false
+    await Promise.all([resumeAnalysis(), resumeAnalysis()])
+    expect(analysisStarts).toHaveLength(2)
+    expect(providerStarts).toHaveLength(1)
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+    expect(currentMinuta()).toMatchObject({ status: 'ready' })
+  })
+
+  it('keeps an accepted PDF response resumable after a temporary polling failure', async () => {
+    await pendingAnalysis()
+    analysisReadHttpStatus = 503
+    expect((await resumeAnalysis()).at(-1)).toEqual({ type: 'continue' })
+    expect(currentMinuta()).toMatchObject({ status: 'generating', generation_run: expect.objectContaining({ response_id: 'resp_pdf_1' }) })
+    expect(analysisStarts).toHaveLength(1)
+    analysisReadHttpStatus = 200
+    analysisPending = false
+    expect((await resumeAnalysis()).at(-1)).toMatchObject({ type: 'done' })
+    expect(analysisStarts).toHaveLength(2)
+  })
+
+  it('reports an expired PDF response without generating from partial evidence', async () => {
+    await pendingAnalysis()
+    analysisReadHttpStatus = 404
+    expect((await resumeAnalysis()).at(-1)).toMatchObject({ type: 'error', message: expect.stringMatching(/votos.pdf.*expirou/i) })
+    expect(currentMinuta()).toMatchObject({ status: 'failed', generation_run: null })
+    expect(providerStarts).toHaveLength(0)
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(0)
+  })
+
+  it('preserves completed evidence when its checkpoint temporarily fails', async () => {
+    await pendingAnalysis()
+    analysisPending = false
+    failCompletedEvidenceCheckpoint = true
+    expect((await resumeAnalysis()).at(-1)).toEqual({ type: 'continue' })
+    expect(currentMinuta()).toMatchObject({ status: 'generating', generation_run: expect.objectContaining({ phase: 'documents' }) })
+    expect((await resumeAnalysis()).at(-1)).toMatchObject({ type: 'done' })
+    expect(analysisStarts).toHaveLength(2)
+    expect(textOf(providerInputs[0])).toContain('Evidência retomada: 105 votos favoráveis.')
+    expect(tables.omnia_ata_minuta_versions).toHaveLength(1)
+  })
+
+  it('retains the saved content and instruction history when refining with analyzed PDFs', async () => {
+    await turn('Registre os votos exatos.')
+    await attachPdf()
+    expect((await turn('Deixe mais formal.')).at(-1)).toMatchObject({ type: 'done' })
+    expect(providerInputs[1].find(message => message.role === 'assistant')?.content).toEqual([{ type: 'output_text', text: '## Contas\nAprovadas por unanimidade.' }])
+    expect(textOf(providerInputs[1])).toContain('Registre os votos exatos.')
+    expect(textOf(providerInputs[1])).toContain('Deixe mais formal.')
+    expect(tables.omnia_ata_minuta_versions.map(row => row.origin)).toEqual(['generation', 'chat'])
   })
 
   it('generates the first draft with initial instructions and persists its user and assistant history', async () => {
